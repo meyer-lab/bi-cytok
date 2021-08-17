@@ -163,7 +163,6 @@ def cytBindingModel_bispec(mut, val, doseVec, cellType, x=False, date=False):
     Affs = np.power(np.array([Affs["IL2RaKD"].values, Affs["IL2RBGKD"].values]) / 1e9, -1)
     Affs = np.reshape(Affs, (1, -1))
     Affs = np.append(Affs, recXaff)
-    print(Affs)
     holder = np.full((3,3),1e2)
     np.fill_diagonal(holder,Affs)
     Affs = holder
