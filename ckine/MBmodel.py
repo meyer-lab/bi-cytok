@@ -149,79 +149,6 @@ def runFullModel(x=False, time=[0.5], saveDict=False, singleCell=False):
 
 #Tetra valent exploration functions below
 
-def cytBindingModel_tetra(mut, val, doseVec, cellType, x=False, date=False):
-    """Runs binding model for a given mutein, valency, dose, and cell type."""
-    recDF = importReceptors()
-    recCount = np.ravel([recDF.loc[(recDF.Receptor == "IL2Ra") & (recDF["Cell Type"] == cellType)].Mean.values,
-                         recDF.loc[(recDF.Receptor == "IL2Rb") & (recDF["Cell Type"] == cellType)].Mean.values])
-
-    mutAffDF = pd.read_csv(join(path_here, "ckine/data/WTmutAffData.csv"))
-    Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
-    Affs = np.power(np.array([Affs["IL2RaKD"].values, Affs["IL2RBGKD"].values]) / 1e9, -1)
-    Affs = np.reshape(Affs, (1, -1))
-    Affs = np.repeat(Affs, 2, axis=0)
-    np.fill_diagonal(Affs, 1e2)  # Each cytokine can only bind one a and one b
-
-    if doseVec.size == 1:
-        doseVec = np.array([doseVec])
-    output = np.zeros(doseVec.size)
-
-    for i, dose in enumerate(doseVec):
-        if x:
-            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[0][1]
-        else:
-            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val]], [1.0], Affs)[0][1]  # IL2RB binding only
-    if date:
-        convDict = getBindDict()
-        if cellType[-1] == "$":  # if it is a binned pop, use ave fit
-            output *= convDict.loc[(convDict.Date == date) & (convDict.Cell == cellType[0:-13])].Scale.values
-        else:
-            output *= convDict.loc[(convDict.Date == date) & (convDict.Cell == cellType)].Scale.values
-    return output
-
-
-def runFullModel_tetra(x=False, time=[0.5], saveDict=False, singleCell=False):
-    """Runs model for all data points and outputs date conversion dict for binding to pSTAT. Can be used to fit Kx"""
-    statDF = import_pstat_all(singleCell)
-    statDF = statDF.loc[(statDF.Ligand != "H16L N-term (Mono)") & (statDF.Ligand != "IL15 (Mono)")]
-    statDF = statDF.loc[(statDF.Time.isin(time))]
-
-    masterSTAT = pd.DataFrame(columns={"Ligand", "Date", "Cell", "Dose", "Predicted_1", "Predicted_2", "Predicted_4"})
-    dates = statDF.Date.unique()
-
-    groups = []
-
-    for (date, lig, conc, cell, time), group in statDF.groupby(["Date", "Ligand", "Dose", "Cell", "Time"]):
-        if lig[-5::] == "(Biv)":
-            val = 2
-            ligName = lig[0:-6]
-        else:
-            val = 1
-            ligName = lig[0:-7]
-        
-        groupID = [date,ligName,conc,cell]
-
-        if groupID not in groups:
-            groups.append(groupID)
-        else:
-            continue
-        
-        entry = group.Mean.values 
-        if len(entry) >= 1:
-            #expVal = np.mean(entry)
-            predValMono = cytBindingModel_tetra(ligName, 1, conc, cell, x, date) # put in date
-            predValBi = cytBindingModel_tetra(ligName, 2, conc, cell, x, date)
-            predValTetra = cytBindingModel_tetra(ligName, 4, conc, cell, x, date)
-            masterSTAT = masterSTAT.append(pd.DataFrame({"Ligand": ligName, "Date": date, "Cell": cell, "Dose": conc,
-                                                         "Predicted_1": predValMono, "Predicted_2": predValBi, "Predicted_4": predValTetra}))
-        else:
-            print("wut")
-    
-    indexList = masterSTAT[(masterSTAT.Date == "4/19/2019") & (masterSTAT.Ligand == "R38Q/H16N")]
-    masterSTAT = masterSTAT.loc[(masterSTAT.Date != "3/27/2019") & (masterSTAT.Date != "4/18/2019") & (masterSTAT.Date != "4/19/2019") & (masterSTAT.Date != "5/2/2019")]
-    masterSTAT = masterSTAT.append(indexList)
-    
-    return masterSTAT
 
 def cytBindingModel_bispec(mut, val, doseVec, cellType, x=False, date=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
@@ -231,7 +158,6 @@ def cytBindingModel_bispec(mut, val, doseVec, cellType, x=False, date=False):
     recCount = np.ravel([recDF.loc[(recDF.Receptor == "IL2Ra") & (recDF["Cell Type"] == cellType)].Mean.values,
                          recDF.loc[(recDF.Receptor == "IL2Rb") & (recDF["Cell Type"] == cellType)].Mean.values, recX])
 
-    print("recCount:",recCount)
     mutAffDF = pd.read_csv(join(path_here, "ckine/data/WTmutAffData.csv"))
     Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
     Affs = np.power(np.array([Affs["IL2RaKD"].values, Affs["IL2RBGKD"].values]) / 1e9, -1)
@@ -251,9 +177,9 @@ def cytBindingModel_bispec(mut, val, doseVec, cellType, x=False, date=False):
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[0][1]
+            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val, val]], [1.0], Affs)[0][1]
         else:
-            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val]], [1.0], Affs)[0][1]  # IL2RB binding only
+            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[0][1]  # IL2RB binding only
     if date:
         convDict = getBindDict()
         if cellType[-1] == "$":  # if it is a binned pop, use ave fit
@@ -269,7 +195,7 @@ def runFullModel_bispec(x=False, time=[0.5], saveDict=False, singleCell=False):
     statDF = statDF.loc[(statDF.Ligand != "H16L N-term (Mono)") & (statDF.Ligand != "IL15 (Mono)")]
     statDF = statDF.loc[(statDF.Time.isin(time))]
 
-    masterSTAT = pd.DataFrame(columns={"Ligand", "Date", "Cell", "Dose", "Predicted_1", "Predicted_2", "Predicted_4"})
+    masterSTAT = pd.DataFrame(columns={"Ligand", "Date", "Cell", "Dose", "Predicted"})
     dates = statDF.Date.unique()
 
     groups = []
