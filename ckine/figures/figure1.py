@@ -3,8 +3,8 @@ This creates Figure 1, response of bispecific IL-2 cytokines at varing valencies
 """
 
 import numpy as np
-from figureCommon import getSetup, plotBispecific
-from MBmodel import runFullModel_bispec, runFullModel
+from .figureCommon import getSetup, plotBispecific
+from ..MBmodel import runFullModel_bispec
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
@@ -14,7 +14,7 @@ def makeFigure():
     print(modelDF)
 
     cells = ["Treg", "Thelper", "NK", "CD8"]
-    ax, f = getSetup((10, 16), (1, 4))
+    ax, f = getSetup((15, 12), (2, 2))
 
     for i, cell in enumerate(cells):
         plotBispecific(ax[i], modelDF, cell)

@@ -78,12 +78,9 @@ def plotBispecific(ax, df, cellType, val=False):
     data_med = df.loc[(df.Cell == cellType) & (df.Affinity == 'Medium')]
     data_high = df.loc[(df.Cell == cellType) & (df.Affinity == 'High')]
     
-
-
-    #sns.scatterplot(x="Dose", y="Experimental", data=expData, label="Experimental", style="Time", hue="Valency", ax=ax, legend="brief", palette=["darkblue", "seagreen"])
-    #sns.lineplot(x="Dose", y="Predicted_1", data=expData, label="Mono", ax=ax, legend="brief")
-    #sns.lineplot(x="Dose", y="Predicted_2", data=expData, label="Bi", ax=ax, legend="brief")
-    #sns.lineplot(x="Dose", y="Predicted_4", data=expData, label="Tetra", ax=ax, legend="brief")
-    ax.set(title=cellType, xlabel=r"$log_{10}$ " + " (nM)", ylabel="pSTAT", xscale="log", xlim=(1e-4, 1e2), ylim=cellSTATlimDict[cellType])
-    handles, labels = ax.get_legend_handles_labels()
+    sns.lineplot(x="Abundance", y="Predicted", data=data_low, label="Low", ax=ax, legend="brief")
+    sns.lineplot(x="Abundance", y="Predicted", data=data_med, label="Med", ax=ax, legend="brief")
+    sns.lineplot(x="Abundance", y="Predicted", data=data_high, label="High", ax=ax, legend="brief")
+    ax.set(title=cellType, xlabel=r"Epitope X Abundance", ylabel="pSTAT", xscale="log", ylim=cellSTATlimDict[cellType])
+    #handles, labels = ax.get_legend_handles_labels()
     #ax.legend([handles[0]] + handles[4::], [labels[0]] + labels[4::])

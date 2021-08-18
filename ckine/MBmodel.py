@@ -6,7 +6,7 @@ from os.path import dirname, join
 import numpy as np
 import pandas as pd
 from scipy.optimize import root
-from imports import import_pstat_all, getBindDict, importReceptors
+from .imports import import_pstat_all, getBindDict, importReceptors
 
 path_here = dirname(dirname(__file__))
 
