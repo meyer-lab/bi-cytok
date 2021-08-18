@@ -83,6 +83,7 @@ def cytBindingModel(mut, val, doseVec, cellType, x=False, date=False):
     Affs = np.repeat(Affs, 2, axis=0)
     np.fill_diagonal(Affs, 1e2)  # Each cytokine can only bind one a and one b
 
+    print(type(doseVec))
     if doseVec.size == 1:
         doseVec = np.array([doseVec])
     output = np.zeros(doseVec.size)
@@ -122,6 +123,7 @@ def runFullModel(x=False, time=[0.5], saveDict=False, singleCell=False):
         entry = group.Mean.values
         if len(entry) >= 1:
             expVal = np.mean(entry)
+            #print(type(conc))
             predVal = cytBindingModel(ligName, val, conc, cell, x)
             masterSTAT = masterSTAT.append(pd.DataFrame({"Ligand": ligName, "Date": date, "Cell": cell, "Dose": conc,
                                                          "Time": time, "Valency": val, "Experimental": expVal, "Predicted": predVal}))
@@ -150,13 +152,14 @@ def runFullModel(x=False, time=[0.5], saveDict=False, singleCell=False):
 #Tetra valent exploration functions below
 
 
-def cytBindingModel_bispec(mut, val, doseVec, cellType, x=False, date=False):
+def cytBindingModel_bispec(mut, val, doseVec, cellType,recX,recXaff, x=False, date=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     recDF = importReceptors()
-    recX = 3000
-    recXaff = 1.4e9
-    recCount = np.ravel([recDF.loc[(recDF.Receptor == "IL2Ra") & (recDF["Cell Type"] == cellType)].Mean.values,
-                         recDF.loc[(recDF.Receptor == "IL2Rb") & (recDF["Cell Type"] == cellType)].Mean.values, recX])
+    # recX
+    # recXaff = 1.4e9 # Range from 1e6 to ~1e10
+    recCount = np.ravel([recDF.loc[(recDF.Receptor == "IL2Ra") & (recDF["Cell Type"] == cellType)].Mean.values[0],
+                         recDF.loc[(recDF.Receptor == "IL2Rb") & (recDF["Cell Type"] == cellType)].Mean.values[0], recX])
+    #print(recCount)
 
     mutAffDF = pd.read_csv(join(path_here, "ckine/data/WTmutAffData.csv"))
     Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
@@ -168,7 +171,6 @@ def cytBindingModel_bispec(mut, val, doseVec, cellType, x=False, date=False):
     Affs = holder
     
     # Check that values are in correct placement, can invert
-
 
     if doseVec.size == 1:
         doseVec = np.array([doseVec])
@@ -188,41 +190,31 @@ def cytBindingModel_bispec(mut, val, doseVec, cellType, x=False, date=False):
     return output
 
 
-def runFullModel_bispec(x=False, time=[0.5], saveDict=False, singleCell=False):
+def runFullModel_bispec(time=[0.5], singleCell=False):
     """Runs model for all data points and outputs date conversion dict for binding to pSTAT. Can be used to fit Kx"""
-    statDF = import_pstat_all(singleCell)
-    statDF = statDF.loc[(statDF.Ligand != "H16L N-term (Mono)") & (statDF.Ligand != "IL15 (Mono)")]
-    statDF = statDF.loc[(statDF.Time.isin(time))]
 
-    masterSTAT = pd.DataFrame(columns={"Ligand", "Date", "Cell", "Dose", "Predicted"})
-    dates = statDF.Date.unique()
-
-    groups = []
-
-    for (date, lig, conc, cell, time), group in statDF.groupby(["Date", "Ligand", "Dose", "Cell", "Time"]):
-        if lig[-5::] == "(Biv)":
-            ligName = lig[0:-6]
-        else:
-            ligName = lig[0:-7]
-        
-        groupID = [date,ligName,conc,cell]
-
-        if groupID not in groups:
-            groups.append(groupID)
-        else:
-            continue
-        
-        entry = group.Mean.values 
-        if len(entry) >= 1:
-            #expVal = np.mean(entry)
-            predVal_bispec = cytBindingModel_bispec(ligName, 3, conc, cell, x, date) # put in date
-            masterSTAT = masterSTAT.append(pd.DataFrame({"Ligand": ligName, "Date": date, "Cell": cell, "Dose": conc,
-                                                         "Predicted": predVal_bispec}))
-        else:
-            print("wut")
+    masterSTAT = pd.DataFrame(columns={"Ligand", "Cell", "Abundance", "Affinity", "Predicted"})
     
-    indexList = masterSTAT[(masterSTAT.Date == "4/19/2019") & (masterSTAT.Ligand == "R38Q/H16N")]
-    masterSTAT = masterSTAT.loc[(masterSTAT.Date != "3/27/2019") & (masterSTAT.Date != "4/18/2019") & (masterSTAT.Date != "4/19/2019") & (masterSTAT.Date != "5/2/2019")]
-    masterSTAT = masterSTAT.append(indexList)
+        
+    ligName = 'IL2'
+    # Dates = 3/15/2019, 3/27/2019, 4/18/2019
+    date = '3/15/2019'
+    conc = np.array([1]) # 1 nm
+    cells = ['Treg','Thelper','CD8','NK']
+    x=False
+    recX_abundances = np.arange(100,10200,300)
+    recX_affinities = [1e6, 1e8, 1e10]
+    levels = ['Low','Medium',"High"]
+
+
+
+    for cell in cells: 
+        for l, recXaff in enumerate(recX_affinities):
+            for recX in recX_abundances:
+                #print(recX)
+                predVal_bispec = cytBindingModel_bispec(ligName, 1, conc, cell, recX, recXaff, x, date) # put in date
+                masterSTAT = masterSTAT.append(pd.DataFrame({"Ligand": ligName, "Cell": cell, "Abundance": recX, 
+                                                            "Affinity": levels[l], "Predicted": predVal_bispec}))
+    
     
     return masterSTAT
