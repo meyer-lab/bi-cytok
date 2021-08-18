@@ -155,11 +155,8 @@ def runFullModel(x=False, time=[0.5], saveDict=False, singleCell=False):
 def cytBindingModel_bispec(mut, val, doseVec, cellType,recX,recXaff, x=False, date=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     recDF = importReceptors()
-    # recX
-    # recXaff = 1.4e9 # Range from 1e6 to ~1e10
     recCount = np.ravel([recDF.loc[(recDF.Receptor == "IL2Ra") & (recDF["Cell Type"] == cellType)].Mean.values[0],
                          recDF.loc[(recDF.Receptor == "IL2Rb") & (recDF["Cell Type"] == cellType)].Mean.values[0], recX])
-    #print(recCount)
 
     mutAffDF = pd.read_csv(join(path_here, "ckine/data/WTmutAffData.csv"))
     Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]

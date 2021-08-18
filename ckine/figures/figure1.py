@@ -14,7 +14,7 @@ def makeFigure():
     print(modelDF)
 
     cells = ["Treg", "Thelper", "NK", "CD8"]
-    ax, f = getSetup((15, 12), (2, 2))
+    ax, f = getSetup((15, 8), (2, 2))
 
     for i, cell in enumerate(cells):
         plotBispecific(ax[i], modelDF, cell)
