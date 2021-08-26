@@ -21,5 +21,5 @@ def makeFigure():
 
     return f
 
-#calc at different valencies
+#calc at different valencie 
 
