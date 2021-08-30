@@ -123,7 +123,7 @@ def importReceptors():
 
 @lru_cache(maxsize=None)
 
-def importCITE():
+def makeCITEdf():
     """Makes cite surface epitope csv for given cell type, DON'T USE THIS UNLESS DATA NEEDS RESTRUCTURING"""
     """
     matrixDF = pd.read_csv(join(path_here, "ckine/data/CITEmatrix.gz"), compression='gzip', header=0, sep=' ', quotechar='"', error_bad_lines=False)
@@ -161,3 +161,9 @@ def importCITE():
     matrixDF["CellType3"] = pd.Categorical(matrixDF["Cell"].replace(cellTDict3), categories=categories3)
     matrixDF.to_csv(join(path_here, "ckine/data/CITEdata.csv"), index=False)
     return matrixDF #, featureDF, metaDF
+
+
+def importCITE():
+    """Downloads all surface markers and cell types"""
+    CITEmarkerDF = pd.read_csv(join(path_here, "ckine/data/CITEdata_SurfMarkers.zip"))
+    return CITEmarkerDF
