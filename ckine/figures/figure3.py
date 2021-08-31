@@ -14,9 +14,9 @@ def makeFigure():
     """Get a list of the axis objects and create a figure"""
     ax, f = getSetup((15, 8), (2, 2))
     CITE_PCA(ax[0:2])
-    
 
     return f
+
 
 def CITE_PCA(ax):
     """ Plots all surface markers in PCA format"""
@@ -34,9 +34,9 @@ def CITE_PCA(ax):
     loadP = sns.scatterplot(data=loadingsDF, x="PC 1", y="PC 2", ax=ax[1])
 
     for line in range(0, loadingsDF.shape[0]):
-        loadP.text(loadingsDF["PC 1"][line] + 0.003, loadingsDF["PC 2"][line], 
-        factors[line], horizontalalignment='left', 
-        size='medium', color='black', weight='semibold')
+        loadP.text(loadingsDF["PC 1"][line] + 0.003, loadingsDF["PC 2"][line],
+                   factors[line], horizontalalignment='left',
+                   size='medium', color='black', weight='semibold')
 
     scores = pca.transform(PCA_Arr)
     scoresDF = pd.DataFrame({"PC 1": scores[:, 0], "PC 2": scores[:, 1], "Cell Type": cellType})
