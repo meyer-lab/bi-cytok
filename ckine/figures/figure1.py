@@ -6,6 +6,7 @@ import numpy as np
 from .figureCommon import getSetup, plotBispecific
 from ..MBmodel import runFullModel_bispec
 
+
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
 
@@ -21,5 +22,4 @@ def makeFigure():
 
     return f
 
-#calc at different valencie 
-
+# calc at different valencie

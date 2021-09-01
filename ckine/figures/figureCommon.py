@@ -59,16 +59,17 @@ def subplotLabel(axs):
     for ii, ax in enumerate(axs):
         ax.text(-0.2, 1.25, ascii_lowercase[ii], transform=ax.transAxes, fontsize=16, fontweight="bold", va="top")
 
+
 cellSTATlimDict = {"Treg": (47000, 54000),
                    "Thelper": (20000, 25000),
                    "CD8": (6200, 7500),
                    "NK": (4000, 5000)}
 
-ratioSTATlimDict = {"Treg/NK": (0, 4000 ),
-                   "Treg/CD8": (0, 1500)}
+ratioSTATlimDict = {"Treg/NK": (0, 4000),
+                    "Treg/CD8": (0, 1500)}
 
-#ratioSTATlimDict = {"Treg/NK": (0.05, 4),
-                   #"Treg/CD8": (0.05, 3.5)}
+# ratioSTATlimDict = {"Treg/NK": (0.05, 4),
+# "Treg/CD8": (0.05, 3.5)}
 
 
 def plotBispecific(ax, df, cellType, val=False):
@@ -77,7 +78,7 @@ def plotBispecific(ax, df, cellType, val=False):
     data_low = df.loc[(df.Cell == cellType) & (df.Affinity == 'Low')]
     data_med = df.loc[(df.Cell == cellType) & (df.Affinity == 'Medium')]
     data_high = df.loc[(df.Cell == cellType) & (df.Affinity == 'High')]
-    
+
     sns.lineplot(x="Abundance", y="Predicted", data=data_low, label="Low(1e6)", ax=ax, legend="brief")
     sns.lineplot(x="Abundance", y="Predicted", data=data_med, label="Med(1e8)", ax=ax, legend="brief")
     sns.lineplot(x="Abundance", y="Predicted", data=data_high, label="High(1e10)", ax=ax, legend="brief")
