@@ -17,29 +17,6 @@ output/figure%.svg: venv genFigures.py ckine/figures/figure%.py
 	mkdir -p ./output
 	. venv/bin/activate && ./genFigures.py $*
 
-output/figureC1.svg: ckine/graphics/figureC1.svg
-	cp $< $@
-
-output/manuscript.md: venv manuscript/*.md
-	. venv/bin/activate && manubot process --content-directory=manuscript --output-directory=output --cache-directory=cache --skip-citations --log-level=INFO
-	git remote rm rootstock
-
-output/manuscript.html: venv output/manuscript.md $(patsubst %, output/figure%.svg, $(flist))
-	mkdir output/output
-	cp output/*.svg output/output/
-	. venv/bin/activate && pandoc --verbose \
-		--defaults=./common/templates/manubot/pandoc/common.yaml \
-		--defaults=./common/templates/manubot/pandoc/html.yaml \
-		--csl=./manuscript/pnas.csl \
-		output/manuscript.md
-
-output/manuscript.docx: venv output/manuscript.md $(patsubst %, output/figure%.svg, $(flist))
-	. venv/bin/activate && pandoc --verbose \
-		--defaults=./common/templates/manubot/pandoc/common.yaml \
-		--defaults=./common/templates/manubot/pandoc/docx.yaml \
-		--csl=./manuscript/pnas.csl \
-		output/manuscript.md
-
 clean:
 	mv output/requests-cache.sqlite requests-cache.sqlite || true
 	rm -rf prof output coverage.xml .coverage .coverage* junit.xml coverage.xml profile profile.svg pylint.log
@@ -48,10 +25,6 @@ clean:
 	rm -f profile.p* stats.dat .coverage nosetests.xml coverage.xml testResults.xml
 	rm -rf html doxy.log graph_all.svg venv ./ckine/data/flow
 	find -iname "*.pyc" -delete
-
-spell: manuscript/*.md
-	pandoc --lua-filter common/templates/spell.lua manuscript/*.md | sort | uniq -ic
-
 
 download: .dataURLs.txt
 	mkdir -p ./ckine/data/flow
