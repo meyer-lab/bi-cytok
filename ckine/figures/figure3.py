@@ -15,7 +15,9 @@ from sklearn.preprocessing import LabelEncoder
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
-    ax, f = getSetup((15, 12), (3, 2), multz={4: 1})
+    ax, f = getSetup((9, 12), (5, 2), multz={4: 1})
+    distMetricScatt(ax[5:7], 10, weight=False)
+    distMetricScatt(ax[7:9], 10, weight=True)
     posCorrs, negCorrs = CITE_RIDGE(ax[3])
     RIDGE_Scatter(ax[4], posCorrs, negCorrs)
     CITE_PCA(ax[0:3], posCorrs, negCorrs)
@@ -107,3 +109,54 @@ def RIDGE_Scatter(ax, posCorrs, negCorrs):
     sns.pointplot(data=CITE_DF, x="Marker", y="Amount", hue="Cell Type", ax=ax, join=False, dodge=True)
     ax.set(yscale="log")
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+
+
+def distMetricScatt(ax, numFactors, weight=False):
+    """Finds markers which have average greatest difference from other cells"""
+    CITE_DF = importCITE()
+    cellToI = ["CD4 TCM", "CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL", "CD8 TCM", "Treg", "CD4 TEM", "NK_CD56bright"]
+    offTargs = ["CD4 TCM", "CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL", "CD8 TCM", "CD4 TEM", "NK_CD56bright"]
+    CITE_DF = CITE_DF.loc[(CITE_DF["CellType2"].isin(cellToI)), :]
+    cellTypeCol = CITE_DF.CellType2.values
+
+    markerDF = pd.DataFrame(columns=["Marker", "Cell Type", "Amount"])
+    for marker in CITE_DF.loc[:, ((CITE_DF.columns != 'CellType1') & (CITE_DF.columns != 'CellType2') & (CITE_DF.columns != 'CellType3') & (CITE_DF.columns != 'Cell'))].columns:
+        for cell in cellToI:
+            cellTDF = CITE_DF.loc[CITE_DF["CellType2"] == cell][marker]
+            markerDF = markerDF.append(pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Amount": cellTDF.mean(), "Number": cellTDF.size}))
+
+    ratioDF = pd.DataFrame(columns=["Marker", "Ratio"])
+    for marker in CITE_DF.loc[:, ((CITE_DF.columns != 'CellType1') & (CITE_DF.columns != 'CellType2') & (CITE_DF.columns != 'CellType3') & (CITE_DF.columns != 'Cell'))].columns:
+        if weight:
+            offT = 0
+            targ = markerDF.loc[(markerDF["Cell Type"] == "Treg") & (markerDF["Marker"] == marker)].Amount.mean()
+            for cell in offTargs:
+                offT += markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)].Amount.mean()
+            ratioDF = ratioDF.append(pd.DataFrame({"Marker": [marker], "Ratio": (targ * len(offTargs)) / offT}))
+        else:
+            offT = 0
+            targ = markerDF.loc[(markerDF["Cell Type"] == "Treg") & (markerDF["Marker"] == marker)].Amount.values * markerDF.loc[(markerDF["Cell Type"] == "Treg") & (markerDF["Marker"] == marker)].Number.values
+            for cell in offTargs:
+                offT += markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)].Amount.values * markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)].Number.values
+            ratioDF = ratioDF.append(pd.DataFrame({"Marker": [marker], "Ratio": (targ * len(offTargs)) / offT}))
+
+    ratioDF = ratioDF.sort_values(by="Ratio")
+    posCorrs = ratioDF.tail(numFactors).Marker.values
+
+    markerDF = markerDF.loc[markerDF["Marker"].isin(posCorrs)]
+
+    sns.barplot(data=ratioDF.tail(numFactors), x="Marker", y="Ratio", ax=ax[0])
+    ax[0].set(yscale="log")
+    ax[0].set_xticklabels(ax[0].get_xticklabels(), rotation=45)
+    if weight:
+        ax[0].set(title="Ratios Weighted by Cell Type")
+    else:
+        ax[0].set(title="Ratios Weighted by Number of Cells")
+
+    sns.pointplot(data=markerDF, x="Marker", y="Amount", hue="Cell Type", ax=ax[1], join=False, dodge=True, order=posCorrs)
+    ax[1].set(yscale="log")
+    ax[1].set_xticklabels(ax[1].get_xticklabels(), rotation=45)
+    if weight:
+        ax[1].set(title="Markers Weighted by Cell Type")
+    else:
+        ax[1].set(title="Markers Weighted by Number of Cells")
