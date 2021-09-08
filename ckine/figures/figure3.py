@@ -135,9 +135,11 @@ def distMetricScatt(ax, numFactors, weight=False):
             ratioDF = ratioDF.append(pd.DataFrame({"Marker": [marker], "Ratio": (targ * len(offTargs)) / offT}))
         else:
             offT = 0
-            targ = markerDF.loc[(markerDF["Cell Type"] == "Treg") & (markerDF["Marker"] == marker)].Amount.values * markerDF.loc[(markerDF["Cell Type"] == "Treg") & (markerDF["Marker"] == marker)].Number.values
+            targ = markerDF.loc[(markerDF["Cell Type"] == "Treg") & (markerDF["Marker"] == marker)].Amount.values * \
+                markerDF.loc[(markerDF["Cell Type"] == "Treg") & (markerDF["Marker"] == marker)].Number.values
             for cell in offTargs:
-                offT += markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)].Amount.values * markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)].Number.values
+                offT += markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)].Amount.values * \
+                    markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)].Number.values
             ratioDF = ratioDF.append(pd.DataFrame({"Marker": [marker], "Ratio": (targ * len(offTargs)) / offT}))
 
     ratioDF = ratioDF.sort_values(by="Ratio")

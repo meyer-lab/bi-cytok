@@ -53,7 +53,7 @@ def CITE_SVM(ax, numFactors=10, sampleFrac=0.5):
 
     AccDF = AccDF.sort_values(by="Accuracy")
     markers = copy(AccDF.tail(numFactors).Markers.values)
-    AccDF.Markers = "CD25 + " + AccDF.Markers 
+    AccDF.Markers = "CD25 + " + AccDF.Markers
 
     plot_DF = AccDF.tail(numFactors).append(pd.DataFrame({"Markers": ["CD25 only"], "Accuracy": [baselineAcc]}))
     sns.barplot(data=plot_DF, x="Markers", y="Accuracy", ax=ax[0])
@@ -64,9 +64,9 @@ def CITE_SVM(ax, numFactors=10, sampleFrac=0.5):
     markerDF = pd.DataFrame(columns=["Marker", "Cell Type", "Amount"])
     for marker in markers:
         for cell in cellToI:
-            cellTDF =  SVC_DF.loc[SVC_DF["CellType2"] == cell][marker]
+            cellTDF = SVC_DF.loc[SVC_DF["CellType2"] == cell][marker]
             markerDF = markerDF.append(pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Amount": cellTDF.mean(), "Number": cellTDF.size}))
-    
+
     sns.pointplot(data=markerDF, x="Marker", y="Amount", hue="Cell Type", ax=ax[1], join=False, dodge=True)
     ax[1].set(yscale="log")
     ax[1].set_xticklabels(ax[1].get_xticklabels(), rotation=45)
