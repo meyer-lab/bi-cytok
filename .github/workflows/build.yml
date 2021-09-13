@@ -15,7 +15,7 @@ jobs:
     - name: Install dependencies
       run: |
         git submodule update --init --recursive && make clean
-        make venv && make download
+        make venv
     - name: Build figures
       run: make all -j 3
     - name: Upload files
