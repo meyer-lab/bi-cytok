@@ -7,35 +7,37 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.linalg.decomp_svd import null_space
-from .figureCommon import getSetup, plotBispecific
+from .figureCommon import getSetup
 from ..MBmodel import runFullModel_bispec
 
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
-
-    modelDF = runFullModel_bispec(time=[0.5, 1])
+    conc = np.array([1])
+    modelDF = runFullModel_bispec(conc,time=[0.5, 1])
 
     # print(modelDF)
 
-    #treg_nk_rat = signalRatio(modelDF, "Treg","NK")
-
     cells = ["Treg", "Thelper", "NK", "CD8"]
-    ax, f = getSetup((20, 10), (2, 1))
+    ax, f = getSetup((22, 30), (3, 2))
 
-    signalRatio(ax[0], modelDF, "Treg", "NK")
-    signalRatio(ax[1], modelDF, "Treg", "CD8")
+    
+    signalRatio(ax[0], modelDF, "Treg","NK","Low")
+    signalRatio(ax[1], modelDF, "Treg","CD8","Low")
+    signalRatio(ax[2], modelDF, "Treg","NK","Medium")
+    signalRatio(ax[3], modelDF, "Treg","CD8","Medium")
+    signalRatio(ax[4], modelDF, "Treg","NK","High")
+    signalRatio(ax[5], modelDF, "Treg","CD8","High")
+
 
     return f
 
-# calc at different valencies
-
-
-def signalRatio(ax, dataframe, cellType1, cellType2):
+#calc at different valencies
+def signalRatio(ax, dataframe,cellType1, cellType2, affinity):
     ratios_DF = pd.DataFrame(columns={"X-Abundance", "Y-Abundance", "Ratio"})
 
-    type1_vals = dataframe.loc[(dataframe.Cell == cellType1) & (dataframe.Affinity == 'Medium')]
-    type2_vals = dataframe.loc[(dataframe.Cell == cellType2) & (dataframe.Affinity == 'Medium')]
+    type1_vals = dataframe.loc[(dataframe.Cell == cellType1) & (dataframe.Affinity == affinity)]
+    type2_vals = dataframe.loc[(dataframe.Cell == cellType2) & (dataframe.Affinity == affinity)]
 
     abundances = dataframe.loc[(dataframe.Cell == cellType1) & (dataframe.Affinity == 'Medium')]["Abundance"]
 
@@ -46,14 +48,15 @@ def signalRatio(ax, dataframe, cellType1, cellType2):
             signalRatio = x_signal / y_signal
             ratios_DF = ratios_DF.append(pd.DataFrame({"X-Abundance": x_abundance, "Y-Abundance": y_abundance, "Ratio": signalRatio}))
 
-    test = (np.asarray(ratios_DF["Ratio"])).reshape(34, 34)
     result = ratios_DF.pivot(index="Y-Abundance", columns="X-Abundance", values="Ratio")
 
-    title = cellType1 + "/" + cellType2
-    xlabel = "Epitope Abundance on " + cellType1
-    ylabel = "Epitope Abundance on " + cellType2
+    result = result[::-1]
 
-    sns.heatmap(result, cmap='RdYlGn', ax=ax)
+    title = cellType1 + "/" + cellType2 + " at " + affinity + " Affinity"
+    xlabel = "Epitope Abundance on "+ cellType1
+    ylabel = "Epitope Abundance on "+ cellType2
+
+    sns.heatmap(result,cmap='RdYlGn', ax=ax, cbar_kws={'label': 'Ratio of Cell Signal'})
     ax.set(title=title, xlabel=xlabel, ylabel=ylabel)
 
     return ratios_DF
