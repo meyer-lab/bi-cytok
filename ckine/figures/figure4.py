@@ -2,7 +2,7 @@
 This creates Figure 1, response of bispecific IL-2 cytokines at varing valencies and abundances using binding model.
 """
 from .figureCommon import getSetup
-from ..imports import importCITE
+from ..imports import importCITE, importReceptors
 import pandas as pd
 import seaborn as sns
 import numpy as np
@@ -14,8 +14,10 @@ from sklearn.preprocessing import LabelBinarizer
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
-    ax, f = getSetup((9, 12), (5, 2), multz={4: 1})
-    CITE_SVM(ax[0:2], sampleFrac=0.3)
+    ax, f = getSetup((8, 8), (2, 2))
+    convFactCalc(ax[2])
+
+    CITE_SVM(ax[0:2], sampleFrac=0.2)
 
     return f
 
@@ -70,3 +72,55 @@ def CITE_SVM(ax, numFactors=10, sampleFrac=0.5):
     sns.pointplot(data=markerDF, x="Marker", y="Amount", hue="Cell Type", ax=ax[1], join=False, dodge=True)
     ax[1].set(yscale="log")
     ax[1].set_xticklabels(ax[1].get_xticklabels(), rotation=45)
+
+
+cellDict = {"CD4 Naive": "Thelper",
+            "CD4 CTL": "Thelper",
+            "CD4 TCM": "Thelper",
+            "CD4 TEM": "Thelper",
+            "NK": "NK",
+            "CD8 Naive": "CD8",
+            "CD8 TCM": "CD8",
+            "CD8 TEM": "CD8",
+            "Treg": "Treg"}
+
+
+markDict = {"CD25": "IL2Ra",
+            "CD122": "IL2Rb",
+            "CD127": "IL7Ra",
+            "CD132": "gc"}
+
+
+def convFactCalc(ax):
+    """Fits a ridge classifier to the CITE data and plots those most highly correlated with T reg"""
+    CITE_DF = importCITE()
+    cellToI = ["CD4 TCM", "CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL", "CD8 TCM", "Treg", "CD4 TEM"]
+    markers = ["CD122", "CD127", "CD25"]
+    markerDF = pd.DataFrame(columns=["Marker", "Cell Type", "Amount", "Number"])
+    for marker in markers:
+        for cell in cellToI:
+            cellTDF = CITE_DF.loc[CITE_DF["CellType2"] == cell][marker]
+            markerDF = markerDF.append(pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Amount": cellTDF.mean(), "Number": cellTDF.size}))
+
+    markerDF = markerDF.replace({"Marker": markDict, "Cell Type": cellDict})
+    markerDFw = pd.DataFrame(columns=["Marker", "Cell Type", "Average"])
+    for marker in markerDF.Marker.unique():
+        for cell in markerDF["Cell Type"].unique():
+            subDF = markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)]
+            wAvg = np.sum(subDF.Amount.values * subDF.Number.values) / np.sum(subDF.Number.values)
+            markerDFw = markerDFw.append(pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Average": wAvg}))
+
+    recDF = importReceptors()
+    weightDF = pd.DataFrame(columns=["Receptor", "Weight"])
+
+    for rec in markerDFw.Marker.unique():
+        CITEval = np.array([])
+        Quantval = np.array([])
+        for cell in markerDF["Cell Type"].unique():
+            CITEval = np.concatenate((CITEval, markerDFw.loc[(markerDFw["Cell Type"] == cell) & (markerDFw["Marker"] == rec)].Average.values))
+            Quantval = np.concatenate((Quantval, recDF.loc[(recDF["Cell Type"] == cell) & (recDF["Receptor"] == rec)].Mean.values))
+        weightDF = weightDF.append(pd.DataFrame({"Receptor": [rec], "Weight": np.linalg.lstsq(np.reshape(CITEval, (-1, 1)), Quantval, rcond=None)[0]}))
+
+    sns.barplot(data=weightDF, x="Receptor", y="Weight", ax=ax)
+    ax.set(ylim=(0, 1000))
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
