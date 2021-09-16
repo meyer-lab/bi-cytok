@@ -2,9 +2,9 @@
 This creates Figure 1, response of bispecific IL-2 cytokines at varing valencies and abundances using binding model.
 """
 from .figureCommon import getSetup
-from os.path import join
 from ..imports import importCITE
 from sklearn.decomposition import PCA
+from copy import copy
 import pandas as pd
 import seaborn as sns
 import numpy as np
@@ -16,9 +16,10 @@ from sklearn.preprocessing import LabelEncoder
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
     ax, f = getSetup((9, 12), (5, 2), multz={4: 1})
-    distMetricScatt(ax[5:7], 10, weight=False)
-    distMetricScatt(ax[7:9], 10, weight=True)
-    posCorrs, negCorrs = CITE_RIDGE(ax[3])
+    cellTarget = "Treg"
+    distMetricScatt(ax[5:7], cellTarget, 10, weight=False)
+    distMetricScatt(ax[7:9], cellTarget, 10, weight=True)
+    posCorrs, negCorrs = CITE_RIDGE(ax[3], cellTarget)
     RIDGE_Scatter(ax[4], posCorrs, negCorrs)
     CITE_PCA(ax[0:3], posCorrs, negCorrs)
 
@@ -66,7 +67,7 @@ def CITE_PCA(ax, posCorrs, negCorrs):
     ax[0].set(xlim=(-20, 50), ylim=(-50, 50))
 
 
-def CITE_RIDGE(ax, numFactors=10):
+def CITE_RIDGE(ax, targCell, numFactors=10):
     """Fits a ridge classifier to the CITE data and plots those most highly correlated with T reg"""
     ridgeMod = RidgeClassifierCV()
     RIDGE_DF = importCITE()
@@ -84,13 +85,13 @@ def CITE_RIDGE(ax, numFactors=10):
 
     ridgeMod = RidgeClassifierCV(cv=5)
     ridgeMod.fit(X, y)
-    TregCoefs = ridgeMod.coef_[np.where(le.classes_ == "Treg"), :].ravel()
-    TregCoefsDF = pd.DataFrame({"Marker": factors, "Coefficient": TregCoefs}).sort_values(by="Coefficient")
-    TregCoefsDF = pd.concat([TregCoefsDF.head(numFactors), TregCoefsDF.tail(numFactors)])
-    sns.barplot(data=TregCoefsDF, x="Marker", y="Coefficient", ax=ax)
+    TargCoefs = ridgeMod.coef_[np.where(le.classes_ == targCell), :].ravel()
+    TargCoefsDF = pd.DataFrame({"Marker": factors, "Coefficient": TargCoefs}).sort_values(by="Coefficient")
+    TargCoefsDF = pd.concat([TargCoefsDF.head(numFactors), TargCoefsDF.tail(numFactors)])
+    sns.barplot(data=TargCoefsDF, x="Marker", y="Coefficient", ax=ax)
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
-    posCorrs = TregCoefsDF.tail(numFactors).Marker.values
-    negCorrs = TregCoefsDF.head(numFactors).Marker.values
+    posCorrs = TargCoefsDF.tail(numFactors).Marker.values
+    negCorrs = TargCoefsDF.head(numFactors).Marker.values
 
     return posCorrs, negCorrs
 
@@ -111,11 +112,12 @@ def RIDGE_Scatter(ax, posCorrs, negCorrs):
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
 
 
-def distMetricScatt(ax, numFactors, weight=False):
+def distMetricScatt(ax, targCell, numFactors, weight=False):
     """Finds markers which have average greatest difference from other cells"""
     CITE_DF = importCITE()
     cellToI = ["CD4 TCM", "CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL", "CD8 TCM", "Treg", "CD4 TEM", "NK_CD56bright"]
-    offTargs = ["CD4 TCM", "CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL", "CD8 TCM", "CD4 TEM", "NK_CD56bright"]
+    offTargs = copy(cellToI)
+    offTargs.remove(targCell)
     CITE_DF = CITE_DF.loc[(CITE_DF["CellType2"].isin(cellToI)), :]
     cellTypeCol = CITE_DF.CellType2.values
 
@@ -129,14 +131,14 @@ def distMetricScatt(ax, numFactors, weight=False):
     for marker in CITE_DF.loc[:, ((CITE_DF.columns != 'CellType1') & (CITE_DF.columns != 'CellType2') & (CITE_DF.columns != 'CellType3') & (CITE_DF.columns != 'Cell'))].columns:
         if weight:
             offT = 0
-            targ = markerDF.loc[(markerDF["Cell Type"] == "Treg") & (markerDF["Marker"] == marker)].Amount.mean()
+            targ = markerDF.loc[(markerDF["Cell Type"] == targCell) & (markerDF["Marker"] == marker)].Amount.mean()
             for cell in offTargs:
                 offT += markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)].Amount.mean()
             ratioDF = ratioDF.append(pd.DataFrame({"Marker": [marker], "Ratio": (targ * len(offTargs)) / offT}))
         else:
             offT = 0
-            targ = markerDF.loc[(markerDF["Cell Type"] == "Treg") & (markerDF["Marker"] == marker)].Amount.values * \
-                markerDF.loc[(markerDF["Cell Type"] == "Treg") & (markerDF["Marker"] == marker)].Number.values
+            targ = markerDF.loc[(markerDF["Cell Type"] == targCell) & (markerDF["Marker"] == marker)].Amount.values * \
+                markerDF.loc[(markerDF["Cell Type"] == targCell) & (markerDF["Marker"] == marker)].Number.values
             for cell in offTargs:
                 offT += markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)].Amount.values * \
                     markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)].Number.values

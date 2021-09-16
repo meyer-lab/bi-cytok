@@ -17,12 +17,12 @@ def makeFigure():
     ax, f = getSetup((8, 8), (2, 2))
     convFactCalc(ax[2])
 
-    CITE_SVM(ax[0:2], sampleFrac=0.2)
+    CITE_SVM(ax[0:2], "Treg", sampleFrac=0.2)
 
     return f
 
 
-def CITE_SVM(ax, numFactors=10, sampleFrac=0.5):
+def CITE_SVM(ax, targCell, numFactors=10, sampleFrac=0.5):
     """Fits a ridge classifier to the CITE data and plots those most highly correlated with T reg"""
     SVMmod = SVC()
     SVC_DF = importCITE()
@@ -38,7 +38,7 @@ def CITE_SVM(ax, numFactors=10, sampleFrac=0.5):
 
     enc = LabelBinarizer()
     y = enc.fit_transform(cellTypeCol)
-    TregY = y[:, np.where(enc.classes_ == "Treg")].ravel()
+    TregY = y[:, np.where(enc.classes_ == targCell)].ravel()
 
     AccDF = pd.DataFrame(columns=["Markers", "Accuracy"])
     baselineAcc = SVMmod.fit(CD25col, TregY).score(CD25col, TregY)
