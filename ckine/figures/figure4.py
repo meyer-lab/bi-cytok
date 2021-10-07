@@ -26,7 +26,7 @@ def CITE_SVM(ax, targCell, numFactors=10, sampleFrac=0.5):
     """Fits a ridge classifier to the CITE data and plots those most highly correlated with T reg"""
     SVMmod = SVC()
     SVC_DF = importCITE()
-    cellToI = ["CD4 TCM", "CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL", "CD8 TCM", "Treg", "CD4 TEM", "NK_CD56bright"]
+    cellToI = SVC_DF.CellType2.unique()
     SVC_DF = SVC_DF.loc[(SVC_DF["CellType2"].isin(cellToI)), :]
     SVC_DF = SVC_DF.sample(frac=sampleFrac, random_state=1)
     cellTypeCol = SVC_DF.CellType2.values
