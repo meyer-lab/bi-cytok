@@ -16,24 +16,31 @@ from sklearn.manifold import TSNE
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
-    ax, f = getSetup((9, 12), (5, 2), multz={4: 1})
+    ax, f = getSetup((9, 12), (5, 2))
     cellTarget = "Treg"
+    ax[1].axis("off")
 
-    CITE_TSNE(ax[0])
-    #CITE_PCA(ax[0:3], posCorrs, negCorrs)
-    #posCorrs, negCorrs = CITE_RIDGE(ax[3], cellTarget)
-    #RIDGE_Scatter(ax[4], posCorrs, negCorrs)
-    #distMetricScatt(ax[5:7], cellTarget, 10, weight=False)
-    #distMetricScatt(ax[7:9], cellTarget, 10, weight=True)
+    CITE_TSNE(ax[0], sampleFrac=0.4)
+    legend = ax[0].get_legend()
+    labels = (x.get_text() for x in legend.get_texts())
+    ax[1].legend(legend.legendHandles, labels, loc="upper left", prop={"size": 10}, ncol=3)
+    ax[0].get_legend().remove()
+
+    posCorrs, negCorrs = CITE_RIDGE(ax[4], cellTarget)
+    CITE_PCA(ax[2:4], posCorrs, negCorrs)
+    RIDGE_Scatter(ax[5], posCorrs, negCorrs)
+    distMetricScatt(ax[6:8], cellTarget, 10, weight=False)
+    distMetricScatt(ax[8:10], cellTarget, 10, weight=True)
 
     return f
 
 
-def CITE_TSNE(ax):
+def CITE_TSNE(ax, sampleFrac):
     """ Plots all surface markers in PCA format"""
     TSNE_DF = importCITE()
     cellToI = TSNE_DF.CellType2.unique()
     TSNE_DF = TSNE_DF.loc[(TSNE_DF["CellType2"].isin(cellToI)), :]
+    TSNE_DF = TSNE_DF.sample(frac=sampleFrac, random_state=1)
     cellType = TSNE_DF.CellType2.values
     TSNE_DF = TSNE_DF.loc[:, ((TSNE_DF.columns != 'CellType1') & (TSNE_DF.columns != 'CellType2') & (TSNE_DF.columns != 'CellType3') & (TSNE_DF.columns != 'Cell'))]
     factors = TSNE_DF.columns
@@ -44,10 +51,9 @@ def CITE_TSNE(ax):
     TSNE_PCA_Arr = pca.fit_transform(TSNE_Arr)
 
     X_embedded = TSNE(n_components=2, verbose=1, perplexity=50, n_iter=1000, learning_rate=200).fit_transform(TSNE_PCA_Arr)
-    print(X_embedded)
     df_tsne = pd.DataFrame(X_embedded, columns=['comp1', 'comp2'])
     df_tsne['label'] = cellType
-    sns.lmplot(x='comp1', y='comp2', data=df_tsne, hue='label', fit_reg=False)
+    sns.scatterplot(x='comp1', y='comp2', data=df_tsne, hue='label', alpha=0.3, ax=ax, s=2)
 
 
 def CITE_PCA(ax, posCorrs, negCorrs):
@@ -79,16 +85,14 @@ def CITE_PCA(ax, posCorrs, negCorrs):
 
     scores = pca.transform(PCA_Arr)
     scoresDF = pd.DataFrame({"PC 1": scores[:, 0], "PC 2": scores[:, 1], "Cell Type": cellType})
-    sns.scatterplot(data=scoresDF, x="PC 1", y="PC 2", ax=ax[0], hue="Cell Type", alpha=0.3)
-    ax[0].set(xlim=(-20, 50), ylim=(-50, 50))
 
     centerDF = pd.DataFrame(columns=["PC 1", "PC 2", "Cell Type"])
     for cell in cellToI:
         cellTDF = scoresDF.loc[scoresDF["Cell Type"] == cell]
         centerDF = centerDF.append(pd.DataFrame({"PC 1": [cellTDF["PC 1"].mean()], "PC 2": [cellTDF["PC 2"].mean()], "Cell Type": [cell]}))
 
-    sns.scatterplot(data=centerDF, x="PC 1", y="PC 2", ax=ax[2], hue="Cell Type")
-    ax[0].set(xlim=(-20, 50), ylim=(-50, 50))
+    sns.scatterplot(data=centerDF, x="PC 1", y="PC 2", ax=ax[0], hue="Cell Type", legend=False)
+    ax[0].set(xlim=(-10, 30), ylim=(-5, 5))
 
 
 def CITE_RIDGE(ax, targCell, numFactors=10):
@@ -131,9 +135,10 @@ def RIDGE_Scatter(ax, posCorrs, negCorrs):
     CITE_DF["Cell Type"] = cellTypeCol
     CITE_DF = pd.melt(CITE_DF, id_vars="Cell Type", var_name="Marker", value_name='Amount')
 
-    sns.pointplot(data=CITE_DF, x="Marker", y="Amount", hue="Cell Type", ax=ax, join=False, dodge=True)
+    sns.pointplot(data=CITE_DF, x="Marker", y="Amount", hue="Cell Type", ax=ax, join=False, dodge=True, legend=False)
     ax.set(yscale="log")
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+    ax.get_legend().remove()
 
 
 def distMetricScatt(ax, targCell, numFactors, weight=False):
@@ -181,10 +186,11 @@ def distMetricScatt(ax, targCell, numFactors, weight=False):
     else:
         ax[0].set(title="Ratios Weighted by Number of Cells")
 
-    sns.pointplot(data=markerDF, x="Marker", y="Amount", hue="Cell Type", ax=ax[1], join=False, dodge=True, order=posCorrs)
+    sns.pointplot(data=markerDF, x="Marker", y="Amount", hue="Cell Type", ax=ax[1], join=False, dodge=True, order=posCorrs, legend=False)
     ax[1].set(yscale="log")
     ax[1].set_xticklabels(ax[1].get_xticklabels(), rotation=45)
     if weight:
         ax[1].set(title="Markers Weighted by Cell Type")
     else:
         ax[1].set(title="Markers Weighted by Number of Cells")
+    ax[1].get_legend().remove()
