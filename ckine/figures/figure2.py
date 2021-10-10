@@ -21,7 +21,6 @@ def makeFigure():
     cells = ["Treg", "Thelper", "NK", "CD8"]
     ax, f = getSetup((22, 30), (3, 2))
 
-<<<<<<< HEAD
     
     signalRatio(ax[0], modelDF, "Treg","NK","Low")
     signalRatio(ax[1], modelDF, "Treg","CD8","Low")
@@ -35,17 +34,6 @@ def makeFigure():
 
 #calc at different valencies
 def signalRatio(ax, dataframe,cellType1, cellType2, affinity):
-=======
-    signalRatio(ax[0], modelDF, "Treg", "NK")
-    signalRatio(ax[1], modelDF, "Treg", "CD8")
-
-    return f
-
-# calc at different valencies
-
-
-def signalRatio(ax, dataframe, cellType1, cellType2):
->>>>>>> fc20ce3 (mergefix)
     ratios_DF = pd.DataFrame(columns={"X-Abundance", "Y-Abundance", "Ratio"})
 
     type1_vals = dataframe.loc[(dataframe.Cell == cellType1) & (dataframe.Affinity == affinity)]
@@ -60,7 +48,6 @@ def signalRatio(ax, dataframe, cellType1, cellType2):
             signalRatio = x_signal / y_signal
             ratios_DF = ratios_DF.append(pd.DataFrame({"X-Abundance": x_abundance, "Y-Abundance": y_abundance, "Ratio": signalRatio}))
 
-<<<<<<< HEAD
     result = ratios_DF.pivot(index="Y-Abundance", columns="X-Abundance", values="Ratio")
 
     result = result[::-1]
@@ -70,16 +57,6 @@ def signalRatio(ax, dataframe, cellType1, cellType2):
     ylabel = "Epitope Abundance on "+ cellType2
 
     sns.heatmap(result,cmap='RdYlGn', ax=ax, cbar_kws={'label': 'Ratio of Cell Signal'})
-=======
-    test = (np.asarray(ratios_DF["Ratio"])).reshape(34, 34)
-    result = ratios_DF.pivot(index="Y-Abundance", columns="X-Abundance", values="Ratio")
-
-    title = cellType1 + "/" + cellType2
-    xlabel = "Epitope Abundance on " + cellType1
-    ylabel = "Epitope Abundance on " + cellType2
-
-    sns.heatmap(result, cmap='RdYlGn', ax=ax)
->>>>>>> fc20ce3 (mergefix)
     ax.set(title=title, xlabel=xlabel, ylabel=ylabel)
 
     return ratios_DF

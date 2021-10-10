@@ -121,6 +121,7 @@ def CITE_RIDGE(ax, targCell, numFactors=10):
     posCorrs = TargCoefsDF.tail(numFactors).Marker.values
     negCorrs = TargCoefsDF.head(numFactors).Marker.values
 
+    print(posCorrs)
     return posCorrs, negCorrs
 
 
