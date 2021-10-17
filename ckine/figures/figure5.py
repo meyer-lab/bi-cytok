@@ -22,7 +22,7 @@ def makeFigure():
     """Get a list of the axis objects and create a figure"""
     ax, f = getSetup((9, 12), (5, 2))
     cellTarget = "Treg"
-    epitopesDF = pd.DataFrame(columns={"Classifier", "Epitope"})
+    epitopesDF = pd.DataFrame(columns={"Classifier", "Epitope", "Selectivity"})
 
     # possCorrs0 = CITE_SVM(ax[0], cellTarget)
     # for x in possCorrs0:
@@ -50,9 +50,8 @@ def makeFigure():
 
     # Get conv factors, average them
     convFact = convFactCalc(ax[0])
-    print(convFact)
     meanConv = convFact.Weight.mean()
-    print(meanConv)
+    
 
     # Import cite data into dataframe
     tregDF = CITE_DF.loc[CITE_DF["CellType2"] == 'Treg'].sample()
@@ -74,20 +73,30 @@ def makeFigure():
     nk_abundances = []
     cd8_abundances = []
     for e in epitopesDF.Epitope:
-        citeVal = tregDF[e].item() # Add 3 special cases
-        abundance = citeVal*meanConv
+
+        if e == 'CD25':
+            convFact = 77.136987
+        elif e == 'CD122':
+            convFact = 332.680090
+        elif e == "CD127":
+            convFact = 594.379215
+        else:
+            convFact = meanConv
+
+        citeVal = tregDF[e].item() 
+        abundance = citeVal*convFact
         treg_abundances.append(abundance)
 
-        citeVal = thelperDF[e].item() # Add 3 special cases
-        abundance = citeVal*meanConv
+        citeVal = thelperDF[e].item()
+        abundance = citeVal*convFact
         thelper_abundances.append(abundance)
 
-        citeVal = nkDF[e].item() # Add 3 special cases
-        abundance = citeVal*meanConv
+        citeVal = nkDF[e].item() 
+        abundance = citeVal*convFact
         nk_abundances.append(abundance)
 
-        citeVal = cd8DF[e].item() # Add 3 special cases
-        abundance = citeVal*meanConv
+        citeVal = cd8DF[e].item() 
+        abundance = citeVal*convFact
         cd8_abundances.append(abundance)
     
     # Import actual abundance into dadaframe by multiplying by average abundance (CD25, CD122, CD132 exceptions)
@@ -96,21 +105,28 @@ def makeFigure():
     epitopesDF['NK'] = nk_abundances
     epitopesDF['CD8'] = cd8_abundances
 
-    print(epitopesDF)
+    epitopesDF['Selectivity'] = -1
+    #print(epitopesDF)
     
     targCell = 'Treg'
     offTCells = ['Thelper','CD8','NK']
 
     # Feed actual abundance into modeling
 
-    optimizeDesign(ax[1], targCell, offTCells, epitopesDF)
-
-    # Use minSelect function 
-        #Feed into bispec binding model
-    
-    # Optimize using minSelect
 
 
+    for e in epitopesDF['Epitope'].unique():
+        print(e)
+        selectedDF = epitopesDF.loc[(epitopesDF.Epitope == e)]
+        sampleDF = selectedDF.sample()
+        print(sampleDF)
+        optSelectivity = optimizeDesign(ax[1], targCell, offTCells, sampleDF)
+
+        epitopesDF.loc[epitopesDF['Epitope'] == e, 'Selectivity'] = optSelectivity
+
+
+
+    epitopesDF.to_csv(join(path_here, "data/epitopeSelectivityList.csv"), index=False)
 
     return f
 
@@ -122,13 +138,12 @@ def cytBindingModel_bispecOpt(df, recXaff, cellType, x=False):
     doseVec = np.array([0.1])
     date = '3/15/2019'
 
+    #print(df)
+    #print(cellType)
     recX = df[cellType].item()
-    #print(recX)
+    
 
-
-
-
-    recDF = importReceptors()
+    recDF = importReceptors() #does this need to be modified to use other abundance data
     recCount = np.ravel([recDF.loc[(recDF.Receptor == "IL2Ra") & (recDF["Cell Type"] == cellType)].Mean.values[0],
                          recDF.loc[(recDF.Receptor == "IL2Rb") & (recDF["Cell Type"] == cellType)].Mean.values[0], recX])
 
@@ -171,21 +186,18 @@ def minSelecFunc(x, df, targCell, offTCells):
     targetBound = cytBindingModel_bispecOpt(df, recXaff,targCell)
     for cellT in offTCells:
         offTargetBound += cytBindingModel_bispecOpt(df, recXaff, cellT)
-
+    
     return (offTargetBound) / (targetBound)
 
-def optimizeDesign(ax, targCell, offTcells, epitopesDF, legend=True):
+def optimizeDesign(ax, targCell, offTcells, epitopeDF, legend=True):
     """ A more general purpose optimizer """
     vals = np.arange(1.01, 10, step=0.15)
     sigDF = pd.DataFrame()
 
-    testDF = epitopesDF.sample() #picking one at random
-    print(testDF['Epitope'].item())
-
 
 
     optDF = pd.DataFrame(columns={"Valency", "Selectivity", "IL2Rα", r"IL-2Rβ/γ$_c$"})
-    if targCell[0] == "NK":
+    if targCell == "NK":
         X0 = [6.0, 8]  # IL2Ra, IL2Rb, epitope need to be added
     else:
         X0 = [9.0, 6.0]  # IL2Ra, IL2Rb, epitope need to be added
@@ -194,46 +206,28 @@ def optimizeDesign(ax, targCell, offTcells, epitopesDF, legend=True):
 
     for i, val in enumerate(vals):
         if i == 0:
-            optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(testDF, targCell, offTcells), jac="3-point")
-
-            targLB = cytBindingModel_bispecOpt(testDF, optimized.x, targCell[0]) / 1.01
-            bindConst = NonlinearConstraint(lambda x: cytBindingModel_bispecOpt(testDF, x, targCell[0]), targLB, np.inf)
+            optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(epitopeDF, targCell, offTcells), jac="3-point")
+            optSelectivity = optimized.fun[0]
+            print(optSelectivity)
+            targLB = cytBindingModel_bispecOpt(epitopeDF, optimized.x, targCell) / 1.01
+            bindConst = NonlinearConstraint(lambda x: cytBindingModel_bispecOpt(epitopeDF, x, targCell), targLB, np.inf)
         else:
-            optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(testDF, targCell, offTcells), jac="3-point", constraints=bindConst)
+            optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(epitopeDF, targCell, offTcells), jac="3-point", constraints=bindConst)
 
         fitX = 1.0e9 / np.power(10.0, optimized.x)
 
         optDF = optDF.append(pd.DataFrame({"Valency": [val], "Selectivity": [len(offTcells) / optimized.fun], "IL2Rα": fitX[0], r"IL-2Rβ/γ$_c$": fitX[1]}))
-        sigDF = sigDF.append(pd.DataFrame({"Cell Type": [targCell[0]], "Target": ["Target"], "Valency": [val], "pSTAT": [cytBindingModel_bispecOpt(testDF, optimized.x, targCell[0])]}))
+        sigDF = sigDF.append(pd.DataFrame({"Cell Type": [targCell], "Target": ["Target"], "Valency": [val], "pSTAT": [cytBindingModel_bispecOpt(epitopeDF, optimized.x, targCell)]}))
         for cell in offTcells:
-            sigDF = sigDF.append(pd.DataFrame({"Cell Type": [cell], "Target": ["Off-Target"], "Valency": [val], "pSTAT": [cytBindingModel_bispecOpt(testDF, optimized.x, cell)]}))
+            sigDF = sigDF.append(pd.DataFrame({"Cell Type": [cell], "Target": ["Off-Target"], "Valency": [val], "pSTAT": [cytBindingModel_bispecOpt(epitopeDF, optimized.x, cell)]}))
     # Normalize to valency 1
-    for cell in targCell + offTcells:
-        sigDF.loc[sigDF["Cell Type"] == cell, "pSTAT"] = sigDF.loc[sigDF["Cell Type"] == cell, "pSTAT"].div(sigDF.loc[(sigDF["Cell Type"] == cell) & (sigDF.Valency == vals[0])].pSTAT.values[0])
+    #allCells = offTcells + [targCell]
+    #for cell in allCells:
+        #sigDF.loc[sigDF["Cell Type"] == cell, "pSTAT"] = sigDF.loc[sigDF["Cell Type"] == cell, "pSTAT"].div(sigDF.loc[(sigDF["Cell Type"] == cell) & (sigDF.Valency == vals[0])].pSTAT.values[0])
 
     # sigDF = sigDF.replace(cellTypeDict)
 
-
-    #sns.lineplot(x="Valency", y="pSTAT", hue="Cell Type", style="Target", data=sigDF, ax=ax[0], palette="husl", hue_order=cellTypeDict.values())
-    #ax[0].set_title(cellTypeDict[targCell[0]] + " selectivity with IL-2 mutein", fontsize=7)
-
-    # if targCell[0] == "NK":
-    #     affDF = pd.melt(optDF, id_vars=['Valency'], value_vars=[r"IL-2Rβ/γ$_c$"])
-    #     sns.lineplot(x="Valency", y="value", data=affDF, ax=ax[1])
-    #     ax[1].set(yscale="log", ylabel=r"IL2·β/γ$_c$ K$_D$ (nM)")
-    # else:
-    #     affDF = pd.melt(optDF, id_vars=['Valency'], value_vars=['IL2Rα', r"IL-2Rβ/γ$_c$"])
-    #     affDF = affDF.rename(columns={"variable": "Receptor"})
-    #     sns.lineplot(x="Valency", y="value", hue="Receptor", data=affDF, ax=ax[1])
-    #     ax[1].set(yscale="log", ylabel=r"IL2· $K_D$ (nM)")
-
-    # ax[0].set_ylim(bottom=0.0, top=3)
-    # ax[1].set_ylim(bottom=0.1, top=2000)
-
-    # ax[0].set_xticks(np.arange(1, 11))
-    # ax[1].set_xticks(np.arange(1, 11))
-    # if not legend:
-    #     ax[0].get_legend().remove()
+    return optSelectivity
 
 def CITE_SVM(ax, targCell, numFactors=10, sampleFrac=0.2):
     """Fits a ridge classifier to the CITE data and plots those most highly correlated with T reg"""
