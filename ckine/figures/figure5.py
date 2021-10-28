@@ -54,19 +54,20 @@ def makeFigure():
     
 
     # Import cite data into dataframe
-    tregDF = CITE_DF.loc[CITE_DF["CellType2"] == 'Treg'].sample()
-    nkDF = CITE_DF.loc[CITE_DF["CellType1"] == 'NK'].sample()
+    tregDF = CITE_DF.loc[CITE_DF["CellType2"] == 'Treg'].sample(100)
+    nkDF = CITE_DF.loc[CITE_DF["CellType1"] == 'NK'].sample(100)
     
     thelperDF = CITE_DF.loc[CITE_DF["CellType2"]=='CD4 Naive']
     thelperDF = thelperDF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD4 CTL'])
     thelperDF = thelperDF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD4 TCM'])
     thelperDF = thelperDF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD4 TEM'])
-    thelperDF = thelperDF.sample()
+    thelperDF = thelperDF.sample(100)
     
     cd8DF = CITE_DF.loc[CITE_DF["CellType2"]=='CD8 Naive']
     cd8DF = cd8DF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD8 TCM'])
     cd8DF = cd8DF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD8 TEM'])
-    cd8DF = cd8DF.sample()
+    cd8DF = cd8DF.sample(100)
+
     
     treg_abundances = []
     thelper_abundances = []
@@ -83,19 +84,20 @@ def makeFigure():
         else:
             convFact = meanConv
 
-        citeVal = tregDF[e].item() 
+        
+        citeVal = tregDF[e].to_numpy() 
         abundance = citeVal*convFact
         treg_abundances.append(abundance)
 
-        citeVal = thelperDF[e].item()
+        citeVal = thelperDF[e].to_numpy() 
         abundance = citeVal*convFact
         thelper_abundances.append(abundance)
 
-        citeVal = nkDF[e].item() 
+        citeVal = nkDF[e].to_numpy() 
         abundance = citeVal*convFact
         nk_abundances.append(abundance)
 
-        citeVal = cd8DF[e].item() 
+        citeVal = cd8DF[e].to_numpy()  
         abundance = citeVal*convFact
         cd8_abundances.append(abundance)
     
@@ -113,19 +115,35 @@ def makeFigure():
 
     # Feed actual abundance into modeling
 
+    #print(epitopesDF)
+
+    abundanceDF = pd.DataFrame(columns={"Receptor", "Cell Type", "Abundance"})
+
+    receptors = ['CD25','CD122']
+    cells = [targCell] + offTCells
+
+    for r in receptors:
+        for cell in cells:
+            abun = epitopesDF.loc[epitopesDF['Epitope']==r][cell].sample().item().mean()
+            abundanceDF = abundanceDF.append(pd.DataFrame({"Receptor": [r], "Cell Type": cell, "Abundance": abun}))
+
+    abundanceDF.to_csv(join(path_here, "data/CiteAbundance.csv"), index=False)
+    
+    print("stop")
+
 
 
     for e in epitopesDF['Epitope'].unique():
         print(e)
         selectedDF = epitopesDF.loc[(epitopesDF.Epitope == e)]
         sampleDF = selectedDF.sample()
-        print(sampleDF)
         optSelectivity = optimizeDesign(ax[1], targCell, offTCells, sampleDF)
-
+        print(optSelectivity)
         epitopesDF.loc[epitopesDF['Epitope'] == e, 'Selectivity'] = optSelectivity
 
+    
 
-
+    epitopesDF = epitopesDF.drop(['Treg','Thelper','NK','CD8'],axis=1)
     epitopesDF.to_csv(join(path_here, "data/epitopeSelectivityList.csv"), index=False)
 
     return f
@@ -138,14 +156,18 @@ def cytBindingModel_bispecOpt(df, recXaff, cellType, x=False):
     doseVec = np.array([0.1])
     date = '3/15/2019'
 
+    recXaff = np.power(10,recXaff)
+
     #print(df)
     #print(cellType)
-    recX = df[cellType].item()
+    recX = df
     
 
-    recDF = importReceptors() #does this need to be modified to use other abundance data
-    recCount = np.ravel([recDF.loc[(recDF.Receptor == "IL2Ra") & (recDF["Cell Type"] == cellType)].Mean.values[0],
-                         recDF.loc[(recDF.Receptor == "IL2Rb") & (recDF["Cell Type"] == cellType)].Mean.values[0], recX])
+    recDF =  pd.read_csv(join(path_here, "data/CiteAbundance.csv"))
+
+    recCount = np.ravel([recDF.loc[(recDF.Receptor == "CD25") & (recDF["Cell Type"] == cellType)]["Abundance"].item(),
+                         recDF.loc[(recDF.Receptor == "CD122") & (recDF["Cell Type"] == cellType)]["Abundance"].item(), recX])
+
 
     mutAffDF = pd.read_csv(join(path_here, "data/WTmutAffData.csv"))
     Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
@@ -155,6 +177,7 @@ def cytBindingModel_bispecOpt(df, recXaff, cellType, x=False):
     holder = np.full((3, 3), 1e2)
     np.fill_diagonal(holder, Affs)
     Affs = holder
+
 
     # Check that values are in correct placement, can invert
 
@@ -179,13 +202,16 @@ def cytBindingModel_bispecOpt(df, recXaff, cellType, x=False):
 
 def minSelecFunc(x, df, targCell, offTCells):
     """Provides the function to be minimized to get optimal selectivity"""
+    targetBound = 0
     offTargetBound = 0
 
     recXaff = x
 
-    targetBound = cytBindingModel_bispecOpt(df, recXaff,targCell)
+    for count in df[targCell].item():
+        targetBound += cytBindingModel_bispecOpt(count, recXaff,targCell)
     for cellT in offTCells:
-        offTargetBound += cytBindingModel_bispecOpt(df, recXaff, cellT)
+        for count in df[cellT].item():
+            offTargetBound += cytBindingModel_bispecOpt(count, recXaff, cellT)
     
     return (offTargetBound) / (targetBound)
 
@@ -197,35 +223,17 @@ def optimizeDesign(ax, targCell, offTcells, epitopeDF, legend=True):
 
 
     optDF = pd.DataFrame(columns={"Valency", "Selectivity", "IL2Rα", r"IL-2Rβ/γ$_c$"})
+
     if targCell == "NK":
-        X0 = [6.0, 8]  # IL2Ra, IL2Rb, epitope need to be added
+        X0 = [6.0, 8] 
     else:
-        X0 = [9.0, 6.0]  # IL2Ra, IL2Rb, epitope need to be added
+        X0 = [7.0]  
 
     optBnds = Bounds(np.full_like(X0, 6.0), np.full_like(X0, 9.0))
 
-    for i, val in enumerate(vals):
-        if i == 0:
-            optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(epitopeDF, targCell, offTcells), jac="3-point")
-            optSelectivity = optimized.fun[0]
-            print(optSelectivity)
-            targLB = cytBindingModel_bispecOpt(epitopeDF, optimized.x, targCell) / 1.01
-            bindConst = NonlinearConstraint(lambda x: cytBindingModel_bispecOpt(epitopeDF, x, targCell), targLB, np.inf)
-        else:
-            optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(epitopeDF, targCell, offTcells), jac="3-point", constraints=bindConst)
-
-        fitX = 1.0e9 / np.power(10.0, optimized.x)
-
-        optDF = optDF.append(pd.DataFrame({"Valency": [val], "Selectivity": [len(offTcells) / optimized.fun], "IL2Rα": fitX[0], r"IL-2Rβ/γ$_c$": fitX[1]}))
-        sigDF = sigDF.append(pd.DataFrame({"Cell Type": [targCell], "Target": ["Target"], "Valency": [val], "pSTAT": [cytBindingModel_bispecOpt(epitopeDF, optimized.x, targCell)]}))
-        for cell in offTcells:
-            sigDF = sigDF.append(pd.DataFrame({"Cell Type": [cell], "Target": ["Off-Target"], "Valency": [val], "pSTAT": [cytBindingModel_bispecOpt(epitopeDF, optimized.x, cell)]}))
-    # Normalize to valency 1
-    #allCells = offTcells + [targCell]
-    #for cell in allCells:
-        #sigDF.loc[sigDF["Cell Type"] == cell, "pSTAT"] = sigDF.loc[sigDF["Cell Type"] == cell, "pSTAT"].div(sigDF.loc[(sigDF["Cell Type"] == cell) & (sigDF.Valency == vals[0])].pSTAT.values[0])
-
-    # sigDF = sigDF.replace(cellTypeDict)
+    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(epitopeDF, targCell, offTcells), jac="3-point")
+    optSelectivity = optimized.fun[0]
+    #print(optSelectivity)
 
     return optSelectivity
 
