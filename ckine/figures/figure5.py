@@ -52,27 +52,45 @@ def makeFigure():
     convFact = convFactCalc(ax[0])
     meanConv = convFact.Weight.mean()
     
+    sampleSize = 75
+    saveFile = True
+
+    #print(CITE_DF["CellType1"].unique().tolist())
+    
+    print(CITE_DF["CellType2"].unique().tolist())
+
+    cellList = CITE_DF["CellType2"].unique().tolist()
+
+
+    offTCells = cellList.copy()
+    offTCells.remove('Treg')
+    
+    #print(CITE_DF["CellType3"].unique().tolist())
+
 
     # Import cite data into dataframe
-    tregDF = CITE_DF.loc[CITE_DF["CellType2"] == 'Treg'].sample(100)
-    nkDF = CITE_DF.loc[CITE_DF["CellType1"] == 'NK'].sample(100)
+    #tregDF = CITE_DF.loc[CITE_DF["CellType2"] == 'Treg'].sample(sampleSize)
     
+    """
+    nkDF = CITE_DF.loc[CITE_DF["CellType1"] == 'NK'].sample(sampleSize)
     thelperDF = CITE_DF.loc[CITE_DF["CellType2"]=='CD4 Naive']
     thelperDF = thelperDF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD4 CTL'])
     thelperDF = thelperDF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD4 TCM'])
     thelperDF = thelperDF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD4 TEM'])
-    thelperDF = thelperDF.sample(100)
+    thelperDF = thelperDF.sample(sampleSize)
     
     cd8DF = CITE_DF.loc[CITE_DF["CellType2"]=='CD8 Naive']
     cd8DF = cd8DF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD8 TCM'])
     cd8DF = cd8DF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD8 TEM'])
-    cd8DF = cd8DF.sample(100)
+    cd8DF = cd8DF.sample(sampleSize)
 
     
     treg_abundances = []
     thelper_abundances = []
     nk_abundances = []
     cd8_abundances = []
+    
+    
     for e in epitopesDF.Epitope:
 
         if e == 'CD25':
@@ -106,16 +124,39 @@ def makeFigure():
     epitopesDF['Thelper'] = thelper_abundances
     epitopesDF['NK'] = nk_abundances
     epitopesDF['CD8'] = cd8_abundances
+    """
+    #For each offTarget cellType in list
+    for cellType in cellList:
+        #take chunk where CITE[CellType2] == type
+        cellDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType].sample(sampleSize)
+        cellType_abdundances = []
+        #For each epitope
+        for e in epitopesDF.Epitope:
+            #calculate abundance based on converstion factor
+            if e == 'CD25':
+                convFact = 77.136987
+            elif e == 'CD122':
+                convFact = 332.680090
+            elif e == "CD127":
+                convFact = 594.379215
+            else:
+                convFact = meanConv
+
+            citeVal = cellDF[e].to_numpy() 
+            abundance = citeVal*convFact
+            cellType_abdundances.append(abundance)
+            #add column with this name to epitopesDF and abundacnes list
+        epitopesDF[cellType] = cellType_abdundances
+        
+
 
     epitopesDF['Selectivity'] = -1
     #print(epitopesDF)
     
     targCell = 'Treg'
-    offTCells = ['Thelper','CD8','NK']
 
     # Feed actual abundance into modeling
 
-    #print(epitopesDF)
 
     abundanceDF = pd.DataFrame(columns={"Receptor", "Cell Type", "Abundance"})
 
@@ -127,9 +168,9 @@ def makeFigure():
             abun = epitopesDF.loc[epitopesDF['Epitope']==r][cell].sample().item().mean()
             abundanceDF = abundanceDF.append(pd.DataFrame({"Receptor": [r], "Cell Type": cell, "Abundance": abun}))
 
-    abundanceDF.to_csv(join(path_here, "data/CiteAbundance.csv"), index=False)
     
-    print("stop")
+    abundanceDF.to_csv(join(path_here, "data/CiteAbundance.csv"), index=False)
+
 
 
 
@@ -142,9 +183,11 @@ def makeFigure():
         epitopesDF.loc[epitopesDF['Epitope'] == e, 'Selectivity'] = optSelectivity
 
     
-
-    epitopesDF = epitopesDF.drop(['Treg','Thelper','NK','CD8'],axis=1)
-    epitopesDF.to_csv(join(path_here, "data/epitopeSelectivityList.csv"), index=False)
+    if saveFile:
+        #epitopesDF = epitopesDF.drop(['Treg','Thelper','NK','CD8'],axis=1)
+        epitopesDF = epitopesDF[["Classifier", "Epitope","Selectivity"]]
+        epitopesDF.to_csv(join(path_here, "data/epitopeSelectivityList.csv"), index=False)
+        print("File Saved")
 
     return f
 
@@ -158,8 +201,6 @@ def cytBindingModel_bispecOpt(df, recXaff, cellType, x=False):
 
     recXaff = np.power(10,recXaff)
 
-    #print(df)
-    #print(cellType)
     recX = df
     
 
@@ -190,12 +231,15 @@ def cytBindingModel_bispecOpt(df, recXaff, cellType, x=False):
             output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val, val]], [1.0], Affs)[0][1]
         else:
             output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[0][1]  # IL2RB binding only
+    """
+    # Cannot modify here since cell type is required arg
     if date:
         convDict = getBindDict()
         if cellType[-1] == "$":  # if it is a binned pop, use ave fit
             output *= convDict.loc[(convDict.Date == date) & (convDict.Cell == cellType[0:-13])].Scale.values
         else:
             output *= convDict.loc[(convDict.Date == date) & (convDict.Cell == cellType)].Scale.values
+    """
     return output
 
 
