@@ -20,7 +20,8 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
-    ax, f = getSetup((9, 12), (5, 2))
+    ax, f = getSetup((9, 12), (2, 2))
+
     cellTarget = "Treg"
     epitopesDF = pd.DataFrame(columns={"Classifier", "Epitope", "Selectivity"})
 
@@ -52,8 +53,8 @@ def makeFigure():
     convFact = convFactCalc(ax[0])
     meanConv = convFact.Weight.mean()
     
-    sampleSize = 75
-    saveFile = True
+    saveFile = False
+    maxSampleSize = 200
 
     #print(CITE_DF["CellType1"].unique().tolist())
     
@@ -61,73 +62,26 @@ def makeFigure():
 
     cellList = CITE_DF["CellType2"].unique().tolist()
 
+    for cell in cellList:
+        length = int(len(CITE_DF.loc[CITE_DF["CellType2"] == cell])/10)
+        if length > maxSampleSize:
+            length = maxSampleSize
+        print(cell, length)
+
+
 
     offTCells = cellList.copy()
     offTCells.remove('Treg')
     
-    #print(CITE_DF["CellType3"].unique().tolist())
 
-
-    # Import cite data into dataframe
-    #tregDF = CITE_DF.loc[CITE_DF["CellType2"] == 'Treg'].sample(sampleSize)
-    
-    """
-    nkDF = CITE_DF.loc[CITE_DF["CellType1"] == 'NK'].sample(sampleSize)
-    thelperDF = CITE_DF.loc[CITE_DF["CellType2"]=='CD4 Naive']
-    thelperDF = thelperDF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD4 CTL'])
-    thelperDF = thelperDF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD4 TCM'])
-    thelperDF = thelperDF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD4 TEM'])
-    thelperDF = thelperDF.sample(sampleSize)
-    
-    cd8DF = CITE_DF.loc[CITE_DF["CellType2"]=='CD8 Naive']
-    cd8DF = cd8DF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD8 TCM'])
-    cd8DF = cd8DF.append(CITE_DF.loc[CITE_DF["CellType2"]=='CD8 TEM'])
-    cd8DF = cd8DF.sample(sampleSize)
-
-    
-    treg_abundances = []
-    thelper_abundances = []
-    nk_abundances = []
-    cd8_abundances = []
-    
-    
-    for e in epitopesDF.Epitope:
-
-        if e == 'CD25':
-            convFact = 77.136987
-        elif e == 'CD122':
-            convFact = 332.680090
-        elif e == "CD127":
-            convFact = 594.379215
-        else:
-            convFact = meanConv
-
-        
-        citeVal = tregDF[e].to_numpy() 
-        abundance = citeVal*convFact
-        treg_abundances.append(abundance)
-
-        citeVal = thelperDF[e].to_numpy() 
-        abundance = citeVal*convFact
-        thelper_abundances.append(abundance)
-
-        citeVal = nkDF[e].to_numpy() 
-        abundance = citeVal*convFact
-        nk_abundances.append(abundance)
-
-        citeVal = cd8DF[e].to_numpy()  
-        abundance = citeVal*convFact
-        cd8_abundances.append(abundance)
-    
-    # Import actual abundance into dadaframe by multiplying by average abundance (CD25, CD122, CD132 exceptions)
-    epitopesDF['Treg'] = treg_abundances
-    epitopesDF['Thelper'] = thelper_abundances
-    epitopesDF['NK'] = nk_abundances
-    epitopesDF['CD8'] = cd8_abundances
-    """
     #For each offTarget cellType in list
     for cellType in cellList:
         #take chunk where CITE[CellType2] == type
+        sampleSize = int(len(CITE_DF.loc[CITE_DF["CellType2"] == cell])/10)
+        if sampleSize > maxSampleSize:
+            sampleSize = maxSampleSize
+
+        
         cellDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType].sample(sampleSize)
         cellType_abdundances = []
         #For each epitope
@@ -189,7 +143,21 @@ def makeFigure():
         epitopesDF.to_csv(join(path_here, "data/epitopeSelectivityList.csv"), index=False)
         print("File Saved")
 
+
+    #generate figures
+
+    classifiers = ['CITE_SVM','CITE_RIDGE','distMetricF','distMetricT']
+    #for each classifier
+    for i, classifier in enumerate(classifiers):
+        #bar plot of each epitope
+        print(i)
+        xvalues = epitopesDF.loc[epitopesDF['Classifier'] == classifier, 'Epitope']
+        sns.barplot(x=epitopesDF.loc[epitopesDF['Classifier'] == classifier, 'Epitope'],y=epitopesDF.loc[epitopesDF['Classifier'] == classifier, 'Selectivity'],ax=ax[i]).set_title(classifier)
+        
+
     return f
+
+
 
 def cytBindingModel_bispecOpt(df, recXaff, cellType, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
