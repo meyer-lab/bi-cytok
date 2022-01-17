@@ -94,6 +94,7 @@ def makeFigure():
     standardDF = standardDF.append(standard2DF)
     standardDF['Type']='Standard'
     #For each epitope
+    
     for epitope in epitopesDF['Epitope'].unique():
         print(epitope)
 
@@ -140,17 +141,15 @@ def makeFigure():
 
     return f
 
-def cytBindingModel(cellType, x=False, date=False):
+def cytBindingModel(counts, x=False, date=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     mut = 'IL2'
     val = 1
     doseVec = np.array([0.1])
     
 
-    recDF =  pd.read_csv(join(path_here, "data/CiteAbundance.csv"))
     #
-    recCount = np.ravel([recDF.loc[(recDF.Receptor == "CD25") & (recDF["Cell Type"] == cellType)]["Abundance"].item(),
-                         recDF.loc[(recDF.Receptor == "CD122") & (recDF["Cell Type"] == cellType)]["Abundance"].item()])
+    recCount = np.ravel(counts)
     #
 
     mutAffDF = pd.read_csv(join(path_here, "data/WTmutAffData.csv"))
@@ -172,7 +171,7 @@ def cytBindingModel(cellType, x=False, date=False):
 
     return output
 
-def cytBindingModel_bispecOpt(counts, recXaff, cellType, x=False):
+def cytBindingModel_bispecOpt(counts, recXaff, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
 
     mut = 'IL2'
@@ -212,11 +211,18 @@ def selecCalc(df, targCell, offTCells):
     targetBound = 0
     offTargetBound = 0
 
-    for count in df[targCell].item():
-        targetBound += cytBindingModel(targCell)
+    cd25DF = df.loc[(df.Type == 'Standard') & (df.Epitope== 'CD25')]
+    cd122DF = df.loc[(df.Type == 'Standard') & (df.Epitope== 'CD122')]
+
+    for i,cd25Count in enumerate(cd25DF[targCell].item()):
+        cd122Count = cd122DF[targCell].item()[i]
+        counts = [cd25Count,cd122Count]
+        targetBound += cytBindingModel(counts)
     for cellT in offTCells:
-        for count in df[cellT].item():
-            offTargetBound += cytBindingModel(cellT)
+        for i,cd25Count in enumerate(cd25DF[cellT].item()):
+            cd122Count = cd122DF[cellT].item()[i]
+            counts = [cd25Count,cd122Count]
+            offTargetBound += cytBindingModel(counts)
     
     return (offTargetBound) / (targetBound)
 
@@ -237,14 +243,14 @@ def minSelecFunc(x, selectedDF, targCell, offTCells, epitope):
         cd25Count = cd25DF[targCell].item()[i]
         cd122Count = cd122DF[targCell].item()[i]
         counts = [cd25Count,cd122Count,epCount]
-        targetBound += cytBindingModel_bispecOpt(counts, recXaff,targCell)
+        targetBound += cytBindingModel_bispecOpt(counts, recXaff)
     for cellT in offTCells:
         for i, epCount in enumerate(epitopeDF[cellT].item()):
             cd25Count = cd25DF[cellT].item()[i]
             cd122Count = cd122DF[cellT].item()[i]
             counts = [cd25Count,cd122Count,epCount]
 
-            offTargetBound += cytBindingModel_bispecOpt(counts, recXaff, cellT)
+            offTargetBound += cytBindingModel_bispecOpt(counts, recXaff)
     
     return (offTargetBound) / (targetBound)
 
