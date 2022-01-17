@@ -18,33 +18,13 @@ from sklearn.preprocessing import LabelBinarizer
 
 path_here = dirname(dirname(__file__))
 
+
+#Later can we test by making a fake cell with 0 or -1 for every value and verifying positions are maintained?
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
     ax, f = getSetup((9, 12), (2, 2))
 
-    cellTarget = "Treg"
     epitopesDF = pd.DataFrame(columns={"Classifier", "Epitope", "Selectivity"})
-
-    # possCorrs0 = CITE_SVM(ax[0], cellTarget)
-    # for x in possCorrs0:
-    #     epitopesDF = epitopesDF.append(pd.DataFrame({"Classifier": 'CITE_SVM', "Epitope": [x]}))
-    # print(epitopesDF)
-    # posCorrs1, negCorrs = CITE_RIDGE(ax[4], cellTarget)
-    # for x in posCorrs1:
-    #     epitopesDF = epitopesDF.append(pd.DataFrame({"Classifier": 'CITE_RIDGE', "Epitope": [x]}))
-    # possCorrs2 = distMetricScatt(ax[6:8], cellTarget, 10, weight=False)
-    # for x in possCorrs2:
-    #     epitopesDF = epitopesDF.append(pd.DataFrame({"Classifier": 'distMetricF', "Epitope": [x]}))
-    # possCorrs3 = distMetricScatt(ax[8:10], cellTarget, 10, weight=True)
-    # for x in possCorrs3:
-    #     epitopesDF = epitopesDF.append(pd.DataFrame({"Classifier": 'distMetricT', "Epitope": [x]}))
-    # print(epitopesDF)
-    
-    # epitopesDF.to_csv(join(path_here, "data/epitopeList.csv"), index=False)
-
-    # Comment out running stuff
-    # Import existing data frame
-    # Import cite data
     epitopesDF = pd.read_csv(join(path_here, "data/epitopeList.csv"))
 
     CITE_DF = importCITE()
@@ -53,38 +33,33 @@ def makeFigure():
     convFact = convFactCalc(ax[0])
     meanConv = convFact.Weight.mean()
     
+    #If selectivity values are stored in CSV at end of run
     saveFile = False
-    maxSampleSize = 200
-
-    #print(CITE_DF["CellType1"].unique().tolist())
     
-    print(CITE_DF["CellType2"].unique().tolist())
+    #Setting max weighted amount
+    maxSampleSize = 3
+
+    #weighting idea: take sample of everything of ~3 times and then average each types amount and use that as the size
 
     cellList = CITE_DF["CellType2"].unique().tolist()
-
-    for cell in cellList:
-        length = int(len(CITE_DF.loc[CITE_DF["CellType2"] == cell])/10)
-        if length > maxSampleSize:
-            length = maxSampleSize
-        print(cell, length)
-
-
 
     offTCells = cellList.copy()
     offTCells.remove('Treg')
     
 
-    #For each offTarget cellType in list
+    #For each  cellType in list
     for cellType in cellList:
-        #take chunk where CITE[CellType2] == type
-        sampleSize = int(len(CITE_DF.loc[CITE_DF["CellType2"] == cell])/10)
+
+        #Generate sample size
+        sampleSize = int(len(CITE_DF.loc[CITE_DF["CellType2"] == cellType])/10)
         if sampleSize > maxSampleSize:
             sampleSize = maxSampleSize
-
+        #print(cellType, sampleSize)
         
         cellDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType].sample(sampleSize)
+
         cellType_abdundances = []
-        #For each epitope
+        #For each epitope (being done on per cell basis)
         for e in epitopesDF.Epitope:
             #calculate abundance based on converstion factor
             if e == 'CD25':
@@ -99,49 +74,45 @@ def makeFigure():
             citeVal = cellDF[e].to_numpy() 
             abundance = citeVal*convFact
             cellType_abdundances.append(abundance)
-            #add column with this name to epitopesDF and abundacnes list
+            #add column with this name to epitopesDF and abundances list
+            
         epitopesDF[cellType] = cellType_abdundances
-        
+        #print("Check2: ", epitopesDF)
 
-
+    #EpitopeDF now contains a data of single cell abundances for each cell type for each epitope
     epitopesDF['Selectivity'] = -1
-    #print(epitopesDF)
+    #New column which will hold selectivity per epitope
     
     targCell = 'Treg'
 
     # Feed actual abundance into modeling
-
-
     abundanceDF = pd.DataFrame(columns={"Receptor", "Cell Type", "Abundance"})
 
-    receptors = ['CD25','CD122']
-    cells = [targCell] + offTCells
 
-    for r in receptors:
-        for cell in cells:
-            abun = epitopesDF.loc[epitopesDF['Epitope']==r][cell].sample().item().mean()
-            abundanceDF = abundanceDF.append(pd.DataFrame({"Receptor": [r], "Cell Type": cell, "Abundance": abun}))
+    standardDF = epitopesDF.loc[(epitopesDF.Epitope == 'CD25')].sample()
+    standard2DF = epitopesDF.loc[(epitopesDF.Epitope == 'CD122')].sample()
+    standardDF = standardDF.append(standard2DF)
+    standardDF['Type']='Standard'
+    #For each epitope
+    for epitope in epitopesDF['Epitope'].unique():
+        print(epitope)
 
-    
-    abundanceDF.to_csv(join(path_here, "data/CiteAbundance.csv"), index=False)
+        selectedDF = epitopesDF.loc[(epitopesDF.Epitope == epitope)].sample()
+        selectedDF['Type']='Epitope'
+        selectedDF = selectedDF.append(standardDF)
+        selectedDF.reset_index()
 
-
-
-
-    for e in epitopesDF['Epitope'].unique():
-        print(e)
-        selectedDF = epitopesDF.loc[(epitopesDF.Epitope == e)]
-        sampleDF = selectedDF.sample()
-        optSelectivity = 1/(optimizeDesign(ax[1], targCell, offTCells, sampleDF))
+        #New form
+        optSelectivity = 1/(optimizeDesign(targCell, offTCells, selectedDF, epitope))
+        #
         print(optSelectivity)
-        epitopesDF.loc[epitopesDF['Epitope'] == e, 'Selectivity'] = optSelectivity
+        epitopesDF.loc[epitopesDF['Epitope'] == e, 'Selectivity'] = optSelectivity #Store selectivity in DF to be used for plots
 
-    baseSelectivity = 1/(selecCalc(sampleDF,targCell,offTCells))
+    baseSelectivity = 1/(selecCalc(standardDF,targCell,offTCells))
 
     
     if saveFile:
-        #epitopesDF = epitopesDF.drop(['Treg','Thelper','NK','CD8'],axis=1)
-        epitopesDF = epitopesDF[["Classifier", "Epitope","Selectivity"]]
+        epitopesDF = epitopesDF[["Classifier", "Epitope","Selectivity"]] #drops single cell info
         epitopesDF.to_csv(join(path_here, "data/epitopeSelectivityList.csv"), index=False)
         print("File Saved")
 
@@ -201,7 +172,7 @@ def cytBindingModel(cellType, x=False, date=False):
 
     return output
 
-def cytBindingModel_bispecOpt(df, recXaff, cellType, x=False):
+def cytBindingModel_bispecOpt(counts, recXaff, cellType, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
 
     mut = 'IL2'
@@ -210,14 +181,7 @@ def cytBindingModel_bispecOpt(df, recXaff, cellType, x=False):
 
     recXaff = np.power(10,recXaff)
 
-    recX = df
-    
-
-    recDF =  pd.read_csv(join(path_here, "data/CiteAbundance.csv"))
-
-    recCount = np.ravel([recDF.loc[(recDF.Receptor == "CD25") & (recDF["Cell Type"] == cellType)]["Abundance"].item(),
-                         recDF.loc[(recDF.Receptor == "CD122") & (recDF["Cell Type"] == cellType)]["Abundance"].item(), recX])
-
+    recCount = np.ravel(counts)
 
     mutAffDF = pd.read_csv(join(path_here, "data/WTmutAffData.csv"))
     Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
@@ -256,29 +220,45 @@ def selecCalc(df, targCell, offTCells):
     
     return (offTargetBound) / (targetBound)
 
-def minSelecFunc(x, df, targCell, offTCells):
+def minSelecFunc(x, selectedDF, targCell, offTCells, epitope):
     """Provides the function to be minimized to get optimal selectivity"""
     targetBound = 0
     offTargetBound = 0
 
     recXaff = x
 
-    for count in df[targCell].item():
-        targetBound += cytBindingModel_bispecOpt(count, recXaff,targCell)
+    epitopeDF = selectedDF.loc[(selectedDF.Type == 'Epitope')]
+    cd25DF = selectedDF.loc[(selectedDF.Type == 'Standard') & (selectedDF.Epitope== 'CD25')]
+    cd122DF = selectedDF.loc[(selectedDF.Type == 'Standard') & (selectedDF.Epitope== 'CD122')]
+
+    
+
+    for i, epCount in enumerate(epitopeDF[targCell].item()):
+        cd25Count = cd25DF[targCell].item()[i]
+        cd122Count = cd122DF[targCell].item()[i]
+        counts = [cd25Count,cd122Count,epCount]
+        targetBound += cytBindingModel_bispecOpt(counts, recXaff,targCell)
     for cellT in offTCells:
-        for count in df[cellT].item():
-            offTargetBound += cytBindingModel_bispecOpt(count, recXaff, cellT)
+        for i, epCount in enumerate(epitopeDF[cellT].item()):
+            cd25Count = cd25DF[cellT].item()[i]
+            cd122Count = cd122DF[cellT].item()[i]
+            counts = [cd25Count,cd122Count,epCount]
+
+            offTargetBound += cytBindingModel_bispecOpt(counts, recXaff, cellT)
     
     return (offTargetBound) / (targetBound)
 
-def optimizeDesign(ax, targCell, offTcells, epitopeDF, legend=True):
+def optimizeDesign(targCell, offTcells, selectedDF, epitope):
     """ A more general purpose optimizer """
-    vals = np.arange(1.01, 10, step=0.15)
-    sigDF = pd.DataFrame()
+    print(epitope)
+    
+    print(selectedDF)
 
-
-
-    optDF = pd.DataFrame(columns={"Valency", "Selectivity", "IL2Rα", r"IL-2Rβ/γ$_c$"})
+    ###
+    #vals = np.arange(1.01, 10, step=0.15)
+    #sigDF = pd.DataFrame()
+    #optDF = pd.DataFrame(columns={"Valency", "Selectivity", "IL2Rα", r"IL-2Rβ/γ$_c$"})
+    ###
 
     if targCell == "NK":
         X0 = [6.0, 8] 
@@ -287,9 +267,8 @@ def optimizeDesign(ax, targCell, offTcells, epitopeDF, legend=True):
 
     optBnds = Bounds(np.full_like(X0, 6.0), np.full_like(X0, 9.0))
 
-    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(epitopeDF, targCell, offTcells), jac="3-point")
+    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(selectedDF, targCell, offTcells, epitope), jac="3-point")
     optSelectivity = optimized.fun[0]
-    #print(optSelectivity)
 
     return optSelectivity
 
