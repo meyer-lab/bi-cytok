@@ -1,6 +1,7 @@
 """
 This creates Figure 5, used to find optimal epitope classifier.
 """
+from email.mime import base
 from os.path import dirname, join
 from .figureCommon import getSetup
 from ..imports import importCITE, importReceptors, getBindDict
@@ -34,27 +35,40 @@ def makeFigure():
     meanConv = convFact.Weight.mean()
     
     #If selectivity values are stored in CSV at end of run
-    saveFile = False
-    
-    #Setting max weighted amount
-    maxSampleSize = 3
+    saveFile = True
 
     #weighting idea: take sample of everything of ~3 times and then average each types amount and use that as the size
 
+
     cellList = CITE_DF["CellType2"].unique().tolist()
+    print(cellList)
+    
+    
+    sampleSizes = []
+    for cellType in cellList:
+        cellSample = []
+        for i in np.arange(3):
+            sampleDF = CITE_DF.sample(1000)
+            sampleSize = int(len(sampleDF.loc[sampleDF["CellType2"] == cellType]))
+            cellSample.append(sampleSize)
+        meanSize = np.mean(cellSample)
+        sampleSizes.append(int(meanSize))
+
+    
+
 
     offTCells = cellList.copy()
     offTCells.remove('Treg')
+
+
     
 
     #For each  cellType in list
-    for cellType in cellList:
+    for i, cellType in enumerate(cellList):
 
         #Generate sample size
-        sampleSize = int(len(CITE_DF.loc[CITE_DF["CellType2"] == cellType])/10)
-        if sampleSize > maxSampleSize:
-            sampleSize = maxSampleSize
-        #print(cellType, sampleSize)
+        sampleSize = sampleSizes[i]
+        print(cellType, sampleSize)
         
         cellDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType].sample(sampleSize)
 
@@ -77,7 +91,6 @@ def makeFigure():
             #add column with this name to epitopesDF and abundances list
             
         epitopesDF[cellType] = cellType_abdundances
-        #print("Check2: ", epitopesDF)
 
     #EpitopeDF now contains a data of single cell abundances for each cell type for each epitope
     epitopesDF['Selectivity'] = -1
@@ -107,9 +120,10 @@ def makeFigure():
         optSelectivity = 1/(optimizeDesign(targCell, offTCells, selectedDF, epitope))
         #
         print(optSelectivity)
-        epitopesDF.loc[epitopesDF['Epitope'] == e, 'Selectivity'] = optSelectivity #Store selectivity in DF to be used for plots
+        epitopesDF.loc[epitopesDF['Epitope'] == epitope, 'Selectivity'] = optSelectivity #Store selectivity in DF to be used for plots
 
     baseSelectivity = 1/(selecCalc(standardDF,targCell,offTCells))
+    print("BS: ", baseSelectivity)
 
     
     if saveFile:
@@ -128,10 +142,10 @@ def makeFigure():
         epitopesDF = epitopesDF.sort_values(by=['Selectivity'])
         xvalues = epitopesDF.loc[epitopesDF['Classifier'] == classifier, 'Epitope']
         yvalues = (((epitopesDF.loc[epitopesDF['Classifier'] == classifier, 'Selectivity'])/baseSelectivity)*100)-100
+        print(yvalues)
         cmap = sns.color_palette("husl",10)
         sns.barplot(x=xvalues, y=yvalues,palette=cmap, ax=ax[i]).set_title(classifier)
         ax[i].set_ylabel("Selectivity (% increase over standard IL2)")
-        #Set y label to (% increase in selectivity over standard IL2)
 
         #change color scheme
         #order bars
@@ -256,10 +270,6 @@ def minSelecFunc(x, selectedDF, targCell, offTCells, epitope):
 
 def optimizeDesign(targCell, offTcells, selectedDF, epitope):
     """ A more general purpose optimizer """
-    print(epitope)
-    
-    print(selectedDF)
-
     ###
     #vals = np.arange(1.01, 10, step=0.15)
     #sigDF = pd.DataFrame()
