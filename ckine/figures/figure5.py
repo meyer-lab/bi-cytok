@@ -20,7 +20,7 @@ from sklearn.preprocessing import LabelBinarizer
 path_here = dirname(dirname(__file__))
 
 
-#Later can we test by making a fake cell with 0 or -1 for every value and verifying positions are maintained?
+# Later can we test by making a fake cell with 0 or -1 for every value and verifying positions are maintained?
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
     ax, f = getSetup((9, 12), (2, 2))
@@ -33,17 +33,15 @@ def makeFigure():
     # Get conv factors, average them
     convFact = convFactCalc(ax[0])
     meanConv = convFact.Weight.mean()
-    
-    #If selectivity values are stored in CSV at end of run
+
+    # If selectivity values are stored in CSV at end of run
     saveFile = True
 
-    #weighting idea: take sample of everything of ~3 times and then average each types amount and use that as the size
-
+    # weighting idea: take sample of everything of ~3 times and then average each types amount and use that as the size
 
     cellList = CITE_DF["CellType2"].unique().tolist()
     print(cellList)
-    
-    
+
     sampleSizes = []
     for cellType in cellList:
         cellSample = []
@@ -54,28 +52,21 @@ def makeFigure():
         meanSize = np.mean(cellSample)
         sampleSizes.append(int(meanSize))
 
-    
-
-
     offTCells = cellList.copy()
     offTCells.remove('Treg')
 
-
-    
-
-    #For each  cellType in list
+    # For each  cellType in list
     for i, cellType in enumerate(cellList):
 
-        #Generate sample size
+        # Generate sample size
         sampleSize = sampleSizes[i]
-        print(cellType, sampleSize)
-        
+
         cellDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType].sample(sampleSize)
 
         cellType_abdundances = []
-        #For each epitope (being done on per cell basis)
+        # For each epitope (being done on per cell basis)
         for e in epitopesDF.Epitope:
-            #calculate abundance based on converstion factor
+            # calculate abundance based on converstion factor
             if e == 'CD25':
                 convFact = 77.136987
             elif e == 'CD122':
@@ -85,82 +76,77 @@ def makeFigure():
             else:
                 convFact = meanConv
 
-            citeVal = cellDF[e].to_numpy() 
-            abundance = citeVal*convFact
+            citeVal = cellDF[e].to_numpy()
+            abundance = citeVal * convFact
             cellType_abdundances.append(abundance)
-            #add column with this name to epitopesDF and abundances list
-            
+            # add column with this name to epitopesDF and abundances list
+
         epitopesDF[cellType] = cellType_abdundances
 
-    #EpitopeDF now contains a data of single cell abundances for each cell type for each epitope
+    # EpitopeDF now contains a data of single cell abundances for each cell type for each epitope
     epitopesDF['Selectivity'] = -1
-    #New column which will hold selectivity per epitope
-    
+    # New column which will hold selectivity per epitope
+
     targCell = 'Treg'
 
     # Feed actual abundance into modeling
     abundanceDF = pd.DataFrame(columns={"Receptor", "Cell Type", "Abundance"})
 
-
     standardDF = epitopesDF.loc[(epitopesDF.Epitope == 'CD25')].sample()
     standard2DF = epitopesDF.loc[(epitopesDF.Epitope == 'CD122')].sample()
     standardDF = standardDF.append(standard2DF)
-    standardDF['Type']='Standard'
-    #For each epitope
-    
+    standardDF['Type'] = 'Standard'
+    # For each epitope
+
     for epitope in epitopesDF['Epitope'].unique():
-        print(epitope)
+        # print(epitope)
 
         selectedDF = epitopesDF.loc[(epitopesDF.Epitope == epitope)].sample()
-        selectedDF['Type']='Epitope'
+        selectedDF['Type'] = 'Epitope'
         selectedDF = selectedDF.append(standardDF)
         selectedDF.reset_index()
 
-        #New form
-        optSelectivity = 1/(optimizeDesign(targCell, offTCells, selectedDF, epitope))
-        #
-        print(optSelectivity)
-        epitopesDF.loc[epitopesDF['Epitope'] == epitope, 'Selectivity'] = optSelectivity #Store selectivity in DF to be used for plots
+        # New form
+        optSelectivity = 1 / (optimizeDesign(targCell, offTCells, selectedDF, epitope))
 
-    baseSelectivity = 1/(selecCalc(standardDF,targCell,offTCells))
-    print("BS: ", baseSelectivity)
+        # print(optSelectivity)
+        epitopesDF.loc[epitopesDF['Epitope'] == epitope, 'Selectivity'] = optSelectivity  # Store selectivity in DF to be used for plots
 
-    
+    baseSelectivity = 1 / (selecCalc(standardDF, targCell, offTCells))
+
     if saveFile:
-        epitopesDF = epitopesDF[["Classifier", "Epitope","Selectivity"]] #drops single cell info
+        epitopesDF = epitopesDF[["Classifier", "Epitope", "Selectivity"]]  # drops single cell info
         epitopesDF.to_csv(join(path_here, "data/epitopeSelectivityList.csv"), index=False)
         print("File Saved")
 
+    # generate figures
 
-    #generate figures
-
-    classifiers = ['CITE_SVM','CITE_RIDGE','distMetricF','distMetricT']
-    #for each classifier
+    classifiers = ['CITE_SVM', 'CITE_RIDGE', 'distMetricF', 'distMetricT']
+    # for each classifier
     for i, classifier in enumerate(classifiers):
-        #bar plot of each epitope
+        # bar plot of each epitope
         print(i)
         epitopesDF = epitopesDF.sort_values(by=['Selectivity'])
         xvalues = epitopesDF.loc[epitopesDF['Classifier'] == classifier, 'Epitope']
-        yvalues = (((epitopesDF.loc[epitopesDF['Classifier'] == classifier, 'Selectivity'])/baseSelectivity)*100)-100
+        yvalues = (((epitopesDF.loc[epitopesDF['Classifier'] == classifier, 'Selectivity']) / baseSelectivity) * 100) - 100
         print(yvalues)
-        cmap = sns.color_palette("husl",10)
-        sns.barplot(x=xvalues, y=yvalues,palette=cmap, ax=ax[i]).set_title(classifier)
+        cmap = sns.color_palette("husl", 10)
+        sns.barplot(x=xvalues, y=yvalues, palette=cmap, ax=ax[i]).set_title(classifier)
         ax[i].set_ylabel("Selectivity (% increase over standard IL2)")
 
-        #change color scheme
-        #order bars
+        # change color scheme
+        # order bars
 
-        #standardize y axis across plots
-        
+        # standardize y axis across plots
 
     return f
+
 
 def cytBindingModel(counts, x=False, date=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     mut = 'IL2'
     val = 1
     doseVec = np.array([0.1])
-    
 
     #
     recCount = np.ravel(counts)
@@ -185,6 +171,7 @@ def cytBindingModel(counts, x=False, date=False):
 
     return output
 
+
 def cytBindingModel_bispecOpt(counts, recXaff, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
 
@@ -192,7 +179,7 @@ def cytBindingModel_bispecOpt(counts, recXaff, x=False):
     val = 1
     doseVec = np.array([0.1])
 
-    recXaff = np.power(10,recXaff)
+    recXaff = np.power(10, recXaff)
 
     recCount = np.ravel(counts)
 
@@ -205,7 +192,6 @@ def cytBindingModel_bispecOpt(counts, recXaff, x=False):
     np.fill_diagonal(holder, Affs)
     Affs = holder
 
-
     # Check that values are in correct placement, can invert
 
     if doseVec.size == 1:
@@ -217,28 +203,30 @@ def cytBindingModel_bispecOpt(counts, recXaff, x=False):
             output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val, val]], [1.0], Affs)[0][1]
         else:
             output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[0][1]  # IL2RB binding only
-    
+
     return output
+
 
 def selecCalc(df, targCell, offTCells):
     """Calculates selectivity for no additional epitope"""
     targetBound = 0
     offTargetBound = 0
 
-    cd25DF = df.loc[(df.Type == 'Standard') & (df.Epitope== 'CD25')]
-    cd122DF = df.loc[(df.Type == 'Standard') & (df.Epitope== 'CD122')]
+    cd25DF = df.loc[(df.Type == 'Standard') & (df.Epitope == 'CD25')]
+    cd122DF = df.loc[(df.Type == 'Standard') & (df.Epitope == 'CD122')]
 
-    for i,cd25Count in enumerate(cd25DF[targCell].item()):
+    for i, cd25Count in enumerate(cd25DF[targCell].item()):
         cd122Count = cd122DF[targCell].item()[i]
-        counts = [cd25Count,cd122Count]
+        counts = [cd25Count, cd122Count]
         targetBound += cytBindingModel(counts)
     for cellT in offTCells:
-        for i,cd25Count in enumerate(cd25DF[cellT].item()):
+        for i, cd25Count in enumerate(cd25DF[cellT].item()):
             cd122Count = cd122DF[cellT].item()[i]
-            counts = [cd25Count,cd122Count]
+            counts = [cd25Count, cd122Count]
             offTargetBound += cytBindingModel(counts)
-    
+
     return (offTargetBound) / (targetBound)
+
 
 def minSelecFunc(x, selectedDF, targCell, offTCells, epitope):
     """Provides the function to be minimized to get optimal selectivity"""
@@ -248,25 +236,24 @@ def minSelecFunc(x, selectedDF, targCell, offTCells, epitope):
     recXaff = x
 
     epitopeDF = selectedDF.loc[(selectedDF.Type == 'Epitope')]
-    cd25DF = selectedDF.loc[(selectedDF.Type == 'Standard') & (selectedDF.Epitope== 'CD25')]
-    cd122DF = selectedDF.loc[(selectedDF.Type == 'Standard') & (selectedDF.Epitope== 'CD122')]
-
-    
+    cd25DF = selectedDF.loc[(selectedDF.Type == 'Standard') & (selectedDF.Epitope == 'CD25')]
+    cd122DF = selectedDF.loc[(selectedDF.Type == 'Standard') & (selectedDF.Epitope == 'CD122')]
 
     for i, epCount in enumerate(epitopeDF[targCell].item()):
         cd25Count = cd25DF[targCell].item()[i]
         cd122Count = cd122DF[targCell].item()[i]
-        counts = [cd25Count,cd122Count,epCount]
+        counts = [cd25Count, cd122Count, epCount]
         targetBound += cytBindingModel_bispecOpt(counts, recXaff)
     for cellT in offTCells:
         for i, epCount in enumerate(epitopeDF[cellT].item()):
             cd25Count = cd25DF[cellT].item()[i]
             cd122Count = cd122DF[cellT].item()[i]
-            counts = [cd25Count,cd122Count,epCount]
+            counts = [cd25Count, cd122Count, epCount]
 
             offTargetBound += cytBindingModel_bispecOpt(counts, recXaff)
-    
+
     return (offTargetBound) / (targetBound)
+
 
 def optimizeDesign(targCell, offTcells, selectedDF, epitope):
     """ A more general purpose optimizer """
@@ -277,9 +264,9 @@ def optimizeDesign(targCell, offTcells, selectedDF, epitope):
     ###
 
     if targCell == "NK":
-        X0 = [6.0, 8] 
+        X0 = [6.0, 8]
     else:
-        X0 = [7.0]  
+        X0 = [7.0]
 
     optBnds = Bounds(np.full_like(X0, 6.0), np.full_like(X0, 9.0))
 
@@ -287,6 +274,7 @@ def optimizeDesign(targCell, offTcells, selectedDF, epitope):
     optSelectivity = optimized.fun[0]
 
     return optSelectivity
+
 
 def CITE_SVM(ax, targCell, numFactors=10, sampleFrac=0.2):
     """Fits a ridge classifier to the CITE data and plots those most highly correlated with T reg"""
@@ -308,23 +296,24 @@ def CITE_SVM(ax, targCell, numFactors=10, sampleFrac=0.2):
 
     AccDF = pd.DataFrame(columns=["Markers", "Accuracy"])
     baselineAcc = SVMmod.fit(CD25col, TregY).score(CD25col, TregY)
-    #print(baselineAcc)
+    # print(baselineAcc)
     #print(np.where((factors == "CD25")))
     for marker in factors:
         SVMmod = SVC()
-        #print(marker)
+        # print(marker)
         markerCol = X[:, np.where(factors == marker)]
         CD25MarkX = np.hstack((CD25col, markerCol.reshape(-1, 1)))
         markAcc = SVMmod.fit(CD25MarkX, TregY).score(CD25MarkX, TregY)
-        #print(markAcc)
+        # print(markAcc)
         AccDF = AccDF.append(pd.DataFrame({"Markers": [marker], "Accuracy": [markAcc]}))
 
     AccDF = AccDF.sort_values(by="Accuracy")
-    markers = copy(AccDF.tail(numFactors).Markers.values) #Here
+    markers = copy(AccDF.tail(numFactors).Markers.values)  # Here
     AccDF.Markers = "CD25 + " + AccDF.Markers
 
     print(markers)
     return markers
+
 
 def CITE_RIDGE(ax, targCell, numFactors=10):
     """Fits a ridge classifier to the CITE data and plots those most highly correlated with T reg"""
@@ -353,6 +342,7 @@ def CITE_RIDGE(ax, targCell, numFactors=10):
     negCorrs = TargCoefsDF.head(numFactors).Marker.values
 
     return posCorrs, negCorrs
+
 
 def distMetricScatt(ax, targCell, numFactors, weight=False):
     """Finds markers which have average greatest difference from other cells"""
@@ -392,6 +382,7 @@ def distMetricScatt(ax, targCell, numFactors, weight=False):
     markerDF = markerDF.loc[markerDF["Marker"].isin(posCorrs)]
     return(posCorrs)
 
+
 cellDict = {"CD4 Naive": "Thelper",
             "CD4 CTL": "Thelper",
             "CD4 TCM": "Thelper",
@@ -407,6 +398,7 @@ markDict = {"CD25": "IL2Ra",
             "CD122": "IL2Rb",
             "CD127": "IL7Ra",
             "CD132": "gc"}
+
 
 def convFactCalc(ax):
     """Fits a ridge classifier to the CITE data and plots those most highly correlated with T reg"""

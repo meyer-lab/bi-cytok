@@ -14,26 +14,26 @@ from ..MBmodel import runFullModel_bispec
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
     conc = np.array([1])
-    modelDF = runFullModel_bispec(conc,time=[0.5, 1])
+    modelDF = runFullModel_bispec(conc, time=[0.5, 1])
 
     # print(modelDF)
 
     cells = ["Treg", "Thelper", "NK", "CD8"]
     ax, f = getSetup((22, 30), (3, 2))
 
-    
-    signalRatio(ax[0], modelDF, "Treg","NK","Low")
-    signalRatio(ax[1], modelDF, "Treg","CD8","Low")
-    signalRatio(ax[2], modelDF, "Treg","NK","Medium")
-    signalRatio(ax[3], modelDF, "Treg","CD8","Medium")
-    signalRatio(ax[4], modelDF, "Treg","NK","High")
-    signalRatio(ax[5], modelDF, "Treg","CD8","High")
-
+    signalRatio(ax[0], modelDF, "Treg", "NK", "Low")
+    signalRatio(ax[1], modelDF, "Treg", "CD8", "Low")
+    signalRatio(ax[2], modelDF, "Treg", "NK", "Medium")
+    signalRatio(ax[3], modelDF, "Treg", "CD8", "Medium")
+    signalRatio(ax[4], modelDF, "Treg", "NK", "High")
+    signalRatio(ax[5], modelDF, "Treg", "CD8", "High")
 
     return f
 
-#calc at different valencies
-def signalRatio(ax, dataframe,cellType1, cellType2, affinity):
+# calc at different valencies
+
+
+def signalRatio(ax, dataframe, cellType1, cellType2, affinity):
     ratios_DF = pd.DataFrame(columns={"X-Abundance", "Y-Abundance", "Ratio"})
 
     type1_vals = dataframe.loc[(dataframe.Cell == cellType1) & (dataframe.Affinity == affinity)]
@@ -53,10 +53,10 @@ def signalRatio(ax, dataframe,cellType1, cellType2, affinity):
     result = result[::-1]
 
     title = cellType1 + "/" + cellType2 + " at " + affinity + " Affinity"
-    xlabel = "Epitope Abundance on "+ cellType1
-    ylabel = "Epitope Abundance on "+ cellType2
+    xlabel = "Epitope Abundance on " + cellType1
+    ylabel = "Epitope Abundance on " + cellType2
 
-    sns.heatmap(result,cmap='RdYlGn', ax=ax, cbar_kws={'label': 'Ratio of Cell Signal'})
+    sns.heatmap(result, cmap='RdYlGn', ax=ax, cbar_kws={'label': 'Ratio of Cell Signal'})
     ax.set(title=title, xlabel=xlabel, ylabel=ylabel)
 
     return ratios_DF

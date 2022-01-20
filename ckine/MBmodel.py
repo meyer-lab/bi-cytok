@@ -191,24 +191,22 @@ def runFullModel_bispec(conc, singleCell=False):
     """Runs model for all data points and outputs date conversion dict for binding to pSTAT. Can be used to fit Kx"""
 
     masterSTAT = pd.DataFrame(columns={"Ligand", "Dose", "Cell", "Abundance", "Affinity", "Predicted"})
-    
-        
+
     ligName = 'IL2'
     # Dates = 3/15/2019, 3/27/2019, 4/18/2019
     date = '3/15/2019'
-    cells = ['Treg','Thelper','CD8','NK']
-    x=False
-    recX_abundances = np.arange(100,10200,300)
+    cells = ['Treg', 'Thelper', 'CD8', 'NK']
+    x = False
+    recX_abundances = np.arange(100, 10200, 300)
     recX_affinities = [1e6, 1e8, 1e10]
     levels = ['Low', 'Medium', "High"]
 
     for cell in cells:
         for l, recXaff in enumerate(recX_affinities):
             for recX in recX_abundances:
-                #print(recX)
-                predVal_bispec = cytBindingModel_bispec(ligName, 1, conc, cell, recX, recXaff, x, date) # put in date
-                masterSTAT = masterSTAT.append(pd.DataFrame({"Ligand": ligName, "Dose": conc, "Cell": cell, "Abundance": recX, 
+                # print(recX)
+                predVal_bispec = cytBindingModel_bispec(ligName, 1, conc, cell, recX, recXaff, x, date)  # put in date
+                masterSTAT = masterSTAT.append(pd.DataFrame({"Ligand": ligName, "Dose": conc, "Cell": cell, "Abundance": recX,
                                                             "Affinity": levels[l], "Predicted": predVal_bispec}))
-    
-    
+
     return masterSTAT
