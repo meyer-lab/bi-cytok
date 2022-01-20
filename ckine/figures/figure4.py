@@ -54,7 +54,7 @@ def CITE_SVM(ax, targCell, numFactors=10, sampleFrac=0.5):
         AccDF = AccDF.append(pd.DataFrame({"Markers": [marker], "Accuracy": [markAcc]}))
 
     AccDF = AccDF.sort_values(by="Accuracy")
-    markers = copy(AccDF.tail(numFactors).Markers.values)
+    markers = copy(AccDF.tail(numFactors).Markers.values)  # Here
     AccDF.Markers = "CD25 + " + AccDF.Markers
 
     plot_DF = AccDF.tail(numFactors).append(pd.DataFrame({"Markers": ["CD25 only"], "Accuracy": [baselineAcc]}))
