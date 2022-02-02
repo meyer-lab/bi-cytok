@@ -207,6 +207,6 @@ def runFullModel_bispec(conc):
                 # print(recX)
                 predVal_bispec = cytBindingModel_bispec(ligName, 1, conc, cell, recX, recXaff, x, date)  # put in date
                 masterSTAT = masterSTAT.append(pd.DataFrame({"Ligand": ligName, "Dose": conc, "Cell": cell, "Abundance": recX,
-                                                            "Affinity": levels[l], "Predicted": predVal_bispec}))
+                                                             "Affinity": levels[l], "Predicted": predVal_bispec}))
 
     return masterSTAT
