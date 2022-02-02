@@ -10,6 +10,7 @@ from ..MBmodel import runFullModel_bispec
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
     conc = np.array([1])
+
     modelDF = runFullModel_bispec(conc)
 
     print(modelDF)
