@@ -12,14 +12,15 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import RidgeClassifierCV
 from sklearn.preprocessing import LabelEncoder
 from sklearn.manifold import TSNE
+from scipy import stats, special
+from sklearn.neighbors import KernelDensity
 
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
-    ax, f = getSetup((9, 12), (5, 2))
+    ax, f = getSetup((9, 12), (6, 2))
     cellTarget = "Treg"
     ax[1].axis("off")
-
     CITE_TSNE(ax[0], sampleFrac=0.4)
     legend = ax[0].get_legend()
     labels = (x.get_text() for x in legend.get_texts())
@@ -31,6 +32,7 @@ def makeFigure():
     RIDGE_Scatter(ax[5], posCorrs, negCorrs)
     distMetricScatt(ax[6:8], cellTarget, 10, weight=False)
     distMetricScatt(ax[8:10], cellTarget, 10, weight=True)
+    Wass_KL_Dist(ax[10:12], cellTarget, 10)
 
     return f
 
@@ -116,7 +118,7 @@ def CITE_RIDGE(ax, targCell, numFactors=10):
     TargCoefs = ridgeMod.coef_[np.where(le.classes_ == targCell), :].ravel()
     TargCoefsDF = pd.DataFrame({"Marker": factors, "Coefficient": TargCoefs}).sort_values(by="Coefficient")
     TargCoefsDF = pd.concat([TargCoefsDF.head(numFactors), TargCoefsDF.tail(numFactors)])
-    sns.barplot(data=TargCoefsDF, x="Marker", y="Coefficient", ax=ax)
+    sns.barplot(data=TargCoefsDF, x="Marker", y="Coefficient", ax=ax, color='k')
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
     posCorrs = TargCoefsDF.tail(numFactors).Marker.values
     negCorrs = TargCoefsDF.head(numFactors).Marker.values
@@ -179,7 +181,7 @@ def distMetricScatt(ax, targCell, numFactors, weight=False):
 
     markerDF = markerDF.loc[markerDF["Marker"].isin(posCorrs)]
 
-    sns.barplot(data=ratioDF.tail(numFactors), x="Marker", y="Ratio", ax=ax[0])
+    sns.barplot(data=ratioDF.tail(numFactors), x="Marker", y="Ratio", color='k', ax=ax[0])
     ax[0].set(yscale="log")
     ax[0].set_xticklabels(ax[0].get_xticklabels(), rotation=45)
     if weight:
@@ -195,3 +197,39 @@ def distMetricScatt(ax, targCell, numFactors, weight=False):
     else:
         ax[1].set(title="Markers Weighted by Number of Cells")
     ax[1].get_legend().remove()
+
+
+def Wass_KL_Dist(ax, targCell, numFactors):
+    """Finds markers which have average greatest difference from other cells"""
+    CITE_DF = importCITE()
+
+    markerDF = pd.DataFrame(columns=["Marker", "Cell Type", "Amount"])
+    for marker in CITE_DF.loc[:, ((CITE_DF.columns != 'CellType1') & (CITE_DF.columns != 'CellType2') & (CITE_DF.columns != 'CellType3') & (CITE_DF.columns != 'Cell'))].columns:
+        markAvg = np.mean(CITE_DF[marker].values)
+        targCellMark = CITE_DF.loc[CITE_DF["CellType2"] == targCell][marker].values / markAvg
+        offTargCellMark = CITE_DF.loc[CITE_DF["CellType2"] != targCell][marker].values / markAvg
+        if np.mean(targCellMark) > np.mean(offTargCellMark):
+            kdeTarg = KernelDensity(kernel='gaussian').fit(targCellMark.reshape(-1, 1))
+            kdeOffTarg = KernelDensity(kernel='gaussian').fit(offTargCellMark.reshape(-1, 1))
+            minVal = np.minimum(targCellMark.min(), offTargCellMark.min()) - 10
+            maxVal = np.maximum(targCellMark.max(), offTargCellMark.max()) + 10
+            outcomes = np.arange(minVal, maxVal + 1).reshape(-1, 1)
+            distTarg = np.exp(kdeTarg.score_samples(outcomes))
+            distOffTarg = np.exp(kdeOffTarg.score_samples(outcomes))
+            KL_div = stats.entropy(distOffTarg.flatten() + 1e-200, distTarg.flatten() + 1e-200, base=2)
+            print(marker)
+            print("Target Mean = ", np.mean(targCellMark))
+            print("Off Target Mean = ", np.mean(offTargCellMark))
+            print(KL_div)
+            print(stats.wasserstein_distance(targCellMark, offTargCellMark))
+            markerDF = markerDF.append(pd.DataFrame({"Marker": [marker], "Wasserstein Distance": stats.wasserstein_distance(targCellMark, offTargCellMark), "KL Divergence": KL_div}))
+
+    for i, distance in enumerate(["Wasserstein Distance", "KL Divergence"]):
+        ratioDF = markerDF.sort_values(by=distance)
+        posCorrs = ratioDF.tail(numFactors).Marker.values
+
+        markerDF = markerDF.loc[markerDF["Marker"].isin(posCorrs)]
+
+        sns.barplot(data=ratioDF.tail(numFactors), x="Marker", y=distance, ax=ax[i], color='k')
+        ax[i].set(yscale="log")
+        ax[i].set_xticklabels(ax[i].get_xticklabels(), rotation=45)

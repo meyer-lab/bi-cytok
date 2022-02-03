@@ -187,7 +187,7 @@ def cytBindingModel_bispec(mut, val, doseVec, cellType, recX, recXaff, x=False, 
     return output
 
 
-def runFullModel_bispec(conc, singleCell=False):
+def runFullModel_bispec(conc):
     """Runs model for all data points and outputs date conversion dict for binding to pSTAT. Can be used to fit Kx"""
 
     masterSTAT = pd.DataFrame(columns={"Ligand", "Dose", "Cell", "Abundance", "Affinity", "Predicted"})
@@ -207,6 +207,6 @@ def runFullModel_bispec(conc, singleCell=False):
                 # print(recX)
                 predVal_bispec = cytBindingModel_bispec(ligName, 1, conc, cell, recX, recXaff, x, date)  # put in date
                 masterSTAT = masterSTAT.append(pd.DataFrame({"Ligand": ligName, "Dose": conc, "Cell": cell, "Abundance": recX,
-                                                            "Affinity": levels[l], "Predicted": predVal_bispec}))
+                                                             "Affinity": levels[l], "Predicted": predVal_bispec}))
 
     return masterSTAT
