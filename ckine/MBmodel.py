@@ -152,22 +152,23 @@ def runFullModel(x=False, time=[0.5], saveDict=False, singleCell=False):
 # Tetra valent exploration functions below
 
 
-def cytBindingModel_bispec(mut, val, doseVec, cellType, recX, recXaff, x=False, date=False):
+def cytBindingModel_bispec(counts, betaAffs, recXaff, val, mut, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
-    recDF = importReceptors()
-    recCount = np.ravel([recDF.loc[(recDF.Receptor == "IL2Ra") & (recDF["Cell Type"] == cellType)].Mean.values[0],
-                         recDF.loc[(recDF.Receptor == "IL2Rb") & (recDF["Cell Type"] == cellType)].Mean.values[0], recX])
+  
+    doseVec = np.array([0.1])
 
-    mutAffDF = pd.read_csv(join(path_here, "ckine/data/WTmutAffData.csv"))
+    recXaff = np.power(10, recXaff)
+
+    recCount = np.ravel(counts)
+
+    mutAffDF = pd.read_csv(join(path_here, "data/WTmutAffData.csv"))
     Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
-    Affs = np.power(np.array([Affs["IL2RaKD"].values, Affs["IL2RBGKD"].values]) / 1e9, -1)
+    Affs = np.power(np.array([Affs["IL2RaKD"].values, [betaAffs]]) / 1e9, -1)
     Affs = np.reshape(Affs, (1, -1))
     Affs = np.append(Affs, recXaff)
     holder = np.full((3, 3), 1e2)
     np.fill_diagonal(holder, Affs)
     Affs = holder
-
-    # Check that values are in correct placement, can invert
 
     if doseVec.size == 1:
         doseVec = np.array([doseVec])
@@ -177,13 +178,8 @@ def cytBindingModel_bispec(mut, val, doseVec, cellType, recX, recXaff, x=False, 
         if x:
             output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val, val]], [1.0], Affs)[0][1]
         else:
-            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[0][1]  # IL2RB binding only
-    if date:
-        convDict = getBindDict()
-        if cellType[-1] == "$":  # if it is a binned pop, use ave fit
-            output *= convDict.loc[(convDict.Date == date) & (convDict.Cell == cellType[0:-13])].Scale.values
-        else:
-            output *= convDict.loc[(convDict.Date == date) & (convDict.Cell == cellType)].Scale.values
+            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[0][1]
+
     return output
 
 
