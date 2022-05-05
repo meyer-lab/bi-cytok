@@ -35,6 +35,7 @@ def makeFigure():
 
 
     targCell = 'Treg'
+    offTCells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD8 TCM']
 
     # This should be renamed
     standardDF = epitopesDF.loc[(epitopesDF.Epitope == 'CD25')].sample()
@@ -106,7 +107,7 @@ def makeFigure():
 
 def getSamples(epitopes,cellList):
     """Functional Description"""
-    #List epitopes which will in analysis here
+    # This dataframe will later be filled with our epitope abundance by cells
     receptors = {'Epitope': epitopes}
     epitopesDF = pd.DataFrame(receptors)
 
@@ -131,28 +132,21 @@ def getSamples(epitopes,cellList):
         sampleSizes.append(int(meanSize))
 
 
-
-
-    #offTCells = cellList.copy()
-    # offTCells.remove('Treg')
-    offTCells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD8 TCM']
-
-
     # For each  cellType in list
     for i, cellType in enumerate(cellList):
-
         # Generate sample size
         sampleSize = sampleSizes[i]
-        
         # Create data frame of this size at random selection
-        cellDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType].sample(sampleSize, random_state=3)
+        cellDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType].sample(sampleSize)
 
-        cellType_abdundances = []
+        print(cellDF)
+
+        cellType_abdundances = [] 
         # For each epitope (being done on per cell basis)
         for e in epitopesDF.Epitope:
             # calculate abundance based on converstion factor
             if e == 'CD25':
-                convFact = 77.136987
+                convFact = 77.136987 # The values are from convFactCalc
             elif e == 'CD122':
                 convFact = 332.680090
             else:
@@ -161,12 +155,12 @@ def getSamples(epitopes,cellList):
                 convFact = 100. #PLACEHOLDER DONT KEEP
 
             # Calculating abundance from cite data
-            citeVal = cellDF[e].to_numpy()
-            abundance = citeVal * convFact
-            cellType_abdundances.append(abundance)
+            citeVal = cellDF[e].to_numpy() # Getting CITE signals for each cell
+            abundance = citeVal * convFact # (CITE signal * conversion factor) = abundance
+            cellType_abdundances.append(abundance) # Append abundances for individual cells into one list
             # add column with this name to epitopesDF and abundances list
 
-        epitopesDF[cellType] = cellType_abdundances
+        epitopesDF[cellType] = cellType_abdundances # This list will be located at Epitope x Cell Type in the DF
 
     print(epitopesDF['Treg'])
 return epitopesDF
