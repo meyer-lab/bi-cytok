@@ -186,17 +186,18 @@ def cytBindingModel(counts, betaAffs, val, mut, x=False, date=False):
 
 
 def cytBindingModel_bispec(counts, betaAffs, recXaff, val, mut, x=False):
-    """Runs binding model for a given mutein, valency, dose, and cell type."""
+    """Runs bispecific binding model for a given mutein, epitope, valency, dose, and cell type."""
   
-    doseVec = np.array([0.1])
-
     recXaff = np.power(10, recXaff)
-
+    
+    doseVec = np.array([0.1])
     recCount = np.ravel(counts)
 
     mutAffDF = pd.read_csv(join(path_here, "data/WTmutAffData.csv"))
     Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
+
     Affs = np.power(np.array([Affs["IL2RaKD"].values, [betaAffs]]) / 1e9, -1)
+
     Affs = np.reshape(Affs, (1, -1))
     Affs = np.append(Affs, recXaff)
     holder = np.full((3, 3), 1e2)
