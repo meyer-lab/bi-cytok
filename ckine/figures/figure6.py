@@ -4,11 +4,9 @@ This creates Figure 6, plotting Treg to off target signaling for vaying IL2Rb af
 from email.mime import base
 from os.path import dirname, join
 
-from matplotlib.pyplot import xlim, ylim
 from .figureCommon import getSetup
 from ..imports import importCITE, importReceptors
 from ..MBmodel import polyc, getKxStar
-from copy import copy
 import pandas as pd
 import seaborn as sns
 import numpy as np
@@ -24,59 +22,18 @@ def makeFigure():
 
     # List epitopes to be included in analysis
     epitopes = ['CD25','CD122']
-
     # List cells to be included in analysis (Both on and off target)
-    cells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD8 TCM', 'Treg']
-
-    petersDF = getSamples(epitopes,cells)
-    
-    #EpitopesDF, each cell type columns contains an array of all the cells, with each cells # of epitopes for epitope row
-    assert(False)
-
-
     targCell = 'Treg'
     offTCells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD8 TCM']
+    cells = offTCells + [targCell]
 
-    # This should be renamed
-    standardDF = epitopesDF.loc[(epitopesDF.Epitope == 'CD25')].sample()
-    standard2DF = epitopesDF.loc[(epitopesDF.Epitope == 'CD122')].sample()
-    standardDF = standardDF.append(standard2DF)
-    standardDF['Type'] = 'Standard'
-
-    # range from 0.01 <-> 100
-    betaAffs = np.logspace(-4, 2, 40)
-
-    treg_sigs = np.zeros((8, 40))
-    offTarg_sigs = np.zeros((8, 40))
-
-    # 0-2 IL2 WT
-    # 3-5 R38Q
-    # 6-7 Live/Dead
-    muts = ['IL2', 'R38Q/H16N']
-    vals = [1, 2, 4]
-
-    for i, aff in enumerate(betaAffs):
-        print(aff)
-        for j, mut in enumerate(muts):
-            for k, val in enumerate(vals):
-                n = (3 * j) + k
-                treg_sig, offTarg_sig = bindingCalc(standardDF, targCell, offTCells, aff, val, mut)
-                treg_sigs[n, i] = treg_sig
-                offTarg_sigs[n, i] = offTarg_sig
-
-        treg_sig_bi, offTarg_sig_bi = bindingCalc_bispec(standardDF, targCell, offTCells, aff, 1)
-        treg_sigs[6, i] = treg_sig_bi
-        offTarg_sigs[6, i] = offTarg_sig_bi
-
-        treg_sig_bi, offTarg_sig_bi = bindingCalc_bispec(standardDF, targCell, offTCells, aff, 2)
-        treg_sigs[7, i] = treg_sig_bi
-        offTarg_sigs[7, i] = offTarg_sig_bi
-
-        # print(treg_sigs)
-
-    # Normalizes data to 1
-    def norm(data):
-        return data / max(data)
+    epitopesDF = getSampleAbundances(epitopes,cells)  # epitopesDF: Rows are eptitopes, columns are cell types.
+    # Each frame contains a list of single cell abundances (of size determined in function) for that epitope and cell type
+    
+    #range from 0.01 <-> 100
+    betaAffs = np.logspace(-4, 2, 3) #2s should be 40s
+    # Fills arrays of target and off target signals for given array of parameters
+    treg_sigs, offTarg_sigs = getSignaling(betaAffs, targCell, offTCells, epitopesDF)
 
     # print(y_ticks)
     def plotSignals(types, ax):
@@ -104,9 +61,45 @@ def makeFigure():
 
     return f
 
+# Normalizes data to 1
+def norm(data):
+    return data / max(data)
 
-def getSamples(epitopes,cellList):
-    """Functional Description"""
+def getSignaling(betaAffs, targCell, offTCells, epitopesDF):
+    """Returns total signaling summed over single cells for given parameters, can be adjusted for various purposes"""
+
+    treg_sigs = np.zeros((8, betaAffs.size)) # 8 is used here because we are comparing 8 total signal types
+    offTarg_sigs = np.zeros((8, betaAffs.size))
+
+    # 0-2 IL2 WT
+    # 3-5 R38Q
+    # 6-7 Live/Dead
+    muts = ['IL2', 'R38Q/H16N']
+    vals = [1, 2, 4]
+
+    for i, aff in enumerate(betaAffs):
+        print(aff)
+        for j, mut in enumerate(muts):
+            for k, val in enumerate(vals):
+                n = (3 * j) + k
+                treg_sig, offTarg_sig = bindingCalc(epitopesDF, targCell, offTCells, aff, val, mut)
+                treg_sigs[n, i] = treg_sig
+                offTarg_sigs[n, i] = offTarg_sig
+
+        treg_sig_bi, offTarg_sig_bi = bindingCalc(epitopesDF, targCell, offTCells, aff, 1, 'R38Q/H16N', bispec=True, epitope='CD25')
+        treg_sigs[6, i] = treg_sig_bi
+        offTarg_sigs[6, i] = offTarg_sig_bi
+
+        treg_sig_bi, offTarg_sig_bi = bindingCalc(epitopesDF, targCell, offTCells, aff, 2, 'R38Q/H16N', bispec=True, epitope='CD25')
+        treg_sigs[7, i] = treg_sig_bi
+        offTarg_sigs[7, i] = offTarg_sig_bi
+
+    return treg_sigs, offTarg_sigs
+
+
+
+def getSampleAbundances(epitopes,cellList):
+    """Given list of epitopes and cell types, returns a dataframe containing abundance data on a single cell level"""
     # This dataframe will later be filled with our epitope abundance by cells
     receptors = {'Epitope': epitopes}
     epitopesDF = pd.DataFrame(receptors)
@@ -125,8 +118,8 @@ def getSamples(epitopes,cellList):
     for cellType in cellList:
         cellSample = []
         for i in np.arange(10): # Averaging results of 10
-            sampleDF = CITE_DF.sample(1000)
-            sampleSize = int(len(sampleDF.loc[sampleDF["CellType2"] == cellType]))
+            sampleDF = CITE_DF.sample(1000) # Of 1000 cells in the sample...
+            sampleSize = int(len(sampleDF.loc[sampleDF["CellType2"] == cellType])) # ...How many are this cell type
             cellSample.append(sampleSize) # Sample size is equivalent to represented cell count out of 1000 cells
         meanSize = np.mean(cellSample)
         sampleSizes.append(int(meanSize))
@@ -139,7 +132,6 @@ def getSamples(epitopes,cellList):
         # Create data frame of this size at random selection
         cellDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType].sample(sampleSize)
 
-        print(cellDF)
 
         cellType_abdundances = [] 
         # For each epitope (being done on per cell basis)
@@ -162,17 +154,12 @@ def getSamples(epitopes,cellList):
 
         epitopesDF[cellType] = cellType_abdundances # This list will be located at Epitope x Cell Type in the DF
 
-    print(epitopesDF['Treg'])
-return epitopesDF
-
-
-
-
+    return epitopesDF
 
 
 def cytBindingModel(counts, betaAffs, val, mut, x=False, date=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
-    #mut = mut
+    
     doseVec = np.array([0.1])
     recCount = np.ravel(counts)
 
@@ -198,32 +185,9 @@ def cytBindingModel(counts, betaAffs, val, mut, x=False, date=False):
     return output
 
 
-def bindingCalc(df, targCell, offTCells, betaAffs, val, mut):
-    """Calculates selectivity for no additional epitope"""
-    targetBound = 0
-    offTargetBound = 0
-
-    cd25DF = df.loc[(df.Type == 'Standard') & (df.Epitope == 'CD25')]
-    cd122DF = df.loc[(df.Type == 'Standard') & (df.Epitope == 'CD122')]
-
-    for i, cd25Count in enumerate(cd25DF[targCell].item()):
-        cd122Count = cd122DF[targCell].item()[i]
-        counts = [cd25Count, cd122Count]
-        targetBound += cytBindingModel(counts, betaAffs, val, mut)
-
-    for cellT in offTCells:
-        for i, cd25Count in enumerate(cd25DF[cellT].item()):
-            cd122Count = cd122DF[cellT].item()[i]
-            counts = [cd25Count, cd122Count]
-            offTargetBound += cytBindingModel(counts, betaAffs, val, mut)
-
-    return targetBound, offTargetBound
-
-
-def cytBindingModel_bispec(counts, betaAffs, recXaff, val, x=False):
+def cytBindingModel_bispec(counts, betaAffs, recXaff, val, mut, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
-
-    mut = 'R38Q/H16N'  # Try switching this to R38Q
+  
     doseVec = np.array([0.1])
 
     recXaff = np.power(10, recXaff)
@@ -252,24 +216,41 @@ def cytBindingModel_bispec(counts, betaAffs, recXaff, val, x=False):
     return output
 
 
-def bindingCalc_bispec(df, targCell, offTCells, betaAffs, val):
+def bindingCalc(df, targCell, offTCells, betaAffs, val,mut,bispec=False,epitope=None):
     """Calculates selectivity for no additional epitope"""
     targetBound = 0
     offTargetBound = 0
 
-    cd25DF = df.loc[(df.Type == 'Standard') & (df.Epitope == 'CD25')]
-    cd122DF = df.loc[(df.Type == 'Standard') & (df.Epitope == 'CD122')]
+    cd25DF = df.loc[(df.Epitope == 'CD25')]
+    cd122DF = df.loc[(df.Epitope == 'CD122')]
 
-    for i, cd25Count in enumerate(cd25DF[targCell].item()):
-        cd122Count = cd122DF[targCell].item()[i]
-        counts = [cd25Count, cd122Count, cd25Count]
-        targetBound += cytBindingModel_bispec(counts, betaAffs, 9.0, val)
+    if(bispec):
+        epitopeDF = df.loc[(df.Epitope == epitope)]
 
-    for cellT in offTCells:
-        for i, cd25Count in enumerate(cd25DF[cellT].item()):
-            cd122Count = cd122DF[cellT].item()[i]
-            counts = [cd25Count, cd122Count, cd25Count]
-            offTargetBound += cytBindingModel_bispec(counts, betaAffs, 9.0, val)
+        for i, cd25Count in enumerate(cd25DF[targCell].item()):
+            cd122Count = cd122DF[targCell].item()[i]
+            epitopeCount = epitopeDF[targCell].item()[i]
+            counts = [cd25Count, cd122Count, epitopeCount]
+            targetBound += cytBindingModel_bispec(counts, betaAffs, 9.0, val, mut)
+
+        for cellT in offTCells:
+            for i, cd25Count in enumerate(cd25DF[cellT].item()):
+                cd122Count = cd122DF[cellT].item()[i]
+                epitopeCount = epitopeDF[cellT].item()[i]
+                counts = [cd25Count, cd122Count, epitopeCount]
+                offTargetBound += cytBindingModel_bispec(counts, betaAffs, 9.0, val, mut)
+
+    else:
+        for i, cd25Count in enumerate(cd25DF[targCell].item()):
+            cd122Count = cd122DF[targCell].item()[i]
+            counts = [cd25Count, cd122Count]
+            targetBound += cytBindingModel(counts, betaAffs, val, mut)
+
+        for cellT in offTCells:
+            for i, cd25Count in enumerate(cd25DF[cellT].item()):
+                cd122Count = cd122DF[cellT].item()[i]
+                counts = [cd25Count, cd122Count]
+                offTargetBound += cytBindingModel(counts, betaAffs, val, mut)
 
     return targetBound, offTargetBound
 
