@@ -153,7 +153,7 @@ def runFullModel(x=False, time=[0.5], saveDict=False, singleCell=False):
 
 def cytBindingModel_CITEseq(counts, betaAffs, val, mut, x=False, date=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
-    
+
     doseVec = np.array([0.1])
     recCount = np.ravel(counts)
 
@@ -181,7 +181,7 @@ def cytBindingModel_CITEseq(counts, betaAffs, val, mut, x=False, date=False):
 
 def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
     """Runs bispecific binding model built for CITEseq data for a given mutein, epitope, valency, dose, and cell type."""
-  
+
     recXaff = np.power(10, recXaff)
     doseVec = np.array([0.1])
     recCount = np.ravel(counts)

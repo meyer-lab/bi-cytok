@@ -133,7 +133,6 @@ def makeFigure():
         cmap = sns.color_palette("husl", 10)
         sns.barplot(x=xvalues, y=yvalues, palette=cmap, ax=ax[i]).set_title(classifier)
         ax[i].set_ylabel("Selectivity (% increase over standard IL2)")
-        
 
     return f
 

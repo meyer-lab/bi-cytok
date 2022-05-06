@@ -4,34 +4,33 @@ This creates Figure 6, plotting Treg to off target signaling for vaying IL2Rb af
 from email.mime import base
 from os.path import dirname, join
 from .figureCommon import getSetup
-
 from ..selectivityFuncs import getSampleAbundances, getSignaling
 import pandas as pd
-import seaborn as sns 
+import seaborn as sns
 import numpy as np
 
 path_here = dirname(dirname(__file__))
+
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
     ax, f = getSetup((13, 4), (1, 3))
 
     # List epitopes to be included in analysis
-    epitopes = ['CD25','CD122']
+    epitopes = ['CD25', 'CD122']
     # List cells to be included in analysis (Both on and off target)
     targCell = 'Treg'
     offTCells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD8 TCM']
     cells = offTCells + [targCell]
 
-    epitopesDF = getSampleAbundances(epitopes,cells)  # epitopesDF: Rows are eptitopes, columns are cell types.
+    epitopesDF = getSampleAbundances(epitopes, cells)  # epitopesDF: Rows are eptitopes, columns are cell types.
     # Each frame contains a list of single cell abundances (of size determined in function) for that epitope and cell type
-    
-    #range from 0.01 <-> 100
-    betaAffs = np.logspace(-4, 2, 3) #2s should be 40s
+
+    # range from 0.01 <-> 100
+    betaAffs = np.logspace(-4, 2, 10)  # Last number is # of points (should be 40)
     # Fills arrays of target and off target signals for given array of parameters
     treg_sigs, offTarg_sigs = getSignaling(betaAffs, targCell, offTCells, epitopesDF)
 
-    # print(y_ticks)
     def plotSignals(types, ax):
         # Add standard colors/line types
         if 'WT' in types:
@@ -58,5 +57,7 @@ def makeFigure():
     return f
 
 # Normalizes data to 1
+
+
 def norm(data):
     return data / max(data)

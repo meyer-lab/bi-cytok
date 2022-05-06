@@ -11,7 +11,8 @@ import numpy as np
 
 path_here = dirname(dirname(__file__))
 
-def getSampleAbundances(epitopes,cellList):
+
+def getSampleAbundances(epitopes, cellList):
     """Given list of epitopes and cell types, returns a dataframe containing abundance data on a single cell level"""
     # This dataframe will later be filled with our epitope abundance by cells
     receptors = {'Epitope': epitopes}
@@ -24,18 +25,16 @@ def getSampleAbundances(epitopes,cellList):
     convFact = convFactCalc()
     meanConv = convFact.Weight.mean()
 
-
-    #Sample sizes generated corresponding to cell list using mean values
+    # Sample sizes generated corresponding to cell list using mean values
     sampleSizes = []
     for cellType in cellList:
         cellSample = []
-        for i in np.arange(10): # Averaging results of 10
-            sampleDF = CITE_DF.sample(1000) # Of 1000 cells in the sample...
-            sampleSize = int(len(sampleDF.loc[sampleDF["CellType2"] == cellType])) # ...How many are this cell type
-            cellSample.append(sampleSize) # Sample size is equivalent to represented cell count out of 1000 cells
+        for i in np.arange(10):  # Averaging results of 10
+            sampleDF = CITE_DF.sample(1000)  # Of 1000 cells in the sample...
+            sampleSize = int(len(sampleDF.loc[sampleDF["CellType2"] == cellType]))  # ...How many are this cell type
+            cellSample.append(sampleSize)  # Sample size is equivalent to represented cell count out of 1000 cells
         meanSize = np.mean(cellSample)
         sampleSizes.append(int(meanSize))
-
 
     # For each  cellType in list
     for i, cellType in enumerate(cellList):
@@ -44,33 +43,32 @@ def getSampleAbundances(epitopes,cellList):
         # Create data frame of this size at random selection
         cellDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType].sample(sampleSize)
 
-
-        cellType_abdundances = [] 
+        cellType_abdundances = []
         # For each epitope (being done on per cell basis)
         for e in epitopesDF.Epitope:
             # calculate abundance based on converstion factor
             if e == 'CD25':
-                convFact = 77.136987 # The values are from convFactCalc
+                convFact = 77.136987  # The values are from convFactCalc
             elif e == 'CD122':
                 convFact = 332.680090
             else:
                 convFact = meanConv
-                
 
             # Calculating abundance from cite data
-            citeVal = cellDF[e].to_numpy() # Getting CITE signals for each cell
-            abundance = citeVal * convFact # (CITE signal * conversion factor) = abundance
-            cellType_abdundances.append(abundance) # Append abundances for individual cells into one list
+            citeVal = cellDF[e].to_numpy()  # Getting CITE signals for each cell
+            abundance = citeVal * convFact  # (CITE signal * conversion factor) = abundance
+            cellType_abdundances.append(abundance)  # Append abundances for individual cells into one list
             # add column with this name to epitopesDF and abundances list
 
-        epitopesDF[cellType] = cellType_abdundances # This list will be located at Epitope x Cell Type in the DF
+        epitopesDF[cellType] = cellType_abdundances  # This list will be located at Epitope x Cell Type in the DF
 
     return epitopesDF
+
 
 def getSignaling(betaAffs, targCell, offTCells, epitopesDF):
     """Returns total signaling summed over single cells for given parameters, can be adjusted for various purposes"""
 
-    treg_sigs = np.zeros((8, betaAffs.size)) # 8 is used here because we are comparing 8 total signal types
+    treg_sigs = np.zeros((8, betaAffs.size))  # 8 is used here because we are comparing 8 total signal types
     offTarg_sigs = np.zeros((8, betaAffs.size))
 
     # 0-2 IL2 WT
@@ -98,7 +96,8 @@ def getSignaling(betaAffs, targCell, offTCells, epitopesDF):
 
     return treg_sigs, offTarg_sigs
 
-def bindingCalc(df, targCell, offTCells, betaAffs, val,mut,bispec=False,epitope=None):
+
+def bindingCalc(df, targCell, offTCells, betaAffs, val, mut, bispec=False, epitope=None):
     """Calculates selectivity for no additional epitope"""
     targetBound = 0
     offTargetBound = 0
@@ -136,6 +135,7 @@ def bindingCalc(df, targCell, offTCells, betaAffs, val,mut,bispec=False,epitope=
 
     return targetBound, offTargetBound
 
+
 def minSelecFunc(x, selectedDF, targCell, offTCells, epitope):
     """Provides the function to be minimized to get optimal selectivity"""
     targetBound = 0
@@ -161,6 +161,7 @@ def minSelecFunc(x, selectedDF, targCell, offTCells, epitope):
             offTargetBound += cytBindingModel_bispecCITEseq(counts, recXaff)
 
     return (offTargetBound) / (targetBound)
+
 
 def optimizeDesign(targCell, offTcells, selectedDF, epitope):
     """ A more general purpose optimizer """
