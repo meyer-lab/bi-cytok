@@ -20,10 +20,9 @@ def getSampleAbundances(epitopes,cellList):
     # Import CITE data
     CITE_DF = importCITE()
 
-    # PRODUCING ERRORS
     # Get conv factors, average them to use on epitopes with unlisted conv facts
-    # convFact = convFactCalc(ax[0])
-    # meanConv = convFact.Weight.mean()
+    convFact = convFactCalc()
+    meanConv = convFact.Weight.mean()
 
 
     #Sample sizes generated corresponding to cell list using mean values
@@ -55,9 +54,8 @@ def getSampleAbundances(epitopes,cellList):
             elif e == 'CD122':
                 convFact = 332.680090
             else:
-                assert(False)
-                #convFact = meanConv
-                convFact = 100. #PLACEHOLDER DONT KEEP
+                convFact = meanConv
+                
 
             # Calculating abundance from cite data
             citeVal = cellDF[e].to_numpy() # Getting CITE signals for each cell
@@ -196,7 +194,7 @@ markDict = {"CD25": "IL2Ra",
             "CD132": "gc"}
 
 
-def convFactCalc(ax):
+def convFactCalc():
     """Fits a ridge classifier to the CITE data and plots those most highly correlated with T reg"""
     CITE_DF = importCITE()
     cellToI = ["CD4 TCM", "CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL", "CD8 TCM", "Treg", "CD4 TEM"]
@@ -224,8 +222,5 @@ def convFactCalc(ax):
         for cell in markerDF["Cell Type"].unique():
             CITEval = np.concatenate((CITEval, markerDFw.loc[(markerDFw["Cell Type"] == cell) & (markerDFw["Marker"] == rec)].Average.values))
             Quantval = np.concatenate((Quantval, recDF.loc[(recDF["Cell Type"] == cell) & (recDF["Receptor"] == rec)].Mean.values))
-            CITEval = np.reshape(CITEval, (-1, 1))
-            CITEval = CITEval.astype(float)
-        weightDF = weightDF.append(pd.DataFrame({"Receptor": [rec], "Weight": np.linalg.lstsq(CITEval, Quantval, rcond=None)[0]}))
-        print("Success")
+        weightDF = weightDF.append(pd.DataFrame({"Receptor": [rec], "Weight": np.linalg.lstsq(np.reshape(CITEval, (-1, 1)).astype(float), Quantval, rcond=None)[0]}))
     return weightDF
