@@ -136,16 +136,16 @@ def bindingCalc(df, targCell, offTCells, betaAffs, val, mut, bispec=False, epito
     return targetBound, offTargetBound
 
 
-def minSelecFunc(x, selectedDF, targCell, offTCells, epitope):
+def minSelecFunc(x, df, targCell, offTCells, epitope):
     """Provides the function to be minimized to get optimal selectivity"""
     targetBound = 0
     offTargetBound = 0
 
     recXaff = x
 
-    epitopeDF = selectedDF.loc[(selectedDF.Type == 'Epitope')]
-    cd25DF = selectedDF.loc[(selectedDF.Type == 'Standard') & (selectedDF.Epitope == 'CD25')]
-    cd122DF = selectedDF.loc[(selectedDF.Type == 'Standard') & (selectedDF.Epitope == 'CD122')]
+    cd25DF = df.loc[(df.Epitope == 'CD25')]
+    cd122DF = df.loc[(df.Epitope == 'CD122')]
+    epitopeDF = df.loc[(df.Epitope == epitope)]
 
     for i, epCount in enumerate(epitopeDF[targCell].item()):
         cd25Count = cd25DF[targCell].item()[i]

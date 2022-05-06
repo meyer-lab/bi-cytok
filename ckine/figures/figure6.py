@@ -56,8 +56,6 @@ def makeFigure():
 
     return f
 
-# Normalizes data to 1
-
 
 def norm(data):
     return data / max(data)
