@@ -1,0 +1,138 @@
+"""
+Functions used in binding and selectivity analysis
+"""
+from .imports import importCITE
+from .MBmodel import cytBindingModel_CITEseq, cytBindingModel_bispecCITEseq
+from os.path import dirname, join
+import pandas as pd
+import seaborn as sns
+import numpy as np
+
+path_here = dirname(dirname(__file__))
+
+def getSampleAbundances(epitopes,cellList):
+    """Given list of epitopes and cell types, returns a dataframe containing abundance data on a single cell level"""
+    # This dataframe will later be filled with our epitope abundance by cells
+    receptors = {'Epitope': epitopes}
+    epitopesDF = pd.DataFrame(receptors)
+
+    # Import CITE data
+    CITE_DF = importCITE()
+
+    # PRODUCING ERRORS
+    # Get conv factors, average them to use on epitopes with unlisted conv facts
+    # convFact = convFactCalc(ax[0])
+    # meanConv = convFact.Weight.mean()
+
+
+    #Sample sizes generated corresponding to cell list using mean values
+    sampleSizes = []
+    for cellType in cellList:
+        cellSample = []
+        for i in np.arange(10): # Averaging results of 10
+            sampleDF = CITE_DF.sample(1000) # Of 1000 cells in the sample...
+            sampleSize = int(len(sampleDF.loc[sampleDF["CellType2"] == cellType])) # ...How many are this cell type
+            cellSample.append(sampleSize) # Sample size is equivalent to represented cell count out of 1000 cells
+        meanSize = np.mean(cellSample)
+        sampleSizes.append(int(meanSize))
+
+
+    # For each  cellType in list
+    for i, cellType in enumerate(cellList):
+        # Generate sample size
+        sampleSize = sampleSizes[i]
+        # Create data frame of this size at random selection
+        cellDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType].sample(sampleSize)
+
+
+        cellType_abdundances = [] 
+        # For each epitope (being done on per cell basis)
+        for e in epitopesDF.Epitope:
+            # calculate abundance based on converstion factor
+            if e == 'CD25':
+                convFact = 77.136987 # The values are from convFactCalc
+            elif e == 'CD122':
+                convFact = 332.680090
+            else:
+                assert(False)
+                #convFact = meanConv
+                convFact = 100. #PLACEHOLDER DONT KEEP
+
+            # Calculating abundance from cite data
+            citeVal = cellDF[e].to_numpy() # Getting CITE signals for each cell
+            abundance = citeVal * convFact # (CITE signal * conversion factor) = abundance
+            cellType_abdundances.append(abundance) # Append abundances for individual cells into one list
+            # add column with this name to epitopesDF and abundances list
+
+        epitopesDF[cellType] = cellType_abdundances # This list will be located at Epitope x Cell Type in the DF
+
+    return epitopesDF
+
+def getSignaling(betaAffs, targCell, offTCells, epitopesDF):
+    """Returns total signaling summed over single cells for given parameters, can be adjusted for various purposes"""
+
+    treg_sigs = np.zeros((8, betaAffs.size)) # 8 is used here because we are comparing 8 total signal types
+    offTarg_sigs = np.zeros((8, betaAffs.size))
+
+    # 0-2 IL2 WT
+    # 3-5 R38Q
+    # 6-7 Live/Dead
+    muts = ['IL2', 'R38Q/H16N']
+    vals = [1, 2, 4]
+
+    for i, aff in enumerate(betaAffs):
+        print(aff)
+        for j, mut in enumerate(muts):
+            for k, val in enumerate(vals):
+                n = (3 * j) + k
+                treg_sig, offTarg_sig = bindingCalc(epitopesDF, targCell, offTCells, aff, val, mut)
+                treg_sigs[n, i] = treg_sig
+                offTarg_sigs[n, i] = offTarg_sig
+
+        treg_sig_bi, offTarg_sig_bi = bindingCalc(epitopesDF, targCell, offTCells, aff, 1, 'R38Q/H16N', bispec=True, epitope='CD25')
+        treg_sigs[6, i] = treg_sig_bi
+        offTarg_sigs[6, i] = offTarg_sig_bi
+
+        treg_sig_bi, offTarg_sig_bi = bindingCalc(epitopesDF, targCell, offTCells, aff, 2, 'R38Q/H16N', bispec=True, epitope='CD25')
+        treg_sigs[7, i] = treg_sig_bi
+        offTarg_sigs[7, i] = offTarg_sig_bi
+
+    return treg_sigs, offTarg_sigs
+
+def bindingCalc(df, targCell, offTCells, betaAffs, val,mut,bispec=False,epitope=None):
+    """Calculates selectivity for no additional epitope"""
+    targetBound = 0
+    offTargetBound = 0
+
+    cd25DF = df.loc[(df.Epitope == 'CD25')]
+    cd122DF = df.loc[(df.Epitope == 'CD122')]
+
+    if(bispec):
+        epitopeDF = df.loc[(df.Epitope == epitope)]
+
+        for i, cd25Count in enumerate(cd25DF[targCell].item()):
+            cd122Count = cd122DF[targCell].item()[i]
+            epitopeCount = epitopeDF[targCell].item()[i]
+            counts = [cd25Count, cd122Count, epitopeCount]
+            targetBound += cytBindingModel_bispecCITEseq(counts, betaAffs, 9.0, val, mut)
+
+        for cellT in offTCells:
+            for i, cd25Count in enumerate(cd25DF[cellT].item()):
+                cd122Count = cd122DF[cellT].item()[i]
+                epitopeCount = epitopeDF[cellT].item()[i]
+                counts = [cd25Count, cd122Count, epitopeCount]
+                offTargetBound += cytBindingModel_bispecCITEseq(counts, betaAffs, 9.0, val, mut)
+
+    else:
+        for i, cd25Count in enumerate(cd25DF[targCell].item()):
+            cd122Count = cd122DF[targCell].item()[i]
+            counts = [cd25Count, cd122Count]
+            targetBound += cytBindingModel_CITEseq(counts, betaAffs, val, mut)
+
+        for cellT in offTCells:
+            for i, cd25Count in enumerate(cd25DF[cellT].item()):
+                cd122Count = cd122DF[cellT].item()[i]
+                counts = [cd25Count, cd122Count]
+                offTargetBound += cytBindingModel_CITEseq(counts, betaAffs, val, mut)
+
+    return targetBound, offTargetBound
