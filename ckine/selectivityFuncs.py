@@ -136,3 +136,57 @@ def bindingCalc(df, targCell, offTCells, betaAffs, val,mut,bispec=False,epitope=
                 offTargetBound += cytBindingModel_CITEseq(counts, betaAffs, val, mut)
 
     return targetBound, offTargetBound
+
+
+
+
+cellDict = {"CD4 Naive": "Thelper",
+            "CD4 CTL": "Thelper",
+            "CD4 TCM": "Thelper",
+            "CD4 TEM": "Thelper",
+            "NK": "NK",
+            "CD8 Naive": "CD8",
+            "CD8 TCM": "CD8",
+            "CD8 TEM": "CD8",
+            "Treg": "Treg"}
+
+
+markDict = {"CD25": "IL2Ra",
+            "CD122": "IL2Rb",
+            "CD127": "IL7Ra",
+            "CD132": "gc"}
+
+
+def convFactCalc(ax):
+    """Fits a ridge classifier to the CITE data and plots those most highly correlated with T reg"""
+    CITE_DF = importCITE()
+    cellToI = ["CD4 TCM", "CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL", "CD8 TCM", "Treg", "CD4 TEM"]
+    markers = ["CD122", "CD127", "CD25"]
+    markerDF = pd.DataFrame(columns=["Marker", "Cell Type", "Amount", "Number"])
+    for marker in markers:
+        for cell in cellToI:
+            cellTDF = CITE_DF.loc[CITE_DF["CellType2"] == cell][marker]
+            markerDF = markerDF.append(pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Amount": cellTDF.mean(), "Number": cellTDF.size}))
+
+    markerDF = markerDF.replace({"Marker": markDict, "Cell Type": cellDict})
+    markerDFw = pd.DataFrame(columns=["Marker", "Cell Type", "Average"])
+    for marker in markerDF.Marker.unique():
+        for cell in markerDF["Cell Type"].unique():
+            subDF = markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)]
+            wAvg = np.sum(subDF.Amount.values * subDF.Number.values) / np.sum(subDF.Number.values)
+            markerDFw = markerDFw.append(pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Average": wAvg}))
+
+    recDF = importReceptors()
+    weightDF = pd.DataFrame(columns=["Receptor", "Weight"])
+
+    for rec in markerDFw.Marker.unique():
+        CITEval = np.array([])
+        Quantval = np.array([])
+        for cell in markerDF["Cell Type"].unique():
+            CITEval = np.concatenate((CITEval, markerDFw.loc[(markerDFw["Cell Type"] == cell) & (markerDFw["Marker"] == rec)].Average.values))
+            Quantval = np.concatenate((Quantval, recDF.loc[(recDF["Cell Type"] == cell) & (recDF["Receptor"] == rec)].Mean.values))
+            CITEval = np.reshape(CITEval, (-1, 1))
+            CITEval = CITEval.astype(float)
+        weightDF = weightDF.append(pd.DataFrame({"Receptor": [rec], "Weight": np.linalg.lstsq(CITEval, Quantval, rcond=None)[0]}))
+        print("Success")
+    return weightDF
