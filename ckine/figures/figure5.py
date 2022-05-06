@@ -253,12 +253,6 @@ def minSelecFunc(x, selectedDF, targCell, offTCells, epitope):
 
 def optimizeDesign(targCell, offTcells, selectedDF, epitope):
     """ A more general purpose optimizer """
-    ###
-    #vals = np.arange(1.01, 10, step=0.15)
-    #sigDF = pd.DataFrame()
-    #optDF = pd.DataFrame(columns={"Valency", "Selectivity", "IL2Rα", r"IL-2Rβ/γ$_c$"})
-    ###
-
     if targCell == "NK":
         X0 = [6.0, 8]
     else:

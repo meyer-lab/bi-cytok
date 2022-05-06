@@ -1,9 +1,10 @@
 """
 Functions used in binding and selectivity analysis
 """
-from .imports import importCITE
+from .imports import importCITE, importReceptors
 from .MBmodel import cytBindingModel_CITEseq, cytBindingModel_bispecCITEseq
 from os.path import dirname, join
+from scipy.optimize import minimize, Bounds
 import pandas as pd
 import seaborn as sns
 import numpy as np
@@ -137,7 +138,45 @@ def bindingCalc(df, targCell, offTCells, betaAffs, val,mut,bispec=False,epitope=
 
     return targetBound, offTargetBound
 
+def minSelecFunc(x, selectedDF, targCell, offTCells, epitope):
+    """Provides the function to be minimized to get optimal selectivity"""
+    targetBound = 0
+    offTargetBound = 0
 
+    recXaff = x
+
+    epitopeDF = selectedDF.loc[(selectedDF.Type == 'Epitope')]
+    cd25DF = selectedDF.loc[(selectedDF.Type == 'Standard') & (selectedDF.Epitope == 'CD25')]
+    cd122DF = selectedDF.loc[(selectedDF.Type == 'Standard') & (selectedDF.Epitope == 'CD122')]
+
+    for i, epCount in enumerate(epitopeDF[targCell].item()):
+        cd25Count = cd25DF[targCell].item()[i]
+        cd122Count = cd122DF[targCell].item()[i]
+        counts = [cd25Count, cd122Count, epCount]
+        targetBound += cytBindingModel_bispecCITEseq(counts, recXaff)
+    for cellT in offTCells:
+        for i, epCount in enumerate(epitopeDF[cellT].item()):
+            cd25Count = cd25DF[cellT].item()[i]
+            cd122Count = cd122DF[cellT].item()[i]
+            counts = [cd25Count, cd122Count, epCount]
+
+            offTargetBound += cytBindingModel_bispecCITEseq(counts, recXaff)
+
+    return (offTargetBound) / (targetBound)
+
+def optimizeDesign(targCell, offTcells, selectedDF, epitope):
+    """ A more general purpose optimizer """
+    if targCell == "NK":
+        X0 = [6.0, 8]
+    else:
+        X0 = [7.0]
+
+    optBnds = Bounds(np.full_like(X0, 6.0), np.full_like(X0, 9.0))
+
+    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(selectedDF, targCell, offTcells, epitope), jac="3-point")
+    optSelectivity = optimized.fun[0]
+
+    return optSelectivity
 
 
 cellDict = {"CD4 Naive": "Thelper",
