@@ -172,7 +172,18 @@ def bindingCalc(df, targCell, offTCells, betaAffs, val, mut, bispec=False, epito
 
 
 def minSelecFunc(x, df, targCell, offTCells, epitope):
-    """Serves as the function which will have its return value minimized to get optimal selectivity"""
+    """Serves as the function which will have its return value minimized to get optimal selectivity
+    To be used in conjunction with optimizeDesign()
+    Args:
+        x: receptor affinity which is modulated in optimize design
+        df: contains epitope abundance information by cell type
+        targCell: string cell type which is target and signaling is desired (basis of selectivity)
+        offTCells: list of strings of cell types for which signaling is undesired
+        epitope: additional epitope to be targeted
+
+    Return:
+        selectivity: value will be minimized, defined as ratio of off target to on target signaling
+    """
     targetBound = 0
     offTargetBound = 0
 
@@ -195,7 +206,9 @@ def minSelecFunc(x, df, targCell, offTCells, epitope):
 
             offTargetBound += cytBindingModel_bispecCITEseq(counts, recXaff)
 
-    return (offTargetBound) / (targetBound)
+    selectivity = (offTargetBound) / (targetBound)
+
+    return selectivity
 
 
 def optimizeDesign(targCell, offTcells, selectedDF, epitope):
