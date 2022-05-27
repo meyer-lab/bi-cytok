@@ -23,8 +23,8 @@ def makeFigure():
 
     epitopesDF = pd.DataFrame(columns={"Classifier", "Epitope", "Selectivity"})
     epitopesDF = pd.read_csv(join(path_here, "data/epitopeList.csv"))
-    epitopes = list(epitopesDF['Epitope'].unique()) # List epitopes to be included in analysis
-    
+    epitopes = list(epitopesDF['Epitope'].unique())  # List epitopes to be included in analysis
+
     # List cells to be included in analysis (Both on and off target)
     targCell = 'Treg'
     offTCells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD8 TCM']
@@ -38,18 +38,16 @@ def makeFigure():
     # New column which will hold selectivity per epitope
 
     for epitope in epitopesDF['Epitope']:
-        
+
         # New form
         optSelectivity = 1 / (optimizeDesign(targCell, offTCells, epitopesDF, epitope))
         epitopesDF.loc[epitopesDF['Epitope'] == epitope, 'Selectivity'] = optSelectivity  # Store selectivity in DF to be used for plots
 
     baseSelectivity = 1 / (selecCalc(epitopesDF, targCell, offTCells))
 
-
     # generate figures
-    
     # bar plot of each epitope
-   
+
     epitopesDF = epitopesDF.sort_values(by=['Selectivity'])
     xvalues = epitopesDF['Epitope']
     yvalues = ((epitopesDF['Selectivity'] / baseSelectivity) * 100) - 100
@@ -59,11 +57,3 @@ def makeFigure():
     ax[0].set_ylabel("Selectivity (% increase over standard IL2)")
 
     return f
-
-
-
-
-
-
-
-

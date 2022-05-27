@@ -101,6 +101,7 @@ def cytBindingModel(mut, val, doseVec, cellType, x=False, date=False):
             output *= convDict.loc[(convDict.Date == date) & (convDict.Cell == cellType)].Scale.values
     return output
 
+
 def cytBindingModel_basicSelec(counts, x=False, date=False):
     """Runs binding model for a given dataframe of epitope abundances"""
     mut = 'IL2'
@@ -165,7 +166,7 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
     recXaff = np.power(10, recXaff)
     doseVec = np.array([0.1])
     recCount = np.ravel(counts)
-    
+
     mutAffDF = pd.read_csv(join(path_here, "ckine/data/WTmutAffData.csv"))
     Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
     Affs = np.power(np.array([Affs["IL2RaKD"].values, [betaAffs]]) / 1e9, -1)
@@ -186,6 +187,7 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
             output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[0][1]
 
     return output
+
 
 def cytBindingModel_bispecOpt(counts, recXaff, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
