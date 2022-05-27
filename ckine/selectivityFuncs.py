@@ -212,7 +212,16 @@ def minSelecFunc(x, df, targCell, offTCells, epitope):
 
 
 def optimizeDesign(targCell, offTcells, selectedDF, epitope):
-    """ A more general purpose optimizer """
+    """ A general purpose optimizer used to minimize selectivity output by varying affinity parameter.
+    Args:
+        targCell: string cell type which is target and signaling is desired (basis of selectivity)
+        offTCells: list of strings of cell types for which signaling is undesired
+        selectedDf: contains epitope abundance information by cell type
+        epitope: additional epitope to be targeted
+
+    Return:
+        optSelectivity: optimized selectivity value. Can also be modified to return optimized affinity parameter.
+     """
     if targCell == "NK":
         X0 = [6.0, 8]
     else:
