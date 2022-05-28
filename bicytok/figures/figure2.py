@@ -5,9 +5,7 @@ This creates Figure 2, cell type ratios of response of bispecific IL-2 cytokines
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
-from scipy.linalg.decomp_svd import null_space
-from .figureCommon import getSetup
+from .common import getSetup
 from ..MBmodel import runFullModel_bispec
 
 

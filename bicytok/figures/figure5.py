@@ -1,12 +1,12 @@
 """
 This creates Figure 5, used to find optimal epitope classifier.
 """
-from email.mime import base
 from os.path import dirname, join
-from .figureCommon import getSetup
-from ..imports import importCITE, importReceptors, getBindDict
-from ..MBmodel import polyc, getKxStar
-from scipy.optimize import minimize, Bounds, NonlinearConstraint
+from .common import getSetup
+from ..imports import importCITE, importReceptors
+from ..MBmodel import getKxStar
+from valentbind import polyc
+from scipy.optimize import minimize, Bounds
 from copy import copy
 import pandas as pd
 import seaborn as sns

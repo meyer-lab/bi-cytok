@@ -1,11 +1,12 @@
 """
 This file contains functions that are used in multiple figures.
 """
+import sys
+import time
 from string import ascii_lowercase
 import seaborn as sns
 import numpy as np
 import matplotlib
-import matplotlib.patches as mpatches
 from matplotlib import gridspec, pyplot as plt
 
 
@@ -52,6 +53,20 @@ def getSetup(figsize, gridd, multz=None, empts=None):
         x += 1
 
     return (ax, f)
+
+
+def genFigure():
+    """ Main figure generation function. """
+    fdir = './output/'
+    start = time.time()
+    nameOut = 'figure' + sys.argv[1]
+
+    exec('from bicytok.figures.' + nameOut + ' import makeFigure', globals())
+    ff = makeFigure()
+    ff.savefig(fdir + nameOut + '.svg', dpi=ff.dpi,
+               bbox_inches='tight', pad_inches=0)
+
+    print(f'Figure {sys.argv[1]} is done after {time.time() - start} seconds.\n')
 
 
 def subplotLabel(axs):

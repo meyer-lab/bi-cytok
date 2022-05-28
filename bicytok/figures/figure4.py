@@ -1,7 +1,7 @@
 """
 This creates Figure 1, response of bispecific IL-2 cytokines at varing valencies and abundances using binding model.
 """
-from .figureCommon import getSetup
+from .common import getSetup
 from ..imports import importCITE, importReceptors
 import pandas as pd
 import seaborn as sns

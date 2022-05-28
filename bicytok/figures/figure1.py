@@ -3,7 +3,7 @@ This creates Figure 1, response of bispecific IL-2 cytokines at varing valencies
 """
 
 import numpy as np
-from .figureCommon import getSetup, plotBispecific
+from .common import getSetup, plotBispecific
 from ..MBmodel import runFullModel_bispec
 
 
@@ -12,8 +12,6 @@ def makeFigure():
     conc = np.array([1])
 
     modelDF = runFullModel_bispec(conc)
-
-    print(modelDF)
 
     cells = ["Treg", "Thelper", "NK", "CD8"]
     ax, f = getSetup((15, 8), (2, 2))

@@ -12,7 +12,7 @@ path_here = os.path.dirname(os.path.dirname(__file__))
 def import_pstat(combine_samples=True):
     """ Loads CSV file containing pSTAT5 levels from Visterra data. Incorporates only Replicate 1 since data missing in Replicate 2. """
     path = os.path.dirname(os.path.dirname(__file__))
-    data = np.array(pd.read_csv(join(path, "ckine/data/pSTAT_data.csv"), encoding="latin1"))
+    data = np.array(pd.read_csv(join(path, "bicytok/data/pSTAT_data.csv"), encoding="latin1"))
     ckineConc = data[4, 2:14]
     tps = np.array([0.5, 1.0, 2.0, 4.0]) * 60.0
     # 4 time points, 10 cell types, 12 concentrations, 2 replicates
@@ -83,12 +83,12 @@ receptors["I"] = ["CD127", "CD127", "CD127", "CD127", "CD127"]
 @lru_cache(maxsize=None)
 def import_pstat_all(singleCell=False):
     """ Loads CSV file containing all WT and Mutein pSTAT responses and moments"""
-    WTbivDF = pd.read_csv(join(path_here, "ckine/data/WTDimericMutSingleCellData.csv"), encoding="latin1")
-    monDF = pd.read_csv(join(path_here, "ckine/data/MonomericMutSingleCellData.csv"), encoding="latin1")
+    WTbivDF = pd.read_csv(join(path_here, "bicytok/data/WTDimericMutSingleCellData.csv"), encoding="latin1")
+    monDF = pd.read_csv(join(path_here, "bicytok/data/MonomericMutSingleCellData.csv"), encoding="latin1")
     respDF = pd.concat([WTbivDF, monDF])
     if singleCell:
-        WTbivDFbin = pd.read_csv(join(path_here, "ckine/data/WTDimericMutSingleCellDataBin.csv"), encoding="latin1")
-        monDFbin = pd.read_csv(join(path_here, "ckine/data/MonomericMutSingleCellDataBin.csv"), encoding="latin1")
+        WTbivDFbin = pd.read_csv(join(path_here, "bicytok/data/WTDimericMutSingleCellDataBin.csv"), encoding="latin1")
+        monDFbin = pd.read_csv(join(path_here, "bicytok/data/MonomericMutSingleCellDataBin.csv"), encoding="latin1")
         respDFbin = pd.concat([WTbivDFbin, monDFbin])
         respDFbin = respDFbin.loc[respDFbin["Bin"].isin([1, 3])]
         respDFbin.loc[respDFbin["Bin"] == 1, "Cell"] += r" $IL2Ra^{lo}$"
@@ -105,15 +105,15 @@ def import_pstat_all(singleCell=False):
 def getBindDict():
     """Gets binding to pSTAT fluorescent conversion dictionary"""
     path = os.path.dirname(os.path.dirname(__file__))
-    bindingDF = pd.read_csv(join(path, "ckine/data/BindingConvDict.csv"), encoding="latin1")
+    bindingDF = pd.read_csv(join(path, "bicytok/data/BindingConvDict.csv"), encoding="latin1")
     return bindingDF
 
 
 @lru_cache(maxsize=None)
 def importReceptors():
     """Makes Complete receptor expression Dict"""
-    recDF = pd.read_csv(join(path_here, "ckine/data/RecQuantitation.csv"))
-    recDFbin = pd.read_csv(join(path_here, "ckine/data/BinnedReceptorData.csv"))
+    recDF = pd.read_csv(join(path_here, "bicytok/data/RecQuantitation.csv"))
+    recDFbin = pd.read_csv(join(path_here, "bicytok/data/BinnedReceptorData.csv"))
     recDFbin = recDFbin.loc[recDFbin["Bin"].isin([1, 3])]
     recDFbin.loc[recDFbin["Bin"] == 1, "Cell Type"] += r" $IL2Ra^{lo}$"
     recDFbin.loc[recDFbin["Bin"] == 3, "Cell Type"] += r" $IL2Ra^{hi}$"
@@ -125,14 +125,14 @@ def importReceptors():
 def makeCITEdf():
     """Makes cite surface epitope csv for given cell type, DON'T USE THIS UNLESS DATA NEEDS RESTRUCTURING"""
     """
-    matrixDF = pd.read_csv(join(path_here, "ckine/data/CITEmatrix.gz"), compression='gzip', header=0, sep=' ', quotechar='"', error_bad_lines=False)
+    matrixDF = pd.read_csv(join(path_here, "bicytok/data/CITEmatrix.gz"), compression='gzip', header=0, sep=' ', quotechar='"', error_bad_lines=False)
     matrixDF = matrixDF.iloc[:, 0:-2]
     matrixDF.columns = ["Marker", "Cell", "Number"]
-    matrixDF.to_csv(join(path_here, "ckine/data/CITEmatrix.csv"), index=False)
+    matrixDF.to_csv(join(path_here, "bicytok/data/CITEmatrix.csv"), index=False)
     """
-    featureDF = pd.read_csv(join(path_here, "ckine/data/CITEfeatures.csv"))
-    matrixDF = pd.read_csv(join(path_here, "ckine/data/CITEmatrix.csv")).iloc[1::, :]
-    metaDF = pd.read_csv(join(path_here, "ckine/data/metaData3P.csv"))
+    featureDF = pd.read_csv(join(path_here, "bicytok/data/CITEfeatures.csv"))
+    matrixDF = pd.read_csv(join(path_here, "bicytok/data/CITEmatrix.csv")).iloc[1::, :]
+    metaDF = pd.read_csv(join(path_here, "bicytok/data/metaData3P.csv"))
 
     metaDF['cellNumber'] = metaDF.index + 1
     cellNums = metaDF.cellNumber.values
@@ -158,11 +158,11 @@ def makeCITEdf():
     matrixDF["CellType1"] = pd.Categorical(matrixDF["Cell"].replace(cellTDict1), categories=categories1)
     matrixDF["CellType2"] = pd.Categorical(matrixDF["Cell"].replace(cellTDict2), categories=categories2)
     matrixDF["CellType3"] = pd.Categorical(matrixDF["Cell"].replace(cellTDict3), categories=categories3)
-    matrixDF.to_csv(join(path_here, "ckine/data/CITEdata.csv"), index=False)
+    matrixDF.to_csv(join(path_here, "bicytok/data/CITEdata.csv"), index=False)
     return matrixDF  # , featureDF, metaDF
 
 
 def importCITE():
     """Downloads all surface markers and cell types"""
-    CITEmarkerDF = pd.read_csv(join(path_here, "ckine/data/CITEdata_SurfMarkers.zip"))
+    CITEmarkerDF = pd.read_csv(join(path_here, "bicytok/data/CITEdata_SurfMarkers.zip"))
     return CITEmarkerDF

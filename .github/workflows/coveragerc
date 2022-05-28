@@ -1,5 +1,5 @@
 [run]
 
 omit = 
-  ckine/figures/*
-  ckine/data/*
+  bicytok/figures/*
+  bicytok/data/*

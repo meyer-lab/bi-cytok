@@ -1,7 +1,7 @@
 """
 This creates Figure 1, response of bispecific IL-2 cytokines at varing valencies and abundances using binding model.
 """
-from .figureCommon import getSetup
+from .common import getSetup
 from ..imports import importCITE
 from sklearn.decomposition import PCA
 from copy import copy
@@ -12,7 +12,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import RidgeClassifierCV
 from sklearn.preprocessing import LabelEncoder
 from sklearn.manifold import TSNE
-from scipy import stats, special
+from scipy import stats
 from sklearn.neighbors import KernelDensity
 
 
