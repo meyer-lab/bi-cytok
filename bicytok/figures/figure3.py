@@ -38,13 +38,15 @@ def makeFigure():
 
 
 def CITE_TSNE(ax, sampleFrac):
-    """ Plots all surface markers in PCA format"""
+    """Plots all surface markers in PCA format"""
     TSNE_DF = importCITE()
     cellToI = TSNE_DF.CellType2.unique()
     TSNE_DF = TSNE_DF.loc[(TSNE_DF["CellType2"].isin(cellToI)), :]
     TSNE_DF = TSNE_DF.sample(frac=sampleFrac, random_state=1)
     cellType = TSNE_DF.CellType2.values
-    TSNE_DF = TSNE_DF.loc[:, ((TSNE_DF.columns != 'CellType1') & (TSNE_DF.columns != 'CellType2') & (TSNE_DF.columns != 'CellType3') & (TSNE_DF.columns != 'Cell'))]
+    TSNE_DF = TSNE_DF.loc[
+        :, ((TSNE_DF.columns != "CellType1") & (TSNE_DF.columns != "CellType2") & (TSNE_DF.columns != "CellType3") & (TSNE_DF.columns != "Cell"))
+    ]
     factors = TSNE_DF.columns
     scaler = StandardScaler()
 
@@ -53,18 +55,20 @@ def CITE_TSNE(ax, sampleFrac):
     TSNE_PCA_Arr = pca.fit_transform(TSNE_Arr)
 
     X_embedded = TSNE(n_components=2, verbose=1, perplexity=50, n_iter=1000, learning_rate=200).fit_transform(TSNE_PCA_Arr)
-    df_tsne = pd.DataFrame(X_embedded, columns=['comp1', 'comp2'])
-    df_tsne['label'] = cellType
-    sns.scatterplot(x='comp1', y='comp2', data=df_tsne, hue='label', alpha=0.3, ax=ax, s=2)
+    df_tsne = pd.DataFrame(X_embedded, columns=["comp1", "comp2"])
+    df_tsne["label"] = cellType
+    sns.scatterplot(x="comp1", y="comp2", data=df_tsne, hue="label", alpha=0.3, ax=ax, s=2)
 
 
 def CITE_PCA(ax, posCorrs, negCorrs):
-    """ Plots all surface markers in PCA format"""
+    """Plots all surface markers in PCA format"""
     PCA_DF = importCITE()
     cellToI = PCA_DF.CellType2.unique()
     PCA_DF = PCA_DF.loc[(PCA_DF["CellType2"].isin(cellToI)), :]
     cellType = PCA_DF.CellType2.values
-    PCA_DF = PCA_DF.loc[:, ((PCA_DF.columns != 'CellType1') & (PCA_DF.columns != 'CellType2') & (PCA_DF.columns != 'CellType3') & (PCA_DF.columns != 'Cell'))]
+    PCA_DF = PCA_DF.loc[
+        :, ((PCA_DF.columns != "CellType1") & (PCA_DF.columns != "CellType2") & (PCA_DF.columns != "CellType3") & (PCA_DF.columns != "Cell"))
+    ]
     factors = PCA_DF.columns
     scaler = StandardScaler()
 
@@ -77,13 +81,25 @@ def CITE_PCA(ax, posCorrs, negCorrs):
 
     for line in range(0, loadingsDF.shape[0]):
         if factors[line] in posCorrs:
-            loadP.text(loadingsDF["PC 1"][line] + 0.002, loadingsDF["PC 2"][line],
-                       factors[line], horizontalalignment='left',
-                       size='medium', color='green', weight='semibold')
+            loadP.text(
+                loadingsDF["PC 1"][line] + 0.002,
+                loadingsDF["PC 2"][line],
+                factors[line],
+                horizontalalignment="left",
+                size="medium",
+                color="green",
+                weight="semibold",
+            )
         if factors[line] in negCorrs:
-            loadP.text(loadingsDF["PC 1"][line] + 0.002, loadingsDF["PC 2"][line],
-                       factors[line], horizontalalignment='left',
-                       size='medium', color='red', weight='semibold')
+            loadP.text(
+                loadingsDF["PC 1"][line] + 0.002,
+                loadingsDF["PC 2"][line],
+                factors[line],
+                horizontalalignment="left",
+                size="medium",
+                color="red",
+                weight="semibold",
+            )
 
     scores = pca.transform(PCA_Arr)
     scoresDF = pd.DataFrame({"PC 1": scores[:, 0], "PC 2": scores[:, 1], "Cell Type": cellType})
@@ -104,7 +120,9 @@ def CITE_RIDGE(ax, targCell, numFactors=10):
     cellToI = RIDGE_DF.CellType2.unique()
     RIDGE_DF = RIDGE_DF.loc[(RIDGE_DF["CellType2"].isin(cellToI)), :]
     cellTypeCol = RIDGE_DF.CellType2.values
-    RIDGE_DF = RIDGE_DF.loc[:, ((RIDGE_DF.columns != 'CellType1') & (RIDGE_DF.columns != 'CellType2') & (RIDGE_DF.columns != 'CellType3') & (RIDGE_DF.columns != 'Cell'))]
+    RIDGE_DF = RIDGE_DF.loc[
+        :, ((RIDGE_DF.columns != "CellType1") & (RIDGE_DF.columns != "CellType2") & (RIDGE_DF.columns != "CellType3") & (RIDGE_DF.columns != "Cell"))
+    ]
     factors = RIDGE_DF.columns
     X = RIDGE_DF.values
     X = StandardScaler().fit_transform(X)
@@ -118,7 +136,7 @@ def CITE_RIDGE(ax, targCell, numFactors=10):
     TargCoefs = ridgeMod.coef_[np.where(le.classes_ == targCell), :].ravel()
     TargCoefsDF = pd.DataFrame({"Marker": factors, "Coefficient": TargCoefs}).sort_values(by="Coefficient")
     TargCoefsDF = pd.concat([TargCoefsDF.head(numFactors), TargCoefsDF.tail(numFactors)])
-    sns.barplot(data=TargCoefsDF, x="Marker", y="Coefficient", ax=ax, color='k')
+    sns.barplot(data=TargCoefsDF, x="Marker", y="Coefficient", ax=ax, color="k")
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
     posCorrs = TargCoefsDF.tail(numFactors).Marker.values
     negCorrs = TargCoefsDF.head(numFactors).Marker.values
@@ -136,7 +154,7 @@ def RIDGE_Scatter(ax, posCorrs, negCorrs):
 
     CITE_DF = CITE_DF[np.append(negCorrs, posCorrs)]
     CITE_DF["Cell Type"] = cellTypeCol
-    CITE_DF = pd.melt(CITE_DF, id_vars="Cell Type", var_name="Marker", value_name='Amount')
+    CITE_DF = pd.melt(CITE_DF, id_vars="Cell Type", var_name="Marker", value_name="Amount")
 
     sns.pointplot(data=CITE_DF, x="Marker", y="Amount", hue="Cell Type", ax=ax, join=False, dodge=True, legend=False)
     ax.set(yscale="log")
@@ -154,13 +172,17 @@ def distMetricScatt(ax, targCell, numFactors, weight=False):
     cellTypeCol = CITE_DF.CellType2.values
 
     markerDF = pd.DataFrame(columns=["Marker", "Cell Type", "Amount"])
-    for marker in CITE_DF.loc[:, ((CITE_DF.columns != 'CellType1') & (CITE_DF.columns != 'CellType2') & (CITE_DF.columns != 'CellType3') & (CITE_DF.columns != 'Cell'))].columns:
+    for marker in CITE_DF.loc[
+        :, ((CITE_DF.columns != "CellType1") & (CITE_DF.columns != "CellType2") & (CITE_DF.columns != "CellType3") & (CITE_DF.columns != "Cell"))
+    ].columns:
         for cell in cellToI:
             cellTDF = CITE_DF.loc[CITE_DF["CellType2"] == cell][marker]
             markerDF = markerDF.append(pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Amount": cellTDF.mean(), "Number": cellTDF.size}))
 
     ratioDF = pd.DataFrame(columns=["Marker", "Ratio"])
-    for marker in CITE_DF.loc[:, ((CITE_DF.columns != 'CellType1') & (CITE_DF.columns != 'CellType2') & (CITE_DF.columns != 'CellType3') & (CITE_DF.columns != 'Cell'))].columns:
+    for marker in CITE_DF.loc[
+        :, ((CITE_DF.columns != "CellType1") & (CITE_DF.columns != "CellType2") & (CITE_DF.columns != "CellType3") & (CITE_DF.columns != "Cell"))
+    ].columns:
         if weight:
             offT = 0
             targ = markerDF.loc[(markerDF["Cell Type"] == targCell) & (markerDF["Marker"] == marker)].Amount.mean()
@@ -169,11 +191,15 @@ def distMetricScatt(ax, targCell, numFactors, weight=False):
             ratioDF = ratioDF.append(pd.DataFrame({"Marker": [marker], "Ratio": (targ * len(offTargs)) / offT}))
         else:
             offT = 0
-            targ = markerDF.loc[(markerDF["Cell Type"] == targCell) & (markerDF["Marker"] == marker)].Amount.values * \
-                markerDF.loc[(markerDF["Cell Type"] == targCell) & (markerDF["Marker"] == marker)].Number.values
+            targ = (
+                markerDF.loc[(markerDF["Cell Type"] == targCell) & (markerDF["Marker"] == marker)].Amount.values
+                * markerDF.loc[(markerDF["Cell Type"] == targCell) & (markerDF["Marker"] == marker)].Number.values
+            )
             for cell in offTargs:
-                offT += markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)].Amount.values * \
-                    markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)].Number.values
+                offT += (
+                    markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)].Amount.values
+                    * markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)].Number.values
+                )
             ratioDF = ratioDF.append(pd.DataFrame({"Marker": [marker], "Ratio": (targ * len(offTargs)) / offT}))
 
     ratioDF = ratioDF.sort_values(by="Ratio")
@@ -181,7 +207,7 @@ def distMetricScatt(ax, targCell, numFactors, weight=False):
 
     markerDF = markerDF.loc[markerDF["Marker"].isin(posCorrs)]
 
-    sns.barplot(data=ratioDF.tail(numFactors), x="Marker", y="Ratio", color='k', ax=ax[0])
+    sns.barplot(data=ratioDF.tail(numFactors), x="Marker", y="Ratio", color="k", ax=ax[0])
     ax[0].set(yscale="log")
     ax[0].set_xticklabels(ax[0].get_xticklabels(), rotation=45)
     if weight:
@@ -204,13 +230,15 @@ def Wass_KL_Dist(ax, targCell, numFactors):
     CITE_DF = importCITE()
 
     markerDF = pd.DataFrame(columns=["Marker", "Cell Type", "Amount"])
-    for marker in CITE_DF.loc[:, ((CITE_DF.columns != 'CellType1') & (CITE_DF.columns != 'CellType2') & (CITE_DF.columns != 'CellType3') & (CITE_DF.columns != 'Cell'))].columns:
+    for marker in CITE_DF.loc[
+        :, ((CITE_DF.columns != "CellType1") & (CITE_DF.columns != "CellType2") & (CITE_DF.columns != "CellType3") & (CITE_DF.columns != "Cell"))
+    ].columns:
         markAvg = np.mean(CITE_DF[marker].values)
         targCellMark = CITE_DF.loc[CITE_DF["CellType2"] == targCell][marker].values / markAvg
         offTargCellMark = CITE_DF.loc[CITE_DF["CellType2"] != targCell][marker].values / markAvg
         if np.mean(targCellMark) > np.mean(offTargCellMark):
-            kdeTarg = KernelDensity(kernel='gaussian').fit(targCellMark.reshape(-1, 1))
-            kdeOffTarg = KernelDensity(kernel='gaussian').fit(offTargCellMark.reshape(-1, 1))
+            kdeTarg = KernelDensity(kernel="gaussian").fit(targCellMark.reshape(-1, 1))
+            kdeOffTarg = KernelDensity(kernel="gaussian").fit(offTargCellMark.reshape(-1, 1))
             minVal = np.minimum(targCellMark.min(), offTargCellMark.min()) - 10
             maxVal = np.maximum(targCellMark.max(), offTargCellMark.max()) + 10
             outcomes = np.arange(minVal, maxVal + 1).reshape(-1, 1)
@@ -222,7 +250,11 @@ def Wass_KL_Dist(ax, targCell, numFactors):
             print("Off Target Mean = ", np.mean(offTargCellMark))
             print(KL_div)
             print(stats.wasserstein_distance(targCellMark, offTargCellMark))
-            markerDF = markerDF.append(pd.DataFrame({"Marker": [marker], "Wasserstein Distance": stats.wasserstein_distance(targCellMark, offTargCellMark), "KL Divergence": KL_div}))
+            markerDF = markerDF.append(
+                pd.DataFrame(
+                    {"Marker": [marker], "Wasserstein Distance": stats.wasserstein_distance(targCellMark, offTargCellMark), "KL Divergence": KL_div}
+                )
+            )
 
     for i, distance in enumerate(["Wasserstein Distance", "KL Divergence"]):
         ratioDF = markerDF.sort_values(by=distance)
@@ -230,6 +262,6 @@ def Wass_KL_Dist(ax, targCell, numFactors):
 
         markerDF = markerDF.loc[markerDF["Marker"].isin(posCorrs)]
 
-        sns.barplot(data=ratioDF.tail(numFactors), x="Marker", y=distance, ax=ax[i], color='k')
+        sns.barplot(data=ratioDF.tail(numFactors), x="Marker", y=distance, ax=ax[i], color="k")
         ax[i].set(yscale="log")
         ax[i].set_xticklabels(ax[i].get_xticklabels(), rotation=45)

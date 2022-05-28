@@ -30,7 +30,9 @@ def CITE_SVM(ax, targCell, numFactors=10, sampleFrac=0.5):
     SVC_DF = SVC_DF.loc[(SVC_DF["CellType2"].isin(cellToI)), :]
     SVC_DF = SVC_DF.sample(frac=sampleFrac, random_state=1)
     cellTypeCol = SVC_DF.CellType2.values
-    SVC_DF = SVC_DF.loc[:, ((SVC_DF.columns != 'CellType1') & (SVC_DF.columns != 'CellType2') & (SVC_DF.columns != 'CellType3') & (SVC_DF.columns != 'Cell'))]
+    SVC_DF = SVC_DF.loc[
+        :, ((SVC_DF.columns != "CellType1") & (SVC_DF.columns != "CellType2") & (SVC_DF.columns != "CellType3") & (SVC_DF.columns != "Cell"))
+    ]
     factors = SVC_DF.columns
     X = SVC_DF.values
     X = StandardScaler().fit_transform(X)
@@ -45,7 +47,6 @@ def CITE_SVM(ax, targCell, numFactors=10, sampleFrac=0.5):
     print(baselineAcc)
     print(np.where((factors == "CD25")))
     for marker in factors:
-        SVMmod = SVC()
         print(marker)
         markerCol = X[:, np.where(factors == marker)]
         CD25MarkX = np.hstack((CD25col, markerCol.reshape(-1, 1)))
@@ -74,21 +75,20 @@ def CITE_SVM(ax, targCell, numFactors=10, sampleFrac=0.5):
     ax[1].set_xticklabels(ax[1].get_xticklabels(), rotation=45)
 
 
-cellDict = {"CD4 Naive": "Thelper",
-            "CD4 CTL": "Thelper",
-            "CD4 TCM": "Thelper",
-            "CD4 TEM": "Thelper",
-            "NK": "NK",
-            "CD8 Naive": "CD8",
-            "CD8 TCM": "CD8",
-            "CD8 TEM": "CD8",
-            "Treg": "Treg"}
+cellDict = {
+    "CD4 Naive": "Thelper",
+    "CD4 CTL": "Thelper",
+    "CD4 TCM": "Thelper",
+    "CD4 TEM": "Thelper",
+    "NK": "NK",
+    "CD8 Naive": "CD8",
+    "CD8 TCM": "CD8",
+    "CD8 TEM": "CD8",
+    "Treg": "Treg",
+}
 
 
-markDict = {"CD25": "IL2Ra",
-            "CD122": "IL2Rb",
-            "CD127": "IL7Ra",
-            "CD132": "gc"}
+markDict = {"CD25": "IL2Ra", "CD122": "IL2Rb", "CD127": "IL7Ra", "CD132": "gc"}
 
 
 def convFactCalc(ax):
@@ -119,7 +119,9 @@ def convFactCalc(ax):
         for cell in markerDF["Cell Type"].unique():
             CITEval = np.concatenate((CITEval, markerDFw.loc[(markerDFw["Cell Type"] == cell) & (markerDFw["Marker"] == rec)].Average.values))
             Quantval = np.concatenate((Quantval, recDF.loc[(recDF["Cell Type"] == cell) & (recDF["Receptor"] == rec)].Mean.values))
-        weightDF = weightDF.append(pd.DataFrame({"Receptor": [rec], "Weight": np.linalg.lstsq(np.reshape(CITEval, (-1, 1)), Quantval, rcond=None)[0]}))
+        weightDF = weightDF.append(
+            pd.DataFrame({"Receptor": [rec], "Weight": np.linalg.lstsq(np.reshape(CITEval, (-1, 1)), Quantval, rcond=None)[0]})
+        )
 
     sns.barplot(data=weightDF, x="Receptor", y="Weight", ax=ax)
     ax.set(ylim=(0, 1000))

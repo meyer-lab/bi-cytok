@@ -18,8 +18,12 @@ def getKxStar():
 def cytBindingModel(mut, val, doseVec, cellType, x=False, date=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     recDF = importReceptors()
-    recCount = np.ravel([recDF.loc[(recDF.Receptor == "IL2Ra") & (recDF["Cell Type"] == cellType)].Mean.values,
-                         recDF.loc[(recDF.Receptor == "IL2Rb") & (recDF["Cell Type"] == cellType)].Mean.values])
+    recCount = np.ravel(
+        [
+            recDF.loc[(recDF.Receptor == "IL2Ra") & (recDF["Cell Type"] == cellType)].Mean.values,
+            recDF.loc[(recDF.Receptor == "IL2Rb") & (recDF["Cell Type"] == cellType)].Mean.values,
+        ]
+    )
 
     mutAffDF = pd.read_csv(join(path_here, "bicytok/data/WTmutAffData.csv"))
     Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
@@ -70,8 +74,20 @@ def runFullModel(x=False, time=[0.5], saveDict=False, singleCell=False):
             expVal = np.mean(entry)
             # print(type(conc))
             predVal = cytBindingModel(ligName, val, conc, cell, x)
-            masterSTAT = masterSTAT.append(pd.DataFrame({"Ligand": ligName, "Date": date, "Cell": cell, "Dose": conc,
-                                                         "Time": time, "Valency": val, "Experimental": expVal, "Predicted": predVal}))
+            masterSTAT = masterSTAT.append(
+                pd.DataFrame(
+                    {
+                        "Ligand": ligName,
+                        "Date": date,
+                        "Cell": cell,
+                        "Dose": conc,
+                        "Time": time,
+                        "Valency": val,
+                        "Experimental": expVal,
+                        "Predicted": predVal,
+                    }
+                )
+            )
 
     for date in dates:
         for cell in masterSTAT.Cell.unique():
@@ -100,8 +116,13 @@ def runFullModel(x=False, time=[0.5], saveDict=False, singleCell=False):
 def cytBindingModel_bispec(mut, val, doseVec, cellType, recX, recXaff, x=False, date=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     recDF = importReceptors()
-    recCount = np.ravel([recDF.loc[(recDF.Receptor == "IL2Ra") & (recDF["Cell Type"] == cellType)].Mean.values[0],
-                         recDF.loc[(recDF.Receptor == "IL2Rb") & (recDF["Cell Type"] == cellType)].Mean.values[0], recX])
+    recCount = np.ravel(
+        [
+            recDF.loc[(recDF.Receptor == "IL2Ra") & (recDF["Cell Type"] == cellType)].Mean.values[0],
+            recDF.loc[(recDF.Receptor == "IL2Rb") & (recDF["Cell Type"] == cellType)].Mean.values[0],
+            recX,
+        ]
+    )
 
     mutAffDF = pd.read_csv(join(path_here, "bicytok/data/WTmutAffData.csv"))
     Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
@@ -137,21 +158,24 @@ def runFullModel_bispec(conc):
 
     masterSTAT = pd.DataFrame(columns={"Ligand", "Dose", "Cell", "Abundance", "Affinity", "Predicted"})
 
-    ligName = 'IL2'
+    ligName = "IL2"
     # Dates = 3/15/2019, 3/27/2019, 4/18/2019
-    date = '3/15/2019'
-    cells = ['Treg', 'Thelper', 'CD8', 'NK']
+    date = "3/15/2019"
+    cells = ["Treg", "Thelper", "CD8", "NK"]
     x = False
     recX_abundances = np.arange(100, 10200, 300)
     recX_affinities = [1e6, 1e8, 1e10]
-    levels = ['Low', 'Medium', "High"]
+    levels = ["Low", "Medium", "High"]
 
     for cell in cells:
         for l, recXaff in enumerate(recX_affinities):
             for recX in recX_abundances:
                 # print(recX)
                 predVal_bispec = cytBindingModel_bispec(ligName, 1, conc, cell, recX, recXaff, x, date)  # put in date
-                masterSTAT = masterSTAT.append(pd.DataFrame({"Ligand": ligName, "Dose": conc, "Cell": cell, "Abundance": recX,
-                                                             "Affinity": levels[l], "Predicted": predVal_bispec}))
+                masterSTAT = masterSTAT.append(
+                    pd.DataFrame(
+                        {"Ligand": ligName, "Dose": conc, "Cell": cell, "Abundance": recX, "Affinity": levels[l], "Predicted": predVal_bispec}
+                    )
+                )
 
     return masterSTAT

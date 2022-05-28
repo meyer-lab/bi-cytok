@@ -10,7 +10,7 @@ path_here = os.path.dirname(os.path.dirname(__file__))
 
 @lru_cache(maxsize=None)
 def import_pstat(combine_samples=True):
-    """ Loads CSV file containing pSTAT5 levels from Visterra data. Incorporates only Replicate 1 since data missing in Replicate 2. """
+    """Loads CSV file containing pSTAT5 levels from Visterra data. Incorporates only Replicate 1 since data missing in Replicate 2."""
     path = os.path.dirname(os.path.dirname(__file__))
     data = np.array(pd.read_csv(join(path, "bicytok/data/pSTAT_data.csv"), encoding="latin1"))
     ckineConc = data[4, 2:14]
@@ -31,10 +31,10 @@ def import_pstat(combine_samples=True):
             zero_treatment = data[8 + (12 * i), 13]
             zero_treatment2 = data[8 + (12 * i), 30]
         # order of increasing time by cell type
-        IL2_data[4 * i: 4 * (i + 1), :] = np.flip(data[6 + (12 * i): 10 + (12 * i), 2:14].astype(float) - zero_treatment, 0)
-        IL2_data2[4 * i: 4 * (i + 1), :] = np.flip(data[6 + (12 * i): 10 + (12 * i), 19:31].astype(float) - zero_treatment2, 0)
-        IL15_data[4 * i: 4 * (i + 1), :] = np.flip(data[10 + (12 * i): 14 + (12 * i), 2:14].astype(float) - zero_treatment, 0)
-        IL15_data2[4 * i: 4 * (i + 1), :] = np.flip(data[10 + (12 * i): 14 + (12 * i), 19:31].astype(float) - zero_treatment2, 0)
+        IL2_data[4 * i : 4 * (i + 1), :] = np.flip(data[6 + (12 * i) : 10 + (12 * i), 2:14].astype(float) - zero_treatment, 0)
+        IL2_data2[4 * i : 4 * (i + 1), :] = np.flip(data[6 + (12 * i) : 10 + (12 * i), 19:31].astype(float) - zero_treatment2, 0)
+        IL15_data[4 * i : 4 * (i + 1), :] = np.flip(data[10 + (12 * i) : 14 + (12 * i), 2:14].astype(float) - zero_treatment, 0)
+        IL15_data2[4 * i : 4 * (i + 1), :] = np.flip(data[10 + (12 * i) : 14 + (12 * i), 19:31].astype(float) - zero_treatment2, 0)
 
     if combine_samples is False:
         return ckineConc, cell_names, IL2_data, IL2_data2, IL15_data, IL15_data2
@@ -82,7 +82,7 @@ receptors["I"] = ["CD127", "CD127", "CD127", "CD127", "CD127"]
 
 @lru_cache(maxsize=None)
 def import_pstat_all(singleCell=False):
-    """ Loads CSV file containing all WT and Mutein pSTAT responses and moments"""
+    """Loads CSV file containing all WT and Mutein pSTAT responses and moments"""
     WTbivDF = pd.read_csv(join(path_here, "bicytok/data/WTDimericMutSingleCellData.csv"), encoding="latin1")
     monDF = pd.read_csv(join(path_here, "bicytok/data/MonomericMutSingleCellData.csv"), encoding="latin1")
     respDF = pd.concat([WTbivDF, monDF])
@@ -134,7 +134,7 @@ def makeCITEdf():
     matrixDF = pd.read_csv(join(path_here, "bicytok/data/CITEmatrix.csv")).iloc[1::, :]
     metaDF = pd.read_csv(join(path_here, "bicytok/data/metaData3P.csv"))
 
-    metaDF['cellNumber'] = metaDF.index + 1
+    metaDF["cellNumber"] = metaDF.index + 1
     cellNums = metaDF.cellNumber.values
     cellT1 = metaDF["celltype.l1"].values
     cellT2 = metaDF["celltype.l2"].values
@@ -143,7 +143,7 @@ def makeCITEdf():
     cellTDict2 = {cellNums[i]: cellT2[i] for i in range(len(cellNums))}
     cellTDict3 = {cellNums[i]: cellT3[i] for i in range(len(cellNums))}
 
-    featureDF['featNumber'] = featureDF.index + 1
+    featureDF["featNumber"] = featureDF.index + 1
     featNums = featureDF.featNumber.values
     features = featureDF.Marker.values
     featDict = {featNums[i]: features[i] for i in range(len(featNums))}
