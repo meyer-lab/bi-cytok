@@ -271,7 +271,7 @@ def optimizeDesign(targCell, offTcells, selectedDF, epitope):
     optBnds = Bounds(np.full_like(X0, 6.0), np.full_like(X0, 9.0))
 
     optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(selectedDF, targCell, offTcells, epitope), jac="3-point")
-    optSelectivity = optimized.fun[0]
+    optSelectivity = optimized.fun
 
     return optSelectivity
 
