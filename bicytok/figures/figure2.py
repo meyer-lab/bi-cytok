@@ -5,9 +5,7 @@ This creates Figure 2, cell type ratios of response of bispecific IL-2 cytokines
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
-from scipy.linalg.decomp_svd import null_space
-from .figureCommon import getSetup
+from .common import getSetup
 from ..MBmodel import runFullModel_bispec
 
 
@@ -30,6 +28,7 @@ def makeFigure():
 
     return f
 
+
 # calc at different valencies
 
 
@@ -39,7 +38,7 @@ def signalRatio(ax, dataframe, cellType1, cellType2, affinity):
     type1_vals = dataframe.loc[(dataframe.Cell == cellType1) & (dataframe.Affinity == affinity)]
     type2_vals = dataframe.loc[(dataframe.Cell == cellType2) & (dataframe.Affinity == affinity)]
 
-    abundances = dataframe.loc[(dataframe.Cell == cellType1) & (dataframe.Affinity == 'Medium')]["Abundance"]
+    abundances = dataframe.loc[(dataframe.Cell == cellType1) & (dataframe.Affinity == "Medium")]["Abundance"]
 
     for x_abundance in abundances:
         x_signal = type1_vals.loc[(type1_vals.Abundance == x_abundance)]["Predicted"]
@@ -56,7 +55,7 @@ def signalRatio(ax, dataframe, cellType1, cellType2, affinity):
     xlabel = "Epitope Abundance on " + cellType1
     ylabel = "Epitope Abundance on " + cellType2
 
-    sns.heatmap(result, cmap='RdYlGn', ax=ax, cbar_kws={'label': 'Ratio of Cell Signal'})
+    sns.heatmap(result, cmap="RdYlGn", ax=ax, cbar_kws={"label": "Ratio of Cell Signal"})
     ax.set(title=title, xlabel=xlabel, ylabel=ylabel)
 
     return ratios_DF
