@@ -3,7 +3,7 @@ This creates Figure 6, plotting Treg to off target signaling for vaying IL2Rb af
 """
 from email.mime import base
 from os.path import dirname, join
-from .figureCommon import getSetup
+from .common import getSetup
 from ..selectivityFuncs import getSampleAbundances, getSignaling
 import pandas as pd
 import seaborn as sns

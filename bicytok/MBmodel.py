@@ -5,13 +5,8 @@ Implementation of a simple multivalent binding model.
 from os.path import dirname, join
 import numpy as np
 import pandas as pd
-<<<<<<< HEAD:ckine/MBmodel.py
-from scipy.optimize import root
-from .imports import getBindDict, importReceptors
-=======
 from valentbind import polyc
-from .imports import import_pstat_all, getBindDict, importReceptors
->>>>>>> main:bicytok/MBmodel.py
+from .imports import  getBindDict, importReceptors
 
 path_here = dirname(dirname(__file__))
 
@@ -81,49 +76,7 @@ def cytBindingModel_basicSelec(counts, x=False, date=False):
         else:
             output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[0][1]  # IL2RB binding only
 
-<<<<<<< HEAD:ckine/MBmodel.py
     return output
-=======
-        entry = group.Mean.values
-        if len(entry) >= 1:
-            expVal = np.mean(entry)
-            # print(type(conc))
-            predVal = cytBindingModel(ligName, val, conc, cell, x)
-            masterSTAT = masterSTAT.append(
-                pd.DataFrame(
-                    {
-                        "Ligand": ligName,
-                        "Date": date,
-                        "Cell": cell,
-                        "Dose": conc,
-                        "Time": time,
-                        "Valency": val,
-                        "Experimental": expVal,
-                        "Predicted": predVal,
-                    }
-                )
-            )
-
-    for date in dates:
-        for cell in masterSTAT.Cell.unique():
-            if cell[-1] == "$":  # if it is a binned pop, use ave fit
-                predVecBin = masterSTAT.loc[(masterSTAT.Date == date) & (masterSTAT.Cell == cell)].Predicted.values
-                slope = dateConvDF.loc[(dateConvDF.Date == date) & (dateConvDF.Cell == cell[0:-13])].Scale.values
-                masterSTAT.loc[(masterSTAT.Date == date) & (masterSTAT.Cell == cell), "Predicted"] = predVecBin * slope
-            else:
-                expVec = masterSTAT.loc[(masterSTAT.Date == date) & (masterSTAT.Cell == cell)].Experimental.values
-                predVec = masterSTAT.loc[(masterSTAT.Date == date) & (masterSTAT.Cell == cell)].Predicted.values
-                slope = np.linalg.lstsq(np.reshape(predVec, (-1, 1)), np.reshape(expVec, (-1, 1)), rcond=None)[0][0]
-                masterSTAT.loc[(masterSTAT.Date == date) & (masterSTAT.Cell == cell), "Predicted"] = predVec * slope
-                dateConvDF = dateConvDF.append(pd.DataFrame({"Date": date, "Scale": slope, "Cell": cell}))
-    if saveDict:
-        dateConvDF.set_index("Date").to_csv(join(path_here, "bicytok/data/BindingConvDict.csv"))
-
-    if x:
-        return np.linalg.norm(masterSTAT.Predicted.values - masterSTAT.Experimental.values)
-    else:
-        return masterSTAT
->>>>>>> main:bicytok/MBmodel.py
 
 
 # CITEseq Tetra valent exploration functions below
@@ -187,7 +140,6 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
 
 def cytBindingModel_bispecOpt(counts, recXaff, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
-<<<<<<< HEAD:ckine/MBmodel.py
 
     mut = 'IL2'
     val = 1
@@ -196,16 +148,6 @@ def cytBindingModel_bispecOpt(counts, recXaff, x=False):
     recXaff = np.power(10, recXaff)
 
     recCount = np.ravel(counts)
-=======
-    recDF = importReceptors()
-    recCount = np.ravel(
-        [
-            recDF.loc[(recDF.Receptor == "IL2Ra") & (recDF["Cell Type"] == cellType)].Mean.values[0],
-            recDF.loc[(recDF.Receptor == "IL2Rb") & (recDF["Cell Type"] == cellType)].Mean.values[0],
-            recX,
-        ]
-    )
->>>>>>> main:bicytok/MBmodel.py
 
     mutAffDF = pd.read_csv(join(path_here, "bicytok/data/WTmutAffData.csv"))
     Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
