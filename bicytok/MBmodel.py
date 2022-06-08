@@ -6,7 +6,7 @@ from os.path import dirname, join
 import numpy as np
 import pandas as pd
 from valentbind import polyc
-from .imports import  getBindDict, importReceptors
+from .imports import getBindDict, importReceptors
 
 path_here = dirname(dirname(__file__))
 

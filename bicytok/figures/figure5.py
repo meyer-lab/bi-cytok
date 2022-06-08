@@ -18,8 +18,8 @@ def makeFigure():
     """Get a list of the axis objects and create a figure"""
     ax, f = getSetup((9, 12), (1, 1))
 
-    epitopesDF = pd.read_csv(join(path_here, "data/epitopeList.csv"))
-    epitopes = list(epitopesDF['Epitope'].unique())  # List epitopes to be included in analysis
+    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopes = list(epitopesList['Epitope'].unique())  # List epitopes to be included in analysis
 
     # List cells to be included in analysis (Both on and off target)
     targCell = 'Treg'
