@@ -59,7 +59,7 @@ def cytBindingModel_basicSelec(counts, x=False, date=False):
     #
     recCount = np.ravel(counts)
     #
-    mutAffDF = pd.read_csv(join(path_here, "ckine/data/WTmutAffData.csv"))
+    mutAffDF = pd.read_csv(join(path_here, "bicytok/data/WTmutAffData.csv"))
     Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
     Affs = np.power(np.array([Affs["IL2RaKD"].values, Affs["IL2RBGKD"].values]) / 1e9, -1)
     Affs = np.reshape(Affs, (1, -1))
@@ -87,7 +87,7 @@ def cytBindingModel_CITEseq(counts, betaAffs, val, mut, x=False, date=False):
     doseVec = np.array([0.1])
     recCount = np.ravel(counts)
 
-    mutAffDF = pd.read_csv(join(path_here, "ckine/data/WTmutAffData.csv"))
+    mutAffDF = pd.read_csv(join(path_here, "bicytok/data/WTmutAffData.csv"))
     Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
 
     Affs = np.power(np.array([Affs["IL2RaKD"].values, [betaAffs]]) / 1e9, -1)
@@ -116,7 +116,7 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
     doseVec = np.array([0.1])
     recCount = np.ravel(counts)
 
-    mutAffDF = pd.read_csv(join(path_here, "ckine/data/WTmutAffData.csv"))
+    mutAffDF = pd.read_csv(join(path_here, "bicytok/data/WTmutAffData.csv"))
     Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
     Affs = np.power(np.array([Affs["IL2RaKD"].values, [betaAffs]]) / 1e9, -1)
     Affs = np.reshape(Affs, (1, -1))
@@ -171,31 +171,3 @@ def cytBindingModel_bispecOpt(counts, recXaff, x=False):
             output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[0][1]  # IL2RB binding only
 
     return output
-
-
-def runFullModel_bispec(conc):
-    """Runs model for all data points and outputs date conversion dict for binding to pSTAT. Can be used to fit Kx"""
-
-    masterSTAT = pd.DataFrame(columns={"Ligand", "Dose", "Cell", "Abundance", "Affinity", "Predicted"})
-
-    ligName = "IL2"
-    # Dates = 3/15/2019, 3/27/2019, 4/18/2019
-    date = "3/15/2019"
-    cells = ["Treg", "Thelper", "CD8", "NK"]
-    x = False
-    recX_abundances = np.arange(100, 10200, 300)
-    recX_affinities = [1e6, 1e8, 1e10]
-    levels = ["Low", "Medium", "High"]
-
-    for cell in cells:
-        for l, recXaff in enumerate(recX_affinities):
-            for recX in recX_abundances:
-                # print(recX)
-                predVal_bispec = cytBindingModel_bispec(ligName, 1, conc, cell, recX, recXaff, x, date)  # put in date
-                masterSTAT = masterSTAT.append(
-                    pd.DataFrame(
-                        {"Ligand": ligName, "Dose": conc, "Cell": cell, "Abundance": recX, "Affinity": levels[l], "Predicted": predVal_bispec}
-                    )
-                )
-
-    return masterSTAT

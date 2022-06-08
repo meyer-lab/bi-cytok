@@ -3,8 +3,6 @@ This creates Figure 5, used to find optimal epitope classifier.
 """
 from os.path import dirname, join
 from .common import getSetup
-from ..imports import importCITE
-from valentbind import polyc
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign, selecCalc
 from copy import copy
 import pandas as pd
@@ -20,7 +18,6 @@ def makeFigure():
     """Get a list of the axis objects and create a figure"""
     ax, f = getSetup((9, 12), (1, 1))
 
-    epitopesDF = pd.DataFrame(columns={"Classifier", "Epitope", "Selectivity"})
     epitopesDF = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesDF['Epitope'].unique())  # List epitopes to be included in analysis
 
