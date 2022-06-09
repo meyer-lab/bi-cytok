@@ -19,7 +19,7 @@ def makeFigure():
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList['Epitope'].unique())  # List epitopes to be included in analysis
-
+    
 
     # List cells to be included in analysis (Both on and off target)
     targCell = 'Treg'

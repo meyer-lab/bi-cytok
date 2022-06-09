@@ -206,7 +206,7 @@ def minSelecFunc(x: float, df: pd.DataFrame, targCell: string, offTCells: list, 
             offTargetBound += cytBindingModel_bispecOpt(counts, recXaff)
 
     selectivity = (offTargetBound) / (targetBound)
-
+    print(selectivity)
     return selectivity
 
 
@@ -227,9 +227,11 @@ def optimizeDesign(targCell: string, offTcells: list, selectedDF: pd.DataFrame, 
         X0 = [7.0]
 
     optBnds = Bounds(np.full_like(X0, 6.0), np.full_like(X0, 9.0))
-
+    print('Optimize')
     optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(selectedDF, targCell, offTcells, epitope), jac="3-point")
+    print('Done')
     optSelectivity = optimized.fun
+    print(optSelectivity)
 
     return optSelectivity
 
