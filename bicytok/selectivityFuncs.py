@@ -31,7 +31,6 @@ def getSampleAbundances(epitopes: list, cellList: list):
 
     # Get conv factors, average them to use on epitopes with unlisted conv facts
     convFact = convFactCalc()
-    # TODO Change to create labeled convFact df to use below (more transparent)
     meanConv = convFact.Weight.mean()
 
     # Sample sizes generated corresponding to cell list using mean values
@@ -100,7 +99,6 @@ def getSignaling(betaAffs: np.array, targCell: string, offTCells: list, epitopes
     vals = [1, 2, 4]
 
     for i, aff in enumerate(betaAffs):
-        print(aff)
         for j, mut in enumerate(muts):
             for k, val in enumerate(vals):
                 n = (3 * j) + k

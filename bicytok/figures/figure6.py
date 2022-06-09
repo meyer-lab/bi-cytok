@@ -26,8 +26,8 @@ def makeFigure():
     epitopesDF = getSampleAbundances(epitopes, cells)  # epitopesDF: Rows are eptitopes, columns are cell types.
     # Each frame contains a list of single cell abundances (of size determined in function) for that epitope and cell type
 
-    # range from 0.01 <-> 100
-    betaAffs = np.logspace(-4, 2, 10)  # Last number is # of points (should be 40)
+    # range from 0.0001 <-> 100
+    betaAffs = np.logspace(-4, 2, 30)  # Last number is # of points (should be 30 for smooth curve)
     # Fills arrays of target and off target signals for given array of parameters
     treg_sigs, offTarg_sigs = getSignaling(betaAffs, targCell, offTCells, epitopesDF)
 
