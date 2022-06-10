@@ -4,6 +4,7 @@ This creates Figure 5, used to find optimal epitope classifier.
 from os.path import dirname, join
 from .common import getSetup
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign, selecCalc
+from ..imports import importCITE
 from copy import copy
 import pandas as pd
 import seaborn as sns
@@ -19,12 +20,12 @@ def makeFigure():
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList['Epitope'].unique())  # List epitopes to be included in analysis
-    
 
     # List cells to be included in analysis (Both on and off target)
     targCell = 'Treg'
-    offTCells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD8 TCM']
-    cells = offTCells + [targCell]
+    cells = importCITE()["CellType2"].unique()
+    offTCells = cells[cells != targCell]
+    #offTCells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD8 TCM']
 
     epitopesDF = getSampleAbundances(epitopes, cells)  # epitopesDF: Rows are eptitopes, columns are cell types.
     # Each frame contains a list of single cell abundances (of size determined in function) for that epitope and cell type
@@ -33,7 +34,6 @@ def makeFigure():
     # New column which will hold selectivity per epitope
 
     for i, epitope in enumerate(epitopesDF['Epitope']):
-
         # New form
         optSelectivity = 1 / (optimizeDesign(targCell, offTCells, epitopesDF, epitope))
         epitopesDF.loc[epitopesDF['Epitope'] == epitope, 'Selectivity'] = optSelectivity  # Store selectivity in DF to be used for plots

@@ -75,7 +75,6 @@ def cytBindingModel_basicSelec(counts, x=False, date=False):
             output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[0][1]
         else:
             output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[0][1]  # IL2RB binding only
-
     return output
 
 
@@ -169,5 +168,4 @@ def cytBindingModel_bispecOpt(counts, recXaff, x=False):
             output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val, val]], [1.0], Affs)[0][1]
         else:
             output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[0][1]  # IL2RB binding only
-
     return output
