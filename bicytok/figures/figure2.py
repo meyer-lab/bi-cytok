@@ -53,8 +53,8 @@ def makeFigure():
     for val in vals:
         affs = minimizefunction(val)
         for i, dose in enumerate(doseVec):
-            Treg[i] = polyc(1e-9, getKxStar(), recCount('Treg'), [[val, val]], [1.0], np.array([[affs[0], 10], [10, affs[1]]]))[0][1]
-            NK[i] = polyc(1e-9, getKxStar(), recCount('NK'), [[val, val]], [1.0], np.array([[affs[0], 10], [10, affs[1]]]))[0][1]
+            Treg[i] = polyc(1e-9, getKxStar(), recCount('Treg'), [[val, val]], [1.0], np.array([[np.power(10, affs[0]), 10], [10, np.power(10, affs[1])]]))[0][1]
+            NK[i] = polyc(1e-9, getKxStar(), recCount('NK'), [[val, val]], [1.0], np.array([[np.power(10, affs[0]), 10], [10, np.power(10, affs[1])]]))[0][1]
             output[i] = Treg[i] / NK[i]
         data = {'Valency': val,
             'Dose': doseVec,
