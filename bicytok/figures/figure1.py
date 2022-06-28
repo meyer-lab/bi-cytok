@@ -21,8 +21,16 @@ def makeFigure():
 
     output = np.zeros(doseVec.size)
 
+    df = pd.DataFrame(columns=['Valency', 'Dose', 'Receptor Bound'])
+
     for val in vals:
         for i, dose in enumerate(doseVec):
             output[i] = polyc(dose, 1e-12, [10000], [[val]], [1.0], np.array([[1e9]]))[0][1]
+        data = {'Valency': val,
+            'Dose': doseVec,
+            'Receptor Bound': output
+        }
+        df2 = pd.DataFrame(data, columns=['Valency', 'Dose', 'Receptor Bound'])
+        df = df.append(df2, ignore_index=True)
 
     return f
