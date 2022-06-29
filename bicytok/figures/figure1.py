@@ -14,7 +14,7 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
-    ax, f = getSetup((9, 12), (1, 1))
+    ax, f = getSetup((12, 9), (1, 1))
 
     doseVec = np.logspace(-12, -6, num=100)
     vals = [1, 2, 3, 4]
@@ -32,5 +32,8 @@ def makeFigure():
         }
         df2 = pd.DataFrame(data, columns=['Valency', 'Dose', 'Receptor Bound'])
         df = df.append(df2, ignore_index=True)
+
+    sns.lineplot(data=df, x='Dose', y='Receptor Bound', hue='Valency', ax=ax[0])
+    ax[0].set(xscale='log')
 
     return f
