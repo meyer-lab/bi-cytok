@@ -37,8 +37,10 @@ def makeFigure():
     def minimizefunction(val):
         fun = lambda x: residuals(x, val)
         x0 = [[np.log10(1e9), np.log10(1e9)]]
-        bounds = [(7, 10), (7, 10)]
+        bounds = [(6, 10), (6, 10)]
         minimized = scipy.optimize.minimize(fun, x0, bounds=bounds)
+        print(val)
+        print(minimized.fun)
         return minimized.x
 
     doseVec = np.logspace(-12, -6, num=100)
@@ -52,9 +54,10 @@ def makeFigure():
 
     for val in vals:
         affs = minimizefunction(val)
+        print(affs)
         for i, dose in enumerate(doseVec):
-            Treg[i] = polyc(1e-9, getKxStar(), recCount('Treg'), [[val, val]], [1.0], np.array([[np.power(10, affs[0]), 10], [10, np.power(10, affs[1])]]))[0][1]
-            NK[i] = polyc(1e-9, getKxStar(), recCount('NK'), [[val, val]], [1.0], np.array([[np.power(10, affs[0]), 10], [10, np.power(10, affs[1])]]))[0][1]
+            Treg[i] = polyc(dose, getKxStar(), recCount('Treg'), [[val, val]], [1.0], np.array([[np.power(10, affs[0]), 10], [10, np.power(10, affs[1])]]))[0][1]
+            NK[i] = polyc(dose, getKxStar(), recCount('NK'), [[val, val]], [1.0], np.array([[np.power(10, affs[0]), 10], [10, np.power(10, affs[1])]]))[0][1]
             output[i] = Treg[i] / NK[i]
         data = {'Valency': val,
             'Dose': doseVec,

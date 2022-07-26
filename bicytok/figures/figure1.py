@@ -37,18 +37,22 @@ def makeFigure():
     sns.lineplot(data=df, x='Dose', y='Receptor Bound', hue='Valency', ax=ax[0])
     ax[0].set(xscale='log')
 
-    def residuals(x):
-        targetbinding = polyc(1e-9, 1e-12, [1000, 1000], [[1]], [1.0], np.array([[1e9, np.power(10, x[0])]]))[0][1]
-        offtargetbinding = polyc(1e-9, 1e-12, [1000, 100], [[1]], [1.0], np.array([[1e9, np.power(10, x[0])]]))[0][1]
-        return offtargetbinding / targetbinding
 
-    def minimizefunction():
-        fun = lambda x: residuals(x)
-        x0 = np.log10(1e9)
-        bounds = [(7, 10)]
-        minimized = scipy.optimize.minimize(fun, x0, bounds=bounds)
-        return minimized.x
 
     print(minimizefunction())
 
     return f
+
+
+def residuals(x):
+    targetbinding = polyc(1e-9, 1e-12, [1000, 1000], [[1]], [1.0], np.array([[1e9, np.power(10, x[0])]]))[0][1]
+    offtargetbinding = polyc(1e-9, 1e-12, [1000, 100], [[1]], [1.0], np.array([[1e9, np.power(10, x[0])]]))[0][1]
+    return offtargetbinding / targetbinding
+
+
+def minimizefunction():
+    fun = lambda x: residuals(x)
+    x0 = np.log10(1e9)
+    bounds = [(7, 10)]
+    minimized = scipy.optimize.minimize(fun, x0, bounds=bounds)
+    return minimized.x
