@@ -137,12 +137,12 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
     return output
 
 
-def cytBindingModel_bispecOpt(counts, recXaff, x=False):
+def cytBindingModel_bispecOpt(IL2Ra, IL2RB, epitope, recXaff, dose, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
-
     mut = 'IL2'
     val = 1
-    doseVec = np.array([0.1])
+    counts = [IL2Ra, IL2RB, epitope]
+    doseVec = np.array(dose)
 
     recXaff = np.power(10, recXaff)
 
