@@ -3,7 +3,7 @@ This creates Figure 5, used to find optimal epitope classifier.
 """
 from os.path import dirname, join
 from .common import getSetup
-from ..selectivityFuncs import getSampleAbundances, optimizeDesign, selecCalc
+from ..selectivityFuncs import getSampleAbundances, optimizeDesign, selecCalc, get_rec_vecs
 from ..imports import importCITE
 from copy import copy
 import pandas as pd
@@ -35,9 +35,12 @@ def makeFigure():
 
     for i, epitope in enumerate(epitopesDF['Epitope']):
         # New form
-        optSelectivity = 1 / (optimizeDesign(targCell, offTCells, epitopesDF, epitope))
+        optSelectivity = 1 / (optimizeDesign(targCell, offTCells, epitopesDF, epitope, 0.1))[0]
         epitopesDF.loc[epitopesDF['Epitope'] == epitope, 'Selectivity'] = optSelectivity  # Store selectivity in DF to be used for plots
-    baseSelectivity = 1 / (selecCalc(epitopesDF, targCell, offTCells))
+        print(optSelectivity)
+        baseSelectivity = 1 / (selecCalc(epitopesDF, targCell, offTCells))
+        print(baseSelectivity)
+
 
     # generate figures
     # bar plot of each epitope
