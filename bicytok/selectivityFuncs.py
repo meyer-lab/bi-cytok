@@ -187,8 +187,8 @@ def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float):
 
     recXaff = x
 
-    targetBound = np.sum(bispecOpt_Vec(targRecs[:, 0], targRecs[:, 1], targRecs[:, 2], recXaff, dose))
-    offTargetBound = np.sum(bispecOpt_Vec(offTRecs[:, 0], offTRecs[:, 1], offTRecs[:, 2], recXaff, dose))
+    targetBound = np.sum(bispecOpt_Vec(targRecs[0, :], targRecs[1, :], targRecs[2, :], recXaff, dose))
+    offTargetBound = np.sum(bispecOpt_Vec(offTRecs[1, :], offTRecs[1, :], offTRecs[2, :], recXaff, dose))
     targetBound /= targRecs.shape[0]
     offTargetBound /= offTRecs.shape[0]
 
@@ -237,18 +237,24 @@ def selecCalc(df: pd.DataFrame, targCell: string, offTCells: list):
 
     cd25DF = df.loc[(df.Epitope == 'CD25')]
     cd122DF = df.loc[(df.Epitope == 'CD122')]
+    targCellCount = 0
+    offTCellCount = 0
 
     for i, cd25Count in enumerate(cd25DF[targCell].item()):
         cd122Count = cd122DF[targCell].item()[i]
         counts = [cd25Count, cd122Count]
         targetBound += cytBindingModel_basicSelec(counts)
+        targCellCount += 1
     for cellT in offTCells:
         for i, cd25Count in enumerate(cd25DF[cellT].item()):
             cd122Count = cd122DF[cellT].item()[i]
             counts = [cd25Count, cd122Count]
             offTargetBound += cytBindingModel_basicSelec(counts)
+            offTCellCount += 1
+    print(offTCellCount)
+    print(targCellCount)
 
-    return (offTargetBound) / (targetBound)
+    return (offTargetBound / offTCellCount) / (targetBound / targCellCount)
 
 
 cellDict = {"CD4 Naive": "Thelper",
@@ -306,7 +312,6 @@ def get_rec_vecs(df: pd.DataFrame, targCell: string, offTCells: list, epitope: s
     cd122DF = df.loc[(df.Epitope == 'CD122')]
     epitopeDF = df.loc[(df.Epitope == epitope)]
 
-    Tcells = 0
     cd25CountTarg = np.zeros((epitopeDF[targCell].item().size))
     cd122CountTarg = np.zeros((epitopeDF[targCell].item().size))
     epCountvecTarg = np.zeros((epitopeDF[targCell].item().size))
