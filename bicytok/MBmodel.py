@@ -5,7 +5,7 @@ Implementation of a simple multivalent binding model.
 from os.path import dirname, join
 import numpy as np
 import pandas as pd
-from valentbind import polyc
+from .BindingMod import polyc
 from .imports import getBindDict, importReceptors
 
 path_here = dirname(dirname(__file__))
@@ -167,5 +167,5 @@ def cytBindingModel_bispecOpt(IL2Ra, IL2RB, epitope, recXaff, dose, x=False):
         if x:
             output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val, val]], [1.0], Affs)[0][1]
         else:
-            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[0][1]  # IL2RB binding only
+            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]  # IL2RB binding only
     return output
