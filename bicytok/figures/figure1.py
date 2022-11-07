@@ -15,5 +15,4 @@ def makeFigure():
     """Get a list of the axis objects and create a figure"""
     ax, f = getSetup((9, 12), (1, 1))
 
-
     return f
