@@ -38,8 +38,8 @@ def makeFigure():
         optSelectivity = 1 / (optimizeDesign(targCell, offTCells, epitopesDF, epitope, 0.1))[0]
         epitopesDF.loc[epitopesDF['Epitope'] == epitope, 'Selectivity'] = optSelectivity  # Store selectivity in DF to be used for plots
         print(optSelectivity)
-        baseSelectivity = 1 / (selecCalc(epitopesDF, targCell, offTCells))
-        print(baseSelectivity)
+    baseSelectivity = 1 / (selecCalc(epitopesDF, targCell, offTCells))
+    print(baseSelectivity)
 
 
     # generate figures
