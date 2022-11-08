@@ -197,7 +197,7 @@ def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float):
 
 
 def optimizeDesign(targCell: string, offTCells: list, selectedDF: pd.DataFrame, epitope: string, dose: float):
-    """ A general purpose optimizer used to minimize selectivity output by varying affinity parameter.
+    """ A general purzse optimizer used to minimize selectivity output by varying affinity parameter.
     Args:
         targCell: string cell type which is target and signaling is desired (basis of selectivity)
         offTCells: list of strings of cell types for which signaling is undesired

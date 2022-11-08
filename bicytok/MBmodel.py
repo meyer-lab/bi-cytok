@@ -74,6 +74,7 @@ def cytBindingModel_basicSelec(counts, x=False, date=False):
         if x:
             output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[1][0][1]
         else:
+            print(dose / 1e9, getKxStar(), recCount, [[val, val]], Affs)
             output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[1][0][1]  # IL2RB binding only
     return output
 
