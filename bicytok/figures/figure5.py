@@ -3,7 +3,7 @@ This creates Figure 5, used to find optimal epitope classifier.
 """
 from os.path import dirname, join
 from .common import getSetup
-from ..selectivityFuncs import getSampleAbundances, optimizeDesign, selecCalc, get_rec_vecs
+from ..selectivityFuncs import getSampleAbundances, optimizeDesign, selecCalc, get_rec_vecs, minSelecFunc
 from ..imports import importCITE
 from copy import copy
 import pandas as pd
@@ -32,14 +32,17 @@ def makeFigure():
     # EpitopeDF now contains a data of single cell abundances for each cell type for each epitope
     epitopesDF["Selectivity"] = -1
     # New column which will hold selectivity per epitope
+    targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, epitopes[0])
+    targRecs[2, :] = 0
+    offTRecs[2, :] = 0
+    baseSelectivity = 1 / minSelecFunc(1e1, targRecs, offTRecs, 0.1)
+    print(baseSelectivity)
 
     for i, epitope in enumerate(epitopesDF['Epitope']):
         # New form
         optSelectivity = 1 / (optimizeDesign(targCell, offTCells, epitopesDF, epitope, 0.1))[0]
         epitopesDF.loc[epitopesDF['Epitope'] == epitope, 'Selectivity'] = optSelectivity  # Store selectivity in DF to be used for plots
         print(optSelectivity)
-    baseSelectivity = 1 / (selecCalc(epitopesDF, targCell, offTCells))
-    print(baseSelectivity)
 
 
     # generate figures
