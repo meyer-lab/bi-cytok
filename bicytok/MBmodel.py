@@ -141,19 +141,19 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
 def cytBindingModel_bispecOpt(IL2Ra, IL2RB, epitope, recXaff, dose, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     mut = 'IL2'
-    val = 1
+    val = 2
     counts = [IL2Ra, IL2RB, epitope]
     doseVec = np.array(dose)
 
-    recXaff = np.power(10, recXaff)
+    #recXaff = np.power(10, recXaff)
+    recXaff = [8.0, 8.0, 8.0]
 
     recCount = np.ravel(counts)
 
-    mutAffDF = pd.read_csv(join(path_here, "bicytok/data/WTmutAffData.csv"))
-    Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
-    Affs = np.power(np.array([Affs["IL2RaKD"].values, Affs["IL2RBGKD"].values]) / 1e9, -1)
-    Affs = np.reshape(Affs, (1, -1))
-    Affs = np.append(Affs, recXaff)
+    Affs = pd.DataFrame()
+    Affs = np.append(Affs, recXaff[0])
+    Affs = np.append(Affs, recXaff[1])
+    Affs = np.append(Affs, recXaff[2])
     holder = np.full((3, 3), 1e2)
     np.fill_diagonal(holder, Affs)
     Affs = holder
@@ -162,11 +162,13 @@ def cytBindingModel_bispecOpt(IL2Ra, IL2RB, epitope, recXaff, dose, x=False):
 
     if doseVec.size == 1:
         doseVec = np.array([doseVec])
-    output = np.zeros(doseVec.size)
+    output = [np.zeros(doseVec.size), np.zeros(doseVec.size), np.zeros(doseVec.size)]
 
     for i, dose in enumerate(doseVec):
         if x:
             output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
         else:
-            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]  # IL2RB binding only
-    return output
+            output[0][i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][0]
+            output[1][i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
+            output[2][i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][2]
+    return output[0]

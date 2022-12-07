@@ -187,6 +187,9 @@ def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float):
 
     recXaff = x
 
+    print('bispecOpt_Vec')
+    print(bispecOpt_Vec(targRecs[0, :], targRecs[1, :], targRecs[2, :], recXaff, dose))
+
     targetBound = np.sum(bispecOpt_Vec(targRecs[0, :], targRecs[1, :], targRecs[2, :], recXaff, dose))
     offTargetBound = np.sum(bispecOpt_Vec(offTRecs[1, :], offTRecs[1, :], offTRecs[2, :], recXaff, dose))
     targetBound /= targRecs.shape[0]
@@ -210,12 +213,14 @@ def optimizeDesign(targCell: string, offTCells: list, selectedDF: pd.DataFrame, 
     if targCell == "NK":
         X0 = [6.0, 8]
     else:
-        X0 = [9.0]
+        X0 = [8.0]
 
     optBnds = Bounds(np.full_like(X0, 6.0), np.full_like(X0, 9.0))
     targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, epitope)
     print('Optimize')
+    print(minSelecFunc(X0, targRecs, offTRecs, dose))
     optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(targRecs, offTRecs, dose), jac="3-point")
+    print(optimized)
     print('Done')
     optSelectivity = optimized.fun
     optParams = optimized.x
