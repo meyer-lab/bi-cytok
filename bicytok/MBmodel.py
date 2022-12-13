@@ -138,15 +138,14 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
     return output
 
 
-def cytBindingModel_bispecOpt(IL2Ra, IL2RB, epitope, recXaff, dose, x=False):
+def cytBindingModel_bispecOpt(IL2Ra, IL2RB, epitope, recXaff1, recXaff2, recXaff3, dose, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     mut = 'IL2'
     val = 2
     counts = [IL2Ra, IL2RB, epitope]
     doseVec = np.array(dose)
 
-    #recXaff = np.power(10, recXaff)
-    recXaff = [8.0, 8.0, 8.0]
+    recXaff = [np.power(10, recXaff1), np.power(10, recXaff2), np.power(10, recXaff3)]
 
     recCount = np.ravel(counts)
 
@@ -162,13 +161,11 @@ def cytBindingModel_bispecOpt(IL2Ra, IL2RB, epitope, recXaff, dose, x=False):
 
     if doseVec.size == 1:
         doseVec = np.array([doseVec])
-    output = [np.zeros(doseVec.size), np.zeros(doseVec.size), np.zeros(doseVec.size)]
+    output = np.zeros(doseVec.size)
 
     for i, dose in enumerate(doseVec):
         if x:
             output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
         else:
-            output[0][i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][0]
-            output[1][i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
-            output[2][i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][2]
-    return output[0]
+            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
+    return output
