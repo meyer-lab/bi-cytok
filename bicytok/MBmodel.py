@@ -168,4 +168,6 @@ def cytBindingModel_bispecOpt(IL2Ra, IL2RB, epitope, recXaff1, recXaff2, recXaff
             output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
         else:
             output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
+    
+    #print(output)
     return output
