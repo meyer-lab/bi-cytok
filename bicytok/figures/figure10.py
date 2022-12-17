@@ -21,17 +21,14 @@ def makeFigure():
     targCell = 'Treg'
     cells = np.array(['CD14 Mono', 'CD4 TCM', 'CD8 Naive', 'NK', 'CD8 TEM', 'CD16 Mono',
     'B intermediate', 'CD4 Naive', 'CD4 CTL', 'B naive', 'CD8 TCM', 'B memory', 'CD8 Proliferating', 
-    'Treg', 'CD4 TEM', 'NK Proliferating', 
-    'NK_CD56bright', 'CD4 Proliferating', 'ILC'])
+    'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright', 'CD4 Proliferating', 'ILC'])
     offTCells = cells[cells != targCell]
 
-    doseVec = np.logspace(-3, 4, num=20)
+    doseVec = np.logspace(-3, 3, num=5)
     epitopesDF = getSampleAbundances(epitopes, cells)
     df = pd.DataFrame(columns=['Epitope', 'Dose', 'Affinity (IL2Ra)', 'Affinity (IL2Rb)', 'Affinity (epitope)', 'Selectivity'])
 
-    output = np.zeros(doseVec.size)
-
-    for j, dose in enumerate(doseVec):
+    for _, dose in enumerate(doseVec):
         optParams = optimizeDesign(targCell, offTCells, epitopesDF, epitopes[17], dose)
 
         data = {'Epitope': epitopes[17],

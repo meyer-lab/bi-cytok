@@ -173,7 +173,7 @@ def bindingCalc(df: pd.DataFrame, targCell: string, offTCells: list, betaAffs: n
 bispecOpt_Vec = np.vectorize(cytBindingModel_bispecOpt)
 
 
-def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float):
+def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float, IL2Ra: bool):
     """Serves as the function which will have its return value minimized to get optimal selectivity
     To be used in conjunction with optimizeDesign()
     Args:
@@ -187,8 +187,8 @@ def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float):
 
     recXaff = x
 
-    targetBound = np.sum(bispecOpt_Vec(targRecs[0, :], targRecs[1, :], targRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose))
-    offTargetBound = np.sum(bispecOpt_Vec(offTRecs[1, :], offTRecs[1, :], offTRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose))
+    targetBound = np.sum(bispecOpt_Vec(targRecs[0, :], targRecs[1, :], targRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, CD25=IL2Ra))
+    offTargetBound = np.sum(bispecOpt_Vec(offTRecs[1, :], offTRecs[1, :], offTRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, CD25=IL2Ra))
     targetBound /= targRecs.shape[0]
     offTargetBound /= offTRecs.shape[0]
 
@@ -214,8 +214,12 @@ def optimizeDesign(targCell: string, offTCells: list, selectedDF: pd.DataFrame, 
 
     optBnds = Bounds(np.full_like(X0, [6.0, 6.0, 6.0]), np.full_like(X0, [9.0, 9.0, 9.0]))
     targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, epitope)
+    if epitope == "CD25":
+        IL2Ra = True
+    else:
+        IL2Ra = False
     print('Optimize')
-    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(targRecs, offTRecs, dose), jac="3-point")
+    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(targRecs, offTRecs, dose, IL2Ra), jac="3-point")
     print('Done')
     optSelectivity = optimized.fun
     optParams = optimized.x
