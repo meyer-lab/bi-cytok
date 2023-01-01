@@ -26,7 +26,7 @@ def makeFigure():
 
     doseVec = np.logspace(-3, 3, num=20)
     epitopesDF = getSampleAbundances(epitopes, cells)
-    df = pd.DataFrame(columns=['Epitope', 'Dose', 'Affinity (IL2Ra)', 'Affinity (IL2Rb)', 'Affinity (epitope)', 'Selectivity'])
+    df = pd.DataFrame(columns=['Epitope', 'Dose', 'Affinity (IL2Ra)', 'Affinity (IL2Rb)', 'Affinity (epitope)', 'Selectivity', 'Ligand'])
     targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, epitopes[17])
 
     for _, dose in enumerate(doseVec):
@@ -38,11 +38,11 @@ def makeFigure():
             'Affinity (IL2Ra)': optParams[1][0],
             'Affinity (IL2Rb)': optParams[1][1],
             'Affinity (epitope)': optParams[1][2],
-            'Selectivity': optParams[0],
+            'Selectivity': 1 / optParams[0],
             'Ligand': "Optimized"
         }
 
-        df2 = pd.DataFrame(data, columns=['Epitope', 'Dose', 'Affinity (IL2Ra)', 'Affinity (IL2Rb)', 'Affinity (epitope)', 'Selectivity'])
+        df2 = pd.DataFrame(data, columns=['Epitope', 'Dose', 'Affinity (IL2Ra)', 'Affinity (IL2Rb)', 'Affinity (epitope)', 'Selectivity', 'Ligand'])
         df = df.append(df2, ignore_index=True)
 
         data = {'Epitope': epitopes[17],
@@ -50,7 +50,7 @@ def makeFigure():
             'Affinity (IL2Ra)': 8.222,
             'Affinity (IL2Rb)': 7.65072247,
             'Affinity (epitope)': 9.14874165,
-            'Selectivity': LD,
+            'Selectivity': 1 / LD,
             'Ligand': "Live/Dead"
         }
 
