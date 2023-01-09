@@ -138,25 +138,33 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
     return output
 
 
-def cytBindingModel_bispecOpt(IL2Ra, IL2RB, epitope, recXaff, dose, x=False):
+def cytBindingModel_bispecOpt(IL2Ra, IL2RB, epitope, recXaff1, recXaff2, recXaff3, dose, CD25=False, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
-    mut = 'IL2'
-    val = 1
-    counts = [IL2Ra, IL2RB, epitope]
+    val = 2
     doseVec = np.array(dose)
+    recXaff = [np.power(10, recXaff1), np.power(10, recXaff2), np.power(10, recXaff3)]
 
-    recXaff = np.power(10, recXaff)
+    Affs = pd.DataFrame()
+    Affs = np.append(Affs, recXaff[0])
+    Affs = np.append(Affs, recXaff[1])
+    Affs = np.append(Affs, recXaff[2])
 
-    recCount = np.ravel(counts)
+    if CD25:
+        holder = np.full((3, 2), 1e2)
+        holder[0, 0] = Affs[0]
+        holder[1, 1] = Affs[1]
+        holder[2, 0] = Affs[2]
+        counts = [IL2Ra, IL2RB]
+    else:
+        Affs = np.append(Affs, recXaff[0])
+        Affs = np.append(Affs, recXaff[1])
+        Affs = np.append(Affs, recXaff[2])
+        holder = np.full((3, 3), 1e2)
+        np.fill_diagonal(holder, Affs)
+        counts = [IL2Ra, IL2RB, epitope]
 
-    mutAffDF = pd.read_csv(join(path_here, "bicytok/data/WTmutAffData.csv"))
-    Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
-    Affs = np.power(np.array([Affs["IL2RaKD"].values, Affs["IL2RBGKD"].values]) / 1e9, -1)
-    Affs = np.reshape(Affs, (1, -1))
-    Affs = np.append(Affs, recXaff)
-    holder = np.full((3, 3), 1e2)
-    np.fill_diagonal(holder, Affs)
     Affs = holder
+    recCount = np.ravel(counts)
 
     # Check that values are in correct placement, can invert
 
@@ -168,5 +176,7 @@ def cytBindingModel_bispecOpt(IL2Ra, IL2RB, epitope, recXaff, dose, x=False):
         if x:
             output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
         else:
-            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]  # IL2RB binding only
+            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
+    
+    #print(output)
     return output

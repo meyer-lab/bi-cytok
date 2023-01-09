@@ -38,7 +38,7 @@ def getSampleAbundances(epitopes: list, cellList: list):
     for cellType in cellList:
         cellSample = []
         for i in np.arange(10):  # Averaging results of 10
-            sampleDF = CITE_DF.sample(1000)  # Of 1000 cells in the sample...
+            sampleDF = CITE_DF.sample(1000, random_state=42)  # Of 1000 cells in the sample...
             sampleSize = int(len(sampleDF.loc[sampleDF["CellType2"] == cellType]))  # ...How many are this cell type
             cellSample.append(sampleSize)  # Sample size is equivalent to represented cell count out of 1000 cells
         meanSize = np.mean(cellSample)
@@ -49,7 +49,7 @@ def getSampleAbundances(epitopes: list, cellList: list):
         # Generate sample size
         sampleSize = sampleSizes[i]
         # Create data frame of this size at random selection
-        cellDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType].sample(sampleSize)
+        cellDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType].sample(sampleSize, random_state=42)
 
         cellType_abdundances = []
         # For each epitope (being done on per cell basis)
@@ -173,7 +173,7 @@ def bindingCalc(df: pd.DataFrame, targCell: string, offTCells: list, betaAffs: n
 bispecOpt_Vec = np.vectorize(cytBindingModel_bispecOpt)
 
 
-def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float):
+def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float, IL2Ra: bool):
     """Serves as the function which will have its return value minimized to get optimal selectivity
     To be used in conjunction with optimizeDesign()
     Args:
@@ -187,8 +187,8 @@ def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float):
 
     recXaff = x
 
-    targetBound = np.sum(bispecOpt_Vec(targRecs[0, :], targRecs[1, :], targRecs[2, :], recXaff, dose))
-    offTargetBound = np.sum(bispecOpt_Vec(offTRecs[1, :], offTRecs[1, :], offTRecs[2, :], recXaff, dose))
+    targetBound = np.sum(bispecOpt_Vec(targRecs[0, :], targRecs[1, :], targRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, CD25=IL2Ra))
+    offTargetBound = np.sum(bispecOpt_Vec(offTRecs[1, :], offTRecs[1, :], offTRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, CD25=IL2Ra))
     targetBound /= targRecs.shape[0]
     offTargetBound /= offTRecs.shape[0]
 
@@ -196,7 +196,7 @@ def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float):
     return selectivity
 
 
-def optimizeDesign(targCell: string, offTCells: list, selectedDF: pd.DataFrame, epitope: string, dose: float):
+def optimizeDesign(targCell: string, offTCells: list, selectedDF: pd.DataFrame, epitope: string, dose: float, prevOptAffs: list):
     """ A general purzse optimizer used to minimize selectivity output by varying affinity parameter.
     Args:
         targCell: string cell type which is target and signaling is desired (basis of selectivity)
@@ -210,12 +210,16 @@ def optimizeDesign(targCell: string, offTCells: list, selectedDF: pd.DataFrame, 
     if targCell == "NK":
         X0 = [6.0, 8]
     else:
-        X0 = [9.0]
+        X0 = prevOptAffs
 
-    optBnds = Bounds(np.full_like(X0, 6.0), np.full_like(X0, 9.0))
+    optBnds = Bounds(np.full_like(X0, [6.0, 6.0, 6.0]), np.full_like(X0, [9.0, 9.0, 9.0]))
     targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, epitope)
+    if epitope == "CD25":
+        IL2Ra = True
+    else:
+        IL2Ra = False
     print('Optimize')
-    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(targRecs, offTRecs, dose), jac="3-point")
+    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(targRecs, offTRecs, dose, IL2Ra), jac="3-point")
     print('Done')
     optSelectivity = optimized.fun
     optParams = optimized.x
