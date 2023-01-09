@@ -19,9 +19,8 @@ def makeFigure():
     epitopes = list(epitopesList['Epitope'].unique())
 
     targCell = 'Treg'
-    cells = np.array(['CD14 Mono', 'CD4 TCM', 'CD8 Naive', 'NK', 'CD8 TEM', 'CD16 Mono',
-    'B intermediate', 'CD4 Naive', 'CD4 CTL', 'B naive', 'CD8 TCM', 'B memory', 'CD8 Proliferating', 
-    'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright', 'CD4 Proliferating', 'ILC'])
+    cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
+    'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
     offTCells = cells[cells != targCell]
 
     doseVec = np.logspace(-3, 3, num=20)
