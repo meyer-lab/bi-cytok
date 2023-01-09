@@ -196,7 +196,7 @@ def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float, 
     return selectivity
 
 
-def optimizeDesign(targCell: string, offTCells: list, selectedDF: pd.DataFrame, epitope: string, dose: float):
+def optimizeDesign(targCell: string, offTCells: list, selectedDF: pd.DataFrame, epitope: string, dose: float, prevOptAffs: list):
     """ A general purzse optimizer used to minimize selectivity output by varying affinity parameter.
     Args:
         targCell: string cell type which is target and signaling is desired (basis of selectivity)
@@ -210,7 +210,7 @@ def optimizeDesign(targCell: string, offTCells: list, selectedDF: pd.DataFrame, 
     if targCell == "NK":
         X0 = [6.0, 8]
     else:
-        X0 = [8.0, 8.0, 8.0]
+        X0 = prevOptAffs
 
     optBnds = Bounds(np.full_like(X0, [6.0, 6.0, 6.0]), np.full_like(X0, [9.0, 9.0, 9.0]))
     targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, epitope)

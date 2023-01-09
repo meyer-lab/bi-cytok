@@ -29,8 +29,10 @@ def makeFigure():
     targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, epitopes[17])
 
     for _, dose in enumerate(doseVec):
-        optParams = optimizeDesign(targCell, offTCells, epitopesDF, epitopes[17], dose)
+        optParams = optimizeDesign(targCell, offTCells, epitopesDF, epitopes[17], dose, prevOptAffs)
         LD = minSelecFunc([8.222, 7.65072247, 9.14874165], targRecs, offTRecs, dose, True)
+
+        prevOptAffs = [optParams[1][0], optParams[1][1], optParams[1][2]]
 
         data = {'Epitope': epitopes[17],
             'Dose': [dose],
