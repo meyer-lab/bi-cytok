@@ -28,6 +28,8 @@ def makeFigure():
     df = pd.DataFrame(columns=['Epitope', 'Dose', 'Affinity (IL2Ra)', 'Affinity (IL2Rb)', 'Affinity (epitope)', 'Selectivity', 'Ligand'])
     targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, epitopes[17])
 
+    prevOptAffs = [8.0, 8.0, 8.0]
+
     for _, dose in enumerate(doseVec):
         optParams = optimizeDesign(targCell, offTCells, epitopesDF, epitopes[17], dose, prevOptAffs)
         LD = minSelecFunc([8.222, 7.65072247, 9.14874165], targRecs, offTRecs, dose, True)
