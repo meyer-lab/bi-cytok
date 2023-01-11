@@ -188,7 +188,7 @@ def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float, 
     recXaff = x
 
     targetBound = np.sum(bispecOpt_Vec(targRecs[0, :], targRecs[1, :], targRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, CD25=IL2Ra))
-    offTargetBound = np.sum(bispecOpt_Vec(offTRecs[1, :], offTRecs[1, :], offTRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, CD25=IL2Ra))
+    offTargetBound = np.sum(bispecOpt_Vec(offTRecs[0, :], offTRecs[1, :], offTRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, CD25=IL2Ra))
     targetBound /= targRecs.shape[0]
     offTargetBound /= offTRecs.shape[0]
 
