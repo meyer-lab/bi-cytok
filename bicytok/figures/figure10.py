@@ -13,7 +13,7 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
-    ax, f = getSetup((6, 5), (2, 2))
+    ax, f = getSetup((12, 3), (1, 5))
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList['Epitope'].unique())
@@ -26,6 +26,7 @@ def makeFigure():
     doseVec = np.logspace(-3, 3, num=20)
     epitopesDF = getSampleAbundances(epitopes, cells)
     df = pd.DataFrame(columns=['Epitope', 'Dose', 'Affinity (IL2Ra)', 'Affinity (IL2Rb)', 'Affinity (epitope)', 'Selectivity', 'Ligand'])
+    df2 = pd.DataFrame(columns=['Epitope', 'Dose', 'Target Bound', 'Ligand'])
     targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, epitopes[17])
 
     prevOptAffs = [8.0, 8.0, 8.0]
@@ -45,8 +46,8 @@ def makeFigure():
             'Ligand': "Optimized"
         }
 
-        df2 = pd.DataFrame(data, columns=['Epitope', 'Dose', 'Affinity (IL2Ra)', 'Affinity (IL2Rb)', 'Affinity (epitope)', 'Selectivity', 'Ligand'])
-        df = df.append(df2, ignore_index=True)
+        df_temp = pd.DataFrame(data, columns=['Epitope', 'Dose', 'Affinity (IL2Ra)', 'Affinity (IL2Rb)', 'Affinity (epitope)', 'Selectivity', 'Ligand'])
+        df = df.append(df_temp, ignore_index=True)
 
         data = {'Epitope': epitopes[17],
             'Dose': [dose],
@@ -57,16 +58,36 @@ def makeFigure():
             'Ligand': "Live/Dead"
         }
 
-        df3 = pd.DataFrame(data, columns=['Epitope', 'Dose', 'Affinity (IL2Ra)', 'Affinity (IL2Rb)', 'Affinity (epitope)', 'Selectivity', 'Ligand'])
-        df = df.append(df3, ignore_index=True)
+        df_temp = pd.DataFrame(data, columns=['Epitope', 'Dose', 'Affinity (IL2Ra)', 'Affinity (IL2Rb)', 'Affinity (epitope)', 'Selectivity', 'Ligand'])
+        df = df.append(df_temp, ignore_index=True)
+
+        data = {'Epitope': epitopes[17],
+            'Dose': [dose],
+            'Target Bound': optParams[2],
+            'Ligand': "Optimized"
+        }
+
+        df_temp = pd.DataFrame(data, columns=['Epitope', 'Dose', 'Target Bound', 'Ligand'])
+        df2 = df2.append(df_temp, ignore_index=True)
+
+        data = {'Epitope': epitopes[17],
+            'Dose': [dose],
+            'Target Bound': minSelecFunc.targetBound,
+            'Ligand': "Live/Dead"
+        }
+
+        df_temp = pd.DataFrame(data, columns=['Epitope', 'Dose', 'Target Bound', 'Ligand'])
+        df2 = df2.append(df_temp, ignore_index=True)
 
     sns.lineplot(data=df, x='Dose', y='Affinity (IL2Ra)', hue='Ligand', ax=ax[0])
     sns.lineplot(data=df, x='Dose', y='Affinity (IL2Rb)', hue='Ligand', ax=ax[1])
     sns.lineplot(data=df, x='Dose', y='Affinity (epitope)', hue='Ligand', ax=ax[2])
     sns.lineplot(data=df, x='Dose', y='Selectivity', hue='Ligand', ax=ax[3])
+    sns.lineplot(data=df2, x='Dose', y='Target Bound', hue='Ligand', ax=ax[4])
     ax[0].set(xscale='log')
     ax[1].set(xscale='log')
     ax[2].set(xscale='log')
     ax[3].set(xscale='log')
+    ax[4].set(xscale='log')
 
     return f
