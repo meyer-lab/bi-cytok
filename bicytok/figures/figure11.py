@@ -15,7 +15,7 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
-    ax, f = getSetup((4, 3), (1, 1))
+    ax, f = getSetup((8, 3), (1, 2))
 
     cells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM',
     'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright']
@@ -28,7 +28,7 @@ def makeFigure():
     print(bindings)
 
     palette = sns.color_palette("husl", 10)
-    sns.barplot(data=bindings, x='Cell Type', y='IL2Rb Bound', palette=palette)
-    ax[0].set_xticklabels(labels=ax[0].get_xticklabels(), rotation=45)
+    sns.barplot(data=bindings, x='Cell Type', y='IL2Rb Bound', palette=palette, ax=ax[0])
+    ax[0].set_xticklabels(labels=ax[0].get_xticklabels(), rotation=45, horizontalalignment='right')
 
     return f
