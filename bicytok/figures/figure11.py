@@ -15,7 +15,7 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
-    ax, f = getSetup((9, 12), (1, 1))
+    ax, f = getSetup((4, 3), (1, 1))
 
     cells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM',
     'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright']
@@ -25,8 +25,21 @@ def makeFigure():
     epitopesDF = getSampleAbundances(epitopes, cells)
 
     bindings = get_cell_bindings([8.5, 6.0, 8.5], cells, epitopesDF, epitopes[17], 0.1, False)
-
+    bindings['Percent IL2Rb Bound'] = (bindings['IL2Rb Bound'] / bindings['IL2Rb Bound'].sum()) * 100
+    bindings['Formatted Percent'] = round(bindings['Percent IL2Rb Bound'], 2).astype(str) + '%'
     print(bindings)
-    sns.barplot(data=bindings, x='Cell Type', y='IL2Rb Bound')
+
+    palette = sns.color_palette("husl", 10)
+    sns.barplot(data=bindings, x='Cell Type', y='IL2Rb Bound', palette=palette)
+    ax[0].set_xticklabels(labels=ax[0].get_xticklabels(), rotation=45)
+
+    rects = ax[0].patches
+    labels = bindings['Formatted Percent']
+ 
+    for rect, label in zip(rects, labels):
+        height = rect.get_height()
+        ax[0].text(
+            rect.get_x() + rect.get_width() / 2, height, label, ha='center', va='bottom', size='6'
+        )
 
     return f
