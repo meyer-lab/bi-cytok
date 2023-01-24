@@ -166,6 +166,8 @@ def cytBindingModel_bispecOpt(IL2Ra, IL2RB, epitope, recXaff1, recXaff2, recXaff
     Affs = holder
     recCount = np.ravel(counts)
 
+    cytBindingModel_bispecOpt.IL2Rb = counts[1]
+
     # Check that values are in correct placement, can invert
 
     if doseVec.size == 1:

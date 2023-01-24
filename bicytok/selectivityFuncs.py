@@ -337,6 +337,7 @@ def get_rec_vecs(df: pd.DataFrame, targCell: string, offTCells: list, epitope: s
 
 def get_cell_bindings(affs: float, cells: np.array, selectedDF: pd.DataFrame, epitope: string, dose: float, IL2Ra: bool):
     df = pd.DataFrame(columns=['Cell Type', 'IL2Rb Bound'])
+    totalIL2Rb = 0
 
     for cell in cells:
         cd25DF = selectedDF.loc[(selectedDF.Epitope == 'CD25')]
@@ -355,6 +356,7 @@ def get_cell_bindings(affs: float, cells: np.array, selectedDF: pd.DataFrame, ep
         recs = np.array([cd25CountTarg, cd122CountTarg, epCountvecTarg])
 
         IL2RbBound = np.sum(bispecOpt_Vec(recs[0, :], recs[1, :], recs[2, :], affs[0], affs[1], affs[2], dose, CD25=IL2Ra))
+        totalIL2Rb += cytBindingModel_bispecOpt.IL2Rb
 
         data = {'Cell Type': [cell],
             'IL2Rb Bound': [IL2RbBound]
@@ -362,5 +364,5 @@ def get_cell_bindings(affs: float, cells: np.array, selectedDF: pd.DataFrame, ep
         df_temp = pd.DataFrame(data, columns=['Cell Type', 'IL2Rb Bound'])
         df = df.append(df_temp, ignore_index=True)
     
-    return df
+    return df, totalIL2Rb
 
