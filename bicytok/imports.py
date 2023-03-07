@@ -4,6 +4,7 @@ from functools import lru_cache
 from os.path import join
 import numpy as np
 import pandas as pd
+from zipfile import ZipFile
 
 path_here = os.path.dirname(os.path.dirname(__file__))
 
@@ -73,3 +74,9 @@ def importCITE():
     """Downloads all surface markers and cell types"""
     CITEmarkerDF = pd.read_csv(join(path_here, "bicytok/data/CITEdata_SurfMarkers.zip"))
     return CITEmarkerDF
+
+
+def importRNACITE():
+    """Downloads all surface markers and cell types"""
+    RNAsurfDF = pd.read_csv(ZipFile(join(path_here, "bicytok/data/RNAseqSurface.csv.zip")).open("RNAseqSurface.csv"))
+    return RNAsurfDF
