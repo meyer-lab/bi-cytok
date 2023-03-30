@@ -18,6 +18,8 @@ def makeFigure():
     ax, f = getSetup((8, 3), (1, 2))
 
     secondary = 'CD127'
+    secondaryAff = 7.14
+    valency = 4
 
     cells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM',
     'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright']
@@ -26,7 +28,7 @@ def makeFigure():
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells)
 
-    bindings = get_cell_bindings([8.5, 6.0, 8.5], cells, epitopesDF, secondary, 'CD25', 0.1, False)
+    bindings = get_cell_bindings([8.5, secondaryAff, 8.5], cells, epitopesDF, secondary, 'CD25', 0.1, valency, False)
     bindings['Percent Bound of Secondary'] = (bindings['Secondary Bound'] / bindings['Total Secondary']) * 100
     print(bindings)
 
