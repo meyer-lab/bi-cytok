@@ -137,8 +137,7 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
 
     return output
 
-
-def cytBindingModel_bispecOpt(IL2Ra, IL2RB, epitope, recXaff1, recXaff2, recXaff3, dose, CD25=False, x=False):
+def cytBindingModel_bispecOpt(IL2Ra, secondary, epitope, recXaff1, recXaff2, recXaff3, dose, CD25=False, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     val = 2
     doseVec = np.array(dose)
@@ -154,19 +153,19 @@ def cytBindingModel_bispecOpt(IL2Ra, IL2RB, epitope, recXaff1, recXaff2, recXaff
         holder[0, 0] = Affs[0]
         holder[1, 1] = Affs[1]
         holder[2, 0] = Affs[2]
-        counts = [IL2Ra, IL2RB]
+        counts = [IL2Ra, secondary]
     else:
         Affs = np.append(Affs, recXaff[0])
         Affs = np.append(Affs, recXaff[1])
         Affs = np.append(Affs, recXaff[2])
         holder = np.full((3, 3), 1e2)
         np.fill_diagonal(holder, Affs)
-        counts = [IL2Ra, IL2RB, epitope]
+        counts = [IL2Ra, secondary, epitope]
 
     Affs = holder
     recCount = np.ravel(counts)
 
-    cytBindingModel_bispecOpt.IL2Rb = counts[1]
+    cytBindingModel_bispecOpt.secondary = counts[1]
 
     # Check that values are in correct placement, can invert
 

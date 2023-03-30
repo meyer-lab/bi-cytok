@@ -335,32 +335,36 @@ def get_rec_vecs(df: pd.DataFrame, targCell: string, offTCells: list, epitope: s
 
     return np.array([cd25CountTarg, cd122CountTarg, epCountvecTarg]), np.array([cd25CountOffT, cd122CountOffT, epCountvecOffT])
 
-def get_cell_bindings(affs: float, cells: np.array, selectedDF: pd.DataFrame, epitope: string, dose: float, IL2Ra: bool):
-    df = pd.DataFrame(columns=['Cell Type', 'IL2Rb Bound', 'Total IL2Rb'])
+#CHANGE
+def get_cell_bindings(affs: float, cells: np.array, selectedDF: pd.DataFrame, secondary: string, epitope: string, dose: float, IL2Ra: bool):
+    df = pd.DataFrame(columns=['Cell Type', 'Secondary Bound', 'Total Secondary'])
 
     for cell in cells:
         cd25DF = selectedDF.loc[(selectedDF.Epitope == 'CD25')]
-        cd122DF = selectedDF.loc[(selectedDF.Epitope == 'CD122')]
+        #cd122DF = selectedDF.loc[(selectedDF.Epitope == 'CD122')]
+        secondaryDF = selectedDF.loc[(selectedDF.Epitope == secondary)]
         epitopeDF = selectedDF.loc[(selectedDF.Epitope == epitope)]
 
         cd25CountTarg = np.zeros((epitopeDF[cell].item().size))
-        cd122CountTarg = np.zeros((epitopeDF[cell].item().size))
+        #cd122CountTarg = np.zeros((epitopeDF[cell].item().size))
+        secondaryCountTarg = np.zeros((epitopeDF[cell].item().size))
         epCountvecTarg = np.zeros((epitopeDF[cell].item().size))
 
         for i, epCount in enumerate(epitopeDF[cell].item()):
             cd25CountTarg[i] = cd25DF[cell].item()[i]
-            cd122CountTarg[i] = cd122DF[cell].item()[i]
+            secondaryCountTarg[i] = secondaryDF[cell].item()[i]
             epCountvecTarg[i] = epCount
         
-        recs = np.array([cd25CountTarg, cd122CountTarg, epCountvecTarg])
+        recs = np.array([cd25CountTarg, secondaryCountTarg, epCountvecTarg])
 
-        IL2RbBound = np.sum(bispecOpt_Vec(recs[0, :], recs[1, :], recs[2, :], affs[0], affs[1], affs[2], dose, CD25=IL2Ra))
+        #IL2RbBound = np.sum(bispecOpt_Vec(recs[0, :], recs[1, :], recs[2, :], affs[0], affs[1], affs[2], dose, CD25=IL2Ra))
+        secondaryBound = np.sum(bispecOpt_Vec(recs[0, :], recs[1, :], recs[2, :], affs[0], affs[1], affs[2], dose, CD25=IL2Ra))
 
         data = {'Cell Type': [cell],
-            'IL2Rb Bound': [IL2RbBound],
-            'Total IL2Rb': [cytBindingModel_bispecOpt.IL2Rb]
+            'Secondary Bound': [secondaryBound],
+            'Total Secondary': [cytBindingModel_bispecOpt.secondary]
         }
-        df_temp = pd.DataFrame(data, columns=['Cell Type', 'IL2Rb Bound', 'Total IL2Rb'])
+        df_temp = pd.DataFrame(data, columns=['Cell Type', 'Secondary Bound', 'Total Secondary'])
         df = df.append(df_temp, ignore_index=True)
     
     return df
