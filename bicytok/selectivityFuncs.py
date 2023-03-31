@@ -173,7 +173,7 @@ def bindingCalc(df: pd.DataFrame, targCell: string, offTCells: list, betaAffs: n
 bispecOpt_Vec = np.vectorize(cytBindingModel_bispecOpt)
 
 
-def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float, IL2Ra: bool):
+def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float, valency: int, IL2Ra: bool):
     """Serves as the function which will have its return value minimized to get optimal selectivity
     To be used in conjunction with optimizeDesign()
     Args:
@@ -187,8 +187,8 @@ def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float, 
 
     recXaff = x
 
-    minSelecFunc.targetBound = np.sum(bispecOpt_Vec(targRecs[0, :], targRecs[1, :], targRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, CD25=IL2Ra))
-    offTargetBound = np.sum(bispecOpt_Vec(offTRecs[0, :], offTRecs[1, :], offTRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, CD25=IL2Ra))
+    minSelecFunc.targetBound = np.sum(bispecOpt_Vec(targRecs[0, :], targRecs[1, :], targRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, valency, CD25=IL2Ra))
+    offTargetBound = np.sum(bispecOpt_Vec(offTRecs[0, :], offTRecs[1, :], offTRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, valency, CD25=IL2Ra))
     minSelecFunc.targetBound /= targRecs.shape[0]
     offTargetBound /= offTRecs.shape[0]
 
@@ -196,7 +196,7 @@ def minSelecFunc(x: float, targRecs: np.array, offTRecs: np.array, dose: float, 
     return selectivity
 
 
-def optimizeDesign(targCell: string, offTCells: list, selectedDF: pd.DataFrame, epitope: string, dose: float, prevOptAffs: list):
+def optimizeDesign(targCell: string, offTCells: list, selectedDF: pd.DataFrame, secondary: string, secondaryLB: float, secondaryUB: float, epitope: string, dose: float, valency: int, prevOptAffs: list):
     """ A general purzse optimizer used to minimize selectivity output by varying affinity parameter.
     Args:
         targCell: string cell type which is target and signaling is desired (basis of selectivity)
@@ -212,14 +212,14 @@ def optimizeDesign(targCell: string, offTCells: list, selectedDF: pd.DataFrame, 
     else:
         X0 = prevOptAffs
 
-    optBnds = Bounds(np.full_like(X0, [6.0, 6.0, 6.0]), np.full_like(X0, [9.0, 9.0, 9.0]))
-    targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, epitope)
+    optBnds = Bounds(np.full_like(X0, [6.0, secondaryLB, 6.0]), np.full_like(X0, [9.0, secondaryUB, 9.0]))
+    targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, secondary, epitope)
     if epitope == "CD25":
         IL2Ra = True
     else:
         IL2Ra = False
     print('Optimize')
-    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(targRecs, offTRecs, dose, IL2Ra), jac="3-point")
+    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(targRecs, offTRecs, dose, valency, IL2Ra), jac="3-point")
     print('Done')
     optSelectivity = optimized.fun
     optParams = optimized.x
@@ -310,32 +310,32 @@ def convFactCalc():
     return weightDF
 
 
-def get_rec_vecs(df: pd.DataFrame, targCell: string, offTCells: list, epitope: string):
+def get_rec_vecs(df: pd.DataFrame, targCell: string, offTCells: list, secondary: string, epitope: string):
     """Returns vector of target and off target receptors"""
     cd25DF = df.loc[(df.Epitope == 'CD25')]
-    cd122DF = df.loc[(df.Epitope == 'CD122')]
+    secondaryDF = df.loc[(df.Epitope == secondary)]
     epitopeDF = df.loc[(df.Epitope == epitope)]
 
     cd25CountTarg = np.zeros((epitopeDF[targCell].item().size))
-    cd122CountTarg = np.zeros((epitopeDF[targCell].item().size))
+    secondaryCountTarg = np.zeros((epitopeDF[targCell].item().size))
     epCountvecTarg = np.zeros((epitopeDF[targCell].item().size))
     for i, epCount in enumerate(epitopeDF[targCell].item()):
         cd25CountTarg[i] = cd25DF[targCell].item()[i]
-        cd122CountTarg[i] = cd122DF[targCell].item()[i]
+        secondaryCountTarg[i] = secondaryDF[targCell].item()[i]
         epCountvecTarg[i] = epCount
 
     cd25CountOffT = np.array([])
-    cd122CountOffT = np.array([])
+    secondaryCountOffT = np.array([])
     epCountvecOffT = np.array([])
     for cellT in offTCells:
         for i, epCount in enumerate(epitopeDF[cellT].item()):
             cd25CountOffT = np.append(cd25CountOffT, cd25DF[cellT].item()[i])
-            cd122CountOffT = np.append(cd122CountOffT, cd122DF[cellT].item()[i])
+            secondaryCountOffT = np.append(secondaryCountOffT, secondaryDF[cellT].item()[i])
             epCountvecOffT = np.append(epCountvecOffT, epCount)
 
-    return np.array([cd25CountTarg, cd122CountTarg, epCountvecTarg]), np.array([cd25CountOffT, cd122CountOffT, epCountvecOffT])
+    return np.array([cd25CountTarg, secondaryCountTarg, epCountvecTarg]), np.array([cd25CountOffT, secondaryCountOffT, epCountvecOffT])
 
-def get_cell_bindings(affs: float, cells: np.array, selectedDF: pd.DataFrame, secondary: string, epitope: string, dose: float, IL2Ra: bool):
+def get_cell_bindings(affs: float, cells: np.array, selectedDF: pd.DataFrame, secondary: string, epitope: string, dose: float, valency: int, IL2Ra: bool):
     df = pd.DataFrame(columns=['Cell Type', 'Secondary Bound', 'Total Secondary'])
 
     for cell in cells:
@@ -354,7 +354,7 @@ def get_cell_bindings(affs: float, cells: np.array, selectedDF: pd.DataFrame, se
         
         recs = np.array([cd25CountTarg, secondaryCountTarg, epCountvecTarg])
 
-        secondaryBound = np.sum(bispecOpt_Vec(recs[0, :], recs[1, :], recs[2, :], affs[0], affs[1], affs[2], dose, CD25=IL2Ra))
+        secondaryBound = np.sum(bispecOpt_Vec(recs[0, :], recs[1, :], recs[2, :], affs[0], affs[1], affs[2], dose, valency, CD25=IL2Ra))
 
         data = {'Cell Type': [cell],
             'Secondary Bound': [secondaryBound],
