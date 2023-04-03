@@ -28,7 +28,7 @@ def makeFigure():
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells)
 
-    bindings = get_cell_bindings([8.5, secondaryAff, 8.5], cells, epitopesDF, secondary, 'CD25', 0.1, valency, False)
+    bindings = get_cell_bindings([8.5, secondaryAff], cells, epitopesDF, secondary, 0.1, valency, False)
     bindings['Percent Bound of Secondary'] = (bindings['Secondary Bound'] / bindings['Total Secondary']) * 100
     print(bindings)
 

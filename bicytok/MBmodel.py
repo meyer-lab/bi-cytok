@@ -137,30 +137,27 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
 
     return output
 
-def cytBindingModel_bispecOpt(IL2Ra, secondary, epitope, recXaff1, recXaff2, recXaff3, dose, valency, CD25=False, x=False):
+def cytBindingModel_bispecOpt(IL2Ra, secondary, recXaff1, recXaff2, dose, valency, CD25=False, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     val = valency
     doseVec = np.array(dose)
-    recXaff = [np.power(10, recXaff1), np.power(10, recXaff2), np.power(10, recXaff3)]
+    recXaff = [np.power(10, recXaff1), np.power(10, recXaff2)]
 
     Affs = pd.DataFrame()
     Affs = np.append(Affs, recXaff[0])
     Affs = np.append(Affs, recXaff[1])
-    Affs = np.append(Affs, recXaff[2])
 
     if CD25:
-        holder = np.full((3, 2), 1e2)
+        holder = np.full((2, 2), 1e2)
         holder[0, 0] = Affs[0]
         holder[1, 1] = Affs[1]
-        holder[2, 0] = Affs[2]
         counts = [IL2Ra, secondary]
     else:
         Affs = np.append(Affs, recXaff[0])
         Affs = np.append(Affs, recXaff[1])
-        Affs = np.append(Affs, recXaff[2])
-        holder = np.full((3, 3), 1e2)
+        holder = np.full((2, 2), 1e2)
         np.fill_diagonal(holder, Affs)
-        counts = [IL2Ra, secondary, epitope]
+        counts = [IL2Ra, secondary]
 
     Affs = holder
     recCount = np.ravel(counts)
@@ -175,8 +172,8 @@ def cytBindingModel_bispecOpt(IL2Ra, secondary, epitope, recXaff1, recXaff2, rec
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
+            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[1][0][1]
         else:
-            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
+            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val]], [1.0], Affs)[1][0][1]
     
     return output

@@ -335,31 +335,29 @@ def get_rec_vecs(df: pd.DataFrame, targCell: string, offTCells: list, secondary:
 
     return np.array([cd25CountTarg, secondaryCountTarg, epCountvecTarg]), np.array([cd25CountOffT, secondaryCountOffT, epCountvecOffT])
 
-def get_cell_bindings(affs: float, cells: np.array, selectedDF: pd.DataFrame, secondary: string, epitope: string, dose: float, valency: int, IL2Ra: bool):
+def get_cell_bindings(affs: float, cells: np.array, selectedDF: pd.DataFrame, secondary: string, dose: float, valency: int, CD25: bool):
     df = pd.DataFrame(columns=['Cell Type', 'Secondary Bound', 'Total Secondary'])
 
     for cell in cells:
         cd25DF = selectedDF.loc[(selectedDF.Epitope == 'CD25')]
         secondaryDF = selectedDF.loc[(selectedDF.Epitope == secondary)]
-        epitopeDF = selectedDF.loc[(selectedDF.Epitope == epitope)]
 
-        cd25CountTarg = np.zeros((epitopeDF[cell].item().size))
-        secondaryCountTarg = np.zeros((epitopeDF[cell].item().size))
-        epCountvecTarg = np.zeros((epitopeDF[cell].item().size))
+        cd25CountTarg = np.zeros((cd25DF[cell].item().size))
+        secondaryCountTarg = np.zeros((cd25DF[cell].item().size))
 
-        for i, epCount in enumerate(epitopeDF[cell].item()):
+        for i, epCount in enumerate(cd25DF[cell].item()):
             cd25CountTarg[i] = cd25DF[cell].item()[i]
             secondaryCountTarg[i] = secondaryDF[cell].item()[i]
-            epCountvecTarg[i] = epCount
         
-        recs = np.array([cd25CountTarg, secondaryCountTarg, epCountvecTarg])
+        recs = np.array([cd25CountTarg, secondaryCountTarg])
 
-        secondaryBound = np.sum(bispecOpt_Vec(recs[0, :], recs[1, :], recs[2, :], affs[0], affs[1], affs[2], dose, valency, CD25=IL2Ra))
+        secondaryBound = np.sum(bispecOpt_Vec(recs[0, :], recs[1, :], affs[0], affs[1], dose, valency, CD25=CD25))
 
         data = {'Cell Type': [cell],
             'Secondary Bound': [secondaryBound],
-            'Total Secondary': [cytBindingModel_bispecOpt.secondary]
+            'Total Secondary': [np.sum(recs[1])]
         }
+
         df_temp = pd.DataFrame(data, columns=['Cell Type', 'Secondary Bound', 'Total Secondary'])
         df = df.append(df_temp, ignore_index=True)
     
