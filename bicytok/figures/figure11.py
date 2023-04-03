@@ -19,7 +19,7 @@ def makeFigure():
 
     secondary = 'CD127'
     secondaryAff = 7.14
-    valency = 4
+    valency = 2
 
     cells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM',
     'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright']

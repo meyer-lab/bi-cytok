@@ -13,7 +13,7 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
-    ax, f = getSetup((12, 3), (1, 5))
+    ax, f = getSetup((12, 3), (1, 4))
 
     secondary = 'CD127'
     secondaryStartAff = 8.0
@@ -40,7 +40,7 @@ def makeFigure():
 
     for _, dose in enumerate(doseVec):
         optParams = optimizeDesign(targCell, offTCells, epitopesDF, secondary, secondaryLB, secondaryUB, dose, valency, prevOptAffs)
-        LD = minSelecFunc([9.14874165, wtSecondaryAff], targRecs, offTRecs, dose, valency, True)
+        LD = minSelecFunc([9.14874165, wtSecondaryAff], targRecs, offTRecs, dose, valency, False)
 
         prevOptAffs = [optParams[1][0], optParams[1][1]]
 
