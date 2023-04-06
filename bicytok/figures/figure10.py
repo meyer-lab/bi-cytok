@@ -10,17 +10,14 @@ from ..imports import importCITE
 
 path_here = dirname(dirname(__file__))
 
-
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
-    ax, f = getSetup((12, 3), (1, 4))
-
-    secondary = 'CD127'
-    secondaryStartAff = 8.0
-    secondaryLB = 6.0
-    secondaryUB = 9.0
+    secondary = 'CD122'
+    epitope = 'CD25'
     valency = 2
+    wtIL2RaAff = 8.222
     wtSecondaryAff = 7.14266751
+    wtEpitopeAff = 9.14874165
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList['Epitope'].unique())
@@ -32,36 +29,46 @@ def makeFigure():
 
     doseVec = np.logspace(-3, 3, num=20)
     epitopesDF = getSampleAbundances(epitopes, cells)
-    df = pd.DataFrame(columns=['Dose', 'Affinity (IL2Ra)', 'Affinity (secondary)', 'Selectivity', 'Ligand'])
+    df = pd.DataFrame(columns=['Dose', 'Affinity (IL2Ra)', 'Affinity (secondary)', 'Affinity (epitope)', 'Selectivity', 'Ligand'])
     df2 = pd.DataFrame(columns=['Dose', 'Target Bound', 'Ligand'])
-    targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, secondary)
+    targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, secondary, epitope)
 
-    prevOptAffs = [8.0, secondaryStartAff]
+    if secondary == 'CD122':
+        prevOptAffs = [8.0, 8.0, 8.0]
+    else:
+        prevOptAffs = [8.0, 8.0]
 
     for _, dose in enumerate(doseVec):
-        optParams = optimizeDesign(targCell, offTCells, epitopesDF, secondary, secondaryLB, secondaryUB, dose, valency, prevOptAffs)
-        LD = minSelecFunc([9.14874165, wtSecondaryAff], targRecs, offTRecs, dose, valency, False)
-
-        prevOptAffs = [optParams[1][0], optParams[1][1]]
+        optParams = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency, prevOptAffs)
+        if secondary == 'CD122':
+            LD = minSelecFunc([wtIL2RaAff, wtSecondaryAff, wtEpitopeAff], secondary, epitope, targRecs, offTRecs, dose, valency)
+            prevOptAffs = [optParams[1][0], optParams[1][1], optParams[1][2]]
+            epitopeAff = optParams[1][2]
+        else:
+            LD = minSelecFunc([wtIL2RaAff, wtSecondaryAff], secondary, epitope, targRecs, offTRecs, dose, valency)
+            prevOptAffs = [optParams[1][0], optParams[1][1]]
+            epitopeAff = None
 
         data = {'Dose': [dose],
             'Affinity (IL2Ra)': optParams[1][0],
             'Affinity (secondary)': optParams[1][1],
+            'Affinity (epitope)': epitopeAff,
             'Selectivity': 1 / optParams[0],
             'Ligand': "Optimized"
         }
 
-        df_temp = pd.DataFrame(data, columns=['Dose', 'Affinity (IL2Ra)', 'Affinity (secondary)', 'Selectivity', 'Ligand'])
+        df_temp = pd.DataFrame(data, columns=['Dose', 'Affinity (IL2Ra)', 'Affinity (secondary)', 'Affinity (epitope)', 'Selectivity', 'Ligand'])
         df = df.append(df_temp, ignore_index=True)
 
         data = {'Dose': [dose],
-            'Affinity (IL2Ra)': 9.14874165,
+            'Affinity (IL2Ra)': wtIL2RaAff,
             'Affinity (secondary)': wtSecondaryAff,
+            'Affinity (epitope)': wtEpitopeAff,
             'Selectivity': 1 / LD,
             'Ligand': "Live/Dead"
         }
 
-        df_temp = pd.DataFrame(data, columns=['Dose', 'Affinity (IL2Ra)', 'Affinity (secondary)', 'Selectivity', 'Ligand'])
+        df_temp = pd.DataFrame(data, columns=['Dose', 'Affinity (IL2Ra)', 'Affinity (secondary)', 'Affinity (epitope)', 'Selectivity', 'Ligand'])
         df = df.append(df_temp, ignore_index=True)
 
         data = {'Dose': [dose],
@@ -80,10 +87,18 @@ def makeFigure():
         df_temp = pd.DataFrame(data, columns=['Dose', 'Target Bound', 'Ligand'])
         df2 = df2.append(df_temp, ignore_index=True)
 
-    sns.lineplot(data=df, x='Dose', y='Affinity (IL2Ra)', hue='Ligand', ax=ax[0])
-    sns.lineplot(data=df, x='Dose', y='Affinity (secondary)', hue='Ligand', ax=ax[1])
-    sns.lineplot(data=df, x='Dose', y='Selectivity', hue='Ligand', ax=ax[2])
-    sns.lineplot(data=df2, x='Dose', y='Target Bound', hue='Ligand', ax=ax[3])
+    if secondary == 'CD122':
+        ax, f = getSetup((12, 3), (1, 5))
+        sns.lineplot(data=df, x='Dose', y='Affinity (epitope)', hue='Ligand', ax=ax[4])
+        ax[4].set(xscale='log')
+    else:
+        ax, f = getSetup((12, 3), (1, 4))
+
+    sns.lineplot(data=df, x='Dose', y='Selectivity', hue='Ligand', ax=ax[0])
+    sns.lineplot(data=df2, x='Dose', y='Target Bound', hue='Ligand', ax=ax[1])
+    sns.lineplot(data=df, x='Dose', y='Affinity (IL2Ra)', hue='Ligand', ax=ax[2])
+    sns.lineplot(data=df, x='Dose', y='Affinity (secondary)', hue='Ligand', ax=ax[3])
+
     ax[0].set(xscale='log')
     ax[1].set(xscale='log')
     ax[2].set(xscale='log')

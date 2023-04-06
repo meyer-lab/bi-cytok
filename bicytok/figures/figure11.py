@@ -17,8 +17,10 @@ def makeFigure():
     """Get a list of the axis objects and create a figure"""
     ax, f = getSetup((8, 3), (1, 2))
 
-    secondary = 'CD127'
-    secondaryAff = 7.14
+    secondary = 'CD122'
+    epitope = 'CD25'
+    
+    secondaryAff = 6.0
     valency = 2
 
     cells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM',
@@ -28,7 +30,7 @@ def makeFigure():
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells)
 
-    bindings = get_cell_bindings([8.5, secondaryAff], cells, epitopesDF, secondary, 0.1, valency, False)
+    bindings = get_cell_bindings([8.5, secondaryAff, 8.5], cells, epitopesDF, secondary, epitope, 0.1, valency)
     bindings['Percent Bound of Secondary'] = (bindings['Secondary Bound'] / bindings['Total Secondary']) * 100
     print(bindings)
 
