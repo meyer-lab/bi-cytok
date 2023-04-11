@@ -16,7 +16,7 @@ def makeFigure():
     epitope = 'CD25'
     valency = 2
     wtIL2RaAff = 8.222
-    wtSecondaryAff = 7.14266751
+    wtSecondaryAff = 7.65072247
     wtEpitopeAff = 9.14874165
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))

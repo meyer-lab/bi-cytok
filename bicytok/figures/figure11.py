@@ -20,7 +20,7 @@ def makeFigure():
     secondary = 'CD122'
     epitope = 'CD25'
     
-    secondaryAff = 6.0
+    secondaryAff = 8.5
     valency = 2
 
     cells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM',
