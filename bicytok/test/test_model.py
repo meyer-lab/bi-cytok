@@ -1,9 +1,11 @@
 """
 Unit test file.
 """
+from os.path import join
 import unittest
-
-from ..selectivityFuncs import getSampleAbundances, optimizeDesign
+import numpy as np
+import pandas as pd
+from bicytok.selectivityFuncs import getSampleAbundances, optimizeDesign, path_here
 
 
 class TestModel(unittest.TestCase):
@@ -13,12 +15,12 @@ class TestModel(unittest.TestCase):
         """Example."""
         self.assertTrue(3 + 1 > 0)
     
-    def test_optimize_design():
+    def test_optimize_design(self):
         targCell = 'Treg'
         offTCells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL'])
         cells = np.append(offTCells, targCell)
         
-        epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+        epitopesList = pd.read_csv(join(path_here, "bicytok/data/epitopeList.csv"))
         epitopes = list(epitopesList['Epitope'].unique())
         epitopesDF = getSampleAbundances(epitopes, cells)
 
