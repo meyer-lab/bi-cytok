@@ -3,16 +3,8 @@ Implementation of a simple multivalent binding model.
 """
 
 import numpy as np
-from scipy.special import binom
 from numba import njit
-from scipy import optimize
-
-
-@njit(parallel=False)
-def Req_func(Phisum: float, Rtot: np.ndarray, L0: float, KxStar: float, f, A: np.ndarray):
-    """ Mass balance. Transformation to account for bounds. """
-    Req = Rtot / (1.0 + L0 * f * A * (1 + Phisum) ** (f - 1))
-    return Phisum - np.dot(A * KxStar, Req.T)
+from scipy.optimize import root
 
 
 @njit(parallel=False)
@@ -38,41 +30,6 @@ def commonChecks(L0: float, Rtot: np.ndarray, KxStar: float, Kav: np.ndarray, Ct
     return L0, Rtot, KxStar, Kav, Ctheta
 
 
-def polyfc(L0: float, KxStar: float, f, Rtot: np.ndarray, LigC: np.ndarray, Kav: np.ndarray):
-    """
-    The main function. Generate all info for heterogenenous binding case
-    L0: concentration of ligand complexes.
-    KxStar: detailed balance-corrected Kx.
-    f: valency
-    Rtot: numbers of each receptor appearing on the cell.
-    LigC: the composition of the mixture used.
-    Kav: a matrix of Ka values. row = ligands, col = receptors
-    """
-    # Data consistency check
-    L0, Rtot, KxStar, Kav, LigC = commonChecks(L0, Rtot, KxStar, Kav, LigC)
-    assert LigC.size == Kav.shape[0]
-
-    A = np.dot(LigC.T, Kav)
-
-    # Find Phisum by fixed point iteration
-    lsq = optimize.root(method="lm", optimality_fun=Req_func, tol=1e-12)
-    lsq = lsq.run(np.zeros(1), Rtot, L0, KxStar, f, A)
-    assert lsq.state.success, "Failure in rootfinding. " + str(lsq)
-    Phisum = lsq.params[0]
-
-    Lbound = L0 / KxStar * ((1 + Phisum) ** f - 1)
-    Rbound = L0 / KxStar * f * Phisum * (1 + Phisum) ** (f - 1)
-    vieq = L0 / KxStar * binom(f, np.arange(1, f + 1)) * np.power(Phisum, np.arange(1, f + 1))
-    return Lbound, Rbound, vieq
-
-
-def Req_solve(func, *args):
-    """ Run least squares regression to calculate the Req vector. """
-    lsq = optimize.root(fun=func, x0=np.zeros_like(args[0]), args=(args), method="lm", tol=1e-10)
-    assert lsq.success, "Failure in rootfinding. " + str(lsq)
-    return lsq.x
-
-
 def polyc(L0: float, KxStar: float, Rtot: np.ndarray, Cplx: np.ndarray, Ctheta: np.ndarray, Kav: np.ndarray):
     """
     The main function to be called for multivalent binding
@@ -94,7 +51,9 @@ def polyc(L0: float, KxStar: float, Rtot: np.ndarray, Cplx: np.ndarray, Ctheta: 
     assert Cplx.shape[0] == Ctheta.size
 
     # Solve Req
-    Req = Req_solve(Req_func2, Rtot, L0, KxStar, Cplx.astype(float), Ctheta, Kav)
+    lsq = root(fun=Req_func2, x0=np.zeros_like(Rtot), args=(Rtot, L0, KxStar, Cplx.astype(float), Ctheta, Kav), method="lm", tol=1e-10)
+    assert lsq.success, "Failure in rootfinding. " + str(lsq)
+    Req = lsq.x
 
     # Calculate the results
     Psi = np.ones((Kav.shape[0], Kav.shape[1] + 1))
