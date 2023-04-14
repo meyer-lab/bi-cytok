@@ -1,4 +1,0 @@
-https://syno.seas.ucla.edu:9001/gc-cytokines/receptor-profiling-20200909.tar.xz
-https://syno.seas.ucla.edu:9001/gc-cytokines/2019-03-15 IL-2 and IL-15 treated pSTAT5 assay - Lymphocyte gated - NK plate.zip
-https://syno.seas.ucla.edu:9001/gc-cytokines/2019-04-18 IL-2 and IL-15 treated pSTAT5 assay - Lymphocyte gated - Treg plate - NEW PBMC LOT.zip
-https://syno.seas.ucla.edu:9001/gc-cytokines/2021.04.27 Peter org PBMC signaling and receptor.zip
