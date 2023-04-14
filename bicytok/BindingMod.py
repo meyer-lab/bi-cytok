@@ -4,19 +4,19 @@ Implementation of a simple multivalent binding model.
 
 import numpy as np
 from scipy.special import binom
-from numba import njit, jit
+from numba import njit
 from scipy import optimize
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def Req_func(Phisum: float, Rtot: np.ndarray, L0: float, KxStar: float, f, A: np.ndarray):
     """ Mass balance. Transformation to account for bounds. """
     Req = Rtot / (1.0 + L0 * f * A * (1 + Phisum) ** (f - 1))
     return Phisum - np.dot(A * KxStar, Req.T)
 
 
-@njit(parallel=True)
-def Req_func2(Req, Rtot, L0: float, KxStar, Cplx, Ctheta, Kav):
+@njit(parallel=False)
+def Req_func2(Req, Rtot, L0: float, KxStar: float, Cplx: np.ndarray, Ctheta, Kav: np.ndarray):
     Psi = Req * Kav * KxStar
     Psirs = np.sum(Psi, axis=1).reshape(-1, 1) + 1
     Psinorm = (Psi / Psirs)
@@ -38,7 +38,6 @@ def commonChecks(L0: float, Rtot: np.ndarray, KxStar: float, Kav: np.ndarray, Ct
     return L0, Rtot, KxStar, Kav, Ctheta
 
 
-@njit(parallel=True)
 def polyfc(L0: float, KxStar: float, f, Rtot: np.ndarray, LigC: np.ndarray, Kav: np.ndarray):
     """
     The main function. Generate all info for heterogenenous binding case
