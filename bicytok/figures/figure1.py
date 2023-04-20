@@ -19,6 +19,8 @@ def makeFigure():
     Y = np.arange(0, 100)
     ax[0].scatter(X, Y)
     ax[1].plot(X, Y)
-    
+    plotData = pd.DataFrame({"X": X, "Y": Y})
+    sns.scatterplot(data=plotData, x="X", y="Y", ax=ax[2])
+    sns.lineplot(data=plotData, x="X", y="Y", ax=ax[3])
 
     return f
