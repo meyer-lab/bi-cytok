@@ -12,12 +12,15 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
-    secondary = 'CD122'
-    epitope = 'CD25'
+    il2 = ['CD122', 'CD25', 8.222, 7.65072247, 9.14874165]
+    il7 = ['CD127', None, 9.14874165, 7.14266751, None]
+
+    secondary = il2[0]
+    epitope = il2[1]
     valency = 2
-    wtIL2RaAff = 8.222
-    wtSecondaryAff = 7.65072247
-    wtEpitopeAff = 9.14874165
+    wtIL2RaAff = il2[2]
+    wtSecondaryAff = il2[3]
+    wtEpitopeAff = il2[4]
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList['Epitope'].unique())
