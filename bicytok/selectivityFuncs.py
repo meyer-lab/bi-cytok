@@ -4,7 +4,7 @@ Functions used in binding and selectivity analysis
 import string
 from .imports import importCITE, importReceptors
 from .MBmodel import cytBindingModel_CITEseq, cytBindingModel_bispecCITEseq, cytBindingModel_bispecOpt, cytBindingModel_basicSelec
-from os.path import dirname, join
+from os.path import dirname
 from scipy.optimize import minimize, Bounds
 import pandas as pd
 import numpy as np
@@ -173,19 +173,17 @@ def bindingCalc(df: pd.DataFrame, targCell: string, offTCells: list, betaAffs: n
 bispecOpt_Vec = np.vectorize(cytBindingModel_bispecOpt)
 
 
-def minSelecFunc(x: float, secondary: string, epitope: string, targRecs: np.array, offTRecs: np.array, dose: float, valency: int):
+def minSelecFunc(recXaff: float, secondary: string, epitope: string, targRecs: np.array, offTRecs: np.array, dose: float, valency: int):
     """Serves as the function which will have its return value minimized to get optimal selectivity
     To be used in conjunction with optimizeDesign()
     Args:
-        x: receptor affinity which is modulated in optimize design
+        recXaff: receptor affinity which is modulated in optimize design
 
     Return:
         selectivity: value will be minimized, defined as ratio of off target to on target signaling
     """
     minSelecFunc.targetBound = 0
     offTargetBound = 0
-
-    recXaff = x
 
     if secondary == 'CD122':
         minSelecFunc.targetBound = np.sum(bispecOpt_Vec(secondary, epitope, targRecs[0, :], targRecs[1, :], targRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, valency))
@@ -197,8 +195,7 @@ def minSelecFunc(x: float, secondary: string, epitope: string, targRecs: np.arra
     minSelecFunc.targetBound /= targRecs.shape[0]
     offTargetBound /= offTRecs.shape[0]
 
-    selectivity = (offTargetBound) / (minSelecFunc.targetBound)
-    return selectivity
+    return offTargetBound / minSelecFunc.targetBound
 
 
 def optimizeDesign(secondary: string, epitope: string, targCell: string, offTCells: list, selectedDF: pd.DataFrame, dose: float, valency: int, prevOptAffs: list):
