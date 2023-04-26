@@ -14,8 +14,6 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():
     ax, f = getSetup((8, 8), (2, 2))
-    X = np.arange(0,100)
-    Y = np.arange(0,100)
     def linregression(params, Xs):
        A, B = params
        Ys = A*Xs + B
@@ -26,6 +24,6 @@ def makeFigure():
     params = np.array([2,1])
     Xs = np.linspace(0,10, 100)
     Ys = linregression(params, Xs)
-    plotLin(Xs, Ys, 0)
+    plotLin(Xs, Ys, ax[0])
     return f
 
