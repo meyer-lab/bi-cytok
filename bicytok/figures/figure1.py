@@ -11,16 +11,21 @@ import matplotlib.pyplot as plt
 
 path_here = dirname(dirname(__file__))
 
+def linregression(params, Xs):
+    A, B = params
+    Ys = A*Xs+B
+    return Ys
+def plotLin(Xs, Ys, ax):
+    sns.lineplot(x=Xs, y=Ys, ax=ax)
 
-def makeFigure():
-    """Get a list of the axis objects and create a figure"""
-    ax, f = getSetup((8, 8), (2, 2))
-    X = np.arange(0, 100)
-    Y = np.arange(0, 100)
-    ax[0].scatter(X, Y)
-    ax[1].plot(X, Y)
-    plotData = pd.DataFrame({"X": X, "Y": Y})
-    sns.scatterplot(data=plotData, x="X", y="Y", ax=ax[2])
-    sns.lineplot(data=plotData, x="X", y="Y", ax=ax[3])
+params = np.array([2,1])
+Xs = np.linspace(0,10, 100)
+Ys = linregression(params, Xs)
+fig, ax = plt.subplots()
+plotLin(Xs, Ys, ax)
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+ax.set_title('Linear Regression')
+plt.show()
+    
 
-    return f
