@@ -2,12 +2,13 @@
 This creates Figure 5, used to find optimal epitope classifier.
 """
 from os.path import dirname, join
-from .common import getSetup
+from common import getSetup
 import pandas as pd
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import minimize
+from scipy.optimize import least_squares
+
 
 
 
@@ -30,7 +31,7 @@ def makeFigure():
     Ys = linregression(params, Xs)
     plotLin(Xs, Ys, ax[0])
     
-    x = np.linspace(0,100, 100)
+    x = np.arange(0,100, 1)
     y = 2*x + 5
     noise = np.random.normal(loc=0, scale=1, size=len(x))
     y_noisy = y + noise
@@ -42,7 +43,7 @@ def makeFigure():
         return error
     
     ogparams = [0,0]
-    optimized = minimize(residuals, ogparams, args=(x, y_noisy))
+    optimized = least_squares(residuals, ogparams, args=(x, y_noisy))
     optimized_params = optimized.x
     ax[1].scatter(x, y_noisy, label='Simulated data')
     ax[1].plot(x, optimized_params[0]*x + optimized_params[1], 'r-', label='Fitted line')
