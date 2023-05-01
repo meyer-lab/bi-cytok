@@ -30,10 +30,9 @@ def makeFigure():
     Ys = linregression(params, Xs)
     plotLin(Xs, Ys, ax[0])
     
-    x = np.arange(0, 101)
+    x = np.linspace(0,100, 100)
     y = 2*x + 5
     noise = np.random.normal(loc=0, scale=1, size=len(x))
-    print(y.shape, noise.shape)
     y_noisy = y + noise
 
     def residuals(params, X, Y):
@@ -50,3 +49,4 @@ def makeFigure():
     ax[1].legend()
     return f
 
+   
