@@ -2,7 +2,7 @@
 This creates Figure 5, used to find optimal epitope classifier.
 """
 from os.path import dirname, join
-from common import getSetup
+from .common import getSetup
 import pandas as pd
 import seaborn as sns
 import numpy as np
