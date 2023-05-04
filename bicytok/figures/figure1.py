@@ -54,11 +54,11 @@ def makeFigure():
     ax[1].legend()
 
     california_housing = fetch_california_housing()
-    U, V = california_housing.data, california_housing.target
-    model = PLSRegression
-    model.fit(U,V)
-    V_pred = model.predict(U)
-    plt.scatter(V, V_pred, ax = ax[2])
+    X, Y = california_housing.data, california_housing.target
+    model = PLSRegression()
+    model.fit(X,Y)
+    Y_pred = model.predict(X)
+    plt.scatter(Y, Y_pred, ax = ax[2])
     plt.xlabel("Actual Values")
     plt.ylabel("Predictions")
 
