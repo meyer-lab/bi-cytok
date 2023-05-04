@@ -20,7 +20,7 @@ path_here = dirname(dirname(__file__))
 
 
 def makeFigure():
-    ax, f = getSetup((8, 8), (2, 2))
+    ax, f = getSetup((12, 8), (2, 3))
     
     def linregression(params, Xs):
        A, B = params
@@ -55,24 +55,30 @@ def makeFigure():
 
     california_housing = fetch_california_housing()
     X, Y = california_housing.data, california_housing.target
+    
     model = PLSRegression()
     model.fit(X,Y)
+    
     Y_pred = model.predict(X)
-    ax[2].scatter(Y, Y_pred, label='actual vals vs predictions')
+    ax[2].scatter(Y, Y_pred, label='Actual values vs Predictions')
 
-    x_loadings = model.x_loadings_
-    y_loadings = model.y_loadings_
+    x_loadings = model.x_loadings_[:, :2]
+    y_loadings = model.y_loadings_[:, :2]
     feature_names = california_housing.feature_names
 
-    ax[3].set_xlabel('X loadings')
-    ax[3].set_ylabel('Y loadings')
-    ax[3].set_title('Loadings plot')
+    for i in range(x_loadings.shape[0]):
+        ax[3].annotate(feature_names[i], (x_loadings[i, 0], x_loadings[i, 1]))
+    ax[3].set_xlabel('Component 1')
+    ax[3].set_ylabel('Component 2')
+    ax[3].set_title('X Loadings')
 
-    for i, (x, y) in enumerate(zip(x_loadings, y_loadings)):
-        ax[3].annotate(feature_names[i], (x, y), textcoords='offset points', xytext=(5,5))
-    
-    ax[3].scatter(x_loadings, y_loadings)
-
+    ax[3].scatter(x_loadings[:, 0], x_loadings[:, 1])
+   
+    ax[4].scatter(y_loadings[:, 0], y_loadings[:, 1])
+    ax[4].annotate('Price', (y_loadings[0, 0], y_loadings[0, 1]))
+    ax[4].set_xlabel('Component 1')
+    ax[4].set_ylabel('Component 2')
+    ax[4].set_title('Y Loadings')
     return f
 
    
