@@ -71,7 +71,7 @@ def makeFigure():
     for i, (x, y) in enumerate(zip(x_loadings, y_loadings)):
         ax[3].annotate(feature_names[i], (x, y), textcoords='offset points', xytext=(5,5))
     
-    sns.scatterplot(x=x_loadings, y=y_loadings, ax=ax[3])
+    ax[3].scatter(x_loadings, y_loadings)
 
     return f
 
