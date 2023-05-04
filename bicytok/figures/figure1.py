@@ -58,9 +58,7 @@ def makeFigure():
     model = PLSRegression()
     model.fit(X,Y)
     Y_pred = model.predict(X)
-    plt.scatter(Y, Y_pred, ax[2])
-    plt.xlabel("Actual Values")
-    plt.ylabel("Predictions")
+    ax[2].scatter(Y, Y_pred, label='actual vals vs predictions', xlabel = "Actual Values", ylabel = "predictions")
 
     return f
 
