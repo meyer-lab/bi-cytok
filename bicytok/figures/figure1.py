@@ -8,6 +8,10 @@ import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
+from sklearn.cross_decomposition import PLSRegression
+from sklearn.datasets import fetch_california_housing
+
+
 
 
 
@@ -48,6 +52,16 @@ def makeFigure():
     ax[1].scatter(x, y_noisy, label='Simulated data')
     ax[1].plot(x, optimized_params[0]*x + optimized_params[1], 'r-', label='Fitted line')
     ax[1].legend()
+
+    california_housing = fetch_california_housing()
+    U, V = california_housing.data, california_housing.target
+    model = PLSRegression
+    model.fit(U,V)
+    V_pred = model.predict(U)
+    plt.scatter(V, V_pred, ax = ax[2])
+    plt.xlabel("Actual Values")
+    plt.ylabel("Predictions")
+
     return f
 
    
