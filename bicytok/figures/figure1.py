@@ -10,11 +10,8 @@ import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.datasets import fetch_california_housing
-
-
-
-
-
+from sklearn.model_selection import KFold
+from sklearn.metrics import r2_score
 
 path_here = dirname(dirname(__file__))
 
@@ -79,6 +76,26 @@ def makeFigure():
     ax[4].set_xlabel('Component 1')
     ax[4].set_ylabel('Component 2')
     ax[4].set_title('Y Loadings')
+
+    kf = KFold(n_splits=10, shuffle=True, random_state=42)
+    Y_true, Y_pred = [], []
+    for train_index, test_index in kf.split(X, Y):
+        X_train, X_test = X[train_index], X[test_index]
+        Y_train, Y_test = Y[train_index], Y[test_index]
+
+        model.fit(X_train, Y_train)
+        Y_test_pred = model.predict(X_test)
+
+        Y_true.extend(Y_test)
+        Y_pred.extend(Y_test_pred)
+
+    ax[5].scatter(Y_true, Y_pred, label='Actual values vs Predictions')
+    ax[5].set_xlabel('Actual prices')
+    ax[5].set_ylabel('Predicted prices')
+    ax[5].set_title('Actual vs Predicted Prices')
+    accuracy = r2_score(Y_true, Y_pred)
+    print('R2 Accuracy:', accuracy)
+    
     return f
 
    
