@@ -108,10 +108,13 @@ def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
         markAvg = np.mean(CITE_DF[marker].values)
         if markAvg > 0.0001:
             targCellMark = CITE_DF.loc[CITE_DF["CellType3"] == targCell][marker].values / markAvg
+            # Compare to all non-memory Tregs
             if offTargState == 0:
                 offTargCellMark = CITE_DF.loc[CITE_DF["CellType3"] != targCell][marker].values / markAvg
+            # Compare to all non-Tregs
             elif offTargState == 1:
                 offTargCellMark = CITE_DF.loc[CITE_DF["CellType2"] != "Treg"][marker].values / markAvg
+            # Compare to naive Tregs
             elif offTargState == 2:
                 offTargCellMark = CITE_DF.loc[CITE_DF["CellType3"] == "Treg Naive"][marker].values / markAvg
             if np.mean(targCellMark) > np.mean(offTargCellMark):
