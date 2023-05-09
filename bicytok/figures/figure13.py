@@ -14,7 +14,7 @@ def makeFigure():
     ax, f = getSetup((12, 6), (2, 10), multz={0:2, 5:2, 7:1, 10:1, 12:1, 14:1, 16:1, 18:1})
 
     secondary = 'CD122'
-    epitope = 'CD25'
+    epitope = 'CD278'
     secondaryAff = 6.0
     valency = 2
 
