@@ -12,7 +12,7 @@ import numpy as np
 path_here = dirname(dirname(__file__))
 
 
-def getSampleAbundances(epitopes: list, cellList: list):
+def getSampleAbundances(epitopes: list, cellList: list, cellCat="CellType2"):
     """Given list of epitopes and cell types, returns a dataframe containing abundance data on a single cell level
     Args:
         epitopes: list of epitopes for which you want abundance values
@@ -39,7 +39,7 @@ def getSampleAbundances(epitopes: list, cellList: list):
         cellSample = []
         for i in np.arange(10):  # Averaging results of 10
             sampleDF = CITE_DF.sample(1000, random_state=42)  # Of 1000 cells in the sample...
-            sampleSize = int(len(sampleDF.loc[sampleDF["CellType2"] == cellType]))  # ...How many are this cell type
+            sampleSize = int(len(sampleDF.loc[sampleDF[cellCat] == cellType]))  # ...How many are this cell type
             cellSample.append(sampleSize)  # Sample size is equivalent to represented cell count out of 1000 cells
         meanSize = np.mean(cellSample)
         sampleSizes.append(int(meanSize))
@@ -49,7 +49,7 @@ def getSampleAbundances(epitopes: list, cellList: list):
         # Generate sample size
         sampleSize = sampleSizes[i]
         # Create data frame of this size at random selection
-        cellDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType].sample(sampleSize, random_state=42)
+        cellDF = CITE_DF.loc[CITE_DF[cellCat] == cellType].sample(sampleSize, random_state=42)
 
         cellType_abdundances = []
         # For each epitope (being done on per cell basis)
