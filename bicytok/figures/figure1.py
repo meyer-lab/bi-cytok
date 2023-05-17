@@ -12,7 +12,7 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.datasets import fetch_california_housing
 from sklearn.model_selection import KFold
 from sklearn.metrics import r2_score
-from BindingMod import polyc
+from ..BindingMod import polyc
 
 path_here = dirname(dirname(__file__))
 
@@ -99,14 +99,15 @@ def makeFigure():
     
     """ Slayboss model time begins here"""
     Kx = 1e-12
-    Rtot_1 = 100
-    Rtot_2 = 1000
-    cplx_mono = 1
-    cplx_bi = 2
-    Ctheta = 1
+    Rtot_1 = [100]
+    Rtot_2 = [10000]
+    cplx_mono = [1]
+    cplx_bi = [2]
+    Ctheta = [1]
     Kav = 1e9
     conc_range = np.logspace(-12, -9, num=100)
     
+
     _, Rbound_mono_1, _ = polyc(conc_range, Kx, Rtot_1, cplx_mono, Ctheta, Kav)
     _, Rbound_mono_2, _ = polyc(conc_range, Kx, Rtot_2, cplx_mono, Ctheta, Kav)
     _, Rbound_bi_1, _ = polyc(conc_range, Kx, Rtot_1, cplx_bi, Ctheta, Kav)
@@ -127,6 +128,7 @@ def makeFigure():
     ax[7].set_ylabel('Receptor Bound')
     ax[7].set_title('Bivalent Ligand')
     ax[7].legend()
+
 
     return f
 
