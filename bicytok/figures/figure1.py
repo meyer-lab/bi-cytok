@@ -12,12 +12,13 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.datasets import fetch_california_housing
 from sklearn.model_selection import KFold
 from sklearn.metrics import r2_score
+from BindingMod import polyc
 
 path_here = dirname(dirname(__file__))
 
 
 def makeFigure():
-    ax, f = getSetup((12, 8), (2, 3))
+    ax, f = getSetup((12, 8), (3, 3))
     
     def linregression(params, Xs):
        A, B = params
@@ -96,6 +97,37 @@ def makeFigure():
     accuracy = r2_score(Y_true, Y_pred)
     print('R2 Accuracy:', accuracy)
     
+    """ Slayboss model time begins here"""
+    Kx = 1e-12
+    Rtot_1 = 100
+    Rtot_2 = 1000
+    cplx_mono = 1
+    cplx_bi = 2
+    Ctheta = 1
+    Kav = 1e9
+    conc_range = np.logspace(-12, -9, num=100)
+    
+    _, Rbound_mono_1, _ = polyc(conc_range, Kx, Rtot_1, cplx_mono, Ctheta, Kav)
+    _, Rbound_mono_2, _ = polyc(conc_range, Kx, Rtot_2, cplx_mono, Ctheta, Kav)
+    _, Rbound_bi_1, _ = polyc(conc_range, Kx, Rtot_1, cplx_bi, Ctheta, Kav)
+    _, Rbound_bi_2, _ = polyc(conc_range, Kx, Rtot_2, cplx_bi, Ctheta, Kav)
+
+    sns.lineplot(x=conc_range, y=Rbound_mono_1, label='Cell Type 1', ax=ax[6])
+    sns.lineplot(x=conc_range, y=Rbound_mono_2, label='Cell Type 2', ax=ax[6])
+    ax[6].set_xscale('log')
+    ax[6].set_xlabel('Concentration (M)')
+    ax[6].set_ylabel('Receptor Bound')
+    ax[6].set_title('Monovalnt Ligand')
+    ax[6].legend()
+
+    sns.lineplot(x=conc_range, y=Rbound_bi_1, label='Cell Type 1', ax=ax[7])
+    sns.lineplot(x=conc_range, y=Rbound_bi_2, label='Cell Type 2', ax=ax[7])
+    ax[7].set_xscale('log')
+    ax[7].set_xlabel('Concentratin (M)')
+    ax[7].set_ylabel('Receptor Bound')
+    ax[7].set_title('Bivalent Ligand')
+    ax[7].legend()
+
     return f
 
    
