@@ -99,16 +99,18 @@ def makeFigure():
     
     """ Slayboss model time begins here"""
     Kx = 1e-12
-    Rtot_1 = [100]
-    Rtot_2 = [10000]
-    cplx_mono = [1]
-    cplx_bi = [2]
-    Ctheta = [1]
+    Rtot_1 = np.array([100])
+    Rtot_2 = np.array([10000])
+    cplx_mono = np.array([[1]])
+    cplx_bi = np.array([[2]])
+    Ctheta = np.array([1])
     Kav = np.array([[1e9]])
     conc_range = np.logspace(-12, -9, num=100)
     
-
-    _, Rbound_mono_1, _ = polyc(conc_range, Kx, Rtot_1, cplx_mono, Ctheta, Kav)
+    print([1e-9], Kx, Rtot_1, cplx_mono, Ctheta, Kav)
+    _, Rbound_mono_1, _ = polyc(1e-9, Kx, Rtot_1, cplx_mono, Ctheta, Kav)
+    print(Rbound_mono_1)
+    print("gotta write a for loop that looks like above")
     _, Rbound_mono_2, _ = polyc(conc_range, Kx, Rtot_2, cplx_mono, Ctheta, Kav)
     _, Rbound_bi_1, _ = polyc(conc_range, Kx, Rtot_1, cplx_bi, Ctheta, Kav)
     _, Rbound_bi_2, _ = polyc(conc_range, Kx, Rtot_2, cplx_bi, Ctheta, Kav)
