@@ -10,17 +10,15 @@ import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.datasets import fetch_california_housing
-
-
-
-
-
+from sklearn.model_selection import KFold
+from sklearn.metrics import r2_score
+from ..BindingMod import polyc
 
 path_here = dirname(dirname(__file__))
 
 
 def makeFigure():
-    ax, f = getSetup((12, 8), (2, 3))
+    ax, f = getSetup((12, 8), (3, 3))
     
     def linregression(params, Xs):
        A, B = params
@@ -79,6 +77,74 @@ def makeFigure():
     ax[4].set_xlabel('Component 1')
     ax[4].set_ylabel('Component 2')
     ax[4].set_title('Y Loadings')
+
+    kf = KFold(n_splits=10, shuffle=True, random_state=42)
+    Y_true, Y_pred = [], []
+    for train_index, test_index in kf.split(X, Y):
+        X_train, X_test = X[train_index], X[test_index]
+        Y_train, Y_test = Y[train_index], Y[test_index]
+
+        model.fit(X_train, Y_train)
+        Y_test_pred = model.predict(X_test)
+
+        Y_true.extend(Y_test)
+        Y_pred.extend(Y_test_pred)
+
+    ax[5].scatter(Y_true, Y_pred, label='Actual values vs Predictions')
+    ax[5].set_xlabel('Actual prices')
+    ax[5].set_ylabel('Predicted prices')
+    ax[5].set_title('Actual vs Predicted Prices')
+    accuracy = r2_score(Y_true, Y_pred)
+    print('R2 Accuracy:', accuracy)
+    
+    """ Slayboss model time begins here"""
+    Kx = 1e-12
+    Rtot_1 = np.array([100])
+    Rtot_2 = np.array([10000])
+    cplx_mono = np.array([[1]])
+    cplx_bi = np.array([[2]])
+    Ctheta = np.array([1])
+    Kav = np.array([[1e9]])
+    conc_range = np.logspace(-12, -9, num=100)
+    
+    Rbound_mono_1 = []
+    Rbound_mono_2 = []
+    Rbound_bi_1 = []
+    Rbound_bi_2 = []
+
+    for conc in conc_range:
+        _, Rbound_mono_1_, _ = polyc(conc, Kx, Rtot_1, cplx_mono, Ctheta, Kav)
+        _, Rbound_mono_2_, _ = polyc(conc, Kx, Rtot_2, cplx_mono, Ctheta, Kav)
+        _, Rbound_bi_1_, _ = polyc(conc, Kx, Rtot_1, cplx_bi, Ctheta, Kav)
+        _, Rbound_bi_2_, _ = polyc(conc, Kx, Rtot_2, cplx_bi, Ctheta, Kav)
+
+        Rbound_mono_1.extend(Rbound_mono_1_)
+        Rbound_mono_2.extend(Rbound_mono_2_)
+        Rbound_bi_1.extend(Rbound_bi_1_)
+        Rbound_bi_2.extend(Rbound_bi_2_)
+  
+    Rbound_mono_1 = np.ravel(Rbound_mono_1)
+    Rbound_mono_2 = np.ravel(Rbound_mono_2)
+    Rbound_bi_1 = np.ravel(Rbound_bi_1)
+    Rbound_bi_2 = np.ravel(Rbound_bi_2)
+    
+    sns.lineplot(x=conc_range, y=Rbound_mono_1, label='Cell Type 1', ax=ax[6])
+    sns.lineplot(x=conc_range, y=Rbound_mono_2, label='Cell Type 2', ax=ax[6])
+    ax[6].set_xscale('log')
+    ax[6].set_xlabel('Concentration (M)')
+    ax[6].set_ylabel('Receptor Bound')
+    ax[6].set_title('Monovalnt Ligand')
+    ax[6].legend()
+
+    sns.lineplot(x=conc_range, y=Rbound_bi_1, label='Cell Type 1', ax=ax[7])
+    sns.lineplot(x=conc_range, y=Rbound_bi_2, label='Cell Type 2', ax=ax[7])
+    ax[7].set_xscale('log')
+    ax[7].set_xlabel('Concentratin (M)')
+    ax[7].set_ylabel('Receptor Bound')
+    ax[7].set_title('Bivalent Ligand')
+    ax[7].legend()
+
+
     return f
 
    
