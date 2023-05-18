@@ -104,7 +104,7 @@ def makeFigure():
     cplx_mono = [1]
     cplx_bi = [2]
     Ctheta = [1]
-    Kav = np.array([1e9])
+    Kav = np.array([[1e9]])
     conc_range = np.logspace(-12, -9, num=100)
     
 
