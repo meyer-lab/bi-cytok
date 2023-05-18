@@ -107,14 +107,27 @@ def makeFigure():
     Kav = np.array([[1e9]])
     conc_range = np.logspace(-12, -9, num=100)
     
-    print([1e-9], Kx, Rtot_1, cplx_mono, Ctheta, Kav)
-    _, Rbound_mono_1, _ = polyc(1e-9, Kx, Rtot_1, cplx_mono, Ctheta, Kav)
-    print(Rbound_mono_1)
-    print("gotta write a for loop that looks like above")
-    _, Rbound_mono_2, _ = polyc(conc_range, Kx, Rtot_2, cplx_mono, Ctheta, Kav)
-    _, Rbound_bi_1, _ = polyc(conc_range, Kx, Rtot_1, cplx_bi, Ctheta, Kav)
-    _, Rbound_bi_2, _ = polyc(conc_range, Kx, Rtot_2, cplx_bi, Ctheta, Kav)
+    Rbound_mono_1 = []
+    Rbound_mono_2 = []
+    Rbound_bi_1 = []
+    Rbound_bi_2 = []
 
+    for conc in conc_range:
+        _, Rbound_mono_1_, _ = polyc(conc, Kx, Rtot_1, cplx_mono, Ctheta, Kav)
+        _, Rbound_mono_2_, _ = polyc(conc, Kx, Rtot_2, cplx_mono, Ctheta, Kav)
+        _, Rbound_bi_1_, _ = polyc(conc, Kx, Rtot_1, cplx_bi, Ctheta, Kav)
+        _, Rbound_bi_2_, _ = polyc(conc, Kx, Rtot_2, cplx_bi, Ctheta, Kav)
+
+        Rbound_mono_1.extend(Rbound_mono_1_)
+        Rbound_mono_2.extend(Rbound_mono_2_)
+        Rbound_bi_1.extend(Rbound_bi_1_)
+        Rbound_bi_2.extend(Rbound_bi_2_)
+  
+    Rbound_mono_1 = np.ravel(Rbound_mono_1)
+    Rbound_mono_2 = np.ravel(Rbound_mono_2)
+    Rbound_bi_1 = np.ravel(Rbound_bi_1)
+    Rbound_bi_2 = np.ravel(Rbound_bi_2)
+    
     sns.lineplot(x=conc_range, y=Rbound_mono_1, label='Cell Type 1', ax=ax[6])
     sns.lineplot(x=conc_range, y=Rbound_mono_2, label='Cell Type 2', ax=ax[6])
     ax[6].set_xscale('log')
