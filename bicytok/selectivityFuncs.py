@@ -351,9 +351,11 @@ def get_cell_bindings(affs: float, cells: np.array, df: pd.DataFrame, secondary:
         df2 = df.loc[(df.Epitope == 'CD25')]
 
     for cell in cells:
-        cd25CountTarg = np.zeros(df2[cell].item().size)
-        secondaryCountTarg = np.zeros(df2[cell].item().size)
-        epCountvecTarg = np.zeros(df2[cell].item().size)
+        numCells = df2[cell].item().size
+
+        cd25CountTarg = np.zeros(numCells)
+        secondaryCountTarg = np.zeros(numCells)
+        epCountvecTarg = np.zeros(numCells)
         for i, epCount in enumerate(df2[cell].item()):
             cd25CountTarg[i] = cd25DF[cell].item()[i]
             secondaryCountTarg[i] = secondaryDF[cell].item()[i]
@@ -364,9 +366,11 @@ def get_cell_bindings(affs: float, cells: np.array, df: pd.DataFrame, secondary:
         secondaryBound = np.sum(bispecOpt_Vec(secondary, epitope, recs[0, :], recs[1, :], recs[2, :], affs[0], affs[1], affs[2], dose, valency))
 
         data = {'Cell Type': [cell],
-            'Secondary Bound': [secondaryBound],
-            'Total Secondary': [np.sum(recs[1])]
+            'Secondary Bound': [secondaryBound / numCells],
+            'Total Secondary': [np.sum(recs[1]) / numCells]
         }
+
+        print(data)
 
         df_temp = pd.DataFrame(data, columns=['Cell Type', 'Secondary Bound', 'Total Secondary'])
         df_return = df_return.append(df_temp, ignore_index=True)
