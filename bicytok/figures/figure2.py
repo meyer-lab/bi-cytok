@@ -51,9 +51,16 @@ def makeFigure():
         # Step A: Grab a random sample of 1000 cells from the CITE-seq dataset
         df_sample = df.sample(n=1000, random_state=42)  # Adjust the random_state as desired
 
-        # Step B: Calculate IL2RB amount and marker amount for each cell individually
-        il2rb_amounts = np.array(df_sample[df_sample['CellType1'] == cell_type]['CD122'] * 1000)
-        marker_amounts = df_sample[df_sample['CellType1'] == cell_type][marker_name] * 1000
+        il2rb_amounts = []
+        marker_amounts = []
+
+        for index, row in df_sample.iterrows():
+            if row['CellType1'] == cell_type:
+                il2rb_amounts.append(row['CD122'] * 1000)
+                marker_amounts.append(row[marker_name] * 1000)
+
+        il2rb_amounts = np.array(il2rb_amounts)
+        marker_amounts = np.array(marker_amounts)
 
         # Step C: Use optimization to determine the best affinity
         best_affinity = None
