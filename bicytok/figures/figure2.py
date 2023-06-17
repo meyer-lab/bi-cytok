@@ -13,6 +13,7 @@ from sklearn.metrics import r2_score
 from ..BindingMod import polyc
 from ..imports import importCITE
 from scipy.optimize import minimize
+import random
 
 path_here = dirname(dirname(__file__))
 
@@ -50,36 +51,31 @@ def makeFigure():
     print(f"The top markers for {cell_type} are: {top_markers}")
 
 
-    def calculate_binding_ratio(df, marker):
-        # Randomly sample 1000 cells
-        sample_cells = df.sample(n=1000, replace=False)
-        IL2RB_amounts = sample_cells['CD122'] * 1000
-        CD335_amounts = sample_cells[marker] * 1000
-        Kx = 1e-12
-        Rtot_1 = np.array(IL2RB_amounts)
-        cplx_mono = np.array([[1]])
-        Ctheta = np.array([1])
-        Kav = np.array([[1e8]])
-
-        def objective_function(affinity_CD335):
-            Kav[0, 0] = affinity_CD335
-            _, Rbound, _ = polyc(1.0, Kx, Rtot_1, cplx_mono, Ctheta, Kav)
-            NK_IL2RB_binding = np.sum(Rbound[:, 0])
-            off_target_IL2RB_binding = np.sum(Rbound[:, 1:])
-            ratio = NK_IL2RB_binding / off_target_IL2RB_binding
-            return -ratio  # Negate the ratio since we want to maximize it
-
-        # Perform optimization to determine the ligand's affinity for CD335
-        bounds = [(1e5, 1e10)]  # Bounds for the affinity of the ligand for CD335
-        initial_guess = 1e8  # Initial guess for the affinity of CD335
-        result = minimize(objective_function, initial_guess, bounds=bounds)
-
-        best_affinity_CD335 = result.x[0]
-        best_ratio = -result.fun  # Retrieve the maximum ratio by negating the objective function value
-
-        return best_ratio
     
-    marker = 'CD335' 
-    binding_ratio = calculate_binding_ratio(df, marker)
-    print(f"The IL2RB binding ratio on NK cells compared to other cells for {marker} is: {binding_ratio}")
+    # Randomly sample 1000 cells
+    def optimize_ligand(marker, df):
+        sample_df = df.sample(n=1000, random_state=51)
+        sample_df = sample_df.reset_index(drop=True)
+
+        for _, row in sample_df.iterrows():
+            row['CD122'] = row['CD122'] * 1000
+            row[marker] = row[marker] * 1000
+                
+       
+        nk_cd335 = []
+        nk_cd122 = []
+        non_nk_cd335 = []
+        non_nk_cd122 = []
+
+        # Filter NK cells
+        nk_df = sample_df[sample_df['CellType1'] == 'NK']
+        nk_cd335 = nk_df['CD335'].tolist()
+        nk_cd122 = nk_df['CD122'].tolist()
+
+        # Filter non-NK cells
+        non_nk_df = sample_df[sample_df['CellType1'] != 'NK']
+        non_nk_cd335 = non_nk_df['CD335'].tolist()
+        non_nk_cd122 = non_nk_df['CD122'].tolist()
+       
+    optimize_ligand(top_markers[0], df)
     return fig
