@@ -12,6 +12,7 @@ from sklearn.model_selection import KFold
 from sklearn.metrics import r2_score
 from ..BindingMod import polyc
 from ..imports import importCITE
+from scipy.optimize import minimize
 
 path_here = dirname(dirname(__file__))
 
@@ -47,55 +48,38 @@ def makeFigure():
     cell_type = 'NK'
     top_markers = find_best_markers(cell_type, df)
     print(f"The top markers for {cell_type} are: {top_markers}")
-    def optimize_binding_affinity(cell_type, marker_name):
-        # Step A: Grab a random sample of 1000 cells from the CITE-seq dataset
-        df_sample = df.sample(n=1000, random_state=42)  # Adjust the random_state as desired
 
-        il2rb_amounts = []
-        marker_amounts = []
 
-        for index, row in df_sample.iterrows():
-            if row['CellType1'] == cell_type:
-                il2rb_amounts.append(row['CD122'] * 1000)
-                marker_amounts.append(row[marker_name] * 1000)
+    def calculate_binding_ratio(df, marker):
+        # Randomly sample 1000 cells
+        sample_cells = df.sample(n=1000, replace=False)
+        IL2RB_amounts = sample_cells['CD122'] * 1000
+        CD335_amounts = sample_cells[marker] * 1000
+        Kx = 1e-12
+        Rtot_1 = np.array(IL2RB_amounts)
+        cplx_mono = np.array([[1]])
+        Ctheta = np.array([1])
+        Kav = np.array([[1e8]])
 
-        il2rb_amounts = np.array(il2rb_amounts)
-        marker_amounts = np.array(marker_amounts)
+        def objective_function(affinity_CD335):
+            Kav[0, 0] = affinity_CD335
+            _, Rbound, _ = polyc(1.0, Kx, Rtot_1, cplx_mono, Ctheta, Kav)
+            NK_IL2RB_binding = np.sum(Rbound[:, 0])
+            off_target_IL2RB_binding = np.sum(Rbound[:, 1:])
+            ratio = NK_IL2RB_binding / off_target_IL2RB_binding
+            return -ratio  # Negate the ratio since we want to maximize it
 
-        # Step C: Use optimization to determine the best affinity
-        best_affinity = None
-        best_ratio = -float('inf')
+        # Perform optimization to determine the ligand's affinity for CD335
+        bounds = [(1e5, 1e10)]  # Bounds for the affinity of the ligand for CD335
+        initial_guess = 1e8  # Initial guess for the affinity of CD335
+        result = minimize(objective_function, initial_guess, bounds=bounds)
 
-        def binding_residuals(affinity):
-            # Run binding model 1000 times and calculate IL2RB bound ratios
-            il2rb_bound = []
-            marker_bound = []
-            conc_range = np.logspace(5, 10, num=100)
-            Kx = 1e-12
-            cplx_mono = np.array([[1]])
-            Ctheta = np.array([1])
-            Kav = np.array([[1e8]])
-            for _ in range(1000):
-                _ ,il2rb_bound_val, marker_bound_val = polyc(conc_range, Kx, il2rb_amounts, cplx_mono, Ctheta,  Kav)
-                il2rb_bound.append(il2rb_bound_val[0])
-                marker_bound.append(marker_bound_val[0])
+        best_affinity_CD335 = result.x[0]
+        best_ratio = -result.fun  # Retrieve the maximum ratio by negating the objective function value
 
-            # Calculate IL2RB bound ratio
-            ratio = sum(il2rb_bound) / sum(marker_bound)
-            return 1 - ratio  # Minimize the residuals
-
-        # Perform optimization with bounds on affinity
-        result = minimize_scalar(binding_residuals, bounds=(1e5, 1e10), method='bounded')
-        best_affinity = result.x
-        best_ratio = 1 - result.fun
-
-        return best_affinity, best_ratio
-
-    cell_type = 'NK'
-    marker_name = 'CD25'
-
-    best_affinity, best_ratio = optimize_binding_affinity(cell_type, marker_name)
-
-    print(f"The best affinity for ligand binding to {marker_name} on {cell_type} cells is: {best_affinity}")
-    print(f"The corresponding IL2RB bound ratio is: {best_ratio}")
+        return best_ratio
+    
+    marker = 'CD335' 
+    binding_ratio = calculate_binding_ratio(df, marker)
+    print(f"The IL2RB binding ratio on NK cells compared to other cells for {marker} is: {binding_ratio}")
     return fig
