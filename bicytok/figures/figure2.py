@@ -62,20 +62,51 @@ def makeFigure():
             row[marker] = row[marker] * 1000
                 
        
-        nk_cd335 = []
+        nk_marker = []
         nk_cd122 = []
-        non_nk_cd335 = []
+        non_nk_marker = []
         non_nk_cd122 = []
 
         # Filter NK cells
         nk_df = sample_df[sample_df['CellType1'] == 'NK']
-        nk_cd335 = nk_df['CD335'].tolist()
+        nk_marker = nk_df[marker].tolist()
         nk_cd122 = nk_df['CD122'].tolist()
 
         # Filter non-NK cells
         non_nk_df = sample_df[sample_df['CellType1'] != 'NK']
-        non_nk_cd335 = non_nk_df['CD335'].tolist()
+        non_nk_marker = non_nk_df[marker].tolist()
         non_nk_cd122 = non_nk_df['CD122'].tolist()
-       
+        
+        conc = 1e-9
+        Kx = 1e-12
+        Rtot_IL2NK = nk_cd122
+        Rtot_IL2 = non_nk_cd122
+        RtotmarkerNK = nk_marker
+        Rtotmarker = non_nk_marker
+        cplx_mono = np.array([[1]])
+        Ctheta = np.array([1])
+        KavIL2RB = np.array([[1e8]])
+        Kavmarker_range = np.logspace(5, 10, num=100)
+        
+        Rbound_NKMarker = []
+        Rtot_marker = []
+        Rtot_IL2NK = []
+        Rtot_IL2 = []
+        for Kavmarker in Kavmarker_range:
+            for RtotmarkerNK in RtotmarkerNK:
+                _, Rbound_NKMarker_, _ = polyc(conc, Kx, RtotmarkerNK, cplx_mono, Ctheta, Kavmarker)
+                Rbound_NKMarker.extend(Rbound_NKMarker_)
+            for Rtotmarker in Rtotmarker:
+                _, Rbound_Marker_, _ = polyc(conc, Kx, Rtotmarker, cplx_mono, Ctheta, Kavmarker)
+                Rtot_marker.extend(Rbound_Marker_)
+        
+        for Rtot_IL2NK in Rtot_IL2NK:
+            _, Rbound_NKMIL2_, _ = polyc(conc, Kx, Rtot_IL2NK, cplx_mono, Ctheta, KavIL2RB)
+            Rtot_IL2NK.extend(Rbound_NKMIL2_)
+
+        for Rtot_IL2 in Rtot_IL2:
+            _, Rbound_IL2_, _ = polyc(conc, Kx, Rtot_IL2, cplx_mono, Ctheta, KavIL2RB)
+            Rtot_IL2 .extend(Rbound_IL2_)
+            
     optimize_ligand(top_markers[0], df)
     return fig
