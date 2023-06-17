@@ -95,18 +95,18 @@ def makeFigure():
         Rbound_IL2 = []
         for Kavmarker in Kavmarker_range:
             for RtotmarkerNK in RtotmarkerNK:
-                _, Rbound_NKMarker_, _ = polyc(conc, Kx, RtotmarkerNK, cplx_mono, Ctheta, Kavmarker)
+                _, Rbound_NKMarker_, _ = polyc(conc, Kx, np.array([RtotmarkerNK]), cplx_mono, Ctheta, np.array([Kavmarker]))
                 Rbound_NKMarker.extend(Rbound_NKMarker_)
             for Rtotmarker in Rtotmarker:
-                _, Rbound_Marker_, _ = polyc(conc, Kx, Rtotmarker, cplx_mono, Ctheta, Kavmarker)
+                _, Rbound_Marker_, _ = polyc(conc, Kx, np.array([Rtotmarker]), cplx_mono, Ctheta, np.array([Kavmarker]))
                 Rbound_marker.extend(Rbound_Marker_)
         
         for Rtot_IL2NK in Rtot_IL2NK:
-            _, Rbound_NKMIL2_, _ = polyc(conc, Kx, Rtot_IL2NK, cplx_mono, Ctheta, KavIL2RB)
+            _, Rbound_NKMIL2_, _ = polyc(conc, Kx, np.array([Rtot_IL2NK]), cplx_mono, Ctheta, KavIL2RB)
             Rbound_IL2NK.extend(Rbound_NKMIL2_)
 
         for Rtot_IL2 in Rtot_IL2:
-            _, Rbound_IL2_, _ = polyc(conc, Kx, Rtot_IL2, cplx_mono, Ctheta, KavIL2RB)
+            _, Rbound_IL2_, _ = polyc(conc, Kx, np.array([Rtot_IL2]), cplx_mono, Ctheta, KavIL2RB)
             Rbound_IL2 .extend(Rbound_IL2_)
         ## MUST ADD HERE 
         litRatio = -np.sum(Rbound_IL2NK) / np.sum(Rbound_IL2)
