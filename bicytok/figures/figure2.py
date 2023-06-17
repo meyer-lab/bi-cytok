@@ -108,6 +108,11 @@ def makeFigure():
         for Rtot_IL2 in Rtot_IL2:
             _, Rbound_IL2_, _ = polyc(conc, Kx, Rtot_IL2, cplx_mono, Ctheta, KavIL2RB)
             Rbound_IL2 .extend(Rbound_IL2_)
-
-    optimize_ligand(top_markers[0], df)
+        ## MUST ADD HERE 
+        litRatio = -np.sum(Rbound_IL2NK) / np.sum(Rbound_IL2)
+        return litRatio
+    
+    result = minimize(optimize_ligand(top_markers[0], df), x0=1e8, bounds=[(1e5, 1e10)], method='L-BFGS-B')
+    best_affinity = result.x[0]
+    print("Best affinity value:", best_affinity)
     return fig
