@@ -52,7 +52,7 @@ def makeFigure():
         df_sample = df.sample(n=1000, random_state=42)  # Adjust the random_state as desired
 
         # Step B: Calculate IL2RB amount and marker amount for each cell individually
-        il2rb_amounts = np.array[df_sample[df_sample['CellType1'] == cell_type]['CD122'] * 1000]
+        il2rb_amounts = np.array(df_sample[df_sample['CellType1'] == cell_type]['CD122'] * 1000)
         marker_amounts = df_sample[df_sample['CellType1'] == cell_type][marker_name] * 1000
 
         # Step C: Use optimization to determine the best affinity
@@ -69,7 +69,7 @@ def makeFigure():
             Ctheta = np.array([1])
             Kav = np.array([[1e8]])
             for _ in range(1000):
-                il2rb_bound_val, marker_bound_val, _ = polyc(conc_range, Kx, il2rb_amounts, cplx_mono, Ctheta,  Kav)
+                _ ,il2rb_bound_val, marker_bound_val = polyc(conc_range, Kx, il2rb_amounts, cplx_mono, Ctheta,  Kav)
                 il2rb_bound.append(il2rb_bound_val[0])
                 marker_bound.append(marker_bound_val[0])
 
