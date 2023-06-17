@@ -88,25 +88,26 @@ def makeFigure():
         KavIL2RB = np.array([[1e8]])
         Kavmarker_range = np.logspace(5, 10, num=100)
         
+        # little queens store Rbound for the two markers on the two cell types 
         Rbound_NKMarker = []
-        Rtot_marker = []
-        Rtot_IL2NK = []
-        Rtot_IL2 = []
+        Rbound_marker = []
+        Rbound_IL2NK = []
+        Rbound_IL2 = []
         for Kavmarker in Kavmarker_range:
             for RtotmarkerNK in RtotmarkerNK:
                 _, Rbound_NKMarker_, _ = polyc(conc, Kx, RtotmarkerNK, cplx_mono, Ctheta, Kavmarker)
                 Rbound_NKMarker.extend(Rbound_NKMarker_)
             for Rtotmarker in Rtotmarker:
                 _, Rbound_Marker_, _ = polyc(conc, Kx, Rtotmarker, cplx_mono, Ctheta, Kavmarker)
-                Rtot_marker.extend(Rbound_Marker_)
+                Rbound_marker.extend(Rbound_Marker_)
         
         for Rtot_IL2NK in Rtot_IL2NK:
             _, Rbound_NKMIL2_, _ = polyc(conc, Kx, Rtot_IL2NK, cplx_mono, Ctheta, KavIL2RB)
-            Rtot_IL2NK.extend(Rbound_NKMIL2_)
+            Rbound_IL2NK.extend(Rbound_NKMIL2_)
 
         for Rtot_IL2 in Rtot_IL2:
             _, Rbound_IL2_, _ = polyc(conc, Kx, Rtot_IL2, cplx_mono, Ctheta, KavIL2RB)
-            Rtot_IL2 .extend(Rbound_IL2_)
-            
+            Rbound_IL2 .extend(Rbound_IL2_)
+
     optimize_ligand(top_markers[0], df)
     return fig
