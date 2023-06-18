@@ -94,16 +94,12 @@ def makeFigure():
         Rbound_IL2NK = []
         Rbound_IL2 = []
         for Kavmarker in Kavmarker_range:
-            for RtotmarkerNK in RtotmarkerNK:
-                _, Rbound_NKMarker_, _ = polyc(conc, Kx, np.array([RtotmarkerNK]), cplx_mono, Ctheta, np.array([Kavmarker]))
+            for i, RtotmarkerNK in enumerate(RtotmarkerNK):
+                _, Rbound_NKMarker_, _ = polyc(conc, Kx, np.array([RtotmarkerNK[i], Rtot_IL2[i]]), cplx_mono, Ctheta, np.array([Kavmarker]))
                 Rbound_NKMarker.extend(Rbound_NKMarker_)
-            for Rtotmarker in Rtotmarker:
-                _, Rbound_Marker_, _ = polyc(conc, Kx, np.array([Rtotmarker]), cplx_mono, Ctheta, np.array([Kavmarker]))
-                Rbound_marker.extend(Rbound_Marker_)
+            
         
-        for Rtot_IL2NK in Rtot_IL2NK:
-            _, Rbound_NKMIL2_, _ = polyc(conc, Kx, np.array([Rtot_IL2NK]), cplx_mono, Ctheta, KavIL2RB)
-            Rbound_IL2NK.extend(Rbound_NKMIL2_)
+        
 
         for Rtot_IL2 in Rtot_IL2:
             _, Rbound_IL2_, _ = polyc(conc, Kx, np.array([Rtot_IL2]), cplx_mono, Ctheta, KavIL2RB)
