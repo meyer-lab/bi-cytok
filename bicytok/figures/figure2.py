@@ -52,63 +52,52 @@ def makeFigure():
 
 
     
-    # Randomly sample 1000 cells
-    def optimize_ligand(marker, df):
-        sample_df = df.sample(n=1000, random_state=51)
-        sample_df = sample_df.reset_index(drop=True)
+    sample_df = df.sample(n=1000, random_state=51)
+    sample_df = sample_df.reset_index(drop=True)
 
-        for _, row in sample_df.iterrows():
-            row['CD122'] = row['CD122'] * 1000
-            row[marker] = row[marker] * 1000
+    for _, row in sample_df.iterrows():
+        row['CD122'] = row['CD122'] * 1000
+        row['CD335'] = row['CD355'] * 1000
                 
        
-        nk_marker = []
-        nk_cd122 = []
-        non_nk_marker = []
-        non_nk_cd122 = []
+    nk_marker = []
+    nk_cd122 = []
+    non_nk_marker = []
+    non_nk_cd122 = []
 
-        # Filter NK cells
-        nk_df = sample_df[sample_df['CellType1'] == 'NK']
-        nk_marker = nk_df[marker].tolist()
-        nk_cd122 = nk_df['CD122'].tolist()
+    # Filter NK cells
+    nk_df = sample_df[sample_df['CellType1'] == 'NK']
+    nk_marker = nk_df['CD355'].tolist()
+    nk_cd122 = nk_df['CD122'].tolist()
 
-        # Filter non-NK cells
-        non_nk_df = sample_df[sample_df['CellType1'] != 'NK']
-        non_nk_marker = non_nk_df[marker].tolist()
-        non_nk_cd122 = non_nk_df['CD122'].tolist()
+    # Filter non-NK cells
+    non_nk_df = sample_df[sample_df['CellType1'] != 'NK']
+    non_nk_marker = non_nk_df['CD335'].tolist()
+    non_nk_cd122 = non_nk_df['CD122'].tolist()
         
-        conc = 1e-9
-        Kx = 1e-12
-        Rtot_IL2NK = nk_cd122
-        Rtot_IL2 = non_nk_cd122
-        RtotmarkerNK = nk_marker
-        Rtotmarker = non_nk_marker
-        cplx_mono = np.array([[1]])
-        Ctheta = np.array([1])
-        KavIL2RB = np.array([[1e8]])
-        Kavmarker_range = np.logspace(5, 10, num=100)
+    def optimization_function(Kav): 
         
-        # little queens store Rbound for the two markers on the two cell types 
-        Rbound_NKMarker = []
-        Rbound_marker = []
-        Rbound_IL2NK = []
-        Rbound_IL2 = []
-        for Kavmarker in Kavmarker_range:
-            for i, RtotmarkerNK in enumerate(RtotmarkerNK):
-                _, Rbound_NKMarker_, _ = polyc(conc, Kx, np.array([RtotmarkerNK[i], Rtot_IL2[i]]), cplx_mono, Ctheta, np.array([Kavmarker]))
-                Rbound_NKMarker.extend(Rbound_NKMarker_)
+        Kav_matrix = np.array([[Kav, 1e2], [1e2, 1e8]])
+        affinity_values = []
+        
+        for i in range(len(nk_marker)):
+            L0 = 1e-9
+            KxStar = 1e-12
+            cplx_mono = np.array([[1]])
+            Ctheta = np.array([1])
+            Rtot_IL2 = non_nk_cd122
+            RtotmarkerNK = nk_marker            
+            Kav_matrix[1, 0] = Kav[i]
+            Rtot_array = np.array([RtotmarkerNK[i], Rtot_IL2[i]])
+
+            _, Rbound_NKMarker_, _ = polyc(L0, KxStar, Rtot_array, cplx_mono, Ctheta, Kav_matrix)
             
+            ratio = np.sum(Rbound_NKMarker_[:, 0]) / np.sum(Rbound_NKMarker_[:, 1])
         
-        
-
-        for Rtot_IL2 in Rtot_IL2:
-            _, Rbound_IL2_, _ = polyc(conc, Kx, np.array([Rtot_IL2]), cplx_mono, Ctheta, KavIL2RB)
-            Rbound_IL2 .extend(Rbound_IL2_)
-        ## MUST ADD HERE 
-        litRatio = -np.sum(Rbound_IL2NK) / np.sum(Rbound_IL2)
-        return litRatio
-    
-    result = minimize(optimize_ligand(top_markers[0], df), x0=1e8, bounds=[(1e5, 1e10)], method='L-BFGS-B')
-    best_affinity = result.x[0]
-    print("Best affinity value:", best_affinity)
+            affinity_values.append(ratio)
+        return -np.sum(affinity_values)
+    initial_guess = 1e7
+    result = minimize(optimization_function, initial_guess, bounds=[(1e5, 1e10)])
+    optimized_Kav = result.x[0]
+    print(f"Optimized Kav: {optimized_Kav}")
     return fig
