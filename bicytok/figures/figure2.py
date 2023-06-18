@@ -57,7 +57,7 @@ def makeFigure():
 
     for _, row in sample_df.iterrows():
         row['CD122'] = row['CD122'] * 1000
-        row['CD335'] = row['CD355'] * 1000
+        row['CD335'] = row['CD335'] * 1000
                 
        
     nk_marker = []
@@ -67,7 +67,7 @@ def makeFigure():
 
     # Filter NK cells
     nk_df = sample_df[sample_df['CellType1'] == 'NK']
-    nk_marker = nk_df['CD355'].tolist()
+    nk_marker = nk_df['CD335'].tolist()
     nk_cd122 = nk_df['CD122'].tolist()
 
     # Filter non-NK cells
@@ -76,28 +76,29 @@ def makeFigure():
     non_nk_cd122 = non_nk_df['CD122'].tolist()
         
     def optimization_function(Kav): 
-        
-        Kav_matrix = np.array([[Kav, 1e2], [1e2, 1e8]])
+        Kav_scalar = Kav[0]
+        Kav_matrix = np.array([[Kav_scalar, 1e2], [1e2, 1e8]])
         affinity_values = []
         
         for i in range(len(nk_marker)):
             L0 = 1e-9
             KxStar = 1e-12
-            cplx_mono = np.array([[1]])
-            Ctheta = np.array([1])
-            Rtot_IL2 = non_nk_cd122
-            RtotmarkerNK = nk_marker            
-            Kav_matrix[1, 0] = Kav[i]
-            Rtot_array = np.array([RtotmarkerNK[i], Rtot_IL2[i]])
+            cplx = np.array([[1, 0], [0, 1]])
+            Ctheta = np.array([1, 1])
+            Rtot_IL2 = non_nk_cd122[i]
+            RtotmarkerNK = nk_marker[i]
+            Rtot_array = np.array([RtotmarkerNK, Rtot_IL2])
 
-            _, Rbound_NKMarker_, _ = polyc(L0, KxStar, Rtot_array, cplx_mono, Ctheta, Kav_matrix)
+            _, Rbound_NKMarker_, _ = polyc(L0, KxStar, Rtot_array, cplx, Ctheta, Kav_matrix)
             
             ratio = np.sum(Rbound_NKMarker_[:, 0]) / np.sum(Rbound_NKMarker_[:, 1])
         
             affinity_values.append(ratio)
         return -np.sum(affinity_values)
-    initial_guess = 1e7
+    
+    initial_guess = [1e5]
     result = minimize(optimization_function, initial_guess, bounds=[(1e5, 1e10)])
     optimized_Kav = result.x[0]
     print(f"Optimized Kav: {optimized_Kav}")
+
     return fig
