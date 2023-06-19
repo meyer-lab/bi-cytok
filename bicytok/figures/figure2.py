@@ -86,11 +86,12 @@ def makeFigure():
             KxStar = 1e-12
             cplx = np.array([[1, 0], [0, 1]])
             Ctheta = np.array([1, 1])
+            
 
-            for i in range(len(nk_marker)):
+            for i, marker in enumerate(nk_marker):
                 _, NKbinding, _ = polyc(L0, KxStar, [[nk_cd122[i], nk_marker[i]]], cplx, Ctheta, Kav_matrix)
                 NKIL2_bound += NKbinding
-            for i in range(len(nk_marker)):
+            for i, marker in enumerate(nk_marker):
                 _, non_NKbinding, _ = polyc(L0, KxStar, [[non_nk_cd122[i], non_nk_marker[i]]], cplx, Ctheta, Kav_matrix)
                 non_NKIL2_bound += non_NKbinding  
         
