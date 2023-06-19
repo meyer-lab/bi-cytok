@@ -54,10 +54,6 @@ def makeFigure():
     
     sample_df = df.sample(n=1000, random_state=51)
     sample_df = sample_df.reset_index(drop=True)
-
-    for _, row in sample_df.iterrows():
-        row['CD122'] = row['CD122'] * 1000
-        row['CD335'] = row['CD335'] * 1000
                 
        
     nk_marker = []
@@ -77,27 +73,27 @@ def makeFigure():
         
     def optimization_function(Kav): 
         Kav_scalar = Kav[0]
-        Kav_matrix = np.array([[Kav_scalar, 1e2], [1e2, 1e8]])
+        Kav_matrix = np.array([[1e8, 1e2], [1e2, np.power(10, Kav_scalar)]])
         NKIL2_bound = 0
         non_NKIL2_bound = 0
         
-        for i in range(len(nk_marker)):
-            L0 = 1e-9
-            KxStar = 1e-12
-            cplx = np.array([[1, 0], [0, 1]])
-            Ctheta = np.array([1, 1])
-            
+        L0 = 1e-9
+        KxStar = 1e-12
+        cplx = np.array([[1, 1]]) # Changed - before this was saying there are two different types of ligand, now its a single ligand with two components
+        Ctheta = np.array([1])
 
-            for i, marker in enumerate(nk_marker):
-                _, NKbinding, _ = polyc(L0, KxStar, np.array([nk_cd122[i], nk_marker[i]]), cplx, Ctheta, Kav_matrix)
-                NKIL2_bound += NKbinding[1, 1]
-            for i, marker in enumerate(nk_marker):
-                _, non_NKbinding, _ = polyc(L0, KxStar, np.array([non_nk_cd122[i], non_nk_marker[i]]), cplx, Ctheta, Kav_matrix)
-                non_NKIL2_bound += non_NKbinding[1, 1]
+        # Got rid of initial loop
+
+        for i, _ in enumerate(nk_marker):
+            _, NKbinding, _ = polyc(L0, KxStar, np.array([nk_cd122[i] * 100, nk_marker[i] * 100]), cplx, Ctheta, Kav_matrix)
+            NKIL2_bound += NKbinding[0][0]
+        for i, _ in enumerate(non_nk_marker):
+            _, non_NKbinding, _ = polyc(L0, KxStar, np.array([non_nk_cd122[i] * 100, non_nk_marker[i] * 100]), cplx, Ctheta, Kav_matrix)
+            non_NKIL2_bound += non_NKbinding[0][0]
         return non_NKIL2_bound / NKIL2_bound
     
-    initial_guess = [1e9]
-    result = minimize(optimization_function, initial_guess, bounds=[(1e5, 1e10)])
+    initial_guess = [7]
+    result = minimize(optimization_function, initial_guess, bounds=[(5, 10)])
     optimized_Kav = result.x[0]
     print(f"Optimized Kav: {optimized_Kav}")
 
