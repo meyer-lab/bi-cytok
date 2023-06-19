@@ -78,25 +78,25 @@ def makeFigure():
     def optimization_function(Kav): 
         Kav_scalar = Kav[0]
         Kav_matrix = np.array([[Kav_scalar, 1e2], [1e2, 1e8]])
-        affinity_values = []
+        NKIL2_bound = 0
+        non_NKIL2_bound = 0
         
         for i in range(len(nk_marker)):
             L0 = 1e-9
             KxStar = 1e-12
             cplx = np.array([[1, 0], [0, 1]])
             Ctheta = np.array([1, 1])
-            Rtot_IL2 = non_nk_cd122[i]
-            RtotmarkerNK = nk_marker[i]
-            Rtot_array = np.array([RtotmarkerNK, Rtot_IL2])
 
-            _, Rbound_NKMarker_, _ = polyc(L0, KxStar, Rtot_array, cplx, Ctheta, Kav_matrix)
-            
-            ratio = np.sum(Rbound_NKMarker_[:, 0]) / np.sum(Rbound_NKMarker_[:, 1])
+            for i in range(len(nk_marker)):
+                _, NKbinding, _ = polyc(L0, KxStar, [[nk_cd122[i], nk_marker[i]]], cplx, Ctheta, Kav_matrix)
+                NKIL2_bound += NKbinding
+            for i in range(len(nk_marker)):
+                _, non_NKbinding, _ = polyc(L0, KxStar, [[non_nk_cd122[i], non_nk_marker[i]]], cplx, Ctheta, Kav_matrix)
+                non_NKIL2_bound += non_NKbinding  
         
-            affinity_values.append(ratio)
-        return -np.sum(affinity_values)
+        return non_NKIL2_bound / NKIL2_bound
     
-    initial_guess = [1e5]
+    initial_guess = [1e6]
     result = minimize(optimization_function, initial_guess, bounds=[(1e5, 1e10)])
     optimized_Kav = result.x[0]
     print(f"Optimized Kav: {optimized_Kav}")
