@@ -20,15 +20,16 @@ def makeFigure():
     secondaryAff = 6.0
     valency = 2
 
-    # Epitoppes list lets the receptor function know what to grab - you can alter this to include CD335
+    # Epitoppes list lets the receptor function know what to grab - you can alter this to include CD335 - done
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList['Epitope'].unique())
+    epitopes.append('CD335')
 
-    # Change the target cell but this basically just tells us what we're optimizing for and against
+    # Change the target cell but this basically just tells us what we're optimizing for and against - done
     
-    targCell = 'Treg Memory'
-    cells = np.array(['Treg Memory', 'Treg Naive', 'CD8 Naive', 'NK_2', 'CD8 TEM_1', 'CD4 Naive', 'CD4 CTL', 'CD4 TCM_3', 'CD4 TCM_2',
+    targCell = 'NK'
+    cells = np.array(['Treg Memory', 'NK', 'Treg Naive', 'CD8 Naive', 'NK_2', 'CD8 TEM_1', 'CD4 Naive', 'CD4 CTL', 'CD4 TCM_3', 'CD4 TCM_2',
     'CD8 TCM_1', 'NK_4', 'Treg Naive', 'CD4 TEM_1', 'CD4 TEM_3', 'NK Proliferating', 'CD8 TEM_4', 'NK_CD56bright', 'CD4 TEM_4', 'NK_3'])
     offTCells = cells[cells != targCell]
 
