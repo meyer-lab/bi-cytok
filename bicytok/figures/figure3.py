@@ -11,7 +11,7 @@ from ..imports import importCITE
 path_here = dirname(dirname(__file__))
 
 def makeFigure():
-    ax, f = getSetup((6, 3), (1, 2))
+    f, axs = getSetup((6, 6), (2, 2)) 
 
     # do this but for NK cells and the epitope (CD335) you found
 
@@ -59,10 +59,23 @@ def makeFigure():
         selectivity_values2.append(selectivity2)
         affinity_values2.append(affinity2)
     # Plot the optimal affinity and optimal selectivity you get at each dose
-    plt.plot(doseVec, selectivity_values1, label='Selectivity for bivalent')
-    plt.plot(doseVec, affinity_values1, label='Affinity for bivalent')
+    sns.lineplot(x=doseVec, y=selectivity_values1, ax=axs[0, 0], label='Selectivity for bivalent')
+    axs[0, 0].set_title('Valency 1 Selectivity')
+    
+    sns.lineplot(x=doseVec, y=affinity_values1, ax=axs[0, 1], label='Affinity for bivalent')
+    axs[0, 1].set_title('Valency 1 Affinity')
 
     # Then do the same thing but for higher valency (valency = 4) - refers to bi or tet
-    plt.plot(doseVec, selectivity_values2, label='Selectivity for tetravalent')
-    plt.plot(doseVec, affinity_values2, label='Affinity for tetravalent')
+    sns.lineplot(x=doseVec, y=selectivity_values2, ax=axs[1, 0], label='Selectivity for tetravalent')
+    axs[1, 0].set_title('Valency 2 Selectivity')
+
+    sns.lineplot(x=doseVec, y=affinity_values2, ax=axs[1, 1], label='Affinity for tetravalent')
+    axs[1, 1].set_title('Valency 2 Affinity')
+
+    # Add labels and legend to the plot
+    for ax in axs.flat:
+        ax.set(xlabel='Dose', ylabel='Value')
+        ax.legend()
+
+    # Then do the same thing but for higher valency (valency = 4) - refers to bi or tet
     return f
