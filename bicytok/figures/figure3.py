@@ -13,12 +13,13 @@ path_here = dirname(dirname(__file__))
 def makeFigure():
     ax, f = getSetup((6, 3), (1, 2))
 
-    # do this but for NK cells and the epitope you found
+    # do this but for NK cells and the epitope (CD335) you found
 
     secondary = 'CD122'
     epitope = 'CD278'
     secondaryAff = 6.0
-    valency = 2
+    valency1 = 2
+    valency2 = 4
 
     # Epitoppes list lets the receptor function know what to grab - you can alter this to include CD335 - done
 
@@ -39,13 +40,29 @@ def makeFigure():
     targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, secondary, epitope)
 
     prevOptAffs = [8.0, 8.0, 8.0]
-
+    selectivity_values1 = []
+    affinity_values1 = []
+    selectivity_values2 = []
+    affinity_values2 = []
     for dose in doseVec:
         #this function gets the optimal affinties and returns the optimal selectivity (first output), and affinities (second outputs) plot these dose on bottom for all, 2 have selectivity, 2 have affinity 
-        optParams = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency, prevOptAffs)
-
+        optParams1 = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency1, prevOptAffs)
+        selectivity1 = optParams1[0]
+        affinity1 = optParams1[1]
+        selectivity_values1.append(selectivity1)
+        affinity_values1.append(affinity1)
+    for dose in doseVec:
+        #this function gets the optimal affinties and returns the optimal selectivity (first output), and affinities (second outputs) plot these dose on bottom for all, 2 have selectivity, 2 have affinity 
+        optParams2 = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency2, prevOptAffs)
+        selectivity2 = optParams2[0]
+        affinity2 = optParams2[1]
+        selectivity_values2.append(selectivity2)
+        affinity_values2.append(affinity2)
     # Plot the optimal affinity and optimal selectivity you get at each dose
+    plt.plot(doseVec, selectivity_values1, label='Selectivity for bivalent')
+    plt.plot(doseVec, affinity_values1, label='Affinity for bivalent')
 
     # Then do the same thing but for higher valency (valency = 4) - refers to bi or tet
-
+    plt.plot(doseVec, selectivity_values2, label='Selectivity for tetravalent')
+    plt.plot(doseVec, affinity_values2, label='Affinity for tetravalent')
     return f
