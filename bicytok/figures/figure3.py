@@ -39,7 +39,7 @@ def makeFigure():
     epitopesDF = getSampleAbundances(epitopes, cells, "CellType3")
     targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, secondary, epitope)
 
-    prevOptAffs = [8.0, 8.0, 8.0]
+    prevOptAffs = [8.0, 8.0]
     selectivity_values1 = []
     affinity_values1 = []
     selectivity_values2 = []
