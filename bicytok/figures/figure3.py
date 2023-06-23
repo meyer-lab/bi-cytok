@@ -37,8 +37,8 @@ def makeFigure():
 
     # This is just grabbing vectors of receptors to use in the function. Take a look at the output to see what's happening
     doseVec = np.logspace(-3, 3, num=2) #changed num = 2 so runs faster 
-    doseVec = pd.Series(doseVec, dtype=CategoricalDtype())
-    epitopesDF = getSampleAbundances(epitopes, cells, "CellType2")
+    doseVec = np.array(doseVec)
+    epitopesDF = getSampleAbundances(epitopes, cells, "CellType2gt")
 
     prevOptAffs = [8.0, 8.0, 8.0]
     selectivity_values1 = []
@@ -61,26 +61,29 @@ def makeFigure():
         selectivity_values2.append(selectivity2)
         affinity_values2.append(affinity2)
     
-    # convert to np maybe?
+    # convert to np maybe? works.
     affinity_values1 = np.array(affinity_values1)
     affinity_values2 = np.array(affinity_values2)
+    
+    # check lengths
+    print(len(doseVec))
+    print(len(selectivity_values1))
+    print(len(selectivity_values2))
+    print(len(affinity_values1))
+    print(len(affinity_values2))
 
     # Plot the optimal affinity and optimal selectivity you get at each dose
     sns.lineplot(x=doseVec, y=selectivity_values1, ax=ax[0], label='Selectivity for bivalent')
     ax[0].set_title('Valency 1 Selectivity')
-    print(selectivity_values1)
-    print(len(selectivity_values1))
     
-    sns.lineplot(x=doseVec, y=affinity_values1, ax=ax[1], label='Affinity for bivalent') #printing length and contents of array to check 
-    print(affinity_values1)
-    print(len(affinity_values1))
+    sns.lineplot(x=doseVec, y=np.ravel(affinity_values1), ax=ax[1], label='Affinity for bivalent')    
     ax[1].set_title('Valency 1 Affinity')
 
     # Then do the same thing but for higher valency (valency = 4) - refers to bi or tet
     sns.lineplot(x=doseVec, y=selectivity_values2, ax=ax[2], label='Selectivity for tetravalent')
     ax[2].set_title('Valency 2 Selectivity')
 
-    sns.lineplot(x=doseVec, y=affinity_values2, ax=ax[3], label='Affinity for tetravalent')
+    sns.lineplot(x=doseVec, y=np.ravel(affinity_values2), ax=ax[3], label='Affinity for tetravalent')
     ax[3].set_title('Valency 2 Affinity')
 
     # Add labels and legend to the plot
