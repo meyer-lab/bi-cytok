@@ -13,12 +13,17 @@ from sklearn.datasets import fetch_california_housing
 from sklearn.model_selection import KFold
 from sklearn.metrics import r2_score
 from ..BindingMod import polyc
+from ..imports import importCITE
 
 path_here = dirname(dirname(__file__))
 
 
 def makeFigure():
-    ax, f = getSetup((12, 8), (3, 3))
+    ax, f = getSetup((12, 12), (1, 1))
+    a = importCITE()
+    sns.boxplot(data=a, x="CellType2", y="CD278", ax=ax[0])
+    ax[0].set_xticklabels(labels=ax[0].get_xticklabels(), rotation=45, horizontalalignment='right')
+    """
     
     def linregression(params, Xs):
        A, B = params
@@ -96,8 +101,10 @@ def makeFigure():
     ax[5].set_title('Actual vs Predicted Prices')
     accuracy = r2_score(Y_true, Y_pred)
     print('R2 Accuracy:', accuracy)
+    """
     
     """ Slayboss model time begins here"""
+    """
     Kx = 1e-12
     Rtot_1 = np.array([100])
     Rtot_2 = np.array([10000])
@@ -143,7 +150,7 @@ def makeFigure():
     ax[7].set_ylabel('Receptor Bound')
     ax[7].set_title('Bivalent Ligand')
     ax[7].legend()
-
+    """
 
     return f
 
