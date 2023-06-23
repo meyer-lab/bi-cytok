@@ -30,16 +30,15 @@ def makeFigure():
     # Change the target cell but this basically just tells us what we're optimizing for and against - done
     
     targCell = 'NK'
-    cells = np.array(['Treg Memory', 'NK', 'Treg Naive', 'CD8 Naive', 'NK_2', 'CD8 TEM_1', 'CD4 Naive', 'CD4 CTL', 'CD4 TCM_3', 'CD4 TCM_2',
-    'CD8 TCM_1', 'NK_4', 'Treg Naive', 'CD4 TEM_1', 'CD4 TEM_3', 'NK Proliferating', 'CD8 TEM_4', 'NK_CD56bright', 'CD4 TEM_4', 'NK_3'])
+    cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
+    'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
     offTCells = cells[cells != targCell]
 
     # This is just grabbing vectors of receptors to use in the function. Take a look at the output to see what's happening
     doseVec = np.logspace(-3, 3, num=20)
-    epitopesDF = getSampleAbundances(epitopes, cells, "CellType3")
-    targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, secondary, epitope)
+    epitopesDF = getSampleAbundances(epitopes, cells, "CellType2")
 
-    prevOptAffs = [8.0, 8.0]
+    prevOptAffs = [8.0, 8.0, 8.0]
     selectivity_values1 = []
     affinity_values1 = []
     selectivity_values2 = []
