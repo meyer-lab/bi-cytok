@@ -73,17 +73,20 @@ def makeFigure():
     print(len(affinity_values2))
 
     # Plot the optimal affinity and optimal selectivity you get at each dose
-    sns.lineplot(x=doseVec, y=selectivity_values1, ax=ax[0], label='Selectivity for bivalent', xlabel='Dose', ylabel='Value')
+    sns.lineplot(x=doseVec, y=selectivity_values1, ax=ax[0], label='Selectivity for bivalent')
     ax[0].set_title('Valency 1 Selectivity')
-    
-    sns.lineplot(x=doseVec, y=np.ravel(affinity_values1), ax=ax[1], label='Affinity for bivalent', xlabel='Dose', ylabel='Value')    
+    ax[0].set(xlabel='Dose', ylabel='Value')
+
+    sns.lineplot(x=doseVec, y=np.ravel(affinity_values1), ax=ax[1], label='Affinity for bivalent')    
     ax[1].set_title('Valency 1 Affinity')
+    ax[1].set(xlabel='Dose', ylabel='Value')
 
     # Then do the same thing but for higher valency (valency = 4) - refers to bi or tet
-    sns.lineplot(x=doseVec, y=selectivity_values2, ax=ax[2], label='Selectivity for tetravalent', xlabel='Dose', ylabel='Value')
+    sns.lineplot(x=doseVec, y=selectivity_values2, ax=ax[2], label='Selectivity for tetravalent')
     ax[2].set_title('Valency 2 Selectivity')
+    ax[2].set(xlabel='Dose', ylabel='Value')
 
-    sns.lineplot(x=doseVec, y=np.ravel(affinity_values2), ax=ax[3], label='Affinity for tetravalent', xlabel='Dose', ylabel='Value')
+    sns.lineplot(x=doseVec, y=np.ravel(affinity_values2), ax=ax[3], label='Affinity for tetravalent')
     ax[3].set_title('Valency 2 Affinity')
-
+    ax[3].set(xlabel='Dose', ylabel='Value')
     return f
