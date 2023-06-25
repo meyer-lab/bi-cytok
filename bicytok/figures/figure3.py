@@ -36,9 +36,9 @@ def makeFigure():
     offTCells = cells[cells != targCell]
 
     # This is just grabbing vectors of receptors to use in the function. Take a look at the output to see what's happening
-    doseVec = np.logspace(-3, 3, num=2) #changed num = 2 so runs faster 
+    doseVec = np.logspace(-3, 3, num=20) #changed num = 2 so runs faster when practicing 
     doseVec = np.array(doseVec)
-    epitopesDF = getSampleAbundances(epitopes, cells, "CellType2gt")
+    epitopesDF = getSampleAbundances(epitopes, cells, "CellType2")
 
     prevOptAffs = [8.0, 8.0, 8.0]
     selectivity_values1 = []
@@ -50,14 +50,14 @@ def makeFigure():
         #this function gets the optimal affinties and returns the optimal selectivity (first output), and affinities (second outputs) plot these dose on bottom for all, 2 have selectivity, 2 have affinity 
         optParams1 = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency1, prevOptAffs)
         selectivity1 = optParams1[0]
-        affinity1 = optParams1[1]
+        affinity1 = optParams1[1][0] #changed this added the [0]
         selectivity_values1.append(selectivity1)
         affinity_values1.append(affinity1)
     for dose in doseVec:
         #this function gets the optimal affinties and returns the optimal selectivity (first output), and affinities (second outputs) plot these dose on bottom for all, 2 have selectivity, 2 have affinity 
         optParams2 = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency2, prevOptAffs)
         selectivity2 = optParams2[0]
-        affinity2 = optParams2[1]
+        affinity2 = optParams2[1][0] # added the [0]
         selectivity_values2.append(selectivity2)
         affinity_values2.append(affinity2)
     
@@ -73,22 +73,17 @@ def makeFigure():
     print(len(affinity_values2))
 
     # Plot the optimal affinity and optimal selectivity you get at each dose
-    sns.lineplot(x=doseVec, y=selectivity_values1, ax=ax[0], label='Selectivity for bivalent')
+    sns.lineplot(x=doseVec, y=selectivity_values1, ax=ax[0], label='Selectivity for bivalent', xlabel='Dose', ylabel='Value')
     ax[0].set_title('Valency 1 Selectivity')
     
-    sns.lineplot(x=doseVec, y=np.ravel(affinity_values1), ax=ax[1], label='Affinity for bivalent')    
+    sns.lineplot(x=doseVec, y=np.ravel(affinity_values1), ax=ax[1], label='Affinity for bivalent', xlabel='Dose', ylabel='Value')    
     ax[1].set_title('Valency 1 Affinity')
 
     # Then do the same thing but for higher valency (valency = 4) - refers to bi or tet
-    sns.lineplot(x=doseVec, y=selectivity_values2, ax=ax[2], label='Selectivity for tetravalent')
+    sns.lineplot(x=doseVec, y=selectivity_values2, ax=ax[2], label='Selectivity for tetravalent', xlabel='Dose', ylabel='Value')
     ax[2].set_title('Valency 2 Selectivity')
 
-    sns.lineplot(x=doseVec, y=np.ravel(affinity_values2), ax=ax[3], label='Affinity for tetravalent')
+    sns.lineplot(x=doseVec, y=np.ravel(affinity_values2), ax=ax[3], label='Affinity for tetravalent', xlabel='Dose', ylabel='Value')
     ax[3].set_title('Valency 2 Affinity')
-
-    # Add labels and legend to the plot
-    for ax in ax.flat:
-        ax.set(xlabel='Dose', ylabel='Value')
-        ax.legend()
 
     return f
