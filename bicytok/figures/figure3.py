@@ -8,12 +8,13 @@ from scipy.optimize import least_squares
 from ..selectivityFuncs import get_cell_bindings, getSampleAbundances, get_rec_vecs, optimizeDesign, minSelecFunc
 from ..imports import importCITE
 from pandas.api.types import CategoricalDtype
+from ot import emd2_samples
+
 
 path_here = dirname(dirname(__file__))
 
 def makeFigure():
-    ax, f = getSetup((10, 8), (2, 2)) 
-
+    ax, f = getSetup((10, 8), (3, 2))
     # do this but for NK cells and the epitope (CD335) you found
 
     secondary = 'CD122'
@@ -89,4 +90,45 @@ def makeFigure():
     sns.lineplot(x=doseVec, y=np.ravel(affinity_values2), ax=ax[3], label='Affinity for tetravalent')
     ax[3].set_title('Valency 2 Affinity')
     ax[3].set(xlabel='Dose', ylabel='Value')
+    
+    
+    def Wass_KL_Dist2d(ax, targCell, numFactors, offTargReceptors, signalReceptor, RNA=False, offTargState=0):
+        """Finds markers which have average greatest difference from other cells"""
+        CITE_DF = importCITE()
+
+        markerDF = pd.DataFrame(columns=["Marker", "Cell Type", "Amount"])
+        for marker in CITE_DF.loc[:, ((CITE_DF.columns != 'CellType1') & (CITE_DF.columns != 'CellType2') & (CITE_DF.columns != 'CellType3') & (CITE_DF.columns != 'Cell'))].columns:
+            markAvg = np.mean(CITE_DF[marker].values)
+            if markAvg > 0.0001:
+                targCellMark = np.vstack((CITE_DF.loc[CITE_DF["CellType3"] == targCell][offTargReceptors[0]].values,
+                                          CITE_DF.loc[CITE_DF["CellType3"] == targCell][signalReceptor].values)).T
+                offTargCellMark = np.vstack((CITE_DF.loc[CITE_DF["CellType3"] != targCell][offTargReceptors[0]].values,
+                                              CITE_DF.loc[CITE_DF["CellType3"] != targCell][signalReceptor].values)).T
+                Wass_dist = emd2_samples(targCellMark, offTargCellMark)
+                markerDF = pd.concat([markerDF, pd.DataFrame({"Marker": [marker], "Wasserstein Distance": Wass_dist})])
+
+        corrsDF = pd.DataFrame()
+        for i, distance in enumerate(["Wasserstein Distance"]):
+            ratioDF = markerDF.sort_values(by=distance)
+            posCorrs = ratioDF.tail(numFactors).Marker.values
+            corrsDF = pd.concat([corrsDF, pd.DataFrame({"Distance": distance, "Marker": posCorrs})])
+            markerDF = markerDF.loc[markerDF["Marker"].isin(posCorrs)]
+            sns.barplot(data=ratioDF.tail(numFactors), y="Marker", x=distance, ax=ax[i], color='k')
+            ax[i].set(xscale="log")
+            ax[0].set(title="Wasserstein Distance - Receptor Space")
+        
+        # Save the figure as SVG
+        plt.savefig("output/wasserstein2d.svg")
+
+            return corrsDF
+    
+        targCell = 'Treg'
+        numFactors = 5
+        offTargReceptors = []  # Provide the appropriate values
+        signalReceptor = ''  # Provide the appropriate value
+        result = Wass_KL_Dist2d(ax, targCell, numFactors, offTargReceptors, signalReceptor)
+
+        # Plot the resulting DataFrame in axis 4
+        sns.barplot(data=result, y="Marker", x="Wasserstein Distance", ax=ax[4],
+    
     return f
