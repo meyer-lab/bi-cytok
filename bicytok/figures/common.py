@@ -139,3 +139,29 @@ def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
         ax[0].set(title="Wasserstein Distance - Surface Markers")
         ax[1].set(title="KL Divergence - Surface Markers")
     return corrsDF
+
+def Wass_KL_Dist2d(ax, targCell, numFactors, offTargReceptors, signalReceptor, RNA=False, offTargState=0):
+        """Finds markers which have average greatest difference from other cells"""
+        CITE_DF = importCITE()
+
+        markerDF = pd.DataFrame(columns=["Marker", "Cell Type", "Amount"])
+        for marker in CITE_DF.loc[:, ((CITE_DF.columns != 'CellType1') & (CITE_DF.columns != 'CellType2') & (CITE_DF.columns != 'CellType3') & (CITE_DF.columns != 'Cell'))].columns:
+            markAvg = np.mean(CITE_DF[marker].values)
+            if markAvg > 0.0001:
+                targCellMark = np.vstack((CITE_DF.loc[CITE_DF["CellType3"] == targCell][offTargReceptors[0]].values,
+                                          CITE_DF.loc[CITE_DF["CellType3"] == targCell][signalReceptor].values)).T
+                offTargCellMark = np.vstack((CITE_DF.loc[CITE_DF["CellType3"] != targCell][offTargReceptors[0]].values,
+                                            CITE_DF.loc[CITE_DF["CellType3"] != targCell][signalReceptor].values)).T
+                Wass_dist = emd2_samples(targCellMark, offTargCellMark)
+                markerDF = pd.concat([markerDF, pd.DataFrame({"Marker": [marker], "Wasserstein Distance": Wass_dist})])
+
+        corrsDF = pd.DataFrame()
+        for i, distance in enumerate(["Wasserstein Distance"]):
+            ratioDF = markerDF.sort_values(by=distance)
+            posCorrs = ratioDF.tail(numFactors).Marker.values
+            corrsDF = pd.concat([corrsDF, pd.DataFrame({"Distance": distance, "Marker": posCorrs})])
+            markerDF = markerDF.loc[markerDF["Marker"].isin(posCorrs)]
+            sns.barplot(data=ratioDF.tail(numFactors), y="Marker", x=distance, ax=ax[i], color='k')
+            ax[i].set(xscale="log")
+            ax[0].set(title="Wasserstein Distance - Receptor Space")
+        return corrsDF
