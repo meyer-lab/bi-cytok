@@ -10,7 +10,8 @@ from ..imports import importCITE
 from pandas.api.types import CategoricalDtype
 from sklearn.neighbors import KernelDensity
 from scipy import stats
-
+from sklearn.preprocessing import normalize
+from ot import emd2
 
 
 
@@ -18,8 +19,7 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():
     ax, f = getSetup((10, 8), (2, 2)) 
-
-    def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
+    def Wass_KL_Dist_2D(ax, targCell, numFactors, RNA=False, offTargState=0):
         """Finds markers which have average greatest difference from other cells"""
         CITE_DF = importCITE()
 
@@ -37,29 +37,26 @@ def makeFigure():
                 # Compare to naive Tregs
                 elif offTargState == 2:
                     offTargCellMark = CITE_DF.loc[CITE_DF["CellType3"] == "Treg Naive"][marker].values / markAvg
-                if np.mean(targCellMark) > np.mean(offTargCellMark):
-                    kdeTarg = KernelDensity(kernel='gaussian').fit(targCellMark.reshape(-1, 1))
-                    kdeOffTarg = KernelDensity(kernel='gaussian').fit(offTargCellMark.reshape(-1, 1))
-                    minVal = np.minimum(targCellMark.min(), offTargCellMark.min()) - 10
-                    maxVal = np.maximum(targCellMark.max(), offTargCellMark.max()) + 10
-                    outcomes = np.arange(minVal, maxVal + 1).reshape(-1, 1)
-                    distTarg = np.exp(kdeTarg.score_samples(outcomes))
-                    distOffTarg = np.exp(kdeOffTarg.score_samples(outcomes))
-                    KL_div = stats.entropy(distOffTarg.flatten() + 1e-200, distTarg.flatten() + 1e-200, base=2)
-                    markerDF = pd.concat([markerDF, pd.DataFrame({"Marker": [marker], "Wasserstein Distance": stats.wasserstein_distance(targCellMark, offTargCellMark), "KL Divergence": KL_div})])
+
+                # Combine receptor lists for 2D distribution calculation
+                receptorList = np.column_stack((targCellMark, offTargCellMark))
+
+                # Calculate Wasserstein distance using POT package
+                distances = emd2(receptorList[:, 0], receptorList[:, 1], normalize(np.ones_like(receptorList[:, 0])), normalize(np.ones_like(receptorList[:, 1])))
+
+                markerDF = pd.concat([markerDF, pd.DataFrame({"Marker": [marker], "Wasserstein Distance": distances})])
 
         corrsDF = pd.DataFrame()
-        for i, distance in enumerate(["Wasserstein Distance", "KL Divergence"]):
-            ratioDF = markerDF.sort_values(by=distance)
-            posCorrs = ratioDF.tail(numFactors).Marker.values
-            corrsDF = pd.concat([corrsDF, pd.DataFrame({"Distance": distance, "Marker": posCorrs})])
-            markerDF = markerDF.loc[markerDF["Marker"].isin(posCorrs)]
-            sns.barplot(data=ratioDF.tail(numFactors), y="Marker", x=distance, ax=ax[i], color='k')
-            ax[i].set(xscale="log")
-            ax[0].set(title="Wasserstein Distance - Surface Markers")
-            ax[1].set(title="KL Divergence - Surface Markers")
+        ratioDF = markerDF.sort_values(by="Wasserstein Distance")
+        posCorrs = ratioDF.tail(numFactors).Marker.values
+        corrsDF = pd.concat([corrsDF, pd.DataFrame({"Distance": "Wasserstein Distance", "Marker": posCorrs})])
+        markerDF = markerDF.loc[markerDF["Marker"].isin(posCorrs)]
+        sns.barplot(data=ratioDF.tail(numFactors), y="Marker", x="Wasserstein Distance", ax=ax, color='k')
+        ax.set(xscale="log", title="Wasserstein Distance - Surface Markers")
+        
         return corrsDF
+    corrsDF = Wass_KL_Dist_2Dm(ax[0], targCell="Tregs", numFactors=5, offTargState=0)
 
-    Wass_KL_Dist(ax[0],"NK", )
-    
+#   Show the plot
+    plt.show()
     return f
