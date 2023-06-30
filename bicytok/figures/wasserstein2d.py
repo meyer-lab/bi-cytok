@@ -11,8 +11,6 @@ from .common import getSetup
 from ..imports import importCITE
 import matplotlib.pyplot as plt
 
-path_here = dirname(dirname(__file__))
-
 def makeFigure():
     fig, ax = plt.subplots(2, 1, figsize=(10, 8))
     def Wass_KL_Dist2d(ax, targCell, numFactors, offTargReceptors, signalReceptor, RNA=False, offTargState=0):
@@ -42,9 +40,11 @@ def makeFigure():
         return corrsDF
     
     targCell = "Treg"
-    
     numFactors = 5
-    result = Wass_KL_Dist2d(ax, targCell, numFactors)
+    offTargReceptors = ["CD335"]  # Update with the list of off-target receptors
+    signalReceptor = "IL2RB"  # Update with the signaling receptor
+    
+    result = Wass_KL_Dist2d(ax, targCell, numFactors, offTargReceptors, signalReceptor)
 
     # Display the bar plots
     plt.show()
