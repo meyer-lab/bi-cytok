@@ -55,7 +55,7 @@ def makeFigure():
         ax.set(xscale="log", title="Wasserstein Distance - Surface Markers")
         
         return corrsDF
-    corrsDF = Wass_KL_Dist_2Dm(ax[0], targCell="Tregs", numFactors=5, offTargState=0)
+    corrsDF = Wass_KL_Dist_2D(ax[0], targCell="Tregs", numFactors=5, offTargState=0)
 
 #   Show the plot
     plt.show()
