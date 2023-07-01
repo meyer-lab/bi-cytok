@@ -12,7 +12,7 @@ import pandas as pd
 from ..imports import importCITE
 from sklearn.neighbors import KernelDensity
 from scipy import stats
-
+from ot import emd2_samples
 
 matplotlib.rcParams["legend.labelspacing"] = 0.2
 matplotlib.rcParams["legend.fontsize"] = 8

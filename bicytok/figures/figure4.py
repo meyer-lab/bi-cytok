@@ -16,7 +16,7 @@ def makeFigure():
     offTargReceptors = ["CD335"]  # Update with the list of off-target receptors
     signalReceptor = "CD122"  # Update with the signaling receptor
     
-    result = Wass_KL_Dist2d(ax, targCell, numFactors, offTargReceptors, signalReceptor)
+    Wass_KL_Dist2d(ax, targCell, numFactors, offTargReceptors, signalReceptor)
 
     # Display the bar plots
     plt.show()
