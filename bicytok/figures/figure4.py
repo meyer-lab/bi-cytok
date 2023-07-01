@@ -19,9 +19,9 @@ def makeFigure():
     # Wass_KL_Dist(ax[2:4], targCell, numFactors) # works
     numFactors = 5
     receptor2 = ['CD122']
-    receptor1 =['CD335'] # ??? or receptor1 = [receptor for receptor in markerDF.columns if receptor != "CD122"]
+    receptor1 = [receptor for receptor in markerDF.columns if receptor != "CD122"]
     targCell = "Treg Memory" # works 
     
-    Wass_KL_Dist2d(ax[0:2], targCell, numFactors, receptor1, receptor2, RNA=False, offTargState=0)
+    Wass_KL_Dist2d(ax[0:2], targCell, numFactors, receptor1, receptor2, RNA=False, offTargState=1)
     
     return f
