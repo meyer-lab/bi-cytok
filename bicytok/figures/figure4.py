@@ -21,6 +21,6 @@ def makeFigure():
     off_target_receptors = 'CD25'
 
     top_distances = calculate_distance(new_df, signaling_receptor, off_target_receptors, target_cells)
-    print("Top 5 noptimal transport distances, obviously rn im aware it will not give 5 bc i only have 2 receptors:", top_distances)
+    print("This is the distance for cd25, you need to cycle through all 200 receptors store their vales in an array and spit out top 5 highest:", top_distances)
 
     return f
