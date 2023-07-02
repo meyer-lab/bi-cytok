@@ -187,25 +187,22 @@ def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
          print(receptor)
     return corrsDF 
     '''
-def calculate_distance(target_cells, dataset, signaling_receptor, off_target_receptors):
-    # Get the receptor counts for the target receptor
-    target_receptor_counts = target_cells[signaling_receptor].values
+def calculate_distance(dataset, signal_receptor, non_signal_receptor, target_cells):
+    # target and off-target cells
+    target_cells = dataset[dataset['CellType1'] == target_cells]
+    off_target_cells = dataset[dataset['CellType1'] != target_cells]
+    
+    # receptor counts for the signal and non-signal receptors
+    
+    target_receptor_counts = target_cells[[signal_receptor, non_signal_receptor]].values
+    off_target_receptor_counts = off_target_cells[[signal_receptor, non_signal_receptor]].values
 
-    # Filter the dataset to get the off-target receptors
-    off_target_receptor_counts = dataset[off_target_receptors].values
+    # matrix!! 
+    M = ot.dist(target_receptor_counts, off_target_receptor_counts)
 
-    # Compute the distance matrix between the receptor counts
-    M = ot.dist(target_receptor_counts.reshape(-1, 1), off_target_receptor_counts)
-
-    # Calculate optimal transport distances for each off-target receptor
+    # optimal transport distance
     a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
-    optimal_distances = []
-    for i in range(off_target_receptor_counts.shape[1]):
-        b = off_target_receptor_counts[:, i] / off_target_receptor_counts[:, i].sum()
-        optimal_distance = ot.emd2(a, b, M)
-        optimal_distances.append(optimal_distance)
+    b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
+    optimal_transport = ot.emd2(a, b, M)
 
-    # Get the top 5 optimal transport distances
-    top_distances = sorted(optimal_distances, reverse=True)[:5]
-
-    return top_distances
+    return optimal_transport
