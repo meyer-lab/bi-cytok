@@ -14,15 +14,13 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():
     markerDF = importCITE()
-    print (markerDF)
     new_df = markerDF.head(1000)
-    print(new_df)
     ax, f = getSetup((8, 8), (2, 2)) # works
-    target_cells = 'NK'
+    target_cells = 'Treg'
     signaling_receptor = 'CD122'
     off_target_receptors = 'CD25'
 
     top_distances = calculate_distance(new_df, signaling_receptor, off_target_receptors, target_cells)
-    print("Top 5 optimal transport distances, obviously rn im aware it will not give 5 bc i only have 2 receptors:", top_distances)
+    print("Top 5 noptimal transport distances, obviously rn im aware it will not give 5 bc i only have 2 receptors:", top_distances)
 
     return f

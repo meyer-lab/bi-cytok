@@ -142,67 +142,23 @@ def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
         ax[1].set(title="KL Divergence - Surface Markers")
     return corrsDF
     
-    '''
-    def Wass_KL_Dist2d(ax, targCell, numFactors, receptor1, receptor2, RNA=False, offTargState=0):
-    """Finds markers which have average greatest difference from other cells"""
-    CITE_DF = importCITE()
-    markerDF = pd.DataFrame(columns=["Marker1", "Marker2", "Wasserstein Distance", "KL Divergence"])
-    for marker1, marker2 in zip(receptor1, receptor2):
-        markAvg = np.mean(CITE_DF[marker1].values)
-        if markAvg > 0.0001:
-            targCellMark1 = CITE_DF.loc[CITE_DF["CellType3"] == targCell][marker1].values / markAvg
-            targCellMark2 = CITE_DF.loc[CITE_DF["CellType3"] == targCell][marker2].values / markAvg
-            if offTargState == 0:
-                offTargCellMark1 = CITE_DF.loc[CITE_DF["CellType3"] != targCell][marker1].values / markAvg
-                offTargCellMark2 = CITE_DF.loc[CITE_DF["CellType3"] != targCell][marker2].values / markAvg
-            elif offTargState == 1:
-                offTargCellMark1 = CITE_DF.loc[CITE_DF["CellType2"] != "Treg"][marker1].values / markAvg
-                offTargCellMark2 = CITE_DF.loc[CITE_DF["CellType2"] != "Treg"][marker2].values / markAvg
-            elif offTargState == 2:
-                offTargCellMark1 = CITE_DF.loc[CITE_DF["CellType3"] == "Treg Naive"][marker1].values / markAvg
-                offTargCellMark2 = CITE_DF.loc[CITE_DF["CellType3"] == "Treg Naive"][marker2].values / markAvg
-            print("Shape of targCellMark1:", targCellMark1.shape)
-            print("Shape of targCellMark2:", targCellMark2.shape)
-            print("Shape of offTargCellMark1:", offTargCellMark1.shape)
-            print("Shape of offTargCellMark2:", offTargCellMark2.shape)
-            offTargCellMark1 = offTargCellMark1.reshape((-1, 1))
-            offTargCellMark2 = offTargCellMark2.reshape((-1, 1))
-            emd_value = emd2(targCellMark1, targCellMark2, offTargCellMark1, offTargCellMark2)
-
-            markerDF = pd.concat([markerDF, pd.DataFrame({"Marker1": [marker1], "Marker2": [marker2], "Wasserstein Distance": emd_value, "KL Divergence": None})])
-
-    corrsDF = pd.DataFrame()
-    for i, distance in enumerate(["Wasserstein Distance", "KL Divergence"]):
-        ratioDF = markerDF.sort_values(by=distance, ascending=False)
-        posCorrs = ratioDF.head(numFactors).Marker1.values
-        corrsDF = pd.concat([corrsDF, pd.DataFrame({"Distance": distance, "Marker": posCorrs})])
-        markerDF = markerDF.loc[markerDF["Marker1"].isin(posCorrs)]
-        sns.barplot(data=ratioDF.head(numFactors), y="Marker1", x=distance, ax=ax[i], color='k')
-        ax[i].set(xscale="log")
-        ax[0].set(title="Wasserstein Distance - Surface Markers")
-        ax[1].set(title="KL Divergence - Surface Markers")
-    offTargetReceptors = markerDF["Marker1"].values.tolist()
-    print("List of off-target receptors:")
-    for receptor in offTargetReceptors:
-         print(receptor)
-    return corrsDF 
-    '''
 def calculate_distance(dataset, signal_receptor, non_signal_receptor, target_cells):
     # target and off-target cells
-    target_cells = dataset[dataset['CellType1'] == target_cells]
-    off_target_cells = dataset[dataset['CellType1'] != target_cells]
+    target_cells_df = dataset[dataset['CellType2'] == target_cells]
+    off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
     
-    # receptor counts for the signal and non-signal receptors
     
-    target_receptor_counts = target_cells[[signal_receptor, non_signal_receptor]].values
-    off_target_receptor_counts = off_target_cells[[signal_receptor, non_signal_receptor]].values
+    target_receptor_counts = target_cells_df[[signal_receptor, non_signal_receptor]].values
+    off_target_receptor_counts = off_target_cells_df[[signal_receptor, non_signal_receptor]].values
 
     # matrix!! 
+
     M = ot.dist(target_receptor_counts, off_target_receptor_counts)
 
     # optimal transport distance
     a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
     b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
+
     optimal_transport = ot.emd2(a, b, M)
 
     return optimal_transport
