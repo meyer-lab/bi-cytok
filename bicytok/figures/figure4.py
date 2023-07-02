@@ -23,6 +23,6 @@ def makeFigure():
     off_target_receptors = 'CD25'
 
     top_distances = calculate_distance(new_df, signaling_receptor, off_target_receptors, target_cells)
-    print("Top 5 optimal transport distances:", top_distances)
+    print("Top 5 optimal transport distances, obviously rn im aware it will not give 5 bc i only have 2 receptors:", top_distances)
 
     return f
