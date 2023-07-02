@@ -141,8 +141,9 @@ def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
         ax[0].set(title="Wasserstein Distance - Surface Markers")
         ax[1].set(title="KL Divergence - Surface Markers")
     return corrsDF
-
-def Wass_KL_Dist2d(ax, targCell, numFactors, receptor1, receptor2, RNA=False, offTargState=0):
+    
+    '''
+    def Wass_KL_Dist2d(ax, targCell, numFactors, receptor1, receptor2, RNA=False, offTargState=0):
     """Finds markers which have average greatest difference from other cells"""
     CITE_DF = importCITE()
     markerDF = pd.DataFrame(columns=["Marker1", "Marker2", "Wasserstein Distance", "KL Divergence"])
@@ -184,4 +185,27 @@ def Wass_KL_Dist2d(ax, targCell, numFactors, receptor1, receptor2, RNA=False, of
     print("List of off-target receptors:")
     for receptor in offTargetReceptors:
          print(receptor)
-    return corrsDF
+    return corrsDF 
+    '''
+def calculate_distance(target_cells, dataset, signaling_receptor, off_target_receptors):
+    # Get the receptor counts for the target receptor
+    target_receptor_counts = target_cells[signaling_receptor].values
+
+    # Filter the dataset to get the off-target receptors
+    off_target_receptor_counts = dataset[off_target_receptors].values
+
+    # Compute the distance matrix between the receptor counts
+    M = ot.dist(target_receptor_counts.reshape(-1, 1), off_target_receptor_counts)
+
+    # Calculate optimal transport distances for each off-target receptor
+    a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
+    optimal_distances = []
+    for i in range(off_target_receptor_counts.shape[1]):
+        b = off_target_receptor_counts[:, i] / off_target_receptor_counts[:, i].sum()
+        optimal_distance = ot.emd2(a, b, M)
+        optimal_distances.append(optimal_distance)
+
+    # Get the top 5 optimal transport distances
+    top_distances = sorted(optimal_distances, reverse=True)[:5]
+
+    return top_distances
