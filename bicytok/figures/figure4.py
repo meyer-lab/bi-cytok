@@ -18,10 +18,6 @@ def makeFigure():
     ax, f = getSetup((8, 8), (2, 2)) 
     target_cells = 'Treg'
     signaling_receptor = 'CD122'
-    off_target_receptors = []
-    for column in new_df.columns:
-        if column != signaling_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
-            off_target_receptors.append(column)
-
-    calculate_distance(new_df, signaling_receptor, off_target_receptors, target_cells)
+    calculate_distance(new_df, signaling_receptor, target_cells)
+    
     return f

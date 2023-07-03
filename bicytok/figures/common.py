@@ -142,8 +142,13 @@ def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
         ax[1].set(title="KL Divergence - Surface Markers")
     return corrsDF
     
-def calculate_distance(dataset, signal_receptor, non_signal_receptors, target_cells):
-    # target and off-target cells
+def calculate_distance(dataset, signal_receptor, target_cells):
+    # target and off-target cellss
+    non_signal_receptors = []
+    for column in dataset.columns:
+        if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
+            non_signal_receptors.append(column)
+
     results = []
     target_cells_df = dataset[dataset['CellType2'] == target_cells]
     off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
