@@ -142,23 +142,28 @@ def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
         ax[1].set(title="KL Divergence - Surface Markers")
     return corrsDF
     
-def calculate_distance(dataset, signal_receptor, non_signal_receptor, target_cells):
+def calculate_distance(dataset, signal_receptor, non_signal_receptors, target_cells):
     # target and off-target cells
+    results = []
     target_cells_df = dataset[dataset['CellType2'] == target_cells]
     off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
     
-    
-    target_receptor_counts = target_cells_df[[signal_receptor, non_signal_receptor]].values
-    off_target_receptor_counts = off_target_cells_df[[signal_receptor, non_signal_receptor]].values
+    for receptor_name in non_signal_receptors:
+        target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
+        off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
 
-    # matrix!! 
+        # matrix!! 
 
-    M = ot.dist(target_receptor_counts, off_target_receptor_counts)
+        M = ot.dist(target_receptor_counts, off_target_receptor_counts)
 
-    # optimal transport distance
-    a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
-    b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
+        # optimal transport distance
+        a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
+        b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
 
-    optimal_transport = ot.emd2(a, b, M)
-
-    return optimal_transport
+        optimal_transport = ot.emd2(a, b, M)
+        results.append((optimal_transport, receptor_name))
+    # end loop
+    sorted_results = sorted(results, reverse=True)
+    top_receptor_names = [receptor_name for _, receptor_name in sorted_results[:5]]
+    print('The 5 off-target receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_names)
+    return top_receptor_names

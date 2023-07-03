@@ -15,12 +15,13 @@ path_here = dirname(dirname(__file__))
 def makeFigure():
     markerDF = importCITE()
     new_df = markerDF.head(1000)
-    ax, f = getSetup((8, 8), (2, 2)) # works
+    ax, f = getSetup((8, ), (2, 2)) # works
     target_cells = 'Treg'
     signaling_receptor = 'CD122'
-    off_target_receptors = 'CD25'
+    off_target_receptors = []
+    for column in new_df.columns:
+        if column != signaling_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
+            off_target_receptors.append(column)
 
-    top_distances = calculate_distance(new_df, signaling_receptor, off_target_receptors, target_cells)
-    print("This is the distance for cd25, you need to cycle through all 200 receptors store their vales in an array and spit out top 5 highest:", top_distances)
-
+    calculate_distance(new_df, signaling_receptor, off_target_receptors, target_cells)
     return f
