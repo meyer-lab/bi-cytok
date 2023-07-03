@@ -157,8 +157,7 @@ def calculate_distance(dataset, signal_receptor, target_cells):
         target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
         off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
 
-        # matrix!! 
-
+        # matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
 
         # optimal transport distance
