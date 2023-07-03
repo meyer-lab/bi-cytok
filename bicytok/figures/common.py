@@ -166,7 +166,8 @@ def calculate_distance(dataset, signal_receptor, target_cells):
         b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
 
         optimal_transport = ot.emd2(a, b, M)
-        results.append((optimal_transport, receptor_name))
+        if np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]):
+            results.append((optimal_transport, receptor_name))
     # end loop
     sorted_results = sorted(results, reverse=True)
     
