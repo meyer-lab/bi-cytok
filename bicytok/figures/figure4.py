@@ -15,7 +15,7 @@ path_here = dirname(dirname(__file__))
 def makeFigure():
     markerDF = importCITE()
     new_df = markerDF.head(1000)
-    ax, f = getSetup((8, ), (2, 2)) # works
+    ax, f = getSetup((8, 8), (2, 2)) # works
     target_cells = 'Treg'
     signaling_receptor = 'CD122'
     off_target_receptors = []
