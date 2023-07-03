@@ -164,6 +164,7 @@ def calculate_distance(dataset, signal_receptor, non_signal_receptors, target_ce
         results.append((optimal_transport, receptor_name))
     # end loop
     sorted_results = sorted(results, reverse=True)
-    top_receptor_names = [receptor_name for _, receptor_name in sorted_results[:5]]
-    print('The 5 off-target receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_names)
-    return top_receptor_names
+    
+    top_receptor_info = [(receptor_name, optimal_transport) for optimal_transport, receptor_name in sorted_results[:5]]    
+    print('The 5 off-target receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
+    return top_receptor_info
