@@ -142,7 +142,7 @@ def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
         ax[1].set(title="KL Divergence - Surface Markers")
     return corrsDF
     
-def calculate_distance(dataset, signal_receptor, target_cells):
+def calculate_distance(dataset, signal_receptor, target_cells, ax=None):
     # target and off-target cellss
     non_signal_receptors = []
     for column in dataset.columns:
@@ -171,5 +171,18 @@ def calculate_distance(dataset, signal_receptor, target_cells):
     sorted_results = sorted(results, reverse=True)
     
     top_receptor_info = [(receptor_name, optimal_transport) for optimal_transport, receptor_name in sorted_results[:5]]    
+    
+    # bar plot 
+    receptor_names = [info[0] for info in top_receptor_info]
+    distances = [info[1] for info in top_receptor_info]
+
+    plt.bar(range(len(receptor_names)), distances)
+    plt.xlabel('Receptor')
+    plt.ylabel('Distance')
+    plt.title('Top 10 Receptor Distances')
+    plt.xticks(range(len(receptor_names)), receptor_names, rotation='vertical')
+    plt.tight_layout()
+    plt.show()    
+    
     print('The 5 off-target receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return top_receptor_info

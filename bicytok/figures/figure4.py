@@ -15,9 +15,9 @@ path_here = dirname(dirname(__file__))
 def makeFigure():
     markerDF = importCITE()
     new_df = markerDF.head(1000)
-    ax, f = getSetup((8, 8), (2, 2)) 
+    ax, f = getSetup((8, 8), (1, 1))
     target_cells = 'Treg'
     signaling_receptor = 'CD122'
-    calculate_distance(new_df, signaling_receptor, target_cells)
+    calculate_distance(new_df, signaling_receptor, target_cells, ax)
     
     return f
