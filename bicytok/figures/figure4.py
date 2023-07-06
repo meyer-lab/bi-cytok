@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 from .common import Wass_KL_Dist
-from .common import calculate_distance
+from .common import EMD_Receptors
 from ..imports import importCITE
 
 
@@ -18,6 +18,6 @@ def makeFigure():
     ax, f = getSetup((8, 8), (1, 1))
     target_cells = 'Treg'
     signaling_receptor = 'CD122'
-    calculate_distance(new_df, signaling_receptor, target_cells, ax)
+    EMD_Receptors(new_df, signaling_receptor, target_cells, ax)
     
     return f

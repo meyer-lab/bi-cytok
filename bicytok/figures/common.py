@@ -142,7 +142,7 @@ def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
         ax[1].set(title="KL Divergence - Surface Markers")
     return corrsDF
     
-def calculate_distance(dataset, signal_receptor, target_cells, ax=None):
+def EMD_Receptors(dataset, signal_receptor, target_cells, ax=None):
     # target and off-target cellss
     non_signal_receptors = []
     for column in dataset.columns:
