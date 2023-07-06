@@ -157,7 +157,7 @@ def EMD_Receptors(dataset, signal_receptor, target_cells, ax=None):
         target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
         off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
 
-        # matrix for emd parameter
+        # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
 
         # optimal transport distance
@@ -179,7 +179,7 @@ def EMD_Receptors(dataset, signal_receptor, target_cells, ax=None):
     plt.bar(range(len(receptor_names)), distances)
     plt.xlabel('Receptor')
     plt.ylabel('Distance')
-    plt.title('Top 10 Receptor Distances')
+    plt.title('Top 5 Receptor Distances')
     plt.xticks(range(len(receptor_names)), receptor_names, rotation='vertical')
     plt.tight_layout()
     plt.show()    
