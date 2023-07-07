@@ -142,7 +142,7 @@ def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
         ax[1].set(title="KL Divergence - Surface Markers")
     return corrsDF
     
-def EMD_Receptors(dataset, signal_receptor, target_cells, ax=None):
+def EMD_Receptors(dataset, signal_receptor, target_cells, ax):
     # target and off-target cellss
     non_signal_receptors = []
     for column in dataset.columns:
@@ -176,13 +176,12 @@ def EMD_Receptors(dataset, signal_receptor, target_cells, ax=None):
     receptor_names = [info[0] for info in top_receptor_info]
     distances = [info[1] for info in top_receptor_info]
 
-    plt.bar(range(len(receptor_names)), distances)
-    plt.xlabel('Receptor')
-    plt.ylabel('Distance')
-    plt.title('Top 5 Receptor Distances')
-    plt.xticks(range(len(receptor_names)), receptor_names, rotation='vertical')
-    plt.tight_layout()
-    plt.show()    
+    ax.bar(range(len(receptor_names)), distances)
+    ax.set_xlabel('Receptor')
+    ax.set_ylabel('Distance')
+    ax.set_title('Top 5 Receptor Distances')
+    ax.set_xticks(range(len(receptor_names)))
+    ax.set_xticklabels(receptor_names, rotation='vertical')
     
     print('The 5 off-target receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return top_receptor_info
@@ -193,19 +192,23 @@ def OT_Matrix_Plot(ax, dataset, signal_receptor, non_signal_receptor, target_cel
     
     xs = target_cells_df[[signal_receptor, non_signal_receptor]].values
     xt = off_target_cells_df[[signal_receptor, non_signal_receptor]].values
-    
+
     M = ot.dist(xs, xt)
     a = np.ones((xs.shape[0],)) / xs.shape[0]
     b = np.ones((xt.shape[0],)) / xt.shape[0]
-    
+  
     G0 = ot.emd2(a, b, M)
-    
-    ot.plot.plot2D_samples_mat(xs, xt, G0, c=[.5, .5, 1])
+
     ax.plot(xs[:, 0], xs[:, 1], '+b', label='Source samples')
     ax.plot(xt[:, 0], xt[:, 1], 'xr', label='Target samples')
     ax.legend(loc=0)
-    ax.set_title('OT matrix with samples')
-    plt.show()
+    ax.set_title('Source and target distributions')
 
+    x_min = min(np.min(xs[:, 0]), np.min(xt[:, 0]))
+    x_max = max(np.max(xs[:, 0]), np.max(xt[:, 0]))
+    y_min = min(np.min(xs[:, 1]), np.min(xt[:, 1]))
+    y_max = max(np.max(xs[:, 1]), np.max(xt[:, 1]))
+    ax.set_xlim(x_min - 1, x_max + 1)
+    ax.set_ylim(y_min - 1, y_max + 1)
 
     return

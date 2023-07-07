@@ -15,7 +15,7 @@ path_here = dirname(dirname(__file__))
 def makeFigure():
     markerDF = importCITE()
     new_df = markerDF.head(1000)
-    ax, f = getSetup((8, 8), (1, 2))
+    f, ax = plt.subplots(1, 2, figsize=(20, 10))
     target_cells = 'Treg'
     signaling_receptor = 'CD122'
     non_siganling_receptor = 'CD4-1'
