@@ -186,7 +186,7 @@ def EMD_Receptors(dataset, signal_receptor, target_cells, ax):
     print('The 5 off-target receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return top_receptor_info
 
-def OT_Matrix_Plot(ax, dataset, signal_receptor, non_signal_receptor, target_cells):
+def EMD_Distribution_Plot(ax, dataset, signal_receptor, non_signal_receptor, target_cells):
     target_cells_df = dataset[dataset['CellType2'] == target_cells]
     off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
     

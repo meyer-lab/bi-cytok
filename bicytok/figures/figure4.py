@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 from .common import EMD_Receptors
-from .common import OT_Matrix_Plot
+from .common import EMD_Distribution_Plot
 from ..imports import importCITE
 
 
@@ -20,7 +20,7 @@ def makeFigure():
     signaling_receptor = 'CD122'
     non_siganling_receptor = 'CD25'
     EMD_Receptors(new_df, signaling_receptor, target_cells, ax[0])
-    OT_Matrix_Plot(ax[1], new_df, signaling_receptor, non_siganling_receptor, target_cells)
+    EMD_Distribution_Plot(ax[1], new_df, signaling_receptor, non_siganling_receptor, target_cells)
 
     
     return f
