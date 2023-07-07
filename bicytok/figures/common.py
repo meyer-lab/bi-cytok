@@ -199,16 +199,13 @@ def OT_Matrix_Plot(ax, dataset, signal_receptor, non_signal_receptor, target_cel
   
     G0 = ot.emd2(a, b, M)
 
-    ax.plot(xs[:, 0], xs[:, 1], '+b', label='Source samples')
-    ax.plot(xt[:, 0], xt[:, 1], 'xr', label='Target samples')
+    ax.plot(xs[:, 0], xs[:, 1], '+b', label='Target cells')
+    ax.plot(xt[:, 0], xt[:, 1], 'xr', label='Off-target cells')
     ax.legend(loc=0)
-    ax.set_title('Source and target distributions')
+    ax.set_title('Target cell and off-target cell distributions')
 
-    x_min = min(np.min(xs[:, 0]), np.min(xt[:, 0]))
-    x_max = max(np.max(xs[:, 0]), np.max(xt[:, 0]))
-    y_min = min(np.min(xs[:, 1]), np.min(xt[:, 1]))
-    y_max = max(np.max(xs[:, 1]), np.max(xt[:, 1]))
-    ax.set_xlim(x_min - 1, x_max + 1)
-    ax.set_ylim(y_min - 1, y_max + 1)
+    ax.set_xlabel(signal_receptor)
+    ax.set_ylabel(non_signal_receptor)
+    ax.legend(loc=0, fontsize=12)
 
     return

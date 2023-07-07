@@ -15,10 +15,10 @@ path_here = dirname(dirname(__file__))
 def makeFigure():
     markerDF = importCITE()
     new_df = markerDF.head(1000)
-    f, ax = plt.subplots(1, 2, figsize=(20, 10))
+    f, ax = plt.subplots(1, 2, figsize=(10, 5))
     target_cells = 'Treg'
     signaling_receptor = 'CD122'
-    non_siganling_receptor = 'CD4-1'
+    non_siganling_receptor = 'CD25'
     EMD_Receptors(new_df, signaling_receptor, target_cells, ax[0])
     OT_Matrix_Plot(ax[1], new_df, signaling_receptor, non_siganling_receptor, target_cells)
 
