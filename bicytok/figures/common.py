@@ -172,7 +172,7 @@ def EMD_Receptors(dataset, signal_receptor, target_cells, ax=None):
     
     top_receptor_info = [(receptor_name, optimal_transport) for optimal_transport, receptor_name in sorted_results[:5]]    
     
-    # bar plot 
+    # bar graph 
     receptor_names = [info[0] for info in top_receptor_info]
     distances = [info[1] for info in top_receptor_info]
 
@@ -186,3 +186,26 @@ def EMD_Receptors(dataset, signal_receptor, target_cells, ax=None):
     
     print('The 5 off-target receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return top_receptor_info
+
+def OT_Matrix_Plot(ax, dataset, signal_receptor, non_signal_receptor, target_cells):
+    target_cells_df = dataset[dataset['CellType2'] == target_cells]
+    off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
+    
+    xs = target_cells_df[[signal_receptor, non_signal_receptor]].values
+    xt = off_target_cells_df[[signal_receptor, non_signal_receptor]].values
+    
+    M = ot.dist(xs, xt)
+    a = np.ones((xs.shape[0],)) / xs.shape[0]
+    b = np.ones((xt.shape[0],)) / xt.shape[0]
+    
+    G0 = ot.emd2(a, b, M)
+    
+    ot.plot.plot2D_samples_mat(xs, xt, G0, c=[.5, .5, 1])
+    ax.plot(xs[:, 0], xs[:, 1], '+b', label='Source samples')
+    ax.plot(xt[:, 0], xt[:, 1], 'xr', label='Target samples')
+    ax.legend(loc=0)
+    ax.set_title('OT matrix with samples')
+    plt.show()
+
+
+    return

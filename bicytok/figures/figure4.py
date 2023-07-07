@@ -5,8 +5,8 @@ import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
-from .common import Wass_KL_Dist
 from .common import EMD_Receptors
+from .common import OT_Matrix_Plot
 from ..imports import importCITE
 
 
@@ -15,9 +15,12 @@ path_here = dirname(dirname(__file__))
 def makeFigure():
     markerDF = importCITE()
     new_df = markerDF.head(1000)
-    ax, f = getSetup((8, 8), (1, 1))
+    ax, f = getSetup((8, 8), (1, 2))
     target_cells = 'Treg'
     signaling_receptor = 'CD122'
-    EMD_Receptors(new_df, signaling_receptor, target_cells, ax)
+    non_siganling_receptor = 'CD4-1'
+    EMD_Receptors(new_df, signaling_receptor, target_cells, ax[0])
+    OT_Matrix_Plot(ax[1], new_df, signaling_receptor, non_siganling_receptor, target_cells)
+
     
     return f
