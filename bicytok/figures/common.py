@@ -192,8 +192,10 @@ def EMD_Receptors(dataset, signal_receptor, target_cells, ax):
             conversion_factor = IL2Rb_factor
         elif receptor_name == 'CD25':
             conversion_factor = IL2Ra_factor
-        else:
+        elif receptor_name == 'CD127':
             conversion_factor = IL7Ra_factor
+        else:
+            conversion_factor = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
 
         target_receptor_counts[:, 1] *= conversion_factor
         off_target_receptor_counts[:, 1] *= conversion_factor
