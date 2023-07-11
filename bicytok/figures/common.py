@@ -154,7 +154,7 @@ def EMD_Distribution_Plot(ax, dataset, signal_receptor, non_signal_receptor, tar
     a = np.ones((xs.shape[0],)) / xs.shape[0]
     b = np.ones((xt.shape[0],)) / xt.shape[0]
   
-    G0 = ot.emd2(a, b, M)
+    G0 = ot.emd2(a, b, M, numItermax=10000000)
 
     ax.plot(xs[:, 0], xs[:, 1], '+b', label='Target cells')
     ax.plot(xt[:, 0], xt[:, 1], 'xr', label='Off-target cells')
@@ -206,7 +206,7 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
         b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
 
-        optimal_transport = ot.emd2(a, b, M)
+        optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
         if np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]):
             results.append((optimal_transport, receptor_name))
     # end loop
@@ -267,7 +267,7 @@ def EMD_1D(dataset, target_cells, ax):
         a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
         b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
 
-        optimal_transport = ot.emd2(a, b, M)
+        optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
         if np.mean(target_receptor_counts) > np.mean(off_target_receptor_counts):
             results.append((optimal_transport, receptor_name))
     # end loop
