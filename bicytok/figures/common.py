@@ -222,9 +222,66 @@ def EMD_Receptors(dataset, signal_receptor, target_cells, ax):
     ax.bar(range(len(receptor_names)), distances)
     ax.set_xlabel('Receptor')
     ax.set_ylabel('Distance')
-    ax.set_title('Top 5 Receptor Distances')
+    ax.set_title('Top 5 Receptor Distances (2D)')
     ax.set_xticks(range(len(receptor_names)))
     ax.set_xticklabels(receptor_names, rotation='vertical')
     
     print('The 5 off-target receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return top_receptor_info
+
+def EMD1D(dataset, target_cells, ax):
+    weightDF = convFactCalc()
+    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
+
+    results = []
+    target_cells_df = dataset[dataset['CellType2'] == target_cells]
+    off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
+
+    for receptor_name in dataset.columns:
+        if receptor_name not in ['CellType1', 'CellType2', 'CellType3']:
+            target_receptor_counts = target_cells_df[receptor_name].values.reshape(-1, 1)
+            off_target_receptor_counts = off_target_cells_df[receptor_name].values.reshape(-1, 1)
+
+            if receptor_name == 'CD122':
+                conversion_factor = int(IL2Rb_factor)
+            elif receptor_name == 'CD25':
+                conversion_factor = int(IL2Ra_factor)
+            elif receptor_name == 'CD127':
+                conversion_factor = int(IL7Ra_factor)
+            else:
+                conversion_factor = int((IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3)
+
+
+            target_receptor_counts *= conversion_factor
+            off_target_receptor_counts *= conversion_factor
+
+            # Matrix for emd parameter
+            M = ot.dist(target_receptor_counts, off_target_receptor_counts)
+
+            # optimal transport distance
+            a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
+            b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
+
+            optimal_transport = ot.emd2(a, b, M)
+            if np.mean(target_receptor_counts) > np.mean(off_target_receptor_counts):
+                results.append((optimal_transport, receptor_name))
+    
+    sorted_results = sorted(results, reverse=True)
+
+    top_receptor_info = [(receptor_name, optimal_transport) for optimal_transport, receptor_name in sorted_results[:5]]
+
+    receptor_names = [info[0] for info in top_receptor_info]
+    distances = [info[1] for info in top_receptor_info]
+
+    ax.bar(range(len(receptor_names)), distances)
+    ax.set_xlabel('Receptor')
+    ax.set_ylabel('Distance')
+    ax.set_title('Top 5 Receptor Distances (1D)')
+    ax.set_xticks(range(len(receptor_names)))
+    ax.set_xticklabels(receptor_names, rotation='vertical')
+
+    print('The 5 receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
+    return top_receptor_info
+
