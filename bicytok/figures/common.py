@@ -14,7 +14,6 @@ from sklearn.neighbors import KernelDensity
 from scipy import stats
 import ot
 import ot.plot
-from ot import emd2
 from ..selectivityFuncs import convFactCalc
 from ..selectivityFuncs import convFactCalc
 
@@ -168,7 +167,7 @@ def EMD_Distribution_Plot(ax, dataset, signal_receptor, non_signal_receptor, tar
 
     return
 
-def EMD_Receptors(dataset, signal_receptor, target_cells, ax):
+def EMD_2D(dataset, signal_receptor, target_cells, ax):
     weightDF = convFactCalc()
     # target and off-target cells
     IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
@@ -229,59 +228,23 @@ def EMD_Receptors(dataset, signal_receptor, target_cells, ax):
     print('The 5 off-target receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return top_receptor_info
 
-def EMD1D(dataset, target_cells, ax):
-    weightDF = convFactCalc()
-    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
-    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
-    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
+def EMD_1D(ax, target_cells, dataset):
+    """Finds markers which have average greatest difference from other cells"""
+    top_n = 5  # Set the number of top distances to 5
+    CITE_DF = dataset
 
-    results = []
-    target_cells_df = dataset[dataset['CellType2'] == target_cells]
-    off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
+    markerDF = pd.DataFrame(columns=["Marker", "Wasserstein Distance"])
+    for marker in CITE_DF.loc[:, ((CITE_DF.columns != 'CellType1') & (CITE_DF.columns != 'CellType2') & (CITE_DF.columns != 'CellType3') & (CITE_DF.columns != 'Cell'))].columns:
+        targCellMark = CITE_DF.loc[CITE_DF["CellType3"] == target_cells][marker].values 
+        offTargCellMark = CITE_DF.loc[CITE_DF["CellType2"] != target_cells][marker].values 
+        if np.mean(targCellMark) > np.mean(offTargCellMark):
+            wasserstein_dist = stats.wasserstein_distance(targCellMark, offTargCellMark)
+            markerDF = markerDF.append({"Marker": marker, "Cell Type": target_cells, "Wasserstein Distance": wasserstein_dist}, ignore_index=True)
 
-    for receptor_name in dataset.columns:
-        if receptor_name not in ['CellType1', 'CellType2', 'CellType3']:
-            target_receptor_counts = target_cells_df[receptor_name].values.reshape(-1, 1)
-            off_target_receptor_counts = off_target_cells_df[receptor_name].values.reshape(-1, 1)
-
-            if receptor_name == 'CD122':
-                conversion_factor = int(IL2Rb_factor)
-            elif receptor_name == 'CD25':
-                conversion_factor = int(IL2Ra_factor)
-            elif receptor_name == 'CD127':
-                conversion_factor = int(IL7Ra_factor)
-            else:
-                conversion_factor = int((IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3)
-
-
-            target_receptor_counts *= conversion_factor
-            off_target_receptor_counts *= conversion_factor
-
-            # Matrix for emd parameter
-            M = ot.dist(target_receptor_counts, off_target_receptor_counts)
-
-            # optimal transport distance
-            a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
-            b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
-
-            optimal_transport = ot.emd2(a, b, M)
-            if np.mean(target_receptor_counts) > np.mean(off_target_receptor_counts):
-                results.append((optimal_transport, receptor_name))
-    
-    sorted_results = sorted(results, reverse=True)
-
-    top_receptor_info = [(receptor_name, optimal_transport) for optimal_transport, receptor_name in sorted_results[:5]]
-
-    receptor_names = [info[0] for info in top_receptor_info]
-    distances = [info[1] for info in top_receptor_info]
-
-    ax.bar(range(len(receptor_names)), distances)
-    ax.set_xlabel('Receptor')
-    ax.set_ylabel('Distance')
-    ax.set_title('Top 5 Receptor Distances (1D)')
-    ax.set_xticks(range(len(receptor_names)))
-    ax.set_xticklabels(receptor_names, rotation='vertical')
-
-    print('The 5 receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
-    return top_receptor_info
+    markerDF = markerDF.sort_values(by="Wasserstein Distance", ascending=False).head(top_n)
+    sns.barplot(data=markerDF, y="Marker", x="Wasserstein Distance", ax=ax, color='k')
+    ax.set(xscale="log")
+    ax.set(title="Wasserstein Distance - Surface Markers")
+    print('The 5 off-target receptors which achieve the greatest positive distance from target-off-target cells are:', markerDF)
+    return markerDF
 
