@@ -12,8 +12,7 @@ from pandas.api.types import CategoricalDtype
 path_here = dirname(dirname(__file__))
 
 def makeFigure():
-    ax, f = getSetup((10, 8), (2, 2)) 
-
+    ax, f = getSetup((10, 8), (3, 2))
     # do this but for NK cells and the epitope (CD335) you found
 
     secondary = 'CD122'

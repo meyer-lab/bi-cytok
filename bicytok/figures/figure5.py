@@ -32,7 +32,7 @@ def makeFigure():
     # EpitopeDF now contains a data of single cell abundances for each cell type for each epitope
     epitopesDF["Selectivity"] = -1
     # New column which will hold selectivity per epitope
-    targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, epitopes[0])
+    targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, "CD122", epitopes[0])
     targRecs[2, :] = 0
     offTRecs[2, :] = 0
     baseSelectivity = 1 / minSelecFunc(1e1, targRecs, offTRecs, 0.1)

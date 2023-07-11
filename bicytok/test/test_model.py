@@ -14,7 +14,7 @@ class TestModel(unittest.TestCase):
     def test_eg(self):
         """Example."""
         self.assertTrue(3 + 1 > 0)
-    
+
     def test_optimize_design(self):
         targCell = 'Treg'
         offTCells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL'])
@@ -24,4 +24,4 @@ class TestModel(unittest.TestCase):
         epitopes = list(epitopesList['Epitope'].unique())
         epitopesDF = getSampleAbundances(epitopes, cells)
 
-        result = optimizeDesign(targCell, offTCells, epitopesDF, 'CD122', 0.01, [8.0, 8.0, 8.0])
+        result = optimizeDesign(secondary="CD122", epitope="CD25", targCell=targCell, offTCells=offTCells, selectedDF=epitopesDF, dose=0.1, valency=2, prevOptAffs=[8.0, 8.0, 8.0])

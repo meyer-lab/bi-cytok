@@ -12,7 +12,11 @@ import pandas as pd
 from ..imports import importCITE
 from sklearn.neighbors import KernelDensity
 from scipy import stats
-
+import ot
+import ot.plot
+from ot import emd2
+from ..selectivityFuncs import convFactCalc
+from ..selectivityFuncs import convFactCalc
 
 matplotlib.rcParams["legend.labelspacing"] = 0.2
 matplotlib.rcParams["legend.fontsize"] = 8
@@ -139,3 +143,89 @@ def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
         ax[0].set(title="Wasserstein Distance - Surface Markers")
         ax[1].set(title="KL Divergence - Surface Markers")
     return corrsDF
+
+def EMD_Distribution_Plot(ax, dataset, signal_receptor, non_signal_receptor, target_cells):
+    target_cells_df = dataset[dataset['CellType2'] == target_cells]
+    off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
+    
+    xs = target_cells_df[[signal_receptor, non_signal_receptor]].values
+    xt = off_target_cells_df[[signal_receptor, non_signal_receptor]].values
+
+    M = ot.dist(xs, xt)
+    a = np.ones((xs.shape[0],)) / xs.shape[0]
+    b = np.ones((xt.shape[0],)) / xt.shape[0]
+  
+    G0 = ot.emd2(a, b, M)
+  
+    ax.plot(xs[:, 0], xs[:, 1], '+b', label='Target cells')
+    ax.plot(xt[:, 0], xt[:, 1], 'xr', label='Off-target cells')
+    ax.legend(loc=0)
+    ax.set_title('Target cell and off-target cell distributions')
+
+    ax.set_xlabel(signal_receptor)
+    ax.set_ylabel(non_signal_receptor)
+    ax.legend(loc=0, fontsize=12)
+
+    return
+
+def EMD_Receptors(dataset, signal_receptor, target_cells, ax):
+    weightDF = convFactCalc()
+    # target and off-target cells
+    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
+    
+    non_signal_receptors = []
+    for column in dataset.columns:
+        if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
+            non_signal_receptors.append(column)
+
+    results = []
+    target_cells_df = dataset[dataset['CellType2'] == target_cells]
+    off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
+    
+    for receptor_name in non_signal_receptors:
+        target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
+        off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
+
+        if receptor_name == 'CD122':
+            conversion_factor = IL2Rb_factor
+        elif receptor_name == 'CD25':
+            conversion_factor = IL2Ra_factor
+        elif receptor_name == 'CD127':
+            conversion_factor = IL7Ra_factor
+        else:
+            conversion_factor = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
+
+        target_receptor_counts[:, 1] *= conversion_factor
+        off_target_receptor_counts[:, 1] *= conversion_factor
+        
+        # Matrix for emd parameter
+        M = ot.dist(target_receptor_counts, off_target_receptor_counts)
+
+        # optimal transport distance
+        a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
+        b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
+
+        optimal_transport = ot.emd2(a, b, M)
+        if np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]):
+            results.append((optimal_transport, receptor_name))
+    # end loop
+    sorted_results = sorted(results, reverse=True)
+    
+    top_receptor_info = [(receptor_name, optimal_transport) for optimal_transport, receptor_name in sorted_results[:5]]    
+    
+    # bar graph 
+    receptor_names = [info[0] for info in top_receptor_info]
+    distances = [info[1] for info in top_receptor_info]
+
+    ax.bar(range(len(receptor_names)), distances)
+    ax.set_xlabel('Receptor')
+    ax.set_ylabel('Distance')
+    ax.set_title('Top 5 Receptor Distances')
+    ax.set_xticks(range(len(receptor_names)))
+    ax.set_xticklabels(receptor_names, rotation='vertical')
+    ax.set(yscale='log')
+    
+    print('The 5 off-target receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
+    return top_receptor_info
