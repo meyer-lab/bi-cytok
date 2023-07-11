@@ -156,7 +156,7 @@ def EMD_Distribution_Plot(ax, dataset, signal_receptor, non_signal_receptor, tar
     b = np.ones((xt.shape[0],)) / xt.shape[0]
   
     G0 = ot.emd2(a, b, M)
-
+  
     ax.plot(xs[:, 0], xs[:, 1], '+b', label='Target cells')
     ax.plot(xt[:, 0], xt[:, 1], 'xr', label='Off-target cells')
     ax.legend(loc=0)
@@ -225,6 +225,7 @@ def EMD_Receptors(dataset, signal_receptor, target_cells, ax):
     ax.set_title('Top 5 Receptor Distances')
     ax.set_xticks(range(len(receptor_names)))
     ax.set_xticklabels(receptor_names, rotation='vertical')
+    ax.set(yscale='log')
     
     print('The 5 off-target receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return top_receptor_info
