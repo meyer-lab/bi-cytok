@@ -22,6 +22,6 @@ def makeFigure():
     non_siganling_receptor = 'CD25'
     EMD_2D(new_df, signaling_receptor, target_cells, ax[0])
     EMD_Distribution_Plot(ax[1], new_df, signaling_receptor, non_siganling_receptor, target_cells)
-    EMD_1D(ax[2], target_cells, new_df)
+    EMD_1D(new_df, target_cells, ax[2])
     
     return f
