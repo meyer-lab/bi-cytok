@@ -16,6 +16,7 @@ import ot
 import ot.plot
 from ..selectivityFuncs import convFactCalc
 from ..selectivityFuncs import convFactCalc
+from ..selectivityFuncs import getSampleAbundances, optimizeDesign
 
 matplotlib.rcParams["legend.labelspacing"] = 0.2
 matplotlib.rcParams["legend.fontsize"] = 8
@@ -303,18 +304,25 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
             filtered_data_2D.append((receptor, value))
     # print (filtered_data_1D)
     # print (filtered_data_2D)
+    
     offtarg_cell_types = set(dataset['CellType1']).union(dataset['CellType2']).union(dataset['CellType3'])
     offtarg_cell_types = [cell_type for cell_type in offtarg_cell_types if cell_type != target_cells]
     
-    # get all receptors from data frame here
+    epitopes = [column for column in dataset.columns if column not in ['CellType1', 'CellType2', 'CellType3']]
     epitopesDF = getSampleAbundances(epitopes, offtarg_cell_types, "CellType2")
+
+    selectivity_values = []
     prevOptAffs = [8.0, 8.0, 8.0]
+    dose = .1
     valency = 2
     
+    # print(dataset['CellType2'].unique()) error after dis
 
     for receptor_name in receptor_names:
-        #this function gets the optimal affinties and returns the optimal selectivity (first output), and affinities (second outputs) plot these dose on bottom for all, 2 have selectivity, 2 have affinity 
+        print("Receptor name:", receptor_name)
         optParams1 = optimizeDesign(signal_receptor, receptor_name, target_cells, offtarg_cell_types, epitopesDF, dose, valency, prevOptAffs)
         selectivity = optParams1[0]
-        selectivity_values.append(epitope, selectivity)
+        selectivity_values.append([receptor_name, selectivity])
+        print(selectivity_values)
+
     return 
