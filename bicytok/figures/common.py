@@ -226,7 +226,7 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
     ax.set_xticklabels(receptor_names, rotation='vertical')
     
     print('The 5 non signaling receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
-    return top_receptor_info
+    return sorted_results
 
 def EMD_1D(dataset, target_cells, ax):
     weightDF = convFactCalc()
@@ -287,6 +287,34 @@ def EMD_1D(dataset, target_cells, ax):
     ax.set_xticklabels(receptor_names, rotation='vertical')
     
     print('The 5 receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
-    return top_receptor_info
+    return sorted_results
 
+def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, ax):
+    filtered_data_1D = []
+    filtered_data_2D = []
+    filterest_data_selectivity = []
+    EMD1D = EMD_1D(dataset, target_cells, ax)
+    for value, receptor in EMD1D:
+        if receptor in receptor_names:
+            filtered_data_1D.append((receptor, value))
+    EMD2D = EMD_2D(dataset, signal_receptor, target_cells, ax)
+    for value, receptor in EMD2D:
+        if receptor in receptor_names:
+            filtered_data_2D.append((receptor, value))
+    # print (filtered_data_1D)
+    # print (filtered_data_2D)
+    offtarg_cell_types = set(dataset['CellType1']).union(dataset['CellType2']).union(dataset['CellType3'])
+    offtarg_cell_types = [cell_type for cell_type in offtarg_cell_types if cell_type != target_cells]
+    
+    # get all receptors from data frame here
+    epitopesDF = getSampleAbundances(epitopes, offtarg_cell_types, "CellType2")
+    prevOptAffs = [8.0, 8.0, 8.0]
+    valency = 2
+    
 
+    for receptor_name in receptor_names:
+        #this function gets the optimal affinties and returns the optimal selectivity (first output), and affinities (second outputs) plot these dose on bottom for all, 2 have selectivity, 2 have affinity 
+        optParams1 = optimizeDesign(signal_receptor, receptor_name, target_cells, offtarg_cell_types, epitopesDF, dose, valency, prevOptAffs)
+        selectivity = optParams1[0]
+        selectivity_values.append(epitope, selectivity)
+    return 
