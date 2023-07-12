@@ -305,11 +305,11 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     # print (filtered_data_1D)
     # print (filtered_data_2D)
     
-    offtarg_cell_types = set(dataset['CellType1']).union(dataset['CellType2']).union(dataset['CellType3'])
-    offtarg_cell_types = [cell_type for cell_type in offtarg_cell_types if cell_type != target_cells]
+    cell_types = set(dataset['CellType1']).union(dataset['CellType2']).union(dataset['CellType3'])
+    offtarg_cell_types = [cell_type for cell_type in cell_types if cell_type != target_cells]
     
     epitopes = [column for column in dataset.columns if column not in ['CellType1', 'CellType2', 'CellType3']]
-    epitopesDF = getSampleAbundances(epitopes, offtarg_cell_types, "CellType2")
+    epitopesDF = getSampleAbundances(epitopes, cell_types, "CellType2")
 
     selectivity_values = []
     prevOptAffs = [8.0, 8.0, 8.0]
