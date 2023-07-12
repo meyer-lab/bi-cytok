@@ -273,7 +273,6 @@ def EMD_1D(dataset, target_cells, ax):
             results.append((optimal_transport, receptor_name))
     # end loop
     sorted_results = sorted(results, reverse=True)
-    
     top_receptor_info = [(receptor_name, optimal_transport) for optimal_transport, receptor_name in sorted_results[:5]]    
     
     # bar graph 
@@ -290,39 +289,49 @@ def EMD_1D(dataset, target_cells, ax):
     print('The 5 receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return sorted_results
 
-def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, ax):
+def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, ax1, ax2, ax3):
     filtered_data_1D = []
     filtered_data_2D = []
-    filterest_data_selectivity = []
-    EMD1D = EMD_1D(dataset, target_cells, ax)
+    filtered_data_selectivity = []
+    EMD1D = EMD_1D(dataset, target_cells, ax1)
     for value, receptor in EMD1D:
         if receptor in receptor_names:
             filtered_data_1D.append((receptor, value))
-    EMD2D = EMD_2D(dataset, signal_receptor, target_cells, ax)
+    EMD2D = EMD_2D(dataset, signal_receptor, target_cells, ax2)
     for value, receptor in EMD2D:
         if receptor in receptor_names:
             filtered_data_2D.append((receptor, value))
-    # print (filtered_data_1D)
-    # print (filtered_data_2D)
     
+    print ('EMD1D', filtered_data_1D)
+    print ('EMD 2D', filtered_data_2D)
+    data_1D_distances = [item[1] for item in filtered_data_1D]
+    data_2D_distances = [item[1] for item in filtered_data_2D]
+    print('Filtered_data_1D Distances:', data_1D_distances)
+    print('Filtered_data_2D Distances:', data_2D_distances)
+
     cell_types = set(dataset['CellType1']).union(dataset['CellType2']).union(dataset['CellType3'])
     offtarg_cell_types = [cell_type for cell_type in cell_types if cell_type != target_cells]
-    
     epitopes = [column for column in dataset.columns if column not in ['CellType1', 'CellType2', 'CellType3']]
     epitopesDF = getSampleAbundances(epitopes, cell_types, "CellType2")
-
-    selectivity_values = []
     prevOptAffs = [8.0, 8.0, 8.0]
     dose = .1
     valency = 2
     
-    # print(dataset['CellType2'].unique()) error after dis
-
     for receptor_name in receptor_names:
         print("Receptor name:", receptor_name)
         optParams1 = optimizeDesign(signal_receptor, receptor_name, target_cells, offtarg_cell_types, epitopesDF, dose, valency, prevOptAffs)
         selectivity = optParams1[0]
-        selectivity_values.append([receptor_name, selectivity])
-        print(selectivity_values)
+        filtered_data_selectivity.append([receptor_name, selectivity])
+    selectivity_distances = [item[1] for item in filtered_data_selectivity]
+    print('filt selec and name', filtered_data_selectivity)
+    print('filt selec', selectivity_distances)
 
+    ax3.scatter(data_1D_distances, selectivity_distances, color='blue', label='filtered_data_1D')
+    ax3.scatter(data_2D_distances, selectivity_distances, color='red', label='filtered_data_2D')
+
+    ax3.set_xlabel('Distance')
+    ax3.set_ylabel('Binding Selectivity')
+    ax3.set_title('Distance vs. Binding Selectivity')
+    ax3.legend()
+    plt.show()
     return 
