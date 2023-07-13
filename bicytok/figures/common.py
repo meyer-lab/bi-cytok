@@ -293,6 +293,7 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     filtered_data_1D = []
     filtered_data_2D = []
     filtered_data_selectivity = []
+    
     EMD1D = EMD_1D(dataset, target_cells, ax1)
     for value, receptor in EMD1D:
         if receptor in receptor_names:
@@ -302,12 +303,6 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
         if receptor in receptor_names:
             filtered_data_2D.append((receptor, value))
     
-    print ('EMD1D', filtered_data_1D)
-    print ('EMD 2D', filtered_data_2D)
-    data_1D_distances = [item[1] for item in filtered_data_1D]
-    data_2D_distances = [item[1] for item in filtered_data_2D]
-    print('Filtered_data_1D Distances:', data_1D_distances)
-    print('Filtered_data_2D Distances:', data_2D_distances)
 
     cell_types = set(dataset['CellType1']).union(dataset['CellType2']).union(dataset['CellType3'])
     offtarg_cell_types = [cell_type for cell_type in cell_types if cell_type != target_cells]
@@ -322,10 +317,17 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
         optParams1 = optimizeDesign(signal_receptor, receptor_name, target_cells, offtarg_cell_types, epitopesDF, dose, valency, prevOptAffs)
         selectivity = optParams1[0]
         filtered_data_selectivity.append([receptor_name, selectivity])
-    selectivity_distances = [item[1] for item in filtered_data_selectivity]
     print('filt selec and name', filtered_data_selectivity)
-    print('filt selec', selectivity_distances)
 
+    # should ensure order is the same 
+    filtered_data_1D.sort(key=lambda x: x[0])
+    filtered_data_2D.sort(key=lambda x: x[0])
+    filtered_data_selectivity.sort(key=lambda x: x[0])
+
+    data_1D_distances = [data[1] for data in filtered_data_1D]
+    data_2D_distances = [data[1] for data in filtered_data_2D]
+    selectivity_distances = [data[1] for data in filtered_data_selectivity]
+    
     ax3.scatter(data_1D_distances, selectivity_distances, color='blue', label='filtered_data_1D')
     ax3.scatter(data_2D_distances, selectivity_distances, color='red', label='filtered_data_2D')
 
