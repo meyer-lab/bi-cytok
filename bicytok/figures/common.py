@@ -293,7 +293,7 @@ def EMD_1D(dataset, target_cells, ax):
     print('The 5 receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return sorted_results
 
-def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, ax1, ax2, ax3):
+def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, ax1, ax2, ax3, ax4):
     filtered_data_1D = []
     filtered_data_2D = []
     filtered_data_selectivity = []
@@ -333,11 +333,14 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     selectivity_distances = [data[1] for data in filtered_data_selectivity]
     
     ax3.scatter(data_1D_distances, selectivity_distances, color='blue', label='filtered_data_1D')
-    ax3.scatter(data_2D_distances, selectivity_distances, color='red', label='filtered_data_2D')
+    ax4.scatter(data_2D_distances, selectivity_distances, color='red', label='filtered_data_2D')
 
     ax3.set_xlabel('Distance')
     ax3.set_ylabel('Binding Selectivity')
     ax3.set_title('Distance vs. Binding Selectivity')
     ax3.legend()
-    plt.show()
+    ax4.set_xlabel('Distance')
+    ax4.set_ylabel('Binding Selectivity')
+    ax4.set_title('Distance vs. Binding Selectivity')
+    ax4.legend()
     return 
