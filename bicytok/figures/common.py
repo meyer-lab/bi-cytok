@@ -265,12 +265,16 @@ def EMD_1D(dataset, target_cells, ax):
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
 
         # optimal transport distance
+        
         a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
-        b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
-
-        optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
+        b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0] 
+   
+        optimal_transport = ot.emd(a, b, M)
+        mean_optimal_transport = np.mean(optimal_transport)
         if np.mean(target_receptor_counts) > np.mean(off_target_receptor_counts):
-            results.append((optimal_transport, receptor_name))
+            results.append((mean_optimal_transport, receptor_name))
+        # optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
+
     # end loop
     sorted_results = sorted(results, reverse=True)
     top_receptor_info = [(receptor_name, optimal_transport) for optimal_transport, receptor_name in sorted_results[:5]]    
@@ -317,7 +321,7 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
         optParams1 = optimizeDesign(signal_receptor, receptor_name, target_cells, offtarg_cell_types, epitopesDF, dose, valency, prevOptAffs)
         selectivity = optParams1[0]
         filtered_data_selectivity.append([receptor_name, selectivity])
-    print('filt selec and name', filtered_data_selectivity)
+    
 
     # should ensure order is the same 
     filtered_data_1D.sort(key=lambda x: x[0])
