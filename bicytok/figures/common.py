@@ -265,15 +265,13 @@ def EMD_1D(dataset, target_cells, ax):
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
 
         # optimal transport distance
-        
         a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
         b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0] 
    
         optimal_transport = ot.emd(a, b, M)
-        mean_optimal_transport = np.mean(optimal_transport)
+        # mean_optimal_transport = np.mean(optimal_transport)
         if np.mean(target_receptor_counts) > np.mean(off_target_receptor_counts):
-            results.append((mean_optimal_transport, receptor_name))
-        # optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
+            results.append((optimal_transport, receptor_name))
 
     # end loop
     sorted_results = sorted(results, reverse=True)
