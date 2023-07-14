@@ -202,7 +202,6 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
-
         # optimal transport distance
         a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
         b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
@@ -263,21 +262,19 @@ def EMD_1D(dataset, target_cells, ax):
         
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
-
         # optimal transport distance
         a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
         b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0] 
-   
-        optimal_transport = ot.emd(a, b, M)
-        # mean_optimal_transport = np.mean(optimal_transport)
+        
+        optimal_transport = ot.emd2(a, b, M)
         if np.mean(target_receptor_counts) > np.mean(off_target_receptor_counts):
             results.append((optimal_transport, receptor_name))
-
     # end loop
     sorted_results = sorted(results, reverse=True)
     top_receptor_info = [(receptor_name, optimal_transport) for optimal_transport, receptor_name in sorted_results[:5]]    
     
     # bar graph 
+    
     receptor_names = [info[0] for info in top_receptor_info]
     distances = [info[1] for info in top_receptor_info]
 
