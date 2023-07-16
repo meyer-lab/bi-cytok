@@ -26,6 +26,6 @@ def makeFigure():
     # EMD_2D(new_df, signaling_receptor, target_cells, ax[0])
     # EMD_Distribution_Plot(ax[2], new_df, signaling_receptor, non_siganling_receptor, target_cells)
     # EMD_1D(new_df, target_cells, ax[1])
-    EMD1Dvs2D_Analysis (receptor_names, target_cells, signaling_receptor, new_df, ax[0], ax[1], ax[3], ax[4])
+    EMD1Dvs2D_Analysis (receptor_names, target_cells, signaling_receptor, new_df, ax[0], ax[1], ax[2], ax[3])
     
     return f

@@ -183,6 +183,15 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
     results = []
     target_cells_df = dataset[dataset['CellType2'] == target_cells]
     off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
+
+    if signal_receptor == 'CD122':
+        conversion_factor_sig = IL2Rb_factor
+    elif receptor_name == 'CD25':
+        conversion_factor_sig = IL2Ra_factor
+    elif receptor_name == 'CD127':
+        conversion_factor_sig = IL7Ra_factor
+    else:
+        conversion_factor_sig = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
     
     for receptor_name in non_signal_receptors:
         target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
@@ -196,6 +205,9 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
             conversion_factor = IL7Ra_factor
         else:
             conversion_factor = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
+
+        target_receptor_counts[:, 0] *= conversion_factor_sig
+        off_target_receptor_counts[:, 0] *= conversion_factor_sig
 
         target_receptor_counts[:, 1] *= conversion_factor
         off_target_receptor_counts[:, 1] *= conversion_factor
@@ -338,4 +350,8 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     ax4.set_ylabel('Binding Selectivity')
     ax4.set_title('Distance vs. Binding Selectivity')
     ax4.legend()
+    ax1.set(xscale='log')
+    ax2.set(xscale='log')
+    ax3.set(xscale='log')
+    ax4.set(xscale='log')
     return 
