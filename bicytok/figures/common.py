@@ -236,6 +236,7 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
     ax.set_title('Top 5 Receptor Distances (2D)')
     ax.set_xticks(range(len(receptor_names)))
     ax.set_xticklabels(receptor_names, rotation='vertical')
+    ax.set(yscale='log')
     
     print('The 5 non signaling receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return sorted_results

@@ -61,7 +61,7 @@ def makeFigure():
         }
 
         df_temp = pd.DataFrame(data, columns=['Dose', 'Affinity (IL2Ra)', 'Affinity (secondary)', 'Affinity (epitope)', 'Selectivity', 'Ligand'])
-        df = df.append(df_temp, ignore_index=True)
+        df = pd.concat([df, df_temp], ignore_index=True)
 
         data = {'Dose': [dose],
             'Affinity (IL2Ra)': wtIL2RaAff,
@@ -72,7 +72,7 @@ def makeFigure():
         }
 
         df_temp = pd.DataFrame(data, columns=['Dose', 'Affinity (IL2Ra)', 'Affinity (secondary)', 'Affinity (epitope)', 'Selectivity', 'Ligand'])
-        df = df.append(df_temp, ignore_index=True)
+        df = pd.concat([df, df_temp], ignore_index=True)
 
         data = {'Dose': [dose],
             'Target Bound': optParams[2],
@@ -80,7 +80,7 @@ def makeFigure():
         }
 
         df_temp = pd.DataFrame(data, columns=['Dose', 'Target Bound', 'Ligand'])
-        df2 = df2.append(df_temp, ignore_index=True)
+        df2 = pd.concat([df2, df_temp], ignore_index=True)
 
         data = {'Dose': [dose],
             'Target Bound': minSelecFunc.targetBound,
@@ -88,7 +88,7 @@ def makeFigure():
         }
 
         df_temp = pd.DataFrame(data, columns=['Dose', 'Target Bound', 'Ligand'])
-        df2 = df2.append(df_temp, ignore_index=True)
+        df2 = pd.concat([df2, df_temp], ignore_index=True)
 
     if secondary == 'CD122':
         ax, f = getSetup((12, 3), (1, 5))
