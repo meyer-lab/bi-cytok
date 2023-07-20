@@ -272,7 +272,10 @@ def EMD_1D(dataset, target_cells, ax):
 
         target_receptor_counts = target_receptor_counts.astype(float) * conversion_factor
         off_target_receptor_counts = off_target_receptor_counts.astype(float) * conversion_factor
-        
+        # normalizaton?
+        target_receptor_counts = np.log1p(target_receptor_counts)
+        off_target_receptor_counts = np.log1p(off_target_receptor_counts)
+
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
         # optimal transport distance
