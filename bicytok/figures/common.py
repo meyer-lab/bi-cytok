@@ -212,6 +212,9 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         target_receptor_counts[:, 1] *= conversion_factor
         off_target_receptor_counts[:, 1] *= conversion_factor
         
+        target_receptor_counts = np.log1p(target_receptor_counts)
+        off_target_receptor_counts = np.log1p(off_target_receptor_counts)
+
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
         # optimal transport distance
@@ -236,7 +239,6 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
     ax.set_title('Top 5 Receptor Distances (2D)')
     ax.set_xticks(range(len(receptor_names)))
     ax.set_xticklabels(receptor_names, rotation='vertical')
-    ax.set(yscale='log')
     
     print('The 5 non signaling receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return sorted_results
@@ -300,7 +302,6 @@ def EMD_1D(dataset, target_cells, ax):
     ax.set_title('Top 5 Receptor Distances (1D)')
     ax.set_xticks(range(len(receptor_names)))
     ax.set_xticklabels(receptor_names, rotation='vertical')
-    
     print('The 5 receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return sorted_results
 
@@ -344,8 +345,14 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     selectivity_distances = [data[1] for data in filtered_data_selectivity]
     
     ax3.scatter(data_1D_distances, selectivity_distances, color='blue', label='filtered_data_1D')
-    ax4.scatter(data_2D_distances, selectivity_distances, color='red', label='filtered_data_2D')
+    for x, y, name in zip(data_1D_distances, selectivity_distances, receptor_names):
+        ax3.text(x, y, name, fontsize=8, ha='left', va='top')
 
+    ax4.scatter(data_2D_distances, selectivity_distances, color='red', label='filtered_data_2D')
+    for x, y, name in zip(data_2D_distances, selectivity_distances, receptor_names):
+        ax4.text(x, y, name, fontsize=8, ha='left', va='top')
+
+    
     ax3.set_xlabel('Distance')
     ax3.set_ylabel('Binding Selectivity')
     ax3.set_title('Distance vs. Binding Selectivity')
@@ -354,8 +361,5 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     ax4.set_ylabel('Binding Selectivity')
     ax4.set_title('Distance vs. Binding Selectivity')
     ax4.legend()
-    ax1.set(xscale='log')
-    ax2.set(xscale='log')
-    ax3.set(xscale='log')
-    ax4.set(xscale='log')
+  
     return 
