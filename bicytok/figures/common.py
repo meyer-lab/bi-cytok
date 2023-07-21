@@ -290,7 +290,6 @@ def EMD_1D(dataset, target_cells, ax):
     # end loop
     sorted_results = sorted(results, reverse=True)
     top_receptor_info = [(receptor_name, optimal_transport) for optimal_transport, receptor_name in sorted_results[:5]]    
-    
     # bar graph 
     
     receptor_names = [info[0] for info in top_receptor_info]
