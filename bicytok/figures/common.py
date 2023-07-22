@@ -145,8 +145,8 @@ def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
     return corrsDF
 
 def EMD_Distribution_Plot(ax, dataset, signal_receptor, non_signal_receptor, target_cells):
-    target_cells_df = dataset[dataset['CellType2'] == target_cells]
-    off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
     
     xs = target_cells_df[[signal_receptor, non_signal_receptor]].values
     xt = off_target_cells_df[[signal_receptor, non_signal_receptor]].values
@@ -322,7 +322,8 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     cell_types = set(dataset['CellType1']).union(dataset['CellType2']).union(dataset['CellType3'])
     offtarg_cell_types = [cell_type for cell_type in cell_types if cell_type != target_cells]
     epitopes = [column for column in dataset.columns if column not in ['CellType1', 'CellType2', 'CellType3']]
-    epitopesDF = getSampleAbundances(epitopes, cell_types, "CellType2")
+    # below must be changed depending on target cell, celltype3 for treg mem, celltype 2 for treg 
+    epitopesDF = getSampleAbundances(epitopes, cell_types, "CellType2") 
     prevOptAffs = [8.0, 8.0, 8.0]
     dose = .1
     valency = 2
