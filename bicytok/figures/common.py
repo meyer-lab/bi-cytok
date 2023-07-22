@@ -181,9 +181,10 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
             non_signal_receptors.append(column)
 
     results = []
-    target_cells_df = dataset[dataset['CellType2'] == target_cells]
-    off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
-
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+    
+    print ('t cell frame', target_cells_df)
     if signal_receptor == 'CD122':
         conversion_factor_sig = IL2Rb_factor
     elif receptor_name == 'CD25':
@@ -214,7 +215,7 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         
         target_receptor_counts = np.log1p(target_receptor_counts)
         off_target_receptor_counts = np.log1p(off_target_receptor_counts)
-
+       
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
         # optimal transport distance
@@ -258,11 +259,10 @@ def EMD_1D(dataset, target_cells, ax):
     results = []
     target_cells_df = dataset[dataset['CellType2'] == target_cells]
     off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
-    
+
     for receptor_name in receptorsdf:
         target_receptor_counts = target_cells_df[[receptor_name]].values
         off_target_receptor_counts = off_target_cells_df[[receptor_name]].values
-
         if receptor_name == 'CD122':
             conversion_factor = IL2Rb_factor
         elif receptor_name == 'CD25':
@@ -274,16 +274,16 @@ def EMD_1D(dataset, target_cells, ax):
 
         target_receptor_counts = target_receptor_counts.astype(float) * conversion_factor
         off_target_receptor_counts = off_target_receptor_counts.astype(float) * conversion_factor
+        
         # normalizaton?
         target_receptor_counts = np.log1p(target_receptor_counts)
         off_target_receptor_counts = np.log1p(off_target_receptor_counts)
-
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
         # optimal transport distance
         a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
         b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0] 
-        
+      
         optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
         if np.mean(target_receptor_counts) > np.mean(off_target_receptor_counts):
             results.append((optimal_transport, receptor_name))
