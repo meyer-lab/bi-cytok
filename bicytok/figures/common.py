@@ -257,8 +257,8 @@ def EMD_1D(dataset, target_cells, ax):
             receptorsdf.append(column)
 
     results = []
-    target_cells_df = dataset[dataset['CellType2'] == target_cells]
-    off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
 
     for receptor_name in receptorsdf:
         target_receptor_counts = target_cells_df[[receptor_name]].values
