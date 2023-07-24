@@ -338,7 +338,7 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     for receptor_name in receptor_names:
         print("Receptor name:", receptor_name)
         optParams1 = optimizeDesign(signal_receptor, receptor_name, target_cells, offtarg_cell_types, epitopesDF, dose, valency, prevOptAffs)
-        selectivity = optParams1[0]
+        selectivity = 1/optParams1[0]
         filtered_data_selectivity.append([receptor_name, selectivity])
     
 
