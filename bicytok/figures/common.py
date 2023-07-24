@@ -213,8 +213,11 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         target_receptor_counts[:, 1] *= conversion_factor
         off_target_receptor_counts[:, 1] *= conversion_factor
         
-        target_receptor_counts = np.log1p(target_receptor_counts)
-        off_target_receptor_counts = np.log1p(off_target_receptor_counts)
+        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+
+        # Normalize the counts by dividing by the average
+        target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+        off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
        
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
@@ -334,8 +337,10 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     
     for receptor_name in receptor_names:
         print("Receptor name:", receptor_name)
-        optParams1 = optimizeDesign(signal_receptor, receptor_name, target_cells, offtarg_cell_types, epitopesDF, dose, valency, prevOptAffs)
-        selectivity = optParams1[0]
+        optSelectivity, optParams, _ = optimizeDesign(signal_receptor, receptor_name, target_cells, offtarg_cell_types, epitopesDF, dose, valency, prevOptAffs)
+        
+        #bigger = better
+        selectivity = 1 / optSelectivity
         filtered_data_selectivity.append([receptor_name, selectivity])
     
 
