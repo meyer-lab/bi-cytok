@@ -353,7 +353,7 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     print('1d', data_1D_distances)
     print('2d', data_2D_distances)
     print('selec', selectivity_distances)
-
+    # why are only 3 vals being added^^^
     ax3.scatter(data_1D_distances, selectivity_distances, color='blue', label='filtered_data_1D')
     for x, y, name in zip(data_1D_distances, selectivity_distances, data_names):
         ax3.text(x, y, name, fontsize=8, ha='left', va='top')
