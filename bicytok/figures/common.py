@@ -184,7 +184,6 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
     target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
     off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
     
-    print ('t cell frame', target_cells_df)
     if signal_receptor == 'CD122':
         conversion_factor_sig = IL2Rb_factor
     elif receptor_name == 'CD25':
@@ -351,7 +350,10 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     data_2D_distances = [data[1] for data in filtered_data_2D]
     selectivity_distances = [data[1] for data in filtered_data_selectivity]
     data_names = [data[0] for data in filtered_data_1D]
-    
+    print('1d', data_1D_distances)
+    print('2d', data_2D_distances)
+    print('selec', selectivity_distances)
+
     ax3.scatter(data_1D_distances, selectivity_distances, color='blue', label='filtered_data_1D')
     for x, y, name in zip(data_1D_distances, selectivity_distances, data_names):
         ax3.text(x, y, name, fontsize=8, ha='left', va='top')
