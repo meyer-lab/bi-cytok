@@ -339,9 +339,7 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
         print("Receptor name:", receptor_name)
         optParams1 = optimizeDesign(signal_receptor, receptor_name, target_cells, offtarg_cell_types, epitopesDF, dose, valency, prevOptAffs)
         selectivity = optParams1[0]
-        #bigger = better
-        selectivitynew = 1 / selectivity
-        filtered_data_selectivity.append([receptor_name, selectivitynew])
+        filtered_data_selectivity.append([receptor_name, selectivity])
     
 
     # should ensure order is the same 
@@ -353,6 +351,7 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     data_2D_distances = [data[1] for data in filtered_data_2D]
     selectivity_distances = [data[1] for data in filtered_data_selectivity]
     data_names = [data[0] for data in filtered_data_1D]
+    
     ax3.scatter(data_1D_distances, selectivity_distances, color='blue', label='filtered_data_1D')
     for x, y, name in zip(data_1D_distances, selectivity_distances, data_names):
         ax3.text(x, y, name, fontsize=8, ha='left', va='top')
