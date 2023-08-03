@@ -157,14 +157,17 @@ def EMD_Distribution_Plot(ax, dataset, signal_receptor, non_signal_receptor, tar
   
     G0 = ot.emd2(a, b, M, numItermax=10000000)
 
-    ax.plot(xt[:, 0], xt[:, 1], 'xr', label='Off-target cells')
-    ax.plot(xs[:, 0], xs[:, 1], '+b', label='Target cells')
+    ax.plot(xt[:, 0], xt[:, 1], '.r', label='Off-target cells')
+    ax.plot(xs[:, 0], xs[:, 1], '.b', label='Target cells')
     
     ax.legend(loc=0)
     ax.set_title('Target cell and off-target cell distributions')
 
     ax.set_xlabel(signal_receptor)
     ax.set_ylabel(non_signal_receptor)
+    
+    ax.set_xscale('log')  # Set x-axis to logarithmic scale
+    ax.set_yscale('log')
     ax.legend(loc=0, fontsize=12)
 
     return
