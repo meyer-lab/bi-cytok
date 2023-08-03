@@ -419,8 +419,8 @@ def EMD_3D(dataset, signaling_receptor, target_cells, ax):
         target_receptor_counts[:, 1] *= conversion_factor
         off_target_receptor_counts[:, 1] *= conversion_factor
 
-        target_receptor_counts[:, 2] *= 1  # Assuming the last column is the third receptor values
-        off_target_receptor_counts[:, 2] *= 1
+        target_receptor_counts[:, 2] *= conversion_factor 
+        off_target_receptor_counts[:, 2] *= conversion_factor
 
         average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
 

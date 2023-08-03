@@ -28,8 +28,8 @@ def makeFigure():
     non_siganling_receptor = 'Notch-2'
     receptor_names_top = ['CD25', 'Notch-2', 'CD4-1', 'CD27', 'CD278']
     receptor_names_varried = ['CD25', 'CD109', 'CD27', 'TIGIT', 'CD28']
-    EMD_2D(new_df, signaling_receptor, target_cells, ax[0])
-    # EMD_3D(new_df, signaling_receptor, target_cells, ax[0])
+    # EMD_2D(new_df, signaling_receptor, target_cells, ax[0])
+    EMD_3D(new_df, signaling_receptor, target_cells, ax[0])
     # EMD_Distribution_Plot(ax[2], new_df2, signaling_receptor, non_siganling_receptor, target_cells)
     # EMD_1D(new_df, target_cells, ax[1]) 
     # EMD1Dvs2D_Analysis (receptor_names_varried, target_cells, signaling_receptor, new_df, ax[0], ax[1], ax[2], ax[3])
