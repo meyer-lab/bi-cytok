@@ -374,3 +374,84 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     ax4.legend()
   
     return 
+
+def EMD_3D(dataset, signaling_receptor, target_cells, ax):
+    weightDF = convFactCalc()
+    # target and off-target cells
+    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
+
+    non_signaling_receptors = []
+    for column in dataset.columns:
+        if column != signaling_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
+            non_signaling_receptors.append(column)
+
+    results = []
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+
+    if signaling_receptor == 'CD122':
+        conversion_factor_sig = IL2Rb_factor
+    elif signaling_receptor == 'CD25':
+        conversion_factor_sig = IL2Ra_factor
+    elif signaling_receptor == 'CD127':
+        conversion_factor_sig = IL7Ra_factor
+    else:
+        conversion_factor_sig = (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
+
+    for receptor_name in non_signaling_receptors:
+        target_receptor_counts = target_cells_df[[signaling_receptor, receptor_name, 'CD25']].values
+        off_target_receptor_counts = off_target_cells_df[[signaling_receptor, receptor_name, 'CD25']].values
+
+        if receptor_name == 'CD122':
+            conversion_factor = IL2Rb_factor
+        elif receptor_name == 'CD25':
+            conversion_factor = IL2Ra_factor
+        elif receptor_name == 'CD127':
+            conversion_factor = IL7Ra_factor
+        else:
+            conversion_factor = (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
+
+        target_receptor_counts[:, 0] *= conversion_factor_sig
+        off_target_receptor_counts[:, 0] *= conversion_factor_sig
+
+        target_receptor_counts[:, 1] *= conversion_factor
+        off_target_receptor_counts[:, 1] *= conversion_factor
+
+        target_receptor_counts[:, 2] *= 1  # Assuming the last column is the third receptor values
+        off_target_receptor_counts[:, 2] *= 1
+
+        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+
+        # Normalize the counts by dividing by the average
+        target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+        off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
+
+        # Matrix for emd parameter
+        M = ot.dist(target_receptor_counts, off_target_receptor_counts)
+        # optimal transport distance
+        a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
+        b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
+
+        optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
+        if np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]):
+            results.append((optimal_transport, receptor_name))
+    # end loop
+    sorted_results = sorted(results, reverse=True)
+
+    top_receptor_info = [(receptor_name, optimal_transport) for optimal_transport, receptor_name in sorted_results[:5]]
+
+    # bar graph
+    receptor_names = [info[0] for info in top_receptor_info]
+    distances = [info[1] for info in top_receptor_info]
+
+    ax.bar(range(len(receptor_names)), distances)
+    ax.set_xlabel('Receptor')
+    ax.set_ylabel('Distance')
+    ax.set_title('Top 5 Receptor Distances (3D)')
+    ax.set_xticks(range(len(receptor_names)))
+    ax.set_xticklabels(receptor_names, rotation='vertical')
+
+    print('The 5 non-signaling receptors that achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
+    return sorted_results
