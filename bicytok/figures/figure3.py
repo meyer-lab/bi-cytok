@@ -26,7 +26,6 @@ def makeFigure():
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList['Epitope'].unique())
     epitopes.append('CD335')
-
     # Change the target cell but this basically just tells us what we're optimizing for and against - done
     
     targCell = 'NK'
@@ -38,7 +37,6 @@ def makeFigure():
     doseVec = np.logspace(-3, 3, num=20) #changed num = 2 so runs faster when practicing 
     doseVec = np.array(doseVec)
     epitopesDF = getSampleAbundances(epitopes, cells, "CellType2")
-
     prevOptAffs = [8.0, 8.0, 8.0]
     selectivity_values1 = []
     affinity_values1 = []

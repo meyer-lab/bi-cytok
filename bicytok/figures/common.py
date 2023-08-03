@@ -14,9 +14,9 @@ from sklearn.neighbors import KernelDensity
 from scipy import stats
 import ot
 import ot.plot
-from ot import emd2
 from ..selectivityFuncs import convFactCalc
 from ..selectivityFuncs import convFactCalc
+from ..selectivityFuncs import getSampleAbundances, optimizeDesign
 
 matplotlib.rcParams["legend.labelspacing"] = 0.2
 matplotlib.rcParams["legend.fontsize"] = 8
@@ -145,8 +145,8 @@ def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
     return corrsDF
 
 def EMD_Distribution_Plot(ax, dataset, signal_receptor, non_signal_receptor, target_cells):
-    target_cells_df = dataset[dataset['CellType2'] == target_cells]
-    off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
     
     xs = target_cells_df[[signal_receptor, non_signal_receptor]].values
     xt = off_target_cells_df[[signal_receptor, non_signal_receptor]].values
@@ -155,20 +155,24 @@ def EMD_Distribution_Plot(ax, dataset, signal_receptor, non_signal_receptor, tar
     a = np.ones((xs.shape[0],)) / xs.shape[0]
     b = np.ones((xt.shape[0],)) / xt.shape[0]
   
-    G0 = ot.emd2(a, b, M)
-  
-    ax.plot(xs[:, 0], xs[:, 1], '+b', label='Target cells')
-    ax.plot(xt[:, 0], xt[:, 1], 'xr', label='Off-target cells')
+    G0 = ot.emd2(a, b, M, numItermax=10000000)
+
+    ax.plot(xt[:, 0], xt[:, 1], '.r', label='Off-target cells')
+    ax.plot(xs[:, 0], xs[:, 1], '.b', label='Target cells')
+    
     ax.legend(loc=0)
     ax.set_title('Target cell and off-target cell distributions')
 
     ax.set_xlabel(signal_receptor)
     ax.set_ylabel(non_signal_receptor)
+    
+    ax.set_xscale('log')  # Set x-axis to logarithmic scale
+    ax.set_yscale('log')
     ax.legend(loc=0, fontsize=12)
 
     return
 
-def EMD_Receptors(dataset, signal_receptor, target_cells, ax):
+def EMD_2D(dataset, signal_receptor, target_cells, ax):
     weightDF = convFactCalc()
     # target and off-target cells
     IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
@@ -181,8 +185,17 @@ def EMD_Receptors(dataset, signal_receptor, target_cells, ax):
             non_signal_receptors.append(column)
 
     results = []
-    target_cells_df = dataset[dataset['CellType2'] == target_cells]
-    off_target_cells_df = dataset[dataset['CellType2'] != target_cells]
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+    
+    if signal_receptor == 'CD122':
+        conversion_factor_sig = IL2Rb_factor
+    elif receptor_name == 'CD25':
+        conversion_factor_sig = IL2Ra_factor
+    elif receptor_name == 'CD127':
+        conversion_factor_sig = IL7Ra_factor
+    else:
+        conversion_factor_sig = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
     
     for receptor_name in non_signal_receptors:
         target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
@@ -197,17 +210,25 @@ def EMD_Receptors(dataset, signal_receptor, target_cells, ax):
         else:
             conversion_factor = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
 
+        target_receptor_counts[:, 0] *= conversion_factor_sig
+        off_target_receptor_counts[:, 0] *= conversion_factor_sig
+
         target_receptor_counts[:, 1] *= conversion_factor
         off_target_receptor_counts[:, 1] *= conversion_factor
         
+        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+
+        # Normalize the counts by dividing by the average
+        target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+        off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
+       
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
-
         # optimal transport distance
         a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
         b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
 
-        optimal_transport = ot.emd2(a, b, M)
+        optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
         if np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]):
             results.append((optimal_transport, receptor_name))
     # end loop
@@ -222,10 +243,134 @@ def EMD_Receptors(dataset, signal_receptor, target_cells, ax):
     ax.bar(range(len(receptor_names)), distances)
     ax.set_xlabel('Receptor')
     ax.set_ylabel('Distance')
-    ax.set_title('Top 5 Receptor Distances')
+    ax.set_title('Top 5 Receptor Distances (2D)')
     ax.set_xticks(range(len(receptor_names)))
     ax.set_xticklabels(receptor_names, rotation='vertical')
-    ax.set(yscale='log')
     
-    print('The 5 off-target receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
-    return top_receptor_info
+    print('The 5 non signaling receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
+    return sorted_results
+
+def EMD_1D(dataset, target_cells, ax):
+    weightDF = convFactCalc()
+    # target and off-target cells
+    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
+    
+    receptorsdf = []
+    for column in dataset.columns:
+        if column not in ['CellType1', 'CellType2', 'CellType3']:
+            receptorsdf.append(column)
+
+    results = []
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+
+    for receptor_name in receptorsdf:
+        target_receptor_counts = target_cells_df[[receptor_name]].values
+        off_target_receptor_counts = off_target_cells_df[[receptor_name]].values
+        if receptor_name == 'CD122':
+            conversion_factor = IL2Rb_factor
+        elif receptor_name == 'CD25':
+            conversion_factor = IL2Ra_factor
+        elif receptor_name == 'CD127':
+            conversion_factor = IL7Ra_factor
+        else:
+            conversion_factor = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
+
+        target_receptor_counts = target_receptor_counts.astype(float) * conversion_factor
+        off_target_receptor_counts = off_target_receptor_counts.astype(float) * conversion_factor
+        
+       
+        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+
+        # Normalize the counts by dividing by the average
+        target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+        off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
+        
+        # Matrix for emd parameter
+        M = ot.dist(target_receptor_counts, off_target_receptor_counts)
+        # optimal transport distance
+        a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
+        b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0] 
+      
+        optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
+        if np.mean(target_receptor_counts) > np.mean(off_target_receptor_counts):
+            results.append((optimal_transport, receptor_name))
+    # end loop
+    sorted_results = sorted(results, reverse=True)
+    top_receptor_info = [(receptor_name, optimal_transport) for optimal_transport, receptor_name in sorted_results[:5]]    
+    # bar graph 
+    
+    receptor_names = [info[0] for info in top_receptor_info]
+    distances = [info[1] for info in top_receptor_info]
+
+    ax.bar(range(len(receptor_names)), distances)
+    ax.set_xlabel('Receptor')
+    ax.set_ylabel('Distance')
+    ax.set_title('Top 5 Receptor Distances (1D)')
+    ax.set_xticks(range(len(receptor_names)))
+    ax.set_xticklabels(receptor_names, rotation='vertical')
+    print('The 5 receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
+    return sorted_results
+
+def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, ax1, ax2, ax3, ax4):
+    filtered_data_1D = []
+    filtered_data_2D = []
+    filtered_data_selectivity = []
+    
+    EMD1D = EMD_1D(dataset, target_cells, ax1)
+    for value, receptor in EMD1D:
+        if receptor in receptor_names:
+            filtered_data_1D.append((receptor, value))
+    EMD2D = EMD_2D(dataset, signal_receptor, target_cells, ax2)
+    for value, receptor in EMD2D:
+        if receptor in receptor_names:
+            filtered_data_2D.append((receptor, value))
+    
+
+    cell_types = set(dataset['CellType1']).union(dataset['CellType2']).union(dataset['CellType3'])
+    offtarg_cell_types = [cell_type for cell_type in cell_types if cell_type != target_cells]
+    epitopes = [column for column in dataset.columns if column not in ['CellType1', 'CellType2', 'CellType3']]
+    # below must be changed depending on target cell, celltype3 for treg mem, celltype 2 for treg 
+    epitopesDF = getSampleAbundances(epitopes, cell_types, "CellType2") 
+    prevOptAffs = [8.0, 8.0, 8.0]
+    dose = .1
+    valency = 2
+    
+    for receptor_name in receptor_names:
+        print("Receptor name:", receptor_name)
+        optParams1 = optimizeDesign(signal_receptor, receptor_name, target_cells, offtarg_cell_types, epitopesDF, dose, valency, prevOptAffs)
+        selectivity = 1/optParams1[0]
+        filtered_data_selectivity.append([receptor_name, selectivity])
+    
+
+    # should ensure order is the same 
+    filtered_data_1D.sort(key=lambda x: x[0])
+    filtered_data_2D.sort(key=lambda x: x[0])
+    filtered_data_selectivity.sort(key=lambda x: x[0])
+    
+    data_1D_distances = [data[1] for data in filtered_data_1D]
+    data_2D_distances = [data[1] for data in filtered_data_2D]
+    selectivity_distances = [data[1] for data in filtered_data_selectivity]
+    data_names = [data[0] for data in filtered_data_1D]
+   
+    ax3.scatter(data_1D_distances, selectivity_distances, color='blue', label='filtered_data_1D')
+    for x, y, name in zip(data_1D_distances, selectivity_distances, data_names):
+        ax3.text(x, y, name, fontsize=8, ha='left', va='top')
+
+    ax4.scatter(data_2D_distances, selectivity_distances, color='red', label='filtered_data_2D')
+    for x, y, name in zip(data_2D_distances, selectivity_distances, data_names):
+        ax4.text(x, y, name, fontsize=8, ha='left', va='top')
+
+    
+    ax3.set_xlabel('Distance')
+    ax3.set_ylabel('Binding Selectivity')
+    ax3.set_title('Distance vs. Binding Selectivity')
+    ax3.legend()
+    ax4.set_xlabel('Distance')
+    ax4.set_ylabel('Binding Selectivity')
+    ax4.set_title('Distance vs. Binding Selectivity')
+    ax4.legend()
+  
+    return 
