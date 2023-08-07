@@ -384,7 +384,7 @@ def EMD_3D(dataset, signaling_receptor, target_cells, ax):
 
     non_signaling_receptors = []
     for column in dataset.columns:
-        if column != signaling_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
+        if column != signaling_receptor and column !='CD25' and column not in ['CellType1', 'CellType2', 'CellType3']: # must specify cd25 or other 3rd receptor
             non_signaling_receptors.append(column)
 
     results = []

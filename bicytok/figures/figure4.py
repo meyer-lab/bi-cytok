@@ -19,12 +19,12 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():  
     markerDF = importCITE()
-    new_df = markerDF.head(1000)
-    new_df1 = markerDF.sample(n=10000, random_state=42)
+    new_df = markerDF.head(1000) 
+    new_df1 = markerDF.sample(n=10000, random_state=42) 
     new_df2 = markerDF.sample(n=10000, random_state=10)
     ax, f = getSetup((10, 10), (3, 2))
     target_cells = 'Treg'   
-    signaling_receptor = 'CD122'   
+    signaling_receptor = 'CD4-1'   
     non_siganling_receptor = 'Notch-2'
     receptor_names_top = ['CD25', 'Notch-2', 'CD4-1', 'CD27', 'CD278']
     receptor_names_varried = ['CD25', 'CD109', 'CD27', 'TIGIT', 'CD28']
