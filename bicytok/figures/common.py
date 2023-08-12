@@ -221,13 +221,12 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         # Normalize the counts by dividing by the average
         target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
         off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
-       
+        
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
         # optimal transport distance
         a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
         b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
-
         optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
         if np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]):
             results.append((optimal_transport, receptor_name))
@@ -287,13 +286,12 @@ def EMD_1D(dataset, target_cells, ax):
         # Normalize the counts by dividing by the average
         target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
         off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
-        
+
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
         # optimal transport distance
         a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
         b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0] 
-      
         optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
         if np.mean(target_receptor_counts) > np.mean(off_target_receptor_counts):
             results.append((optimal_transport, receptor_name))

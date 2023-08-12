@@ -25,7 +25,7 @@ def makeFigure():
     ax, f = getSetup((10, 10), (3, 2))
     target_cells = 'Treg'   
     signaling_receptor = 'CD25'   
-    non_siganling_receptor = 'CD122'
+    non_siganling_receptor = 'CD122' 
     receptor_names_top = ['CD25', 'Notch-2', 'CD4-1', 'CD27', 'CD278']
     receptor_names_varried = ['CD25', 'CD109', 'CD27', 'TIGIT', 'CD28']
     EMD_2D(new_df, signaling_receptor, target_cells, ax[0])
