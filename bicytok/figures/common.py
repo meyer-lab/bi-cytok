@@ -216,11 +216,11 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         target_receptor_counts[:, 1] *= conversion_factor
         off_target_receptor_counts[:, 1] *= conversion_factor
         
-        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+        #average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
 
         # Normalize the counts by dividing by the average
-        target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
-        off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
+        #target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+        #off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
         
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
@@ -281,11 +281,11 @@ def EMD_1D(dataset, target_cells, ax):
         off_target_receptor_counts = off_target_receptor_counts.astype(float) * conversion_factor
         
        
-        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+        #average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
 
-        # Normalize the counts by dividing by the average
-        target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
-        off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
+        #Normalize the counts by dividing by the average
+        #target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+        #off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
 
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
@@ -420,11 +420,11 @@ def EMD_3D(dataset, signaling_receptor, target_cells, ax):
         target_receptor_counts[:, 2] *= conversion_factor 
         off_target_receptor_counts[:, 2] *= conversion_factor
 
-        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+        #average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
 
         # Normalize the counts by dividing by the average
-        target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
-        off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
+        #target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+        #off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
 
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
@@ -453,3 +453,76 @@ def EMD_3D(dataset, signaling_receptor, target_cells, ax):
 
     print('The 5 non-signaling receptors that achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return sorted_results
+
+def calculate_kl_divergence_2D(targCellMark, offTargCellMark):
+    kdeTarg = KernelDensity(kernel='gaussian').fit(targCellMark.reshape(-1, 1))
+    kdeOffTarg = KernelDensity(kernel='gaussian').fit(offTargCellMark.reshape(-1, 1))
+    minVal = np.minimum(targCellMark.min(), offTargCellMark.min()) - 10
+    maxVal = np.maximum(targCellMark.max(), offTargCellMark.max()) + 10
+    outcomes = np.arange(minVal, maxVal + 1).reshape(-1, 1)
+    distTarg = np.exp(kdeTarg.score_samples(outcomes))
+    distOffTarg = np.exp(kdeOffTarg.score_samples(outcomes))
+    KL_div = stats.entropy(distOffTarg.flatten() + 1e-200, distTarg.flatten() + 1e-200, base=2)
+    return KL_div
+
+def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
+    weightDF = convFactCalc()
+    
+    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
+
+    non_signal_receptors = []
+    for column in dataset.columns:
+        if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
+            non_signal_receptors.append(column)
+
+    results = []
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+
+    if signal_receptor == 'CD122':
+        conversion_factor_sig = IL2Rb_factor
+    elif signal_receptor == 'CD25':
+        conversion_factor_sig = IL2Ra_factor
+    elif signal_receptor == 'CD127':
+        conversion_factor_sig = IL7Ra_factor
+    else:
+        conversion_factor_sig = (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
+    
+    for receptor_name in non_signal_receptors:
+        target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
+        off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
+
+        if receptor_name == 'CD122':
+            conversion_factor = IL2Rb_factor
+        elif receptor_name == 'CD25':
+            conversion_factor = IL2Ra_factor
+        elif receptor_name == 'CD127':
+            conversion_factor = IL7Ra_factor
+        else:
+            conversion_factor = (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
+
+        target_receptor_counts[:, 0] *= conversion_factor_sig
+        off_target_receptor_counts[:, 0] *= conversion_factor_sig
+
+        target_receptor_counts[:, 1] *= conversion_factor
+        off_target_receptor_counts[:, 1] *= conversion_factor
+        
+        KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 1], off_target_receptor_counts[:, 1])
+        results.append((KL_div, receptor_name))
+    
+    sorted_results = sorted(results, reverse=True)
+    top_receptor_info = [(receptor_name, KL_div) for KL_div, receptor_name in sorted_results[:5]]    
+
+    receptor_names = [info[0] for info in top_receptor_info]
+    KL_divergences = [info[1] for info in top_receptor_info]
+
+    ax.bar(range(len(receptor_names)), KL_divergences)
+    ax.set_xlabel('Receptor')
+    ax.set_ylabel('KL Divergence')
+    ax.set_title('Top 5 Receptor KL Divergence (2D)')
+    ax.set_xticks(range(len(receptor_names)))
+    ax.set_xticklabels(receptor_names, rotation='vertical')
+    
+    print('The 5 non signaling receptors with the greatest positive KL divergence from target-off-target cells are:', top_receptor_info)
