@@ -216,11 +216,11 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         target_receptor_counts[:, 1] *= conversion_factor
         off_target_receptor_counts[:, 1] *= conversion_factor
         
-        #average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
 
         # Normalize the counts by dividing by the average
-        #target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
-        #off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
+        target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+        off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
         
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
@@ -281,11 +281,11 @@ def EMD_1D(dataset, target_cells, ax):
         off_target_receptor_counts = off_target_receptor_counts.astype(float) * conversion_factor
         
        
-        #average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
 
         #Normalize the counts by dividing by the average
-        #target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
-        #off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
+        target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+        off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
 
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
@@ -333,7 +333,7 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     # below must be changed depending on target cell, celltype3 for treg mem, celltype 2 for treg 
     epitopesDF = getSampleAbundances(epitopes, cell_types, "CellType2") 
     prevOptAffs = [8.0, 8.0, 8.0]
-    dose = .1
+    dose = 1
     valency = 2
     
     for receptor_name in receptor_names:
@@ -420,11 +420,11 @@ def EMD_3D(dataset, signaling_receptor, target_cells, ax):
         target_receptor_counts[:, 2] *= conversion_factor 
         off_target_receptor_counts[:, 2] *= conversion_factor
 
-        #average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
 
         # Normalize the counts by dividing by the average
-        #target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
-        #off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
+        target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+        off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
 
         # Matrix for emd parameter
         M = ot.dist(target_receptor_counts, off_target_receptor_counts)
@@ -474,7 +474,7 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
 
     non_signal_receptors = []
     for column in dataset.columns:
-        if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
+        if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             non_signal_receptors.append(column)
 
     results = []
