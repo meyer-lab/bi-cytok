@@ -525,4 +525,4 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
     ax.set_xticks(range(len(receptor_names)))
     ax.set_xticklabels(receptor_names, rotation='vertical')
     
-    print('The 5 non signaling receptors with the greatest positive KL divergence from target-off-target cells are:', top_receptor_info)
+    print('The 5 non signaling receptors with the greatest positive KL divergence values:', top_receptor_info)
