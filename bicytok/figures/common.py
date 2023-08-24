@@ -511,6 +511,7 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
         
         KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 1], off_target_receptor_counts[:, 1])
         results.append((KL_div, receptor_name))
+       
     
     sorted_results = sorted(results, reverse=True)
     top_receptor_info = [(receptor_name, KL_div) for KL_div, receptor_name in sorted_results[:5]]    
@@ -526,3 +527,50 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
     ax.set_xticklabels(receptor_names, rotation='vertical')
     
     print('The 5 non signaling receptors with the greatest positive KL divergence values:', top_receptor_info)
+    
+
+def plot_kl_divergence_curves(dataset, signal_receptor, special_receptor, target_cells, ax):
+    weightDF = convFactCalc()
+    
+    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
+
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+
+    if signal_receptor == 'CD122':
+        conversion_factor_sig = IL2Rb_factor
+    elif signal_receptor == 'CD25':
+        conversion_factor_sig = IL2Ra_factor
+    elif signal_receptor == 'CD127':
+        conversion_factor_sig = IL7Ra_factor
+    else:
+        conversion_factor_sig = (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
+    
+    target_receptor_counts = target_cells_df[special_receptor].values * conversion_factor_sig
+    off_target_receptor_counts = off_target_cells_df[special_receptor].values * conversion_factor_sig
+
+    target_counts_density = stats.gaussian_kde(target_receptor_counts)
+    off_target_counts_density = stats.gaussian_kde(off_target_receptor_counts)
+
+    x_vals = np.linspace(min(target_receptor_counts.min(), off_target_receptor_counts.min()),
+                         max(target_receptor_counts.max(), off_target_receptor_counts.max()), 1000)
+
+    target_density_curve = target_counts_density(x_vals)
+    off_target_density_curve = off_target_counts_density(x_vals)
+
+    ax.plot(x_vals, target_density_curve, color='red', label='Target Cells')
+    ax.fill_between(x_vals, target_density_curve, color='red', alpha=0.3)
+    
+    ax.plot(x_vals, off_target_density_curve, color='blue', label='Off Target Cells')
+    ax.fill_between(x_vals, off_target_density_curve, color='blue', alpha=0.3)
+    
+    ax.set_xscale('log')  # Set x-axis to log scale
+    ax.set_xlabel('Receptor Value')
+    ax.set_ylabel('Density')
+    ax.set_title(f'Receptor Density Curves: {special_receptor}')
+    ax.legend()
+
+    KL_div = calculate_kl_divergence_2D(target_receptor_counts, off_target_receptor_counts)
+    print(f'KL Divergence for {special_receptor}: {KL_div:.4f}')

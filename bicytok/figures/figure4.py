@@ -13,6 +13,7 @@ from .common import EMD1Dvs2D_Analysis
 from .common import Wass_KL_Dist
 from ..imports import importCITE 
 from .common import KL_divergence_2D
+from .common import plot_kl_divergence_curves
 
 
 
@@ -24,8 +25,8 @@ def makeFigure():
     new_df1 = markerDF.sample(n=10000, random_state=42) 
     new_df2 = markerDF.sample(n=10000, random_state=10)
     ax, f = getSetup((10, 10), (3, 2))
-    target_cells = 'Treg'    
-    signaling_receptor = 'CD122'   
+    target_cells = 'Treg'     
+    signaling_receptor = 'CD122'     
     non_siganling_receptor = 'CD25'  
     receptor_names_top = ['CD25', 'Notch-2', 'CD4-1', 'CD27', 'CD278']  
     receptor_names_varried = ['CD25', 'CD109', 'CD27', 'TIGIT', 'CD28']
@@ -34,7 +35,7 @@ def makeFigure():
     # EMD_Distribution_Plot(ax[2], new_df2, signaling_receptor, non_siganling_receptor, target_cells)
     # EMD_1D(new_df, target_cells, ax[1])  
     # EMD1Dvs2D_Analysis (receptor_names_varried, target_cells, signaling_receptor, new_df, ax[0], ax[1], ax[2], ax[3])
-    KL_divergence_2D(new_df, "CD122", "Treg", ax[0])
+    # KL_divergence_2D(new_df, 'CD122', "Treg", ax[0])
+    plot_kl_divergence_curves(new_df, 'CD122', 'CD25', 'Treg', ax[1])
     plt.tight_layout()
     return f  
-  
