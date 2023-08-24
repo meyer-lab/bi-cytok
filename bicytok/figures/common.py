@@ -551,6 +551,10 @@ def plot_kl_divergence_curves(dataset, signal_receptor, special_receptor, target
     target_receptor_counts = target_cells_df[special_receptor].values * conversion_factor_sig
     off_target_receptor_counts = off_target_cells_df[special_receptor].values * conversion_factor_sig
 
+    avg_special_receptor = np.mean(np.concatenate([target_receptor_counts, off_target_receptor_counts]))
+    target_receptor_counts /= avg_special_receptor
+    off_target_receptor_counts /= avg_special_receptor
+    
     target_counts_density = stats.gaussian_kde(target_receptor_counts)
     off_target_counts_density = stats.gaussian_kde(off_target_receptor_counts)
 

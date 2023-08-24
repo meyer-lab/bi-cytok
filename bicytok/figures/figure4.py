@@ -38,4 +38,4 @@ def makeFigure():
     # KL_divergence_2D(new_df, 'CD122', "Treg", ax[0])
     plot_kl_divergence_curves(new_df, 'CD122', 'CD25', 'Treg', ax[1])
     plt.tight_layout()
-    return f  
+    return f   
