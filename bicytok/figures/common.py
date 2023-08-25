@@ -17,6 +17,7 @@ import ot.plot
 from ..selectivityFuncs import convFactCalc
 from ..selectivityFuncs import convFactCalc
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign
+from scipy.stats import norm
 
 matplotlib.rcParams["legend.labelspacing"] = 0.2
 matplotlib.rcParams["legend.fontsize"] = 8
@@ -573,8 +574,77 @@ def plot_kl_divergence_curves(dataset, signal_receptor, special_receptor, target
     ax.set_xscale('log')  # Set x-axis to log scale
     ax.set_xlabel('Receptor Value')
     ax.set_ylabel('Density')
-    ax.set_title(f'Receptor Density Curves: {special_receptor}')
+    ax.set_title(f'Receptor Density Curves: {special_receptor} & {signal_receptor}')
     ax.legend()
 
     KL_div = calculate_kl_divergence_2D(target_receptor_counts, off_target_receptor_counts)
     print(f'KL Divergence for {special_receptor}: {KL_div:.4f}')
+
+def plot_2d_density_visualization(dataset, receptor1, receptor2, target_cells, ax):
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+
+    receptor1_values_target = target_cells_df[receptor1].values
+    receptor2_values_target = target_cells_df[receptor2].values
+
+    receptor1_values_off_target = off_target_cells_df[receptor1].values
+    receptor2_values_off_target = off_target_cells_df[receptor2].values
+
+    target_kde = KernelDensity(kernel='gaussian').fit(np.column_stack([receptor1_values_target, receptor2_values_target]))
+    off_target_kde = KernelDensity(kernel='gaussian').fit(np.column_stack([receptor1_values_off_target, receptor2_values_off_target]))
+
+    # Calculate the KL divergence using the actual receptor values
+    KL_div = calculate_kl_divergence_2D(receptor2_values_target, receptor2_values_off_target)
+    print(f'KL Divergence for Receptors {receptor1} & {receptor2}: {KL_div:.4f}')
+
+    x_vals = np.linspace(min(receptor1_values_target.min(), receptor1_values_off_target.min()),
+                         max(receptor1_values_target.max(), receptor1_values_off_target.max()), 100)
+    y_vals = np.linspace(min(receptor2_values_target.min(), receptor2_values_off_target.min()),
+                         max(receptor2_values_target.max(), receptor2_values_off_target.max()), 100)
+    x_grid, y_grid = np.meshgrid(x_vals, y_vals)
+    positions = np.vstack([x_grid.ravel(), y_grid.ravel()]).T
+    z_target = np.exp(target_kde.score_samples(positions)).reshape(x_grid.shape)
+    z_off_target = np.exp(off_target_kde.score_samples(positions)).reshape(x_grid.shape)
+
+    ax.contourf(x_grid, y_grid, z_target, cmap='Reds', alpha=0.5)
+    ax.contourf(x_grid, y_grid, z_off_target, cmap='Blues', alpha=0.5)
+    
+    ax.set_xlim(0, 30)
+    ax.set_ylim(0, 125)
+    
+    ax.set_xlabel(f'Receptor {receptor1}')
+    ax.set_ylabel(f'Receptor {receptor2}')
+    ax.set_title(f'2D Receptor Density Visualization')
+    ax.legend(['Target Cells', 'Off Target Cells'])
+
+def plot_2d_normal_distributions(dataset, receptor1, receptor2, target_cells, ax):
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+
+    receptor1_values_target = target_cells_df[receptor1].values
+    receptor2_values_target = target_cells_df[receptor2].values
+
+    receptor1_values_off_target = off_target_cells_df[receptor1].values
+    receptor2_values_off_target = off_target_cells_df[receptor2].values
+
+    # Plotting on the provided axis (ax)
+    ax.scatter(receptor1_values_target, receptor2_values_target, color='red', label='Target Cells', alpha=0.5)
+    ax.scatter(receptor1_values_off_target, receptor2_values_off_target, color='blue', label='Off Target Cells', alpha=0.5)
+    
+    # Fit and plot normal distributions
+    params_target = norm.fit(receptor2_values_target)
+    params_off_target = norm.fit(receptor2_values_off_target)
+    
+    x_range = np.linspace(min(receptor1_values_target.min(), receptor1_values_off_target.min()),
+                          max(receptor1_values_target.max(), receptor1_values_off_target.max()), 100)
+    
+    ax.plot(x_range, norm.pdf(x_range, *params_target), color='red', linestyle='dashed', label='Target Distribution')
+    ax.plot(x_range, norm.pdf(x_range, *params_off_target), color='blue', linestyle='dashed', label='Off Target Distribution')
+    
+    ax.set_xlabel(f'Receptor {receptor1}')
+    ax.set_ylabel(f'Receptor {receptor2}')
+    ax.set_title(f'2D Receptor Distribution Visualization')
+    ax.legend()
+    
+    ax.set_xlim(0, 30)
+    ax.set_ylim(0, 125)

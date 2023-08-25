@@ -14,6 +14,8 @@ from .common import Wass_KL_Dist
 from ..imports import importCITE 
 from .common import KL_divergence_2D
 from .common import plot_kl_divergence_curves
+from .common import plot_2d_density_visualization
+from .common import plot_2d_normal_distributions
 
 
 
@@ -33,9 +35,10 @@ def makeFigure():
     # EMD_2D(new_df, signaling_receptor, target_cells, ax[0])
     # EMD_3D(new_df, signaling_receptor, target_cells, ax[2])
     # EMD_Distribution_Plot(ax[2], new_df2, signaling_receptor, non_siganling_receptor, target_cells)
-    # EMD_1D(new_df, target_cells, ax[1])  
+    # EMD_1D(new_df, target_cells, ax[1])   
     # EMD1Dvs2D_Analysis (receptor_names_varried, target_cells, signaling_receptor, new_df, ax[0], ax[1], ax[2], ax[3])
     # KL_divergence_2D(new_df, 'CD122', "Treg", ax[0])
-    plot_kl_divergence_curves(new_df, 'CD122', 'CD25', 'Treg', ax[1])
-    plt.tight_layout()
-    return f   
+    plot_kl_divergence_curves(new_df, 'CD122', 'CD25', 'Treg', ax[0])
+    plot_2d_density_visualization(new_df, 'CD122', 'CD25', 'Treg', ax[1])
+    # plot_2d_normal_distributions(new_df, 'CD122', 'CD25', 'Treg', ax[1])
+    return f     
