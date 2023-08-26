@@ -648,3 +648,53 @@ def plot_2d_normal_distributions(dataset, receptor1, receptor2, target_cells, ax
     
     ax.set_xlim(0, 30)
     ax.set_ylim(0, 125)
+
+def calculate_emd_for_gene(dataset, gene, target_cell_type):
+    target_cells_df = dataset[(dataset['CellType3'] == target_cell_type) | (dataset['CellType2'] == target_cell_type)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cell_type) | (dataset['CellType2'] == target_cell_type))]
+    
+    gene_values = target_cells_df[gene].astype(float).values
+    off_target_gene_values = off_target_cells_df[gene].astype(float).values
+
+    conversion_factor = np.mean(gene_values)  # Modify as needed
+    
+    gene_values *= conversion_factor
+    off_target_gene_values *= conversion_factor
+    
+    target_gene_counts = gene_values
+    off_target_gene_counts = off_target_gene_values
+    
+    average_gene_counts = np.mean(np.concatenate((target_gene_counts, off_target_gene_counts)))
+
+    target_gene_counts = target_gene_counts.astype(float) / average_gene_counts
+    off_target_gene_counts = off_target_gene_counts.astype(float) / average_gene_counts
+    
+    emd_a = ot.dist(target_gene_counts.reshape(-1, 1), off_target_gene_counts.reshape(-1, 1))
+    print("Shape of emd_a:", emd_a.shape)
+    
+    return emd_a
+
+def calculate_emd_matrix(dataset, target_cell_type):
+    num_genes = len(dataset.columns) - 3  # Exclude non-gene columns
+    emd_matrix = np.zeros((num_genes, num_genes))
+
+    for idx_gene_a, gene_a in enumerate(dataset.columns[3:]):
+        emd_a = calculate_emd_for_gene(dataset, gene_a, target_cell_type)
+        if emd_a is None:
+            continue  # Skip genes with invalid values
+        
+        a = np.ones((emd_a.shape[0],)) / emd_a.shape[0]
+        
+        for idx_gene_b, gene_b in enumerate(dataset.columns[3:]):
+            emd_b = calculate_emd_for_gene(dataset, gene_b, target_cell_type)
+            if emd_b is None:
+                continue  # Skip genes with invalid values
+            
+            b = np.ones((emd_b.shape[0],)) / emd_b.shape[0]
+            
+            M = ot.dist(emd_a.reshape(-1, 1), emd_b.reshape(-1, 1))
+            
+            emd_distance = ot.emd2(a, b, M, numItermax=10000000)
+            emd_matrix[idx_gene_a, idx_gene_b] = emd_distance
+    
+    return emd_matrix
