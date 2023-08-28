@@ -45,11 +45,8 @@ def makeFigure():
     # plot_2d_density_visualization(new_df, 'CD122', 'CD25', 'Treg', ax[1])
     # plot_2d_normal_distributions(new_df, 'CD122', 'CD25', 'Treg', ax[1])
 
-    emd_matrix, receptors = calculate_emd_distances(new_df, target_cells)
-    plot_emd_heatmap(emd_matrix, receptors, ax[3])
-
-    # kl_div_matrix = calculate_kl_divergence_matrix(new_df, receptors)
-    # plot_kl_divergence_heatmap(kl_div_matrix, receptors, ax[4])
+    # emd_matrix, receptors = calculate_emd_distances(new_df, target_cells)
+    # plot_emd_heatmap(emd_matrix, receptors, ax[3])
 
 
     return f     

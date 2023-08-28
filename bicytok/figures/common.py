@@ -516,7 +516,7 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
     
     sorted_results = sorted(results, reverse=True)
     top_receptor_info = [(receptor_name, KL_div) for KL_div, receptor_name in sorted_results[:5]]    
-
+    all_receptor_info = [(receptor_name, KL_div) for KL_div, receptor_name in sorted_results] 
     receptor_names = [info[0] for info in top_receptor_info]
     KL_divergences = [info[1] for info in top_receptor_info]
 
@@ -528,6 +528,7 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
     ax.set_xticklabels(receptor_names, rotation='vertical')
     
     print('The 5 non signaling receptors with the greatest positive KL divergence values:', top_receptor_info)
+    return all_receptor_info
     
 
 def plot_kl_divergence_curves(dataset, signal_receptor, special_receptor, target_cells, ax):
