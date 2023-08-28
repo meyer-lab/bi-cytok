@@ -617,22 +617,3 @@ def plot_2d_density_visualization(dataset, receptor1, receptor2, target_cells, a
     ax.set_title(f'2D Receptor Density Visualization')
     ax.legend(['Target Cells', 'Off Target Cells'])
 
-def calculate_emd_matrix(dataset):
-    num_genes = len(dataset.columns) - 3  # Exclude non-gene columns
-    emd_matrix = np.zeros((num_genes, num_genes))
-
-    # Normalize gene expression data
-    normalized_data = (dataset.iloc[:, 3:] - dataset.iloc[:, 3:].mean()) / dataset.iloc[:, 3:].std()
-
-    # Calculate pairwise distance matrix
-    distance_matrix = np.linalg.norm(normalized_data.values[:, np.newaxis, :] - normalized_data.values[np.newaxis, :, :], axis=-1)
-
-    for i in range(num_genes):
-        a = np.ones(num_genes) / num_genes
-        for j in range(num_genes):
-            b = np.ones(num_genes) / num_genes
-            M = distance_matrix[i, j]  # Cost matrix
-            emd_distance = ot.emd2(a, b, M, numItermax=10000000)
-            emd_matrix[i, j] = emd_distance
-    
-    return emd_matrix
