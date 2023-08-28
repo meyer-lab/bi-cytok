@@ -668,7 +668,6 @@ def plot_emd_heatmap(emd_matrix, receptors, ax):
     ax.set_ylabel('Receptor X')
     ax.set_title('EMD Distance Heatmap')
     
-    plt.tight_layout()  # Adjusts spacing for labels
 
 def calculate_kl_divergence_matrix(dataset, receptors):
     num_receptors = len(receptors)
@@ -703,4 +702,3 @@ def plot_kl_divergence_heatmap(kl_div_matrix, receptors, ax):
     ax.set_ylabel('Receptor X')
     ax.set_title('KL Divergence Heatmap')
     
-    plt.tight_layout() 

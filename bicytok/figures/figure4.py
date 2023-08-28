@@ -29,7 +29,7 @@ def makeFigure():
     new_df = markerDF.head(1000)  
     new_df1 = markerDF.sample(n=10000, random_state=42) 
     new_df2 = markerDF.sample(n=10000, random_state=10)
-    ax, f = getSetup((10, 10), (3, 2))
+    ax, f = getSetup((40, 40), (3, 2))
     target_cells = 'Treg'     
     signaling_receptor = 'CD122'     
     non_siganling_receptor = 'CD25'  
@@ -48,8 +48,8 @@ def makeFigure():
     emd_matrix, receptors = calculate_emd_distances(new_df, target_cells)
     plot_emd_heatmap(emd_matrix, receptors, ax[3])
 
-    kl_div_matrix = calculate_kl_divergence_matrix(new_df, receptors)
-    plot_kl_divergence_heatmap(kl_div_matrix, receptors, ax[4])
+    # kl_div_matrix = calculate_kl_divergence_matrix(new_df, receptors)
+    # plot_kl_divergence_heatmap(kl_div_matrix, receptors, ax[4])
 
 
     return f     
