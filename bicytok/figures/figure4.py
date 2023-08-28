@@ -17,6 +17,8 @@ from .common import plot_kl_divergence_curves
 from .common import plot_2d_density_visualization
 from .common import calculate_emd_distances
 from .common import plot_emd_heatmap
+from .common import calculate_kl_divergence_matrix
+from .common import plot_kl_divergence_heatmap
 
 
 
@@ -45,4 +47,9 @@ def makeFigure():
 
     emd_matrix, receptors = calculate_emd_distances(new_df, target_cells)
     plot_emd_heatmap(emd_matrix, receptors, ax[3])
+
+    kl_div_matrix = calculate_kl_divergence_matrix(new_df, receptors)
+    plot_kl_divergence_heatmap(kl_div_matrix, receptors, ax[4])
+
+
     return f     
