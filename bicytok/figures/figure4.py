@@ -41,14 +41,6 @@ def makeFigure():
     # KL_divergence_2D(new_df, 'CD122', "Treg", ax[0])
     # plot_kl_divergence_curves(new_df, 'CD122', 'CD25', 'Treg', ax[0])
     # plot_2d_density_visualization(new_df, 'CD122', 'CD25', 'Treg', ax[1])
-    # plot_2d_normal_distributions(new_df, 'CD122', 'CD25', 'Treg', ax[1])
-    emd_matrix = calculate_emd_matrix(new_df, target_cells)
-    # Plot heatmap on ax[3]
-    sns.heatmap(emd_matrix, cmap='coolwarm', xticklabels=new_df.columns[3:], yticklabels=new_df.columns[3:], ax=ax[3])
-    ax[3].set_xlabel('Genes (Gene B)')
-    ax[3].set_ylabel('Genes (Gene A)')
-    ax[3].set_title('EMD Distance Heatmap')
-    plt.tight_layout()  # Adjust layout spacing
-    plt.show()
+    plot_2d_normal_distributions(new_df, 'CD122', 'CD25', 'Treg', ax[1])
 
     return f     

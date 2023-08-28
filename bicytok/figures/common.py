@@ -617,84 +617,22 @@ def plot_2d_density_visualization(dataset, receptor1, receptor2, target_cells, a
     ax.set_title(f'2D Receptor Density Visualization')
     ax.legend(['Target Cells', 'Off Target Cells'])
 
-def plot_2d_normal_distributions(dataset, receptor1, receptor2, target_cells, ax):
-    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
-    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
-
-    receptor1_values_target = target_cells_df[receptor1].values
-    receptor2_values_target = target_cells_df[receptor2].values
-
-    receptor1_values_off_target = off_target_cells_df[receptor1].values
-    receptor2_values_off_target = off_target_cells_df[receptor2].values
-
-    # Plotting on the provided axis (ax)
-    ax.scatter(receptor1_values_target, receptor2_values_target, color='red', label='Target Cells', alpha=0.5)
-    ax.scatter(receptor1_values_off_target, receptor2_values_off_target, color='blue', label='Off Target Cells', alpha=0.5)
-    
-    # Fit and plot normal distributions
-    params_target = norm.fit(receptor2_values_target)
-    params_off_target = norm.fit(receptor2_values_off_target)
-    
-    x_range = np.linspace(min(receptor1_values_target.min(), receptor1_values_off_target.min()),
-                          max(receptor1_values_target.max(), receptor1_values_off_target.max()), 100)
-    
-    ax.plot(x_range, norm.pdf(x_range, *params_target), color='red', linestyle='dashed', label='Target Distribution')
-    ax.plot(x_range, norm.pdf(x_range, *params_off_target), color='blue', linestyle='dashed', label='Off Target Distribution')
-    
-    ax.set_xlabel(f'Receptor {receptor1}')
-    ax.set_ylabel(f'Receptor {receptor2}')
-    ax.set_title(f'2D Receptor Distribution Visualization')
-    ax.legend()
-    
-    ax.set_xlim(0, 30)
-    ax.set_ylim(0, 125)
-
-def calculate_emd_for_gene(dataset, gene, target_cell_type):
-    target_cells_df = dataset[(dataset['CellType3'] == target_cell_type) | (dataset['CellType2'] == target_cell_type)]
-    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cell_type) | (dataset['CellType2'] == target_cell_type))]
-    
-    gene_values = target_cells_df[gene].astype(float).values
-    off_target_gene_values = off_target_cells_df[gene].astype(float).values
-
-    conversion_factor = np.mean(gene_values)  # Modify as needed
-    
-    gene_values *= conversion_factor
-    off_target_gene_values *= conversion_factor
-    
-    target_gene_counts = gene_values
-    off_target_gene_counts = off_target_gene_values
-    
-    average_gene_counts = np.mean(np.concatenate((target_gene_counts, off_target_gene_counts)))
-
-    target_gene_counts = target_gene_counts.astype(float) / average_gene_counts
-    off_target_gene_counts = off_target_gene_counts.astype(float) / average_gene_counts
-    
-    emd_a = ot.dist(target_gene_counts.reshape(-1, 1), off_target_gene_counts.reshape(-1, 1))
-    print("Shape of emd_a:", emd_a.shape)
-    
-    return emd_a
-
-def calculate_emd_matrix(dataset, target_cell_type):
+def calculate_emd_matrix(dataset):
     num_genes = len(dataset.columns) - 3  # Exclude non-gene columns
     emd_matrix = np.zeros((num_genes, num_genes))
 
-    for idx_gene_a, gene_a in enumerate(dataset.columns[3:]):
-        emd_a = calculate_emd_for_gene(dataset, gene_a, target_cell_type)
-        if emd_a is None:
-            continue  # Skip genes with invalid values
-        
-        a = np.ones((emd_a.shape[0],)) / emd_a.shape[0]
-        
-        for idx_gene_b, gene_b in enumerate(dataset.columns[3:]):
-            emd_b = calculate_emd_for_gene(dataset, gene_b, target_cell_type)
-            if emd_b is None:
-                continue  # Skip genes with invalid values
-            
-            b = np.ones((emd_b.shape[0],)) / emd_b.shape[0]
-            
-            M = ot.dist(emd_a.reshape(-1, 1), emd_b.reshape(-1, 1))
-            
+    # Normalize gene expression data
+    normalized_data = (dataset.iloc[:, 3:] - dataset.iloc[:, 3:].mean()) / dataset.iloc[:, 3:].std()
+
+    # Calculate pairwise distance matrix
+    distance_matrix = np.linalg.norm(normalized_data.values[:, np.newaxis, :] - normalized_data.values[np.newaxis, :, :], axis=-1)
+
+    for i in range(num_genes):
+        a = np.ones(num_genes) / num_genes
+        for j in range(num_genes):
+            b = np.ones(num_genes) / num_genes
+            M = distance_matrix[i, j]  # Cost matrix
             emd_distance = ot.emd2(a, b, M, numItermax=10000000)
-            emd_matrix[idx_gene_a, idx_gene_b] = emd_distance
+            emd_matrix[i, j] = emd_distance
     
     return emd_matrix
