@@ -15,8 +15,8 @@ from ..imports import importCITE
 from .common import KL_divergence_2D
 from .common import plot_kl_divergence_curves
 from .common import plot_2d_density_visualization
-from .common import plot_2d_normal_distributions
-from .common import calculate_emd_matrix
+from .common import calculate_emd_distances
+from .common import plot_emd_heatmap
 
 
 
@@ -41,6 +41,8 @@ def makeFigure():
     # KL_divergence_2D(new_df, 'CD122', "Treg", ax[0])
     # plot_kl_divergence_curves(new_df, 'CD122', 'CD25', 'Treg', ax[0])
     # plot_2d_density_visualization(new_df, 'CD122', 'CD25', 'Treg', ax[1])
-    plot_2d_normal_distributions(new_df, 'CD122', 'CD25', 'Treg', ax[1])
+    # plot_2d_normal_distributions(new_df, 'CD122', 'CD25', 'Treg', ax[1])
 
+    emd_matrix, receptors = calculate_emd_distances(new_df, target_cells)
+    plot_emd_heatmap(emd_matrix, receptors, ax[3])
     return f     

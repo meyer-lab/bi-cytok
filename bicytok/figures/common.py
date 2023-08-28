@@ -617,3 +617,55 @@ def plot_2d_density_visualization(dataset, receptor1, receptor2, target_cells, a
     ax.set_title(f'2D Receptor Density Visualization')
     ax.legend(['Target Cells', 'Off Target Cells'])
 
+def calculate_emd_distances(dataset, target_cells):
+    weightDF = convFactCalc()
+    receptors = [col for col in dataset.columns if col not in ['CellType1', 'CellType2', 'CellType3']]
+    num_receptors = len(receptors)
+    emd_matrix = np.zeros((num_receptors, num_receptors))
+
+    # Calculate conversion factors
+    receptor_factors = {}
+    for receptor in receptors:
+        if receptor == 'CD122':
+            receptor_factors[receptor] = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+        elif receptor == 'CD25':
+            receptor_factors[receptor] = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
+        elif receptor == 'CD127':
+            receptor_factors[receptor] = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+        else:
+            receptor_factors[receptor] = (weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0] +
+                                          weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0] +
+                                          weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]) / 3
+
+    for i, receptor_x in enumerate(receptors):
+        receptor_x_counts = dataset[receptor_x].values
+        conversion_factor_x = receptor_factors[receptor_x]
+        
+        for j, receptor_y in enumerate(receptors):
+            receptor_y_counts = dataset[receptor_y].values
+            conversion_factor_y = receptor_factors[receptor_y]
+            
+            # Calculate EMD distance
+            M = ot.dist(receptor_x_counts[:, np.newaxis], receptor_y_counts[:, np.newaxis])
+            a = np.ones((receptor_x_counts.shape[0],)) / receptor_x_counts.shape[0]
+            b = np.ones((receptor_y_counts.shape[0],)) / receptor_y_counts.shape[0]
+            emd_distance = ot.emd2(a, b, M, numItermax=10000000)
+            emd_matrix[i, j] = emd_distance
+            
+    return emd_matrix, receptors
+
+def plot_emd_heatmap(emd_matrix, receptors, ax):
+    im = ax.imshow(emd_matrix, cmap='viridis', interpolation='nearest')
+    plt.colorbar(im, ax=ax)
+    
+    ax.set_xticks(range(len(receptors)))
+    ax.set_yticks(range(len(receptors)))
+    
+    ax.set_xticklabels(receptors, rotation='vertical')
+    ax.set_yticklabels(receptors)
+    
+    ax.set_xlabel('Receptor Y')
+    ax.set_ylabel('Receptor X')
+    ax.set_title('EMD Distance Heatmap')
+    
+    plt.tight_layout()  # Adjusts spacing for labels
