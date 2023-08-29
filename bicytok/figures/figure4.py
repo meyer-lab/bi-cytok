@@ -20,6 +20,8 @@ from .common import plot_emd_heatmap
 from .common import plot_kl_heatmap
 from .common import calculate_kl_divergence_matrix
 from .common import EMD_2D_pair
+from .common import KL_divergence_2D_pair
+from .common import bindingmodel_selectivity_pair
 
 
 
@@ -27,7 +29,8 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():  
     markerDF = importCITE()
-    new_df = markerDF.head(1000)  
+    # new_df = markerDF
+    new_df = markerDF.head(10000)  
     new_df1 = markerDF.sample(n=10000, random_state=42) 
     new_df2 = markerDF.sample(n=10000, random_state=10)
     ax, f = getSetup((40, 40), (3, 2))
@@ -52,6 +55,14 @@ def makeFigure():
     # kl_matrix, receptors = calculate_kl_divergence_matrix(new_df, target_cells)
     # plot_kl_heatmap(kl_matrix, receptors, ax[3])
 
-    emd_distance = EMD_2D_pair(new_df, target_cells, 'CD35', 'CD122')
-    print("EMD Distance between CD25 and CD122 for", target_cells, ":", emd_distance)
+    # emd_distance = EMD_2D_pair(new_df, target_cells, 'CD35', 'CD122')
+    # print("EMD Distance between CD25 and CD122 for", target_cells, ":", emd_distance)
+
+    # kl_distance = KL_divergence_2D_pair(new_df, target_cells, 'CD35', 'CD122')
+    # print("KL Distance between CD25 and CD122 for", target_cells, ":", kl_distance)
+
+    selectivity_pair = bindingmodel_selectivity_pair(new_df, target_cells, 'CD35', 'CD4-1')
+    print("Selectivity between CD25 and CD122 for", target_cells, ":", selectivity_pair)
+
+
     return f     

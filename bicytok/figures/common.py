@@ -729,11 +729,6 @@ def EMD_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
     IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
     IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
     IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
-    
-    non_signal_receptors = []
-    for column in dataset.columns:
-        if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
-            non_signal_receptors.append(column)
 
     target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
     off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
@@ -781,3 +776,78 @@ def EMD_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
 
     print('OT', optimal_transport)
     return optimal_transport
+
+def calculate_kl_divergence_2D(targCellMark, offTargCellMark):
+    kdeTarg = KernelDensity(kernel='gaussian').fit(targCellMark.reshape(-1, 1))
+    kdeOffTarg = KernelDensity(kernel='gaussian').fit(offTargCellMark.reshape(-1, 1))
+    minVal = np.minimum(targCellMark.min(), offTargCellMark.min()) - 10
+    maxVal = np.maximum(targCellMark.max(), offTargCellMark.max()) + 10
+    outcomes = np.arange(minVal, maxVal + 1).reshape(-1, 1)
+    distTarg = np.exp(kdeTarg.score_samples(outcomes))
+    distOffTarg = np.exp(kdeOffTarg.score_samples(outcomes))
+    KL_div = stats.entropy(distOffTarg.flatten() + 1e-200, distTarg.flatten() + 1e-200, base=2)
+    return KL_div
+
+def KL_divergence_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
+    weightDF = convFactCalc()
+    # target and off-target cells
+    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
+
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+    
+    if signal_receptor == 'CD122':
+        conversion_factor_sig = IL2Rb_factor
+    elif signal_receptor == 'CD25':
+        conversion_factor_sig = IL2Ra_factor
+    elif signal_receptor == 'CD127':
+        conversion_factor_sig = IL7Ra_factor
+    else:
+        conversion_factor_sig = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
+    
+    
+    target_receptor_counts = target_cells_df[[signal_receptor, special_receptor]].values
+    off_target_receptor_counts = off_target_cells_df[[signal_receptor, special_receptor]].values
+
+    if special_receptor == 'CD122':
+        conversion_factor = IL2Rb_factor
+    elif special_receptor == 'CD25':
+        conversion_factor = IL2Ra_factor
+    elif special_receptor == 'CD127':
+        conversion_factor = IL7Ra_factor
+    else:
+        conversion_factor = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
+
+    target_receptor_counts[:, 0] *= conversion_factor_sig
+    off_target_receptor_counts[:, 0] *= conversion_factor_sig
+
+    target_receptor_counts[:, 1] *= conversion_factor
+    off_target_receptor_counts[:, 1] *= conversion_factor
+        
+    average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+
+    # Normalize the counts by dividing by the average
+    target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+    off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
+        
+    KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 1], off_target_receptor_counts[:, 1])
+    
+    print('KL', KL_div)
+    return KL_div
+
+def bindingmodel_selectivity_pair(dataset, target_cells, signal_receptor, special_receptor):
+    cell_types = set(dataset['CellType1']).union(dataset['CellType2']).union(dataset['CellType3'])
+    offtarg_cell_types = [cell_type for cell_type in cell_types if cell_type != target_cells]
+    epitopes = [column for column in dataset.columns if column not in ['CellType1', 'CellType2', 'CellType3']]
+    epitopesDF = getSampleAbundances(epitopes, cell_types, "CellType2") 
+
+    # Set the appropriate number of affinity parameters based on the signal_receptor
+    prevOptAffs = [8.0, 8.0, 8.0] if signal_receptor == 'CD122' else [8.0, 8.0]
+    
+    dose = 1
+    valency = 2
+    optParams1 = optimizeDesign(signal_receptor, special_receptor, target_cells, offtarg_cell_types, epitopesDF, dose, valency, prevOptAffs)
+    selectivity = 1/optParams1[0]
+    return selectivity
