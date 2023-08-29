@@ -17,8 +17,9 @@ from .common import plot_kl_divergence_curves
 from .common import plot_2d_density_visualization
 from .common import calculate_emd_distances
 from .common import plot_emd_heatmap
+from .common import plot_kl_heatmap
 from .common import calculate_kl_divergence_matrix
-from .common import plot_kl_divergence_heatmap
+from .common import EMD_2D_pair
 
 
 
@@ -48,5 +49,9 @@ def makeFigure():
     # emd_matrix, receptors = calculate_emd_distances(new_df, target_cells)
     # plot_emd_heatmap(emd_matrix, receptors, ax[3])
 
+    # kl_matrix, receptors = calculate_kl_divergence_matrix(new_df, target_cells)
+    # plot_kl_heatmap(kl_matrix, receptors, ax[3])
 
+    emd_distance = EMD_2D_pair(new_df, target_cells, 'CD35', 'CD122')
+    print("EMD Distance between CD25 and CD122 for", target_cells, ":", emd_distance)
     return f     

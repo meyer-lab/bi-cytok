@@ -670,27 +670,46 @@ def plot_emd_heatmap(emd_matrix, receptors, ax):
     ax.set_title('EMD Distance Heatmap')
     
 
-def calculate_kl_divergence_matrix(dataset, receptors):
+def calculate_kl_divergence_matrix(dataset, target_cells):
+    weightDF = convFactCalc()  # Make sure this is defined in your code
+    receptors = [col for col in dataset.columns if col not in ['CellType1', 'CellType2', 'CellType3']]
     num_receptors = len(receptors)
-    kl_div_matrix = np.zeros((num_receptors, num_receptors))
+    kl_matrix = np.zeros((num_receptors, num_receptors))
+
+    # Calculate conversion factors
+    receptor_factors = {}
+    for receptor in receptors:
+        if receptor == 'CD122':
+            receptor_factors[receptor] = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+        elif receptor == 'CD25':
+            receptor_factors[receptor] = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
+        elif receptor == 'CD127':
+            receptor_factors[receptor] = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+        else:
+            receptor_factors[receptor] = (weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0] +
+                                          weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0] +
+                                          weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]) / 3
 
     for i, receptor_x in enumerate(receptors):
-        receptor_x_counts = dataset[receptor_x].values
+        targCellMark_x = dataset[receptor_x].values
+        conversion_factor_x = receptor_factors[receptor_x]
         
         for j, receptor_y in enumerate(receptors):
-            receptor_y_counts = dataset[receptor_y].values
-
-            kl_div = calculate_kl_divergence_2D(receptor_x_counts, receptor_y_counts)
-            kl_div_matrix[i, j] = kl_div
+            targCellMark_y = dataset[receptor_y].values
+            conversion_factor_y = receptor_factors[receptor_y]
             
-    return kl_div_matrix
+            # Apply conversion factors
+            offTargCellMark_x = targCellMark_x * conversion_factor_x
+            offTargCellMark_y = targCellMark_y * conversion_factor_y
+            
+            # Calculate KL divergence
+            kl_div = calculate_kl_divergence_2D(offTargCellMark_x, offTargCellMark_y)
+            kl_matrix[i, j] = kl_div
+            
+    return kl_matrix, receptors
 
-def plot_kl_divergence_heatmap(kl_div_matrix, receptors, ax):
-    if ax is None:
-        plt.figure(figsize=(12, 10))
-        ax = plt.gca()
-
-    im = ax.imshow(kl_div_matrix, cmap='viridis', interpolation='nearest')
+def plot_kl_heatmap(kl_matrix, receptors, ax):
+    im = ax.imshow(kl_matrix, cmap='viridis', interpolation='nearest')
     plt.colorbar(im, ax=ax)
     
     ax.set_xticks(range(len(receptors)))
@@ -701,5 +720,64 @@ def plot_kl_divergence_heatmap(kl_div_matrix, receptors, ax):
     
     ax.set_xlabel('Receptor Y')
     ax.set_ylabel('Receptor X')
-    ax.set_title('KL Divergence Heatmap')
+    ax.set_title('KL Distance Heatmap')
+
+
+def EMD_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
+    weightDF = convFactCalc()
+    # target and off-target cells
+    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
     
+    non_signal_receptors = []
+    for column in dataset.columns:
+        if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
+            non_signal_receptors.append(column)
+
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+    
+    if signal_receptor == 'CD122':
+        conversion_factor_sig = IL2Rb_factor
+    elif signal_receptor == 'CD25':
+        conversion_factor_sig = IL2Ra_factor
+    elif signal_receptor == 'CD127':
+        conversion_factor_sig = IL7Ra_factor
+    else:
+        conversion_factor_sig = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
+    
+    
+    target_receptor_counts = target_cells_df[[signal_receptor, special_receptor]].values
+    off_target_receptor_counts = off_target_cells_df[[signal_receptor, special_receptor]].values
+
+    if special_receptor == 'CD122':
+        conversion_factor = IL2Rb_factor
+    elif special_receptor == 'CD25':
+        conversion_factor = IL2Ra_factor
+    elif special_receptor == 'CD127':
+        conversion_factor = IL7Ra_factor
+    else:
+        conversion_factor = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
+
+    target_receptor_counts[:, 0] *= conversion_factor_sig
+    off_target_receptor_counts[:, 0] *= conversion_factor_sig
+
+    target_receptor_counts[:, 1] *= conversion_factor
+    off_target_receptor_counts[:, 1] *= conversion_factor
+        
+    average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+
+    # Normalize the counts by dividing by the average
+    target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+    off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
+        
+    # Matrix for emd parameter
+    M = ot.dist(target_receptor_counts, off_target_receptor_counts)
+    # optimal transport distance
+    a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
+    b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
+    optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
+
+    print('OT', optimal_transport)
+    return optimal_transport
