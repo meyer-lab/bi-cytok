@@ -848,6 +848,9 @@ def bindingmodel_selectivity_pair(dataset, target_cells, signal_receptor, specia
     
     dose = 1
     valency = 2
+
+    print(epitopesDF.shape)
+    print(epitopesDF.values[1, 1])
     optParams1 = optimizeDesign(signal_receptor, special_receptor, target_cells, offtarg_cell_types, epitopesDF, dose, valency, prevOptAffs)
     selectivity = 1/optParams1[0]
     return selectivity
