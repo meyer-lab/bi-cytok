@@ -29,7 +29,7 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():  
     markerDF = importCITE()
-    new_df = markerDF.head(10)
+    new_df = markerDF.head(1000)
     # new_df = markerDF.head(10000)  
     new_df1 = markerDF.sample(n=10000, random_state=42) 
     new_df2 = markerDF.sample(n=10000, random_state=10)
@@ -42,7 +42,7 @@ def makeFigure():
     # EMD_2D(new_df, signaling_receptor, target_cells, ax[0])
     # EMD_3D(new_df, signaling_receptor, target_cells, ax[2])
     # EMD_Distribution_Plot(ax[2], new_df2, signaling_receptor, non_siganling_receptor, target_cells)
-    # EMD_1D(new_df, target_cells, ax[1])   
+    # EMD_1D(new_df, target_cells, ax[1])    
     # EMD1Dvs2D_Analysis (receptor_names_varried, target_cells, signaling_receptor, new_df, ax[0], ax[1], ax[2], ax[3])
     # KL_divergence_2D(new_df, 'CD122', "Treg", ax[0])
     # plot_kl_divergence_curves(new_df, 'CD122', 'CD25', 'Treg', ax[0])
