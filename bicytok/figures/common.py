@@ -645,7 +645,7 @@ def calculate_emd_distances(dataset, target_cells):
         for j, receptor_y in enumerate(receptors):
             receptor_y_counts = dataset[receptor_y].values
             conversion_factor_y = receptor_factors[receptor_y]
-            
+            #still need to apply conv factors
             # Calculate EMD distance
             M = ot.dist(receptor_x_counts[:, np.newaxis], receptor_y_counts[:, np.newaxis])
             a = np.ones((receptor_x_counts.shape[0],)) / receptor_x_counts.shape[0]
@@ -691,21 +691,17 @@ def calculate_kl_divergence_matrix(dataset, target_cells):
                                           weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]) / 3
 
     for i, receptor_x in enumerate(receptors):
-        targCellMark_x = dataset[receptor_x].values
+        receptor_x_counts = dataset[receptor_x].values
         conversion_factor_x = receptor_factors[receptor_x]
         
         for j, receptor_y in enumerate(receptors):
-            targCellMark_y = dataset[receptor_y].values
+            receptor_y_counts = dataset[receptor_y].values
             conversion_factor_y = receptor_factors[receptor_y]
-            
-            # Apply conversion factors
-            offTargCellMark_x = targCellMark_x * conversion_factor_x
-            offTargCellMark_y = targCellMark_y * conversion_factor_y
+            #still need to apply conv factors
             
             # Calculate KL divergence
-            kl_div = calculate_kl_divergence_2D(offTargCellMark_x, offTargCellMark_y)
+            kl_div = calculate_kl_divergence_2D(receptor_x_counts, receptor_y_counts)
             kl_matrix[i, j] = kl_div
-            
     return kl_matrix, receptors
 
 def plot_kl_heatmap(kl_matrix, receptors, ax):

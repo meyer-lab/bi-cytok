@@ -29,7 +29,7 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():  
     markerDF = importCITE()
-    new_df = markerDF.head(1000)
+    new_df = markerDF.head(10)
     # new_df = markerDF.head(10000)  
     new_df1 = markerDF.sample(n=10000, random_state=42) 
     new_df2 = markerDF.sample(n=10000, random_state=10)
