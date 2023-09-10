@@ -619,118 +619,62 @@ def plot_2d_density_visualization(dataset, receptor1, receptor2, target_cells, a
     ax.set_title(f'2D Receptor Density Visualization')
     ax.legend(['Target Cells', 'Off Target Cells'])
 
-def calculate_emd_distances(dataset, target_cells):
+#################################################
+def KL_divergence_forheatmap(dataset, signal_receptor, target_cells):
     weightDF = convFactCalc()
-    receptors = [col for col in dataset.columns if col not in ['CellType1', 'CellType2', 'CellType3']]
-    num_receptors = len(receptors)
-    emd_matrix = np.zeros((num_receptors, num_receptors))
+    
+    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
 
-    # Calculate conversion factors
-    receptor_factors = {}
-    for receptor in receptors:
-        if receptor == 'CD122':
-            receptor_factors[receptor] = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
-        elif receptor == 'CD25':
-            receptor_factors[receptor] = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
-        elif receptor == 'CD127':
-            receptor_factors[receptor] = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+    non_signal_receptors = []
+    for column in dataset.columns:
+        if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
+            non_signal_receptors.append(column)
+
+    results = []
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+
+    if signal_receptor == 'CD122':
+        conversion_factor_sig = IL2Rb_factor
+    elif signal_receptor == 'CD25':
+        conversion_factor_sig = IL2Ra_factor
+    elif signal_receptor == 'CD127':
+        conversion_factor_sig = IL7Ra_factor
+    else:
+        conversion_factor_sig = (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
+    
+    for receptor_name in non_signal_receptors:
+        target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
+        off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
+
+        if receptor_name == 'CD122':
+            conversion_factor = IL2Rb_factor
+        elif receptor_name == 'CD25':
+            conversion_factor = IL2Ra_factor
+        elif receptor_name == 'CD127':
+            conversion_factor = IL7Ra_factor
         else:
-            receptor_factors[receptor] = (weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0] +
-                                          weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0] +
-                                          weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]) / 3
+            conversion_factor = (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
 
-    for i, receptor_x in enumerate(receptors):
-        receptor_x_counts = dataset[receptor_x].values
-        conversion_factor_x = receptor_factors[receptor_x]
+        target_receptor_counts[:, 0] *= conversion_factor_sig
+        off_target_receptor_counts[:, 0] *= conversion_factor_sig
+
+        target_receptor_counts[:, 1] *= conversion_factor
+        off_target_receptor_counts[:, 1] *= conversion_factor
         
-        for j, receptor_y in enumerate(receptors):
-            receptor_y_counts = dataset[receptor_y].values
-            conversion_factor_y = receptor_factors[receptor_y]
-            #still need to apply conv factors
-            # Calculate EMD distance
-            M = ot.dist(receptor_x_counts[:, np.newaxis], receptor_y_counts[:, np.newaxis])
-            a = np.ones((receptor_x_counts.shape[0],)) / receptor_x_counts.shape[0]
-            b = np.ones((receptor_y_counts.shape[0],)) / receptor_y_counts.shape[0]
-            emd_distance = ot.emd2(a, b, M, numItermax=10000000)
-            emd_matrix[i, j] = emd_distance
-            
-    return emd_matrix, receptors
+        KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 1], off_target_receptor_counts[:, 1])
+        results.append((KL_div, receptor_name))
+       
+     
+    all_receptor_info = [(receptor_name, KL_div) for KL_div, receptor_name in results] 
+  
+    return all_receptor_info
 
-def plot_emd_heatmap(emd_matrix, receptors, ax):
-    im = ax.imshow(emd_matrix, cmap='viridis', interpolation='nearest')
-    plt.colorbar(im, ax=ax)
-    
-    ax.set_xticks(range(len(receptors)))
-    ax.set_yticks(range(len(receptors)))
-    
-    ax.set_xticklabels(receptors, rotation='vertical')
-    ax.set_yticklabels(receptors)
-    
-    ax.set_xlabel('Receptor Y')
-    ax.set_ylabel('Receptor X')
-    ax.set_title('EMD Distance Heatmap')
     
 
-def calculate_kl_divergence_matrix(dataset, target_cells):
-    weightDF = convFactCalc()  # Make sure this is defined in your code
-    receptors = [col for col in dataset.columns if col not in ['CellType1', 'CellType2', 'CellType3']]
-    num_receptors = len(receptors)
-    kl_matrix = np.zeros((num_receptors, num_receptors))
-
-    # Calculate conversion factors
-    receptor_factors = {}
-    for receptor in receptors:
-        if receptor == 'CD122':
-            receptor_factors[receptor] = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
-        elif receptor == 'CD25':
-            receptor_factors[receptor] = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
-        elif receptor == 'CD127':
-            receptor_factors[receptor] = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
-        else:
-            receptor_factors[receptor] = (weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0] +
-                                          weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0] +
-                                          weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]) / 3
-
-    for i, receptor_x in enumerate(receptors):
-        receptor_x_counts = dataset[receptor_x].values
-        conversion_factor_x = receptor_factors[receptor_x]
-        
-        for j, receptor_y in enumerate(receptors):
-            receptor_y_counts = dataset[receptor_y].values
-            conversion_factor_y = receptor_factors[receptor_y]
-            #still need to apply conv factors
-            
-            # Calculate KL divergence
-            kl_div = calculate_kl_divergence_2D(receptor_x_counts, receptor_y_counts)
-            kl_matrix[i, j] = kl_div
-    return kl_matrix, receptors
-
-def plot_clustered_kl_heatmap(kl_matrix, receptors):
-    # Convert kl_matrix to a numpy array
-    kl_matrix = np.array(kl_matrix)
-    
-    # Calculate linkage matrices for rows and columns
-    row_linkage = hierarchy.linkage(kl_matrix, method='average')
-    col_linkage = hierarchy.linkage(kl_matrix.T, method='average')  # Transpose for columns
-    
-    # Create a clustered heatmap
-    sns.set(font_scale=0.8)  # Adjust font size if needed
-
-    sns.clustermap(
-        kl_matrix,
-        cmap='viridis',
-        row_linkage=row_linkage,
-        col_linkage=col_linkage,
-        method='average',  # Choose an appropriate clustering method
-        xticklabels=receptors,
-        yticklabels=receptors,
-        cbar_pos=(0.2, 0.9, 0.03, 0.1),  # Adjust colorbar position as needed
-    )
-
-    plt.title('Clustered KL Distance Heatmap')
-    
-
-
+#################################################
 
 def EMD_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
     weightDF = convFactCalc()
