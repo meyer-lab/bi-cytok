@@ -17,7 +17,7 @@ from .common import plot_kl_divergence_curves
 from .common import plot_2d_density_visualization
 from .common import EMD_2D_pair
 from .common import KL_divergence_2D_pair
-from .common import bindingmodel_selectivity_pair
+from .common import KL_divergence_2D
 
 
 
@@ -25,14 +25,15 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():  
     markerDF = importCITE()
-    new_df = markerDF.head(5)
+    new_df = markerDF.head(100)
     receptors = []
     for column in new_df.columns:
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
     ax, f = getSetup((40, 40), (1,1))
     target_cells = 'Treg' 
-
+    
+    
     results_matrix = []    
     for receptor in receptors:
         current_result = KL_divergence_forheatmap(new_df, receptor, target_cells)
@@ -44,6 +45,5 @@ def makeFigure():
     ax[0].set_xticklabels(receptors)
     ax[0].set_yticklabels(receptors)
     sns.heatmap(results_matrix, annot=True, fmt=".2f", cmap="YlGnBu", ax=ax[0])
- 
  
     return f     

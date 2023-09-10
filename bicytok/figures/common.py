@@ -663,7 +663,7 @@ def KL_divergence_forheatmap(dataset, signal_receptor, target_cells):
 
         target_receptor_counts[:, 1] *= conversion_factor
         off_target_receptor_counts[:, 1] *= conversion_factor
-        
+
         KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 1], off_target_receptor_counts[:, 1])
         results.append((KL_div, receptor_name))
        
