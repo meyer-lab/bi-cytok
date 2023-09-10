@@ -18,6 +18,7 @@ from ..selectivityFuncs import convFactCalc
 from ..selectivityFuncs import convFactCalc
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign
 from scipy.stats import norm
+from scipy.cluster import hierarchy
 
 matplotlib.rcParams["legend.labelspacing"] = 0.2
 matplotlib.rcParams["legend.fontsize"] = 8
@@ -704,19 +705,31 @@ def calculate_kl_divergence_matrix(dataset, target_cells):
             kl_matrix[i, j] = kl_div
     return kl_matrix, receptors
 
-def plot_kl_heatmap(kl_matrix, receptors, ax):
-    im = ax.imshow(kl_matrix, cmap='viridis', interpolation='nearest')
-    plt.colorbar(im, ax=ax)
+def plot_clustered_kl_heatmap(kl_matrix, receptors):
+    # Convert kl_matrix to a numpy array
+    kl_matrix = np.array(kl_matrix)
     
-    ax.set_xticks(range(len(receptors)))
-    ax.set_yticks(range(len(receptors)))
+    # Calculate linkage matrices for rows and columns
+    row_linkage = hierarchy.linkage(kl_matrix, method='average')
+    col_linkage = hierarchy.linkage(kl_matrix.T, method='average')  # Transpose for columns
     
-    ax.set_xticklabels(receptors, rotation='vertical')
-    ax.set_yticklabels(receptors)
+    # Create a clustered heatmap
+    sns.set(font_scale=0.8)  # Adjust font size if needed
+
+    sns.clustermap(
+        kl_matrix,
+        cmap='viridis',
+        row_linkage=row_linkage,
+        col_linkage=col_linkage,
+        method='average',  # Choose an appropriate clustering method
+        xticklabels=receptors,
+        yticklabels=receptors,
+        cbar_pos=(0.2, 0.9, 0.03, 0.1),  # Adjust colorbar position as needed
+    )
+
+    plt.title('Clustered KL Distance Heatmap')
     
-    ax.set_xlabel('Receptor Y')
-    ax.set_ylabel('Receptor X')
-    ax.set_title('KL Distance Heatmap')
+
 
 
 def EMD_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
