@@ -36,7 +36,7 @@ def makeFigure():
     # EMD_2D(new_df, recep, target_cells, ax[0])
     results = []
     for receptor in receptors:
-        val = EMD_2D(new_df, receptor, target_cells, ax[0]) # can make none
+        val = EMD_2D(new_df, receptor, target_cells, ax = None) # can make none
         results.append(val)
 
     receptor_names = [receptor for _, receptor in results[0]]
