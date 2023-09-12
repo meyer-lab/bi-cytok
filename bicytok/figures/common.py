@@ -231,11 +231,11 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
         optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
         if np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]):
-            results.append((optimal_transport, receptor_name))
+            results.append((optimal_transport, receptor_name, signal_receptor))
     # end loop
     sorted_results = sorted(results, reverse=True)
     
-    top_receptor_info = [(receptor_name, optimal_transport) for optimal_transport, receptor_name in sorted_results[:5]]    
+    top_receptor_info = [(receptor_name, optimal_transport, signal_receptor) for optimal_transport, receptor_name, signal_receptor in sorted_results[:5]]
     
     # bar graph 
     receptor_names = [info[0] for info in top_receptor_info]

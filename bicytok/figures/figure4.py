@@ -37,27 +37,29 @@ def makeFigure():
     results = []
     for receptor in receptors:
         val = EMD_2D(new_df, receptor, target_cells, ax = None) # can make none
+        print ('val:', val)
         results.append(val)
+        print('results:', results)
 
-    receptor_names = [receptor for _, receptor in results[0]]
+    receptor_names = [receptor for _, receptor, _ in results[0]]
 
     # Create an empty matrix to store the EMD values
     emd_matrix = np.zeros((len(receptor_names), len(receptor_names)))
-
+ 
     # Fill in the matrix with EMD values from the results
     for i, receptor_x in enumerate(receptor_names):
         for j, receptor_y in enumerate(receptor_names):
             # Find the EMD value for the pair (receptor_x, receptor_y) in the results
-            # If it's not found, you can set a default value or leave it as zero
             emd_value = 0.0  # Default value
             for result in results:
-                if (receptor_x, receptor_y) in result:
-                    emd_value = result[result.index((receptor_x, receptor_y))][1]
+                # Check if the result contains the correct pair of receptors (receptor_x, receptor_y)
+                if (result[1] == receptor_x and result[2] == receptor_y) or (result[1] == receptor_y and result[2] == receptor_x): #order could potentially matter
+                    emd_value = result[0]  # The distance is the first element in the result tuple
                     break
             emd_matrix[i, j] = emd_value
 
 
-    # Create the heatmap on ax[0]
+    # Create the heatmap on ax[0] 
     ax[0].imshow(emd_matrix, cmap='viridis', interpolation='nearest')
 
     # Customize the heatmap appearance (e.g., add colorbar, labels)
