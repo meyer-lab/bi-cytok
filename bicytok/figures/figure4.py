@@ -53,20 +53,18 @@ def makeFigure():
             emd_value = 0.0  # Default value
             for result in results:
                 # Check if the result contains the correct pair of receptors (receptor_x, receptor_y)
-                if (result[1] == receptor_x and result[2] == receptor_y) or (result[1] == receptor_y and result[2] == receptor_x): #order could potentially matter
+                if (result[1] == receptor_x and result[2] == receptor_y): #order could potentially matter
                     emd_value = result[0]  # The distance is the first element in the result tuple
+                    print('result', result[0])
+                    print('SLAYYYYY')
                     break
             emd_matrix[i, j] = emd_value
 
-
+    print ('emd_matrix:', emd_matrix)
     # Create the heatmap on ax[0] 
     ax[0].imshow(emd_matrix, cmap='viridis', interpolation='nearest')
 
     # Customize the heatmap appearance (e.g., add colorbar, labels)
-    ax[0].set_xticks(range(len(receptor_names)))
-    ax[0].set_xticklabels(receptor_names, rotation=90)
-    ax[0].set_yticks(range(len(receptor_names)))
-    ax[0].set_yticklabels(receptor_names)
     ax[0].set_xlabel('X-axis Receptor Names')
     ax[0].set_ylabel('Y-axis Receptor Names')
     ax[0].set_title('EMD Heatmap')
