@@ -51,7 +51,6 @@ def makeFigure():
     ax[0].set_ylabel('Receptor')
     ax[0].set_title('EMD Heatmap')
     ######################################################
-    '''
     resultsKL = []
 
     for receptor in receptors:
@@ -61,13 +60,12 @@ def makeFigure():
 
     # Create a DataFrame from the flattened_results
     df_recep = pd.DataFrame(flattened_resultsKL, columns=['Distance', 'Receptor', 'Signal Receptor'])
-    pivot_table = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
+    pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
     # Create the heatmap on ax[0] 
-    ax[0].imshow(pivot_table, cmap='viridis', interpolation='nearest')
+    sns.heatmap(pivot_tableKL, annot=True, fmt='.2f', cmap='coolwarm', ax=ax[1])
 
     # Customize the heatmap appearance (e.g., add colorbar, labels)
-    ax[0].set_xlabel('Receptor')
-    ax[0].set_ylabel('Receptor')
-    ax[0].set_title('EMD Heatmap')
-    '''
+    ax[1].set_xlabel('Receptor')
+    ax[1].set_ylabel('Receptor')
+    ax[1].set_title('EMD Heatmap')
     return f     
