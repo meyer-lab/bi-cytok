@@ -249,7 +249,6 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         ax.set_xticks(range(len(receptor_names)))
         ax.set_xticklabels(receptor_names, rotation='vertical')
     
-    print('The 5 non signaling receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return sorted_results
 
 def EMD_1D(dataset, target_cells, ax):
@@ -513,24 +512,26 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
         off_target_receptor_counts[:, 1] *= conversion_factor
         
         KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 1], off_target_receptor_counts[:, 1])
-        results.append((KL_div, receptor_name))
+        results.append((KL_div, receptor_name, signal_receptor))
        
     
     sorted_results = sorted(results, reverse=True)
-    top_receptor_info = [(receptor_name, KL_div) for KL_div, receptor_name in sorted_results[:5]]    
-    all_receptor_info = [(receptor_name, KL_div) for KL_div, receptor_name in sorted_results] 
-    receptor_names = [info[0] for info in top_receptor_info]
-    KL_divergences = [info[1] for info in top_receptor_info]
-
-    ax.bar(range(len(receptor_names)), KL_divergences)
-    ax.set_xlabel('Receptor')
-    ax.set_ylabel('KL Divergence')
-    ax.set_title('Top 5 Receptor KL Divergence (2D)')
-    ax.set_xticks(range(len(receptor_names)))
-    ax.set_xticklabels(receptor_names, rotation='vertical')
+    top_receptor_info = [(receptor_name, KL_div, signal_receptor) for KL_div, receptor_name, signal_receptor in sorted_results[:5]]
     
-    print('The 5 non signaling receptors with the greatest positive KL divergence values:', top_receptor_info)
-    return all_receptor_info
+    # bar graph 
+    receptor_names = [info[0] for info in top_receptor_info]
+    distances = [info[1] for info in top_receptor_info]
+
+    if ax is not None:
+        ax.bar(range(len(receptor_names)), distances)
+        ax.set_xlabel('Receptor')
+        ax.set_ylabel('Distance')
+        ax.set_title('Top 5 Receptor Distances (2D)')
+        ax.set_xticks(range(len(receptor_names)))
+        ax.set_xticklabels(receptor_names, rotation='vertical')
+    
+    return sorted_results
+
     
 
 def plot_kl_divergence_curves(dataset, signal_receptor, special_receptor, target_cells, ax):

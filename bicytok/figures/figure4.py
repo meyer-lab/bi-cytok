@@ -30,39 +30,44 @@ def makeFigure():
     for column in new_df.columns:
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
-    ax, f = getSetup((40, 40), (1,1))
+    ax, f = getSetup((80, 40), (1,2))
     target_cells = 'Treg' 
     recep = 'CD122'
-    # EMD_2D(new_df, recep, target_cells, ax[0])
-    results = []
+    ######################################################
+    resultsEMD = []
     for receptor in receptors:
-        val = EMD_2D(new_df, receptor, target_cells, ax = None) # can make none
-        results.append(val)
-        print('results:', results)
+        val = EMD_2D(new_df, receptor, target_cells, ax = None) 
+        resultsEMD.append(val)
+    flattened_results = [result_tuple for inner_list in resultsEMD for result_tuple in inner_list]
 
-    receptor_names = [receptor for _, receptor, _ in results[0]]
-
-    emd_matrix = np.zeros((len(receptor_names), len(receptor_names)))
- 
-    # Fill in the matrix with EMD values from the results
-    for i, receptor_x in enumerate(receptor_names):
-        for j, receptor_y in enumerate(receptor_names):
-            # Find the EMD value for the pair (receptor_x, receptor_y) in the results
-            emd_value = 0.0  # Default 
-            for result in results:
-                # Check if the result contains the correct pair of receptors (receptor_x, receptor_y)
-                if (result[1] == receptor_x and result[2] == receptor_y):
-                    emd_value = result[0]  # The distance is the first element
-                    break
-            emd_matrix[i, j] = emd_value
-
-    print ('emd_matrix:', emd_matrix)
+    # Create a DataFrame from the flattened_results
+    df_recep = pd.DataFrame(flattened_results, columns=['Distance', 'Receptor', 'Signal Receptor'])
+    pivot_table = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
     # Create the heatmap on ax[0] 
-    ax[0].imshow(emd_matrix, cmap='viridis', interpolation='nearest')
+    sns.heatmap(pivot_table, annot=True, fmt='.2f', cmap='coolwarm', ax=ax[0])
 
     # Customize the heatmap appearance (e.g., add colorbar, labels)
-    ax[0].set_xlabel('X-axis Receptor Names')
-    ax[0].set_ylabel('Y-axis Receptor Names')
+    ax[0].set_xlabel('Receptor')
+    ax[0].set_ylabel('Receptor')
     ax[0].set_title('EMD Heatmap')
+    ######################################################
+    '''
+    resultsKL = []
 
+    for receptor in receptors:
+        val = KL_divergence_2D(new_df, receptor, target_cells, ax = None) 
+        resultsKL.append(val)
+    flattened_resultsKL = [result_tuple for inner_list in resultsKL for result_tuple in inner_list]
+
+    # Create a DataFrame from the flattened_results
+    df_recep = pd.DataFrame(flattened_resultsKL, columns=['Distance', 'Receptor', 'Signal Receptor'])
+    pivot_table = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
+    # Create the heatmap on ax[0] 
+    ax[0].imshow(pivot_table, cmap='viridis', interpolation='nearest')
+
+    # Customize the heatmap appearance (e.g., add colorbar, labels)
+    ax[0].set_xlabel('Receptor')
+    ax[0].set_ylabel('Receptor')
+    ax[0].set_title('EMD Heatmap')
+    '''
     return f     
