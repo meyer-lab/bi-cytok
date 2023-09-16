@@ -25,7 +25,7 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():  
     markerDF = importCITE()
-    new_df = markerDF.head(1000)
+    new_df = markerDF.head(100)
     receptors = []
     for column in new_df.columns:
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
@@ -34,10 +34,8 @@ def makeFigure():
     target_cells = 'Treg' 
     recep = 'CD122'
     ######################################################
-    EMD_2D(new_df, recep, target_cells, ax[0])
-    '''
     resultsEMD = []
-    for receptor in receptors:
+    for receptor in receptors: 
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
         resultsEMD.append(val)
     flattened_results = [result_tuple for inner_list in resultsEMD for result_tuple in inner_list]
@@ -52,7 +50,6 @@ def makeFigure():
     ax[0].set_ylabel('Receptor')
     ax[0].set_title('EMD Heatmap')
     ######################################################
-    '''
 
     ''' 
     resultsKL = []

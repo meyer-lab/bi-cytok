@@ -232,6 +232,8 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
         if np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]): 
             results.append((optimal_transport, receptor_name, signal_receptor)) #indent if using if statement
+        else:
+            results.append((0, receptor_name, signal_receptor))
             
     # end loop
     sorted_results = sorted(results, reverse=True)
