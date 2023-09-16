@@ -34,8 +34,9 @@ def makeFigure():
     target_cells = 'Treg' 
     recep = 'CD122'
     ######################################################
+    EMD_2D(new_df, recep, target_cells, ax[0])
+    '''
     resultsEMD = []
-    
     for receptor in receptors:
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
         resultsEMD.append(val)
@@ -44,7 +45,6 @@ def makeFigure():
     df_recep = pd.DataFrame(flattened_results, columns=['Distance', 'Receptor', 'Signal Receptor'])
     pivot_table = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
     # Create the heatmap on ax[0] 
-    # pivot_table = pivot_table.reindex(receptors, columns=receptors) unsure if need
     sns.heatmap(pivot_table, annot=False, fmt='.2f', cmap='viridis', ax=ax[0])
 
     # Customize the heatmap appearance (e.g., add colorbar, labels)
@@ -52,7 +52,8 @@ def makeFigure():
     ax[0].set_ylabel('Receptor')
     ax[0].set_title('EMD Heatmap')
     ######################################################
-    
+    '''
+
     ''' 
     resultsKL = []
     for receptor in receptors:
