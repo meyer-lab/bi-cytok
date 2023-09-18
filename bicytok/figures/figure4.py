@@ -25,14 +25,13 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():  
     markerDF = importCITE()
-    new_df = markerDF.head(100)
+    new_df = markerDF.head(1000)
     receptors = []
     for column in new_df.columns:
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
     ax, f = getSetup((40, 40), (1,1))
     target_cells = 'Treg' 
-    recep = 'CD122'
     ######################################################
     resultsEMD = []
     for receptor in receptors: 
@@ -50,8 +49,8 @@ def makeFigure():
     ax[0].set_ylabel('Receptor')
     ax[0].set_title('EMD Heatmap')
     ######################################################
-
-    ''' 
+    '''
+    
     resultsKL = []
     for receptor in receptors:
         val = KL_divergence_2D(new_df, receptor, target_cells, ax = None) 
@@ -59,14 +58,14 @@ def makeFigure():
     flattened_resultsKL = [result_tuple for inner_list in resultsKL for result_tuple in inner_list]
 
     # Create a DataFrame from the flattened_results
-    df_recep = pd.DataFrame(flattened_resultsKL, columns=['Distance', 'Receptor', 'Signal Receptor'])
-    pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
+    df_recep = pd.DataFrame(flattened_resultsKL, columns=['KLD', 'Receptor', 'Signal Receptor'])
+    pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
     # Create the heatmap on ax[0] 
-    sns.heatmap(pivot_tableKL, annot=True, fmt='.2f', cmap='coolwarm', ax=ax[1])
+    sns.heatmap(pivot_tableKL, annot=False, fmt='.2f', cmap='viridis', ax=ax[0])
 
     # Customize the heatmap appearance (e.g., add colorbar, labels)
-    ax[1].set_xlabel('Receptor')
-    ax[1].set_ylabel('Receptor')
-    ax[1].set_title('EMD Heatmap')
+    ax[0].set_xlabel('Receptor')
+    ax[0].set_ylabel('Receptor')
+    ax[0].set_title('KL Heatmap')
     '''
     return f     
