@@ -52,7 +52,6 @@ def makeFigure():
     ######################################################
     '''
     
-    
     resultsKL = []
     for receptor in receptors:
         val = KL_divergence_2D(new_df, receptor, target_cells, ax = None) 
