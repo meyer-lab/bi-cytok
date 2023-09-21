@@ -33,6 +33,7 @@ def makeFigure():
     ax, f = getSetup((40, 40), (1,1))
     target_cells = 'Treg' 
     ######################################################
+    '''
     resultsEMD = []
     for receptor in receptors: 
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
@@ -51,6 +52,7 @@ def makeFigure():
     ######################################################
     '''
     
+    
     resultsKL = []
     for receptor in receptors:
         val = KL_divergence_2D(new_df, receptor, target_cells, ax = None) 
@@ -67,5 +69,4 @@ def makeFigure():
     ax[0].set_xlabel('Receptor')
     ax[0].set_ylabel('Receptor')
     ax[0].set_title('KL Heatmap')
-    '''
     return f     
