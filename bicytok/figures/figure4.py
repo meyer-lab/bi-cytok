@@ -27,13 +27,13 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():  
     markerDF = importCITE()
-    new_df = markerDF.head(100)
+    new_df = markerDF.head(1000)
     receptors = []
     for column in new_df.columns:
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
-    ax, f = getSetup((40, 40), (1,1))
-    target_cells = 'Treg' 
+    ax, f = getSetup((40, 40), (1,1)) 
+    target_cells = 'CD8 T' 
     ######################################################
     
     resultsEMD = []
@@ -73,7 +73,7 @@ def makeFigure():
     ax[0].set_xlabel('Receptor')
     ax[0].set_ylabel('Receptor')
     ax[0].set_title('KL Heatmap')
-    '''
     # f = KLD_clustermap(pivot_tableKL)
     # f = EMD_clustermap(pivot_table)
+    '''
     return f     

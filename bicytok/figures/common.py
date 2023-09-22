@@ -187,8 +187,8 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
             non_signal_receptors.append(column)
 
     results = []
-    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
-    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)| (dataset['CellType1'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)| (dataset['CellType2'] == target_cells))]
     
     if signal_receptor == 'CD122':
         conversion_factor_sig = IL2Rb_factor
