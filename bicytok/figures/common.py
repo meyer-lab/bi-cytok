@@ -517,7 +517,7 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
         target_receptor_counts[:, 1] *= conversion_factor
         off_target_receptor_counts[:, 1] *= conversion_factor
         
-        KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 1], off_target_receptor_counts[:, 1])
+        KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 0:2], off_target_receptor_counts[:, 0:2])
         if np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]): 
             results.append((KL_div, receptor_name, signal_receptor))
         else:
@@ -539,6 +539,8 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
         ax.set_xticklabels(receptor_names, rotation='vertical')
     
     return sorted_results
+
+    
 
 def KLD_clustermap(dataset):
     return (sns.clustermap(dataset, cmap='viridis', figsize=(40,40)))
