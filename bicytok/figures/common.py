@@ -742,11 +742,12 @@ def EMD_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
     return optimal_transport
 
 def calculate_kl_divergence_2D(targCellMark, offTargCellMark):
-    kdeTarg = KernelDensity(kernel='gaussian').fit(targCellMark.reshape(-1, 1))
-    kdeOffTarg = KernelDensity(kernel='gaussian').fit(offTargCellMark.reshape(-1, 1))
+    kdeTarg = KernelDensity(kernel='gaussian').fit(targCellMark.reshape(-1, 2))
+    kdeOffTarg = KernelDensity(kernel='gaussian').fit(offTargCellMark.reshape(-1, 2))
     minVal = np.minimum(targCellMark.min(), offTargCellMark.min()) - 10
     maxVal = np.maximum(targCellMark.max(), offTargCellMark.max()) + 10
-    outcomes = np.arange(minVal, maxVal + 1).reshape(-1, 1)
+    X, Y = np.mgrid[minVal:maxVal:((maxVal-minVal) / 100), minVal:maxVal:((maxVal-minVal) / 100)]
+    outcomes = np.concatenate((X.reshape(-1, 1), Y.reshape(-1, 1)), axis=1)
     distTarg = np.exp(kdeTarg.score_samples(outcomes))
     distOffTarg = np.exp(kdeOffTarg.score_samples(outcomes))
     KL_div = stats.entropy(distOffTarg.flatten() + 1e-200, distTarg.flatten() + 1e-200, base=2)
