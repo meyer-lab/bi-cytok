@@ -255,6 +255,7 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
     return sorted_results
 
 def EMD_clustermap(dataset):
+    dataset = dataset.fillna(0)
     return (sns.clustermap(dataset, cmap='viridis', figsize=(40,40)))
 
 def EMD_1D(dataset, target_cells, ax):

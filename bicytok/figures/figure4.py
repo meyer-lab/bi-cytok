@@ -27,13 +27,13 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():  
     markerDF = importCITE()
-    new_df = markerDF.head(1000)
+    new_df = markerDF.head(100)
     receptors = []
     for column in new_df.columns:
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
     ax, f = getSetup((40, 40), (1,1)) 
-    target_cells = 'CD8 T' 
+    target_cells = 'Treg' 
     ######################################################
     
     resultsEMD = []
@@ -50,9 +50,9 @@ def makeFigure():
     sns.heatmap(pivot_table, annot=False, fmt='.2f', cmap='viridis', ax=ax[0])
 
     # Customize the heatmap appearance (e.g., add colorbar, labels)
-    ax[0].set_xlabel('Receptor')
-    ax[0].set_ylabel('Receptor')
-    ax[0].set_title('EMD Heatmap')
+    # ax[0].set_xlabel('Receptor')
+    # ax[0].set_ylabel('Receptor')
+    # ax[0].set_title('EMD Heatmap')
     ######################################################
 
     '''
@@ -74,6 +74,7 @@ def makeFigure():
     ax[0].set_ylabel('Receptor')
     ax[0].set_title('KL Heatmap')
     # f = KLD_clustermap(pivot_tableKL)
-    # f = EMD_clustermap(pivot_table)
     '''
+    f = EMD_clustermap(pivot_table)
+    
     return f     
