@@ -27,15 +27,24 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():  
     markerDF = importCITE()
-    new_df = markerDF.head(100)
+    new_df = markerDF.head(1000)
     receptors = []
     for column in new_df.columns:
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
-    ax, f = getSetup((40, 40), (1,1)) 
+    ax, f = getSetup((10, 10), (1,1)) 
     target_cells = 'Treg' 
+    cd8_t_df = new_df[new_df['CellType1'] == 'CD8 T']
+    receptor_columns = ['CD57', 'CD8']
+    receptor_df = cd8_t_df[receptor_columns]
     ######################################################
-    
+    sns.kdeplot(receptor_df['CD57'], ax=ax[0], label='CD57', shade=True)
+    sns.kdeplot(receptor_df['CD8'], ax=ax[0], label='CD8', shade=True)
+    ax[0].set_title('Receptor Distributions for CD8 T Cells')
+    ax[0].set_xlabel('Receptor Expression')
+    ax[0].legend()
+
+    '''
     resultsEMD = []
     for receptor in receptors: 
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
@@ -47,14 +56,14 @@ def makeFigure():
     pivot_table = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
     # Create the heatmap on ax[0] 
     
-    sns.heatmap(pivot_table, annot=False, fmt='.2f', cmap='viridis', ax=ax[0])
+    # sns.heatmap(pivot_table, annot=False, fmt='.2f', cmap='viridis', ax=ax[0])
 
     # Customize the heatmap appearance (e.g., add colorbar, labels)
     # ax[0].set_xlabel('Receptor')
     # ax[0].set_ylabel('Receptor')
     # ax[0].set_title('EMD Heatmap')
     ######################################################
-
+    '''
     '''
     resultsKL = []
     for receptor in receptors:
@@ -75,6 +84,6 @@ def makeFigure():
     ax[0].set_title('KL Heatmap')
     # f = KLD_clustermap(pivot_tableKL)
     '''
-    f = EMD_clustermap(pivot_table)
+    # f = EMD_clustermap(pivot_table)
     
     return f     
