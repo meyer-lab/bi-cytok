@@ -27,13 +27,14 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():  
     markerDF = importCITE()
-    new_df = markerDF.head(1000)
+    new_df = markerDF.head(100)
     receptors = []
     for column in new_df.columns:
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
-    ax, f = getSetup((10, 10), (1,1)) 
+    ax, f = getSetup((40, 40), (1,1)) 
     target_cells = 'Treg' 
+    '''
     cd8_t_df = new_df[new_df['CellType1'] == 'CD8 T']
     receptor_columns = ['CD57', 'CD8']
     receptor_df = cd8_t_df[receptor_columns]
@@ -43,8 +44,8 @@ def makeFigure():
     ax[0].set_title('Receptor Distributions for CD8 T Cells')
     ax[0].set_xlabel('Receptor Expression')
     ax[0].legend()
-
     '''
+    
     resultsEMD = []
     for receptor in receptors: 
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
@@ -64,11 +65,12 @@ def makeFigure():
     # ax[0].set_title('EMD Heatmap')
     ######################################################
     '''
-    '''
+   
     resultsKL = []
     for receptor in receptors:
         val = KL_divergence_2D(new_df, receptor, target_cells, ax = None) 
         resultsKL.append(val)
+        print('slay')
     flattened_resultsKL = [result_tuple for inner_list in resultsKL for result_tuple in inner_list]
 
     # Create a DataFrame from the flattened_results
@@ -84,6 +86,6 @@ def makeFigure():
     ax[0].set_title('KL Heatmap')
     # f = KLD_clustermap(pivot_tableKL)
     '''
-    # f = EMD_clustermap(pivot_table)
+    f = EMD_clustermap(pivot_table)
     
     return f     
