@@ -32,22 +32,23 @@ def makeFigure():
     for column in new_df.columns:
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
-    ax, f = getSetup((40, 40), (1,1)) 
+    ax, f = getSetup((8, 8), (1,1)) 
     target_cells = 'Treg' 
     
     cd8_t_df = new_df[new_df['CellType1'] == 'CD8 T']
     off_target_df = new_df[new_df['CellType1'] != 'CD8 T'] 
     
-    receptor_columns = ['CD57', 'CD8']
+    receptor_columns = ['CD117', 'CD8']
     receptor_df = cd8_t_df[receptor_columns]
     receptor_df_off_target = off_target_df[receptor_columns]
     ######################################################
-    sns.kdeplot(cd8_t_df['CD57'], ax=ax[0], label='CD57 (CD8 T)', shade=True)
+    sns.kdeplot(cd8_t_df['CD117'], ax=ax[0], label='CD117 (CD8 T)', shade=True)
     sns.kdeplot(cd8_t_df['CD8'], ax=ax[0], label='CD8 (CD8 T)', shade=True)
-    sns.kdeplot(receptor_df_off_target['CD57'], ax=ax[0], label='CD57 (Off-Target)', shade=True)
+    sns.kdeplot(receptor_df_off_target['CD117'], ax=ax[0], label='CD117 (Off-Target)', shade=True)
     sns.kdeplot(receptor_df_off_target['CD8'], ax=ax[0], label='CD8 (Off-Target)', shade=True)
     ax[0].set_title('Receptor Distributions for CD8 T Cells and Off-Target Cells')    
     ax[0].set_xlabel('Receptor Expression')
+    ax[0].set_xlim(0, 600)
     ax[0].legend()
     '''
     
