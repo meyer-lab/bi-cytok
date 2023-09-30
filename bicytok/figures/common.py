@@ -256,7 +256,7 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
 
 def EMD_clustermap(dataset):
     dataset = dataset.fillna(0)
-    return (sns.clustermap(dataset, cmap='viridis', figsize=(40,40)))
+    return (sns.clustermap(dataset, cmap='viridis', figsize=(80,80)))
 
 def EMD_1D(dataset, target_cells, ax):
     weightDF = convFactCalc()
@@ -545,7 +545,7 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
 
 def KLD_clustermap(dataset):
     dataset = dataset.fillna(0)
-    return (sns.clustermap(dataset, cmap='viridis', figsize=(40,40)))
+    return (sns.clustermap(dataset, cmap='viridis', figsize=(80,80)))
 
 def plot_kl_divergence_curves(dataset, signal_receptor, special_receptor, target_cells, ax):
     weightDF = convFactCalc()

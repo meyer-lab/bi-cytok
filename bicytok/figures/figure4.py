@@ -32,9 +32,9 @@ def makeFigure():
     for column in new_df.columns:
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
-    ax, f = getSetup((8, 8), (1,1)) 
+    ax, f = getSetup((40, 40), (1,1)) 
     target_cells = 'Treg' 
-    
+    '''
     cd8_t_df = new_df[new_df['CellType1'] == 'CD8 T']
     off_target_df = new_df[new_df['CellType1'] != 'CD8 T'] 
     
@@ -50,6 +50,7 @@ def makeFigure():
     ax[0].set_xlabel('Receptor Expression')
     ax[0].set_xlim(0, 600)
     ax[0].legend()
+    '''
     '''
     
     resultsEMD = []
@@ -71,7 +72,7 @@ def makeFigure():
     # ax[0].set_title('EMD Heatmap')
     ######################################################
     '''
-    '''
+    
     resultsKL = []
     for receptor in receptors:
         val = KL_divergence_2D(new_df, receptor, target_cells, ax = None) 
@@ -83,15 +84,16 @@ def makeFigure():
     df_recep = pd.DataFrame(flattened_resultsKL, columns=['KLD', 'Receptor', 'Signal Receptor'])
     pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
     # Create the heatmap on ax[0] 
-    
+    '''
     sns.heatmap(pivot_tableKL, annot=False, fmt='.2f', cmap='viridis', ax=ax[0])
 
     # Customize the heatmap appearance (e.g., add colorbar, labels)
     ax[0].set_xlabel('Receptor')
     ax[0].set_ylabel('Receptor')
     ax[0].set_title('KL Heatmap')
-    # f = KLD_clustermap(pivot_tableKL)
-    
-    # f = EMD_clustermap(pivot_table)
     '''
+    f = KLD_clustermap(pivot_tableKL)
+    # you are running cluster
+    # f = EMD_clustermap(pivot_table)
+    
     return f     
