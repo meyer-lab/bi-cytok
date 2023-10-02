@@ -51,8 +51,8 @@ def makeFigure():
     ax[0].set_xlim(0, 600)
     ax[0].legend()
     '''
-    '''
     
+    '''
     resultsEMD = []
     for receptor in receptors: 
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
@@ -84,6 +84,7 @@ def makeFigure():
     df_recep = pd.DataFrame(flattened_resultsKL, columns=['KLD', 'Receptor', 'Signal Receptor'])
     pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
     # Create the heatmap on ax[0] 
+    
     '''
     sns.heatmap(pivot_tableKL, annot=False, fmt='.2f', cmap='viridis', ax=ax[0])
 
@@ -93,7 +94,7 @@ def makeFigure():
     ax[0].set_title('KL Heatmap')
     '''
     f = KLD_clustermap(pivot_tableKL)
-    # you are running cluster
+    # you are running cluster EMD look for title slay 
     # f = EMD_clustermap(pivot_table)
     
     return f     
