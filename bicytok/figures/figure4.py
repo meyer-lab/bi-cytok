@@ -52,12 +52,13 @@ def makeFigure():
     ax[0].set_xlabel('Receptor Expression')
     #ax[0].set_xlim(0, 600)
     ax[0].legend()
-    
+   
     '''
     resultsEMD = []
 
     for receptor in receptors:
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
+        print(val)
         resultsEMD.append(val)
         print ('working')
     flattened_results = [result_tuple for inner_list in resultsEMD for result_tuple in inner_list]
@@ -75,7 +76,7 @@ def makeFigure():
     ######################################################
     
     resultsKL = []
-    for receptor in receptors:
+    for receptor in receptors[0:5]:
         val = KL_divergence_2D(new_df, receptor, target_cells, ax = None) 
         resultsKL.append(val)
         print('slay')
