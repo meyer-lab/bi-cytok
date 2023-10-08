@@ -244,8 +244,22 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
     for receptor_name in non_signal_receptors:
         target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
         off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
-
-        conversion_factor = get_conversion_factor(receptor_name)
+        ########
+        weightDF = convFactCalc()
+    
+        IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+        IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+        IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
+        if receptor_name == 'CD122':
+            conversion_factor = IL2Rb_factor
+        elif receptor_name == 'CD25':
+            conversion_factor = IL2Ra_factor
+        elif receptor_name == 'CD127':
+            conversion_factor = IL7Ra_factor
+        else:
+            conversion_factor = (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
+        ########
+        # conversion_factor = get_conversion_factor(receptor_name)
         print ('conversion worked')  
         target_receptor_counts[:, 0] *= conversion_factor_sig
         off_target_receptor_counts[:, 0] *= conversion_factor_sig
