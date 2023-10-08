@@ -174,9 +174,8 @@ def EMD_Distribution_Plot(ax, dataset, signal_receptor, non_signal_receptor, tar
 
     return
 
-def EMD_2D(dataset, signal_receptor, target_cells, ax):
+def common_code(dataset, signal_receptor, target_cells):
     weightDF = convFactCalc()
-    # target and off-target cells
     IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
     IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
     IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
@@ -186,10 +185,10 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
             non_signal_receptors.append(column)
 
-    results = []
-    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)| (dataset['CellType1'] == target_cells)]
-    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)| (dataset['CellType1'] == target_cells))]
-    
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells) | (dataset['CellType1'] == target_cells)]
+
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells) | (dataset['CellType1'] == target_cells))]
+
     if signal_receptor == 'CD122':
         conversion_factor_sig = IL2Rb_factor
     elif signal_receptor == 'CD25':
@@ -197,22 +196,35 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
     elif signal_receptor == 'CD127':
         conversion_factor_sig = IL7Ra_factor
     else:
-        conversion_factor_sig = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
+        conversion_factor_sig = (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
+
+    return target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig
+
+def get_conversion_factor(receptor_name):
+    weightDF = convFactCalc()
     
-    #non_signal_receptors = ["CD25", "CD57"]
+    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
+    if receptor_name == 'CD122':
+        return IL2Rb_factor
+    elif receptor_name == 'CD25':
+        return IL2Ra_factor
+    elif receptor_name == 'CD127':
+        return IL7Ra_factor
+    else:
+        return (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
+
+def EMD_2D(dataset, signal_receptor, target_cells, ax):
+    target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig = common_code(dataset, signal_receptor, target_cells)
+
+    results = []
     
     for receptor_name in non_signal_receptors:
         target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
         off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
 
-        if receptor_name == 'CD122':
-            conversion_factor = IL2Rb_factor
-        elif receptor_name == 'CD25':
-            conversion_factor = IL2Ra_factor
-        elif receptor_name == 'CD127':
-            conversion_factor = IL7Ra_factor
-        else:
-            conversion_factor = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
+        conversion_factor = get_conversion_factor(receptor_name)
 
         target_receptor_counts[:, 0] *= conversion_factor_sig
         off_target_receptor_counts[:, 0] *= conversion_factor_sig
@@ -222,22 +234,18 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         
         average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)), axis=0)
 
-        # Normalize the counts by dividing by the average
         if average_receptor_counts[0] > 5 and average_receptor_counts[1] > 5 and np.mean(target_receptor_counts[:, 0]) > np.mean(off_target_receptor_counts[:, 0]) and np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]):
             target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
             off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
             
-            # Matrix for emd parameter
             M = ot.dist(target_receptor_counts, off_target_receptor_counts)
-            # optimal transport distance
             a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
             b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
             optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
-            results.append((optimal_transport, receptor_name, signal_receptor)) #indent if using if statement
+            results.append((optimal_transport, receptor_name, signal_receptor))
         else:
             results.append((0, receptor_name, signal_receptor))
             
-    # end loop
     sorted_results = sorted(results, reverse=True)
     
     top_receptor_info = [(receptor_name, optimal_transport, signal_receptor) for optimal_transport, receptor_name, signal_receptor in sorted_results[:5]]
@@ -465,44 +473,16 @@ def EMD_3D(dataset, signaling_receptor, target_cells, ax):
     print('The 5 non-signaling receptors that achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return sorted_results
 
-
 def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
-    weightDF = convFactCalc()
-    
-    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
-    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
-    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
-
-    non_signal_receptors = []
-    for column in dataset.columns:
-        if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
-            non_signal_receptors.append(column)
+    target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig = common_code(dataset, signal_receptor, target_cells)
 
     results = []
-    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
-    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
-
-    if signal_receptor == 'CD122':
-        conversion_factor_sig = IL2Rb_factor
-    elif signal_receptor == 'CD25':
-        conversion_factor_sig = IL2Ra_factor
-    elif signal_receptor == 'CD127':
-        conversion_factor_sig = IL7Ra_factor
-    else:
-        conversion_factor_sig = (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
     
     for receptor_name in non_signal_receptors:
         target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
         off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
 
-        if receptor_name == 'CD122':
-            conversion_factor = IL2Rb_factor
-        elif receptor_name == 'CD25':
-            conversion_factor = IL2Ra_factor
-        elif receptor_name == 'CD127':
-            conversion_factor = IL7Ra_factor
-        else:
-            conversion_factor = (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
+        conversion_factor = get_conversion_factor(receptor_name)
 
         target_receptor_counts[:, 0] *= conversion_factor_sig
         off_target_receptor_counts[:, 0] *= conversion_factor_sig
@@ -511,7 +491,6 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
         off_target_receptor_counts[:, 1] *= conversion_factor
         
         KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 0:2], off_target_receptor_counts[:, 0:2])
-       
 
         if np.mean(target_receptor_counts[:, 0]) > np.mean(off_target_receptor_counts[:, 0]) and np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]):
             results.append((KL_div, receptor_name, signal_receptor))
@@ -628,7 +607,6 @@ def plot_2d_density_visualization(dataset, receptor1, receptor2, target_cells, a
     ax.set_title(f'2D Receptor Density Visualization')
     ax.legend(['Target Cells', 'Off Target Cells'])
 
-#################################################
 def KL_divergence_forheatmap(dataset, signal_receptor, target_cells):
     weightDF = convFactCalc()
     
@@ -680,10 +658,6 @@ def KL_divergence_forheatmap(dataset, signal_receptor, target_cells):
     all_receptor_info = [(receptor_name, KL_div) for KL_div, receptor_name in results] 
   
     return all_receptor_info
-
-    
-
-#################################################
 
 def EMD_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
     weightDF = convFactCalc()
