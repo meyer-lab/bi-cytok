@@ -34,17 +34,17 @@ def makeFigure():
             receptors.append(column)
     ax, f = getSetup((40, 40), (1,1)) 
     target_cells = 'Treg'
+    EMD_2D(new_df, 'CD25', target_cells, ax = ax[0]) 
     '''
     resultsEMD = []
-    
     for receptor in receptors:
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
         resultsEMD.append(val)
-        print ('working')
+        print ('working') # its looping over conversion factor too many times 
     flattened_results = [result_tuple for inner_list in resultsEMD for result_tuple in inner_list]
     df_recep = pd.DataFrame(flattened_results, columns=['Distance', 'Receptor', 'Signal Receptor'])
     pivot_table = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
-     '''
+    
     resultsKL = []
     for receptor in receptors:
         val = KL_divergence_2D(new_df, receptor, target_cells, ax = None) 
@@ -53,9 +53,9 @@ def makeFigure():
     flattened_resultsKL = [result_tuple for inner_list in resultsKL for result_tuple in inner_list]
     df_recep = pd.DataFrame(flattened_resultsKL, columns=['KLD', 'Receptor', 'Signal Receptor'])
     pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
-   
+   '''
     # f = EMD_clustermap(pivot_table)
-    f = KLD_clustermap(pivot_tableKL)
+    # f = KLD_clustermap(pivot_tableKL)
     
 
     return f     

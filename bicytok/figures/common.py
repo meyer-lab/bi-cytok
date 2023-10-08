@@ -216,8 +216,29 @@ def get_conversion_factor(receptor_name):
         return (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
 
 def EMD_2D(dataset, signal_receptor, target_cells, ax):
-    target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig = common_code(dataset, signal_receptor, target_cells)
+    # filter those outliers! 
+    exclude_columns = ['CellType1', 'CellType2', 'CellType3']
 
+    # Define a threshold multiplier to identify outliers (e.g., 3 times the standard deviation)
+    threshold_multiplier = 3
+
+    # Calculate the mean and standard deviation for each numeric column
+    numeric_columns = [col for col in dataset.columns if col not in exclude_columns]
+    column_means = dataset[numeric_columns].mean()
+    column_stddevs = dataset[numeric_columns].std()
+
+    # Identify outliers for each numeric column
+    outliers = {}
+    for column in numeric_columns:
+        threshold = column_means[column] + threshold_multiplier * column_stddevs[column]
+        outliers[column] = dataset[column] > threshold
+
+    # Create a mask to filter rows with outliers
+    outlier_mask = pd.DataFrame(outliers)
+    filtered_dataset = dataset[~outlier_mask.any(axis=1)]
+
+    target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig = common_code(filtered_dataset, signal_receptor, target_cells)
+    print ('common worked')
     results = []
     
     for receptor_name in non_signal_receptors:
@@ -225,7 +246,7 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
 
         conversion_factor = get_conversion_factor(receptor_name)
-
+        print ('conversion worked')  
         target_receptor_counts[:, 0] *= conversion_factor_sig
         off_target_receptor_counts[:, 0] *= conversion_factor_sig
 
