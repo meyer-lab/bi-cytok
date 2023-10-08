@@ -511,7 +511,9 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
         off_target_receptor_counts[:, 1] *= conversion_factor
         
         KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 0:2], off_target_receptor_counts[:, 0:2])
-        if np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]): 
+       
+
+        if np.mean(target_receptor_counts[:, 0]) > np.mean(off_target_receptor_counts[:, 0]) and np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]):
             results.append((KL_div, receptor_name, signal_receptor))
         else:
             results.append((-1, receptor_name, signal_receptor))
