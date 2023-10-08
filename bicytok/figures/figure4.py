@@ -27,17 +27,16 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():  
     markerDF = importCITE()
-    new_df = markerDF.head(100)
+    new_df = markerDF.head(1000)
     receptors = []
     for column in new_df.columns:
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
     ax, f = getSetup((40, 40), (1,1)) 
-    
-    EMD_2D(new_df, 'CD25', 'Treg', ax = ax[0]) 
+    target_cells = 'Treg'
     '''
     resultsEMD = []
-    target_cells = 'Treg'
+    
     for receptor in receptors:
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
         resultsEMD.append(val)
@@ -45,7 +44,7 @@ def makeFigure():
     flattened_results = [result_tuple for inner_list in resultsEMD for result_tuple in inner_list]
     df_recep = pd.DataFrame(flattened_results, columns=['Distance', 'Receptor', 'Signal Receptor'])
     pivot_table = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
-    
+     '''
     resultsKL = []
     for receptor in receptors:
         val = KL_divergence_2D(new_df, receptor, target_cells, ax = None) 
@@ -54,9 +53,9 @@ def makeFigure():
     flattened_resultsKL = [result_tuple for inner_list in resultsKL for result_tuple in inner_list]
     df_recep = pd.DataFrame(flattened_resultsKL, columns=['KLD', 'Receptor', 'Signal Receptor'])
     pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
-    '''
+   
     # f = EMD_clustermap(pivot_table)
-    # f = KLD_clustermap(pivot_tableKL)
+    f = KLD_clustermap(pivot_tableKL)
     
 
     return f     
