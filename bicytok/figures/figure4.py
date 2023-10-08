@@ -32,9 +32,9 @@ def makeFigure():
     for column in new_df.columns:
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
-    ax, f = getSetup((40, 40), (1,1)) 
+    ax, f = getSetup((40, 40), (2,2)) 
     target_cells = 'Treg'
-    EMD_2D(new_df, 'CD25', target_cells, ax = ax[0]) 
+    EMD_2D(new_df, 'CD25', target_cells, ax = ax[3]) 
     '''
     resultsEMD = []
     for receptor in receptors:
@@ -56,6 +56,6 @@ def makeFigure():
    '''
     # f = EMD_clustermap(pivot_table)
     # f = KLD_clustermap(pivot_tableKL)
-    
+
 
     return f     
