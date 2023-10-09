@@ -34,9 +34,9 @@ def makeFigure():
             receptors.append(column)
     ax, f = getSetup((40, 40), (1,1)) 
     target_cells = 'Treg'
-    # EMD_2D(new_df, 'CD25', target_cells, ax = ax[3]) 
-    # KL_divergence_2D(new_df, 'CD25', target_cells, ax[3])
-    
+    # EMD_2D(new_df, 'CD25', target_cells, ax = ax[0]) 
+    # KL_divergence_2D(new_df, 'CD25', target_cells, ax[0])
+     
     resultsEMD = []
     for receptor in receptors:
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
@@ -57,6 +57,6 @@ def makeFigure():
    '''
     f = EMD_clustermap(pivot_table)
     # f = KLD_clustermap(pivot_tableKL) 
-
+ 
 
     return f     

@@ -73,7 +73,7 @@ def genFigure():
 
     exec("from bicytok.figures." + nameOut + " import makeFigure", globals())
     ff = makeFigure()
-    # ff.savefig(fdir + nameOut + ".svg", dpi=ff.dpi, bbox_inches="tight", pad_inches=0) #edit out for cluster
+    ff.savefig(fdir + nameOut + ".svg", bbox_inches="tight", pad_inches=0) #edit out for cluster after svg  dpi=ff.dpi,
 
     print(f"Figure {sys.argv[1]} is done after {time.time() - start} seconds.\n")
 
@@ -204,10 +204,10 @@ def get_conversion_factor(weightDF, receptor_name):
 def EMD_2D(dataset, signal_receptor, target_cells, ax):
     weightDF = convFactCalc()
     # filter those outliers! 
-    exclude_columns = ['CellType1', 'CellType2', 'CellType3']
+    exclude_columns = ['CellType1', 'CellType2', 'CellType3', 'Cell']
 
     # Define a threshold multiplier to identify outliers (e.g., 3 times the standard deviation)
-    threshold_multiplier = 3
+    threshold_multiplier = 5
 
     # Calculate the mean and standard deviation for each numeric column
     numeric_columns = [col for col in dataset.columns if col not in exclude_columns]
@@ -223,7 +223,7 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
     # Create a mask to filter rows with outliers
     outlier_mask = pd.DataFrame(outliers)
     filtered_dataset = dataset[~outlier_mask.any(axis=1)]
-
+    
     target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig = common_code(weightDF, filtered_dataset, signal_receptor, target_cells)
     results = []
     
