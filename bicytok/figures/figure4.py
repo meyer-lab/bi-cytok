@@ -36,7 +36,7 @@ def makeFigure():
     target_cells = 'Treg'
     # EMD_2D(new_df, 'CD25', target_cells, ax = ax[0]) 
     # KL_divergence_2D(new_df, 'CD25', target_cells, ax[0])
-     
+    '''
     resultsEMD = []
     for receptor in receptors:
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
@@ -54,9 +54,9 @@ def makeFigure():
     flattened_resultsKL = [result_tuple for inner_list in resultsKL for result_tuple in inner_list]
     df_recep = pd.DataFrame(flattened_resultsKL, columns=['KLD', 'Receptor', 'Signal Receptor'])
     pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
-   '''
-    f = EMD_clustermap(pivot_table)
-    # f = KLD_clustermap(pivot_tableKL) 
+   
+    # f = EMD_clustermap(pivot_table) 
+    f = KLD_clustermap(pivot_tableKL) 
  
 
     return f     

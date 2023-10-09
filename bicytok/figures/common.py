@@ -610,58 +610,6 @@ def plot_2d_density_visualization(dataset, receptor1, receptor2, target_cells, a
     ax.set_title(f'2D Receptor Density Visualization')
     ax.legend(['Target Cells', 'Off Target Cells'])
 
-def KL_divergence_forheatmap(dataset, signal_receptor, target_cells):
-    weightDF = convFactCalc()
-    
-    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
-    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
-    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
-
-    non_signal_receptors = []
-    for column in dataset.columns:
-        if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
-            non_signal_receptors.append(column)
-
-    results = []
-    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
-    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
-
-    if signal_receptor == 'CD122':
-        conversion_factor_sig = IL2Rb_factor
-    elif signal_receptor == 'CD25':
-        conversion_factor_sig = IL2Ra_factor
-    elif signal_receptor == 'CD127':
-        conversion_factor_sig = IL7Ra_factor
-    else:
-        conversion_factor_sig = (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
-    
-    for receptor_name in non_signal_receptors:
-        target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
-        off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
-
-        if receptor_name == 'CD122':
-            conversion_factor = IL2Rb_factor
-        elif receptor_name == 'CD25':
-            conversion_factor = IL2Ra_factor
-        elif receptor_name == 'CD127':
-            conversion_factor = IL7Ra_factor
-        else:
-            conversion_factor = (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
-
-        target_receptor_counts[:, 0] *= conversion_factor_sig
-        off_target_receptor_counts[:, 0] *= conversion_factor_sig
-
-        target_receptor_counts[:, 1] *= conversion_factor
-        off_target_receptor_counts[:, 1] *= conversion_factor
-
-        KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 1], off_target_receptor_counts[:, 1])
-        results.append((KL_div, receptor_name))
-       
-     
-    all_receptor_info = [(receptor_name, KL_div) for KL_div, receptor_name in results] 
-  
-    return all_receptor_info
-
 def EMD_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
     weightDF = convFactCalc()
     # target and off-target cells
