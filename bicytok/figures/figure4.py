@@ -35,6 +35,7 @@ def makeFigure():
     ax, f = getSetup((40, 40), (2,2)) 
     target_cells = 'Treg'
     EMD_2D(new_df, 'CD25', target_cells, ax = ax[3]) 
+    # KL_divergence_2D(new_df, 'CD25', target_cells, ax[3])
     '''
     resultsEMD = []
     for receptor in receptors:

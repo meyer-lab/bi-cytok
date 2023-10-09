@@ -73,7 +73,7 @@ def genFigure():
 
     exec("from bicytok.figures." + nameOut + " import makeFigure", globals())
     ff = makeFigure()
-    # ff.savefig(fdir + nameOut + ".svg", dpi=ff.dpi, bbox_inches="tight", pad_inches=0) edit out for cluster
+    ff.savefig(fdir + nameOut + ".svg", dpi=ff.dpi, bbox_inches="tight", pad_inches=0) #edit out for cluster
 
     print(f"Figure {sys.argv[1]} is done after {time.time() - start} seconds.\n")
 
@@ -175,11 +175,6 @@ def EMD_Distribution_Plot(ax, dataset, signal_receptor, non_signal_receptor, tar
     return
 
 def common_code(dataset, signal_receptor, target_cells):
-    weightDF = convFactCalc()
-    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
-    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
-    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
-    
     non_signal_receptors = []
     for column in dataset.columns:
         if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
@@ -189,20 +184,11 @@ def common_code(dataset, signal_receptor, target_cells):
 
     off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells) | (dataset['CellType1'] == target_cells))]
 
-    if signal_receptor == 'CD122':
-        conversion_factor_sig = IL2Rb_factor
-    elif signal_receptor == 'CD25':
-        conversion_factor_sig = IL2Ra_factor
-    elif signal_receptor == 'CD127':
-        conversion_factor_sig = IL7Ra_factor
-    else:
-        conversion_factor_sig = (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
+    conversion_factor_sig = get_conversion_factor(signal_receptor)
 
     return target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig
 
-def get_conversion_factor(receptor_name):
-    weightDF = convFactCalc()
-    
+def get_conversion_factor(weightDF, receptor_name):
     IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
     IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
     IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
@@ -216,6 +202,7 @@ def get_conversion_factor(receptor_name):
         return (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
 
 def EMD_2D(dataset, signal_receptor, target_cells, ax):
+    weightDF = convFactCalc()
     # filter those outliers! 
     exclude_columns = ['CellType1', 'CellType2', 'CellType3']
 
@@ -244,7 +231,7 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
     for receptor_name in non_signal_receptors:
         target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
         off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
-        conversion_factor = get_conversion_factor(receptor_name)
+        conversion_factor = get_conversion_factor(weightDF, receptor_name)
         print ('conversion worked')  
         target_receptor_counts[:, 0] *= conversion_factor_sig
         off_target_receptor_counts[:, 0] *= conversion_factor_sig
@@ -495,15 +482,14 @@ def EMD_3D(dataset, signaling_receptor, target_cells, ax):
 
 def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
     target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig = common_code(dataset, signal_receptor, target_cells)
-
+    print ('common worked')
     results = []
-    
     for receptor_name in non_signal_receptors:
         target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
         off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
 
-        conversion_factor = get_conversion_factor(receptor_name)
-
+        conversion_factor = get_conversion_factor(weightDF, receptor_name)
+        print ('conversion worked')
         target_receptor_counts[:, 0] *= conversion_factor_sig
         off_target_receptor_counts[:, 0] *= conversion_factor_sig
 
