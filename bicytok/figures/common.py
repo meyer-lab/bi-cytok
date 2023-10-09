@@ -73,7 +73,7 @@ def genFigure():
 
     exec("from bicytok.figures." + nameOut + " import makeFigure", globals())
     ff = makeFigure()
-    ff.savefig(fdir + nameOut + ".svg", dpi=ff.dpi, bbox_inches="tight", pad_inches=0) #edit out for cluster
+    # ff.savefig(fdir + nameOut + ".svg", dpi=ff.dpi, bbox_inches="tight", pad_inches=0) #edit out for cluster
 
     print(f"Figure {sys.argv[1]} is done after {time.time() - start} seconds.\n")
 
@@ -174,8 +174,7 @@ def EMD_Distribution_Plot(ax, dataset, signal_receptor, non_signal_receptor, tar
 
     return
 
-def common_code(dataset, signal_receptor, target_cells):
-    weightDF = convFactCalc() #maybe simplify 
+def common_code(weightDF, dataset, signal_receptor, target_cells):
     non_signal_receptors = []
     for column in dataset.columns:
         if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
@@ -225,15 +224,13 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
     outlier_mask = pd.DataFrame(outliers)
     filtered_dataset = dataset[~outlier_mask.any(axis=1)]
 
-    target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig = common_code(filtered_dataset, signal_receptor, target_cells)
-    print ('common worked')
+    target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig = common_code(weightDF, filtered_dataset, signal_receptor, target_cells)
     results = []
     
     for receptor_name in non_signal_receptors:
         target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
         off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
         conversion_factor = get_conversion_factor(weightDF, receptor_name)
-        print ('conversion worked')  
         target_receptor_counts[:, 0] *= conversion_factor_sig
         off_target_receptor_counts[:, 0] *= conversion_factor_sig
 
@@ -483,15 +480,13 @@ def EMD_3D(dataset, signaling_receptor, target_cells, ax):
 
 def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
     weightDF = convFactCalc()
-    target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig = common_code(dataset, signal_receptor, target_cells)
-    print ('common worked')
+    target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig = common_code(weightDF, dataset, signal_receptor, target_cells)
     results = []
     for receptor_name in non_signal_receptors:
         target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
         off_target_receptor_counts = off_target_cells_df[[signal_receptor, receptor_name]].values
 
         conversion_factor = get_conversion_factor(weightDF, receptor_name)
-        print ('conversion worked')
         target_receptor_counts[:, 0] *= conversion_factor_sig
         off_target_receptor_counts[:, 0] *= conversion_factor_sig
 
