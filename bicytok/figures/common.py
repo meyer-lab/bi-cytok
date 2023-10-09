@@ -175,6 +175,7 @@ def EMD_Distribution_Plot(ax, dataset, signal_receptor, non_signal_receptor, tar
     return
 
 def common_code(dataset, signal_receptor, target_cells):
+    weightDF = convFactCalc() #maybe simplify 
     non_signal_receptors = []
     for column in dataset.columns:
         if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
@@ -184,7 +185,7 @@ def common_code(dataset, signal_receptor, target_cells):
 
     off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells) | (dataset['CellType1'] == target_cells))]
 
-    conversion_factor_sig = get_conversion_factor(signal_receptor)
+    conversion_factor_sig = get_conversion_factor(weightDF, signal_receptor)
 
     return target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig
 
@@ -481,6 +482,7 @@ def EMD_3D(dataset, signaling_receptor, target_cells, ax):
     return sorted_results
 
 def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
+    weightDF = convFactCalc()
     target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig = common_code(dataset, signal_receptor, target_cells)
     print ('common worked')
     results = []
