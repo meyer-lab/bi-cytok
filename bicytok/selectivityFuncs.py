@@ -38,7 +38,7 @@ def getSampleAbundances(epitopes: list, cellList: list, cellCat="CellType2"):
     for cellType in cellList:
         cellSample = []
         for i in np.arange(10):  # Averaging results of 10
-            sampleDF = CITE_DF.sample(1000, random_state=42)  # Of 1000 cells in the sample...
+            sampleDF = CITE_DF.sample(161000, random_state=42)  # Of 1000 cells in the sample...
             sampleSize = int(len(sampleDF.loc[sampleDF[cellCat] == cellType]))  # ...How many are this cell type
             cellSample.append(sampleSize)  # Sample size is equivalent to represented cell count out of 1000 cells
         meanSize = np.mean(cellSample)
@@ -205,10 +205,7 @@ def optimizeDesign(signal: string, target1: string, target2: string, targCell: s
     Return:
         optSelectivity: optimized selectivity value. Can also be modified to return optimized affinity parameter.
      """
-    if targCell == "NK":
-        X0 = [6.0, 8]
-    else:
-        X0 = prevOptAffs
+    X0 = prevOptAffs
     
     optBnds = Bounds(np.full_like(X0, [6.0, 6.0, 6.0]), np.full_like(X0, [9.0, 9.0, 9.0]))
     targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, signal, target1, target2)
@@ -281,7 +278,7 @@ def convFactCalc():
     for marker in markers:
         for cell in cellToI:
             cellTDF = CITE_DF.loc[CITE_DF["CellType2"] == cell][marker]
-            markerDF = markerDF.append(pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Amount": cellTDF.mean(), "Number": cellTDF.size}))
+            markerDF = pd.concat([markerDF, pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Amount": cellTDF.mean(), "Number": cellTDF.size})])
 
     markerDF = markerDF.replace({"Marker": markDict, "Cell Type": cellDict})
     markerDFw = pd.DataFrame(columns=["Marker", "Cell Type", "Average"])
@@ -289,7 +286,7 @@ def convFactCalc():
         for cell in markerDF["Cell Type"].unique():
             subDF = markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)]
             wAvg = np.sum(subDF.Amount.values * subDF.Number.values) / np.sum(subDF.Number.values)
-            markerDFw = markerDFw.append(pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Average": wAvg}))
+            markerDFw = pd.concat([markerDFw, pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Average": wAvg})])
 
     recDF = importReceptors()
     weightDF = pd.DataFrame(columns=["Receptor", "Weight"])
@@ -300,7 +297,7 @@ def convFactCalc():
         for cell in markerDF["Cell Type"].unique():
             CITEval = np.concatenate((CITEval, markerDFw.loc[(markerDFw["Cell Type"] == cell) & (markerDFw["Marker"] == rec)].Average.values))
             Quantval = np.concatenate((Quantval, recDF.loc[(recDF["Cell Type"] == cell) & (recDF["Receptor"] == rec)].Mean.values))
-        weightDF = weightDF.append(pd.DataFrame({"Receptor": [rec], "Weight": np.linalg.lstsq(np.reshape(CITEval, (-1, 1)).astype(float), Quantval, rcond=None)[0]}))
+        weightDF = pd.concat([weightDF, pd.DataFrame({"Receptor": [rec], "Weight": np.linalg.lstsq(np.reshape(CITEval, (-1, 1)).astype(float), Quantval, rcond=None)[0]})])
     return weightDF
 
 

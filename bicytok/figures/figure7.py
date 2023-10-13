@@ -31,11 +31,12 @@ def makeFigure():
     output = np.zeros(doseVec.size)
 
     for i in range(len(epitopes)):
-        _, optParams = optimizeDesign(targCell, offTCells, epitopesDF, epitopes[i], 0.1)
-        targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, epitopes[i])
+        
+        _, optParams, _ = optimizeDesign("CD122", epitopes[i], targCell, offTCells, epitopesDF, 0.1, 1, [8, 8, 8])
+        targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, "CD122", epitopes[i])
 
         for j, dose in enumerate(doseVec):
-            output[j] = 1 / minSelecFunc(optParams, targRecs, offTRecs, dose)
+            output[j] = 1 / minSelecFunc(optParams, "CD122", epitopes[i], targRecs, offTRecs, dose, 2)
 
         data = {'Epitope': epitopes[i],
             'Dose': doseVec,
@@ -43,7 +44,7 @@ def makeFigure():
         }
 
         df2 = pd.DataFrame(data, columns=['Epitope', 'Dose', 'Selectivity'])
-        df = df.append(df2, ignore_index=True)
+        df = pd.concat([df, df2], ignore_index=True)
 
     sns.lineplot(data=df, x='Dose', y='Selectivity', hue='Epitope', ax=ax[0])
     ax[0].set(xscale='log')
