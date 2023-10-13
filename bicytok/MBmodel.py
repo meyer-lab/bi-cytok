@@ -137,34 +137,19 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
 
     return output
 
-def cytBindingModel_bispecOpt(secondary, epitope, IL2RaRecs, secondaryRecs, epitopeRecs, recXaff1, recXaff2, recXaff3, dose, val, x=False):
+def cytBindingModel_bispecOpt(signal, target1, target2, signalRecs, target1Recs, target2Recs, recXaff1, recXaff2, recXaff3, dose, val, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     doseVec = np.array(dose)
 
     affs = pd.DataFrame()
     affs = np.append(affs, np.power(10, recXaff1))
     affs = np.append(affs, np.power(10, recXaff2))
+    affs = np.append(affs, np.power(10, recXaff3))
+    vals = [[val, val, val]]
 
-    if secondary == 'CD122':
-        affs = np.append(affs, np.power(10, recXaff3))
-        vals = [[val, val, val]]
-
-        if epitope == 'CD25':
-            holder = np.full((3, 2), 1e2)
-            holder[0, 0] = affs[0]
-            holder[1, 1] = affs[1]
-            holder[2, 0] = affs[2]
-            counts = [IL2RaRecs, secondaryRecs]
-        else:
-            holder = np.full((3, 3), 1e2)
-            np.fill_diagonal(holder, affs)
-            counts = [IL2RaRecs, secondaryRecs, epitopeRecs]
-
-    else:
-        vals = [[val, val]]
-        holder = np.full((2, 2), 1e2)
-        np.fill_diagonal(holder, affs)
-        counts = [IL2RaRecs, secondaryRecs]
+    holder = np.full((3, 3), 1e2)
+    np.fill_diagonal(holder, affs)
+    counts = [signalRecs, target1Recs, target2Recs]
 
     affs = holder
     recCount = np.ravel(counts)
