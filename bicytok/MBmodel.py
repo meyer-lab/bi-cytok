@@ -154,12 +154,11 @@ def cytBindingModel_bispecOpt(signal, targets, recs, recXaffs, dose, val, x=Fals
 
     holder = np.full((len(targets) + 1, len(targets) + 1), 1e2)
     np.fill_diagonal(holder, affs)
-
+    print(recs)
     affs = holder
-
-    recCounts = []
-    for i, target in enumerate(targets):
-        recCounts.append(np.ravel(recs[i]))
+    recCounts = np.ravel(recs)
+    print(recCounts)
+    print("HERE")
 
     # Check that values are in correct placement, can invert
 

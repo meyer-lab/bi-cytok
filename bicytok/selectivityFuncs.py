@@ -322,21 +322,19 @@ def get_rec_vecs(df: pd.DataFrame, targCell: string, offTCells: list, signal: st
     signalCountOffT = np.array([])
     targetsCountOffT = []
     for target in targets:
-        targetsCountOffT.append(np.array([]))
+        targetCountOffT = np.array([])
+        targetsCountOffT.append(targetCountOffT)
     for cellT in offTCells:
         for i, epCount in enumerate(dfSignal[cellT].item()):
             signalCountOffT = np.append(signalCountOffT, epCount)
             for j, target in enumerate(targets):
                 targetsCountOffT[j] = np.append(targetsCountOffT[j], dfsTargets.loc[(df.Epitope == target)][cellT].item()[i])
     
-    countTarg = [np.array([signalCountTarg])]
-    countOffT = [np.array([signalCountOffT])]
-    for target in targets:
-        countTarg.append(np.array([]))
-        countOffT.append(np.array([]))
+    countTarg = np.array([signalCountTarg])
+    countOffT = np.array([signalCountOffT])
     for i, target in enumerate(targets):
-        countTarg[i+1] = np.append(countTarg[i+1], targetsCountTarg[i])
-        countOffT[i+1] = np.append(countOffT[i+1], targetsCountOffT[i])
+        countTarg = np.append(countTarg, targetsCountTarg[i])
+        countOffT = np.append(countOffT, targetsCountOffT[i])
 
     return countTarg, countOffT
 
