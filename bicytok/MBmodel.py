@@ -137,22 +137,29 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
 
     return output
 
-def cytBindingModel_bispecOpt(signal, target1, target2, signalRecs, target1Recs, target2Recs, recXaff1, recXaff2, recXaff3, dose, val, x=False):
+def cytBindingModel_bispecOpt(signal, targets, recs, recXaffs, dose, val, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     doseVec = np.array(dose)
 
     affs = pd.DataFrame()
-    affs = np.append(affs, np.power(10, recXaff1))
-    affs = np.append(affs, np.power(10, recXaff2))
-    affs = np.append(affs, np.power(10, recXaff3))
-    vals = [[val, val, val]]
+    for i, recXaff in enumerate(recXaffs):
+        affs = np.append(affs, np.power(10, recXaff))
+    
+    vals_temp = []
 
-    holder = np.full((3, 3), 1e2)
+    for i in targets:
+        vals_temp.append(val)
+
+    vals = [vals_temp]
+
+    holder = np.full((len(targets) + 1, len(targets) + 1), 1e2)
     np.fill_diagonal(holder, affs)
-    counts = [signalRecs, target1Recs, target2Recs]
 
     affs = holder
-    recCount = np.ravel(counts)
+
+    recCounts = []
+    for i, target in enumerate(targets):
+        recCounts.append(np.ravel(recs[i]))
 
     # Check that values are in correct placement, can invert
 
@@ -162,8 +169,8 @@ def cytBindingModel_bispecOpt(signal, target1, target2, signalRecs, target1Recs,
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, vals, [1.0], affs)[1][0][1]
+            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCounts, vals, [1.0], affs)[1][0][1]
         else:
-            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, vals, [1.0], affs)[1][0][1]
+            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCounts, vals, [1.0], affs)[1][0][1]
     
     return output

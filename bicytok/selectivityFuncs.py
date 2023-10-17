@@ -173,7 +173,7 @@ def bindingCalc(df: pd.DataFrame, targCell: string, offTCells: list, betaAffs: n
 bispecOpt_Vec = np.vectorize(cytBindingModel_bispecOpt)
 
 
-def minSelecFunc(recXaff: float, signal: string, target1: string, target2: string, targRecs: np.array, offTRecs: np.array, dose: float, valency: int):
+def minSelecFunc(recXaffs: np.array, signal: string, targets: list, targRecs: np.array, offTRecs: np.array, dose: float, valency: int):
     """Serves as the function which will have its return value minimized to get optimal selectivity
     To be used in conjunction with optimizeDesign()
     Args:
@@ -185,8 +185,8 @@ def minSelecFunc(recXaff: float, signal: string, target1: string, target2: strin
     minSelecFunc.targetBound = 0
     offTargetBound = 0
 
-    minSelecFunc.targetBound = np.sum(bispecOpt_Vec(signal, target1, target2, targRecs[0, :], targRecs[1, :], targRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, valency))
-    offTargetBound = np.sum(bispecOpt_Vec(signal, target1, target2, offTRecs[0, :], offTRecs[1, :], offTRecs[1, :], recXaff[0], recXaff[1], recXaff[2], dose, valency))
+    minSelecFunc.targetBound = np.sum(cytBindingModel_bispecOpt(signal, targets, targRecs, recXaffs, dose, valency))
+    offTargetBound = np.sum(cytBindingModel_bispecOpt(signal, targets, offTRecs, recXaffs, dose, valency))
 
     minSelecFunc.targetBound /= targRecs.shape[0]
     offTargetBound /= offTRecs.shape[0]
@@ -194,7 +194,7 @@ def minSelecFunc(recXaff: float, signal: string, target1: string, target2: strin
     return offTargetBound / minSelecFunc.targetBound
 
 
-def optimizeDesign(signal: string, target1: string, target2: string, targCell: string, offTCells: list, selectedDF: pd.DataFrame, dose: float, valency: int, prevOptAffs: list):
+def optimizeDesign(signal: string, targets: list, targCell: string, offTCells: list, selectedDF: pd.DataFrame, dose: float, valency: int, prevOptAffs: list):
     """ A general purzse optimizer used to minimize selectivity output by varying affinity parameter.
     Args:
         targCell: string cell type which is target and signaling is desired (basis of selectivity)
@@ -208,9 +208,9 @@ def optimizeDesign(signal: string, target1: string, target2: string, targCell: s
     X0 = prevOptAffs
     
     optBnds = Bounds(np.full_like(X0, [6.0, 6.0, 6.0]), np.full_like(X0, [9.0, 9.0, 9.0]))
-    targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, signal, target1, target2)
+    targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, signal, targets)
     print('Optimize')
-    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(signal, target1, target2, targRecs, offTRecs, dose, valency), jac="3-point")
+    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(signal, targets, targRecs, offTRecs, dose, valency), jac="3-point")
     print('Done')
     optSelectivity = optimized.fun
     optParams = optimized.x
@@ -301,30 +301,44 @@ def convFactCalc():
     return weightDF
 
 
-def get_rec_vecs(df: pd.DataFrame, targCell: string, offTCells: list, signal: string, target1: string, target2: string):
+def get_rec_vecs(df: pd.DataFrame, targCell: string, offTCells: list, signal: string, targets: list):
     """Returns vector of target and off target receptors"""
     dfSignal = df.loc[(df.Epitope == signal)]
-    dfTarget1 = df.loc[(df.Epitope == target1)]
-    dfTarget2 = df.loc[(df.Epitope == target2)]
+    dfsTargets = pd.DataFrame()
+    for target in targets:
+        dfTarget = df.loc[(df.Epitope == target)]
+        dfsTargets = dfsTargets.append(dfTarget)
 
     signalCountTarg = np.zeros(dfSignal[targCell].item().size)
-    target1CountTarg = np.zeros(dfSignal[targCell].item().size)
-    target2CountTarg = np.zeros(dfSignal[targCell].item().size)
+    targetsCountTarg = []
+    for i, target in enumerate(targets):
+        targetCountTarg = np.zeros(dfSignal[targCell].item().size)
+        targetsCountTarg.append(targetCountTarg)
     for i, epCount in enumerate(dfSignal[targCell].item()):
         signalCountTarg[i] = epCount
-        target1CountTarg[i] = dfTarget1[targCell].item()[i]
-        target2CountTarg[i] = dfTarget2[targCell].item()[i]
+        for j, target in enumerate(targets):
+            targetsCountTarg[j][i] = dfsTargets.loc[(df.Epitope == target)][targCell].item()[i]
     
     signalCountOffT = np.array([])
-    target1CountOffT = np.array([])
-    target2CountOffT = np.array([])
+    targetsCountOffT = []
+    for target in targets:
+        targetsCountOffT.append(np.array([]))
     for cellT in offTCells:
         for i, epCount in enumerate(dfSignal[cellT].item()):
             signalCountOffT = np.append(signalCountOffT, epCount)
-            target1CountOffT = np.append(target1CountOffT, dfTarget1[cellT].item()[i])
-            target2CountOffT = np.append(target2CountOffT, dfTarget2[cellT].item()[i])
+            for j, target in enumerate(targets):
+                targetsCountOffT[j] = np.append(targetsCountOffT[j], dfsTargets.loc[(df.Epitope == target)][cellT].item()[i])
+    
+    countTarg = [np.array([signalCountTarg])]
+    countOffT = [np.array([signalCountOffT])]
+    for target in targets:
+        countTarg.append(np.array([]))
+        countOffT.append(np.array([]))
+    for i, target in enumerate(targets):
+        countTarg[i+1] = np.append(countTarg[i+1], targetsCountTarg[i])
+        countOffT[i+1] = np.append(countOffT[i+1], targetsCountOffT[i])
 
-    return np.array([signalCountTarg, target1CountTarg, target2CountTarg]), np.array([signalCountOffT, target1CountOffT, target2CountOffT])
+    return countTarg, countOffT
 
 
 def get_cell_bindings(affs: float, cells: np.array, df: pd.DataFrame, secondary: string, epitope: string, dose: float, valency: int):

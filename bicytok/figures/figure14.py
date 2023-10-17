@@ -14,27 +14,27 @@ def makeFigure():
     ax, f = getSetup((6, 3), (1, 2))
 
     signal = 'CD122'
-    target1 = 'CD25'
-    target2 = 'CD278'
+    targets = ['CD25', 'CD278']
     valency = 2
 
+    cells = np.array(['CD8 Naive', 'NK', 'Treg'])
+    #cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
+    #    'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
     targCell = 'Treg'
-    cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
-        'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
     offTCells = cells[cells != targCell]
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells, "CellType2")
 
-    doseVec = np.logspace(-3, 3, num=20)
+    doseVec = np.logspace(-3, 3, num=2)
     df = pd.DataFrame(columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
-    targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, signal, target1, target2)
+    targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, signal, targets)
 
     prevOptAffs = [8.0, 8.0, 8.0]
 
     for _, dose in enumerate(doseVec):
-        optParams = optimizeDesign(signal, target1, target2, targCell, offTCells, epitopesDF, dose, valency, prevOptAffs)
+        optParams = optimizeDesign(signal, targets, targCell, offTCells, epitopesDF, dose, valency, prevOptAffs)
         prevOptAffs = [optParams[1][0], optParams[1][1], optParams[1][2]]
         epitopeAff = optParams[1][2]
 
@@ -42,30 +42,6 @@ def makeFigure():
             'Selectivity': 1 / optParams[0],
             'Target Bound': optParams[2],
             'Ligand': "CD25+CD278"
-        }
-
-        df_temp = pd.DataFrame(data, columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
-        df = df.append(df_temp, ignore_index=True)
-
-    
-    signal = 'CD122'
-    target1 = 'CD25'
-    target2 = 'CD127'
-    valency = 2
-
-    targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, signal, target1, target2)
-
-    prevOptAffs = [8.0, 8.0, 8.0]
-
-    for _, dose in enumerate(doseVec):
-        optParams = optimizeDesign(signal, target1, target2, targCell, offTCells, epitopesDF, dose, valency, prevOptAffs)
-        prevOptAffs = [optParams[1][0], optParams[1][1], optParams[1][2]]
-        epitopeAff = optParams[1][2]
-
-        data = {'Dose': [dose],
-            'Selectivity': 1 / optParams[0],
-            'Target Bound': optParams[2],
-            'Ligand': "CD25+CD127"
         }
 
         df_temp = pd.DataFrame(data, columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
