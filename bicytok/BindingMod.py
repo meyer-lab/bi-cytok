@@ -23,10 +23,6 @@ def commonChecks(L0: float, Rtot: np.ndarray, KxStar: float, Kav: np.ndarray, Ct
     Rtot = np.array(Rtot, dtype=float)
     Ctheta = np.array(Ctheta, dtype=float)
     assert Rtot.ndim <= 1
-    print(Rtot)
-    print(Rtot.size)
-    print(Kav)
-    print(Kav.shape[1])
     assert Rtot.size == Kav.shape[1]
     assert Kav.ndim == 2
     assert Ctheta.ndim <= 1

@@ -170,7 +170,7 @@ def bindingCalc(df: pd.DataFrame, targCell: string, offTCells: list, betaAffs: n
     return targetBound, offTargetBound
 
 
-bispecOpt_Vec = np.vectorize(cytBindingModel_bispecOpt)
+bispecOpt_Vec = np.vectorize(cytBindingModel_bispecOpt, excluded=['recXaffs'])
 
 
 def minSelecFunc(recXaffs: np.array, signal: string, targets: list, targRecs: np.array, offTRecs: np.array, dose: float, valency: int):
@@ -182,11 +182,16 @@ def minSelecFunc(recXaffs: np.array, signal: string, targets: list, targRecs: np
     Return:
         selectivity: value will be minimized, defined as ratio of off target to on target signaling
     """
-    minSelecFunc.targetBound = 0
-    offTargetBound = 0
 
-    minSelecFunc.targetBound = np.sum(cytBindingModel_bispecOpt(signal, targets, targRecs, recXaffs, dose, valency))
-    offTargetBound = np.sum(cytBindingModel_bispecOpt(signal, targets, offTRecs, recXaffs, dose, valency))
+    targetBoundPerCell = np.array([])
+    offTargetBoundPerCell = np.array([])
+    for i in range(len(targRecs[0])):
+        targetBoundPerCell = np.append(targetBoundPerCell, cytBindingModel_bispecOpt(signal, targets, np.rot90(targRecs)[i], recXaffs, dose, valency))
+    for i in range(len(offTRecs[0])):
+        offTargetBoundPerCell = np.append(offTargetBoundPerCell, cytBindingModel_bispecOpt(signal, targets, np.rot90(offTRecs)[i], recXaffs, dose, valency))
+   
+    minSelecFunc.targetBound = np.sum(targetBoundPerCell)
+    offTargetBound = np.sum(offTargetBoundPerCell)
 
     minSelecFunc.targetBound /= targRecs.shape[0]
     offTargetBound /= offTRecs.shape[0]
@@ -330,11 +335,8 @@ def get_rec_vecs(df: pd.DataFrame, targCell: string, offTCells: list, signal: st
             for j, target in enumerate(targets):
                 targetsCountOffT[j] = np.append(targetsCountOffT[j], dfsTargets.loc[(df.Epitope == target)][cellT].item()[i])
     
-    countTarg = np.array([signalCountTarg])
-    countOffT = np.array([signalCountOffT])
-    for i, target in enumerate(targets):
-        countTarg = np.append(countTarg, targetsCountTarg[i])
-        countOffT = np.append(countOffT, targetsCountOffT[i])
+    countTarg = np.append([signalCountTarg], targetsCountTarg, axis=0)
+    countOffT = np.append([signalCountOffT], targetsCountOffT, axis=0)
 
     return countTarg, countOffT
 
