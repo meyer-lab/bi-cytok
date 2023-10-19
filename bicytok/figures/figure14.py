@@ -26,7 +26,7 @@ def makeFigure():
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells, "CellType2")
 
-    doseVec = np.logspace(-3, 3, num=2)
+    doseVec = np.logspace(-3, 3, num=10)
     df = pd.DataFrame(columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
 
     for targets in allTargets:
