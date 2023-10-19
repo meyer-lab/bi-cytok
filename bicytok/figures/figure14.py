@@ -14,7 +14,7 @@ def makeFigure():
     ax, f = getSetup((6, 3), (1, 2))
 
     signal = 'CD122'
-    allTargets = [['CD25'], ['CD278'], ['CD25', 'CD25'], ['CD25', 'CD278'], ['CD278', 'CD45RB'], ['CD278', 'CD81'], ['CD278', 'CD4-2']]
+    allTargets = [['CD25'], ['CD278'], ['CD25', 'CD278']], # ['CD278', 'CD81'], ['CD278', 'CD4-2']] ['CD25', 'CD25'], ['CD278', 'CD45RB'],doesn't work rn
     valency = 1
 
     cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
@@ -26,25 +26,26 @@ def makeFigure():
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells, "CellType2")
 
-    doseVec = np.logspace(-3, 3, num=10)
+    doseVec = np.logspace(-3, 3, num=2)
     df = pd.DataFrame(columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
 
     for targets in allTargets:
+        print(targets)
 
         prevOptAffs = [8.0, 8.0, 8.0]
 
         for _, dose in enumerate(doseVec):
             optParams = optimizeDesign(signal, targets, targCell, offTCells, epitopesDF, dose, valency, prevOptAffs)
             prevOptAffs = [optParams[1][0], optParams[1][1], optParams[1][2]]
-
+                
             data = {'Dose': [dose],
                 'Selectivity': 1 / optParams[0],
                 'Target Bound': optParams[2],
-                'Ligand': targets
+                'Ligand': ' + '.join(targets)
             }
-
+            print(data)
             df_temp = pd.DataFrame(data, columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
-            df = df.append(df_temp, ignore_index=True)
+            df = pd.concat([df, df_temp], ignore_index=True)
 
     sns.lineplot(data=df, x='Dose', y='Selectivity', hue='Ligand', ax=ax[0])
     sns.lineplot(data=df, x='Dose', y='Target Bound', hue='Ligand', ax=ax[1])

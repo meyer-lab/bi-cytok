@@ -321,7 +321,7 @@ def get_rec_vecs(df: pd.DataFrame, targCell: string, offTCells: list, signal: st
     dfsTargets = pd.DataFrame()
     for target in targets:
         dfTarget = df.loc[(df.Epitope == target)]
-        dfsTargets = dfsTargets.append(dfTarget)
+        dfsTargets = pd.concat([dfsTargets, dfTarget])
 
     signalCountTarg = np.zeros(dfSignal[targCell].item().size)
     targetsCountTarg = []
