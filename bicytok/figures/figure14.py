@@ -30,15 +30,12 @@ def makeFigure():
     df = pd.DataFrame(columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
 
     for targets in allTargets:
-        print(targets)
-        targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, signal, targets)
 
         prevOptAffs = [8.0, 8.0, 8.0]
 
         for _, dose in enumerate(doseVec):
             optParams = optimizeDesign(signal, targets, targCell, offTCells, epitopesDF, dose, valency, prevOptAffs)
             prevOptAffs = [optParams[1][0], optParams[1][1], optParams[1][2]]
-            epitopeAff = optParams[1][2]
 
             data = {'Dose': [dose],
                 'Selectivity': 1 / optParams[0],

@@ -38,7 +38,7 @@ def getSampleAbundances(epitopes: list, cellList: list, cellCat="CellType2"):
     for cellType in cellList:
         cellSample = []
         for i in np.arange(10):  # Averaging results of 10
-            sampleDF = CITE_DF.sample(161000, random_state=42)  # Of 1000 cells in the sample...
+            sampleDF = CITE_DF.sample(1000, random_state=42)  # Of 1000 cells in the sample...
             sampleSize = int(len(sampleDF.loc[sampleDF[cellCat] == cellType]))  # ...How many are this cell type
             cellSample.append(sampleSize)  # Sample size is equivalent to represented cell count out of 1000 cells
         meanSize = np.mean(cellSample)
@@ -182,13 +182,22 @@ def minSelecFunc(recXaffs: np.array, signal: string, targets: list, targRecs: np
     Return:
         selectivity: value will be minimized, defined as ratio of off target to on target signaling
     """
+    affs = pd.DataFrame()
+    for i, recXaff in enumerate(recXaffs):
+        affs = np.append(affs, np.power(10, recXaff))
+    vals= [valency]
+    for i in targets:
+        vals.append(valency)
+    holder = np.full((len(targets) + 1, len(targets) + 1), 1e2)
+    np.fill_diagonal(holder, affs)
+    affs = holder
 
     targetBoundPerCell = np.array([])
     offTargetBoundPerCell = np.array([])
     for i in range(len(targRecs[0])):
-        targetBoundPerCell = np.append(targetBoundPerCell, cytBindingModel_bispecOpt(signal, targets, np.rot90(targRecs)[i], recXaffs, dose, valency))
+        targetBoundPerCell = np.append(targetBoundPerCell, cytBindingModel_bispecOpt(np.ravel(np.rot90(targRecs)[i]), affs, dose, vals))
     for i in range(len(offTRecs[0])):
-        offTargetBoundPerCell = np.append(offTargetBoundPerCell, cytBindingModel_bispecOpt(signal, targets, np.rot90(offTRecs)[i], recXaffs, dose, valency))
+        offTargetBoundPerCell = np.append(offTargetBoundPerCell, cytBindingModel_bispecOpt(np.ravel(np.rot90(offTRecs)[i]), affs, dose, vals))
    
     minSelecFunc.targetBound = np.sum(targetBoundPerCell)
     offTargetBound = np.sum(offTargetBoundPerCell)
