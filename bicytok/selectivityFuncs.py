@@ -319,15 +319,11 @@ def get_rec_vecs(df: pd.DataFrame, targCell: string, offTCells: list, signal: st
     """Returns vector of target and off target receptors"""
     dfSignal = df.loc[(df.Epitope == signal)]
     dfsTargets = pd.DataFrame()
-    for target in targets:
-        dfTarget = df.loc[(df.Epitope == target)]
-        dfsTargets = pd.concat([dfsTargets, dfTarget])
-
     signalCountTarg = np.zeros(dfSignal[targCell].item().size)
     targetsCountTarg = []
     for i, target in enumerate(targets):
-        targetCountTarg = np.zeros(dfSignal[targCell].item().size)
-        targetsCountTarg.append(targetCountTarg)
+        dfsTargets = pd.concat([dfsTargets, df.loc[(df.Epitope == target)]])
+        targetsCountTarg.append(np.zeros(dfSignal[targCell].item().size))
     for i, epCount in enumerate(dfSignal[targCell].item()):
         signalCountTarg[i] = epCount
         for j, target in enumerate(targets):
