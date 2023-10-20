@@ -335,7 +335,7 @@ def EMD_1D(dataset, target_cells, ax):
     print('The 5 receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return sorted_results
 
-def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, ax1, ax2, ax3, ax4):
+def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset1, ax1, ax2, ax3, ax4):
     filtered_data_1D = []
     filtered_data_2D = []
     filtered_data_selectivity = []
@@ -396,10 +396,27 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
   
     return 
 
-def EMD_3D(dataset, target_cells, ax=None):
+def EMD_3D(dataset1, target_cells, ax=None):
 
     weightDF = convFactCalc()
     exclude_columns = ['CellType1', 'CellType2', 'CellType3', 'Cell']
+    threshold_multiplier = 5
+
+    # Calculate the mean and standard deviation for each numeric column
+    numeric_columns = [col for col in dataset1.columns if col not in exclude_columns]
+    column_means = dataset1[numeric_columns].mean()
+    column_stddevs = dataset1[numeric_columns].std()
+
+    # Identify outliers for each numeric column
+    outliers = {}
+    for column in numeric_columns:
+        threshold = column_means[column] + threshold_multiplier * column_stddevs[column]
+        outliers[column] = dataset1[column] > threshold
+
+    # Create a mask to filter rows with outliers
+    outlier_mask = pd.DataFrame(outliers)
+    dataset = dataset[~outlier_mask.any(axis=1)]
+
     receptor_names = [col for col in dataset.columns if col not in exclude_columns]
     results = []
 
