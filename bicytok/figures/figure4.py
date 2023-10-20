@@ -12,7 +12,6 @@ from .common import EMD_3D
 from .common import EMD1Dvs2D_Analysis
 from .common import Wass_KL_Dist
 from ..imports import importCITE 
-from .common import KL_divergence_forheatmap
 from .common import plot_kl_divergence_curves
 from .common import plot_2d_density_visualization
 from .common import EMD_2D_pair
@@ -33,10 +32,10 @@ def makeFigure():
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
     ax, f = getSetup((40, 40), (1,1)) 
-    target_cells = 'Treg'
+    target_cells = 'CD8 T'
     # EMD_2D(new_df, 'CD25', target_cells, ax = ax[0]) 
     # KL_divergence_2D(new_df, 'CD25', target_cells, ax[0])
-    '''
+    
     resultsEMD = []
     for receptor in receptors:
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
@@ -54,9 +53,10 @@ def makeFigure():
     flattened_resultsKL = [result_tuple for inner_list in resultsKL for result_tuple in inner_list]
     df_recep = pd.DataFrame(flattened_resultsKL, columns=['KLD', 'Receptor', 'Signal Receptor'])
     pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
-   
-    # f = EMD_clustermap(pivot_table) 
-    f = KLD_clustermap(pivot_tableKL) 
+    '''
+    f = EMD_clustermap(pivot_table) 
+    
+    # f = KLD_clustermap(pivot_tableKL) 
  
 
     return f     
