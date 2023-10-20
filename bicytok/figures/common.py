@@ -415,7 +415,7 @@ def EMD_3D(dataset1, target_cells, ax=None):
 
     # Create a mask to filter rows with outliers
     outlier_mask = pd.DataFrame(outliers)
-    dataset = dataset[~outlier_mask.any(axis=1)]
+    dataset = dataset1[~outlier_mask.any(axis=1)]
 
     receptor_names = [col for col in dataset.columns if col not in exclude_columns]
     results = []
