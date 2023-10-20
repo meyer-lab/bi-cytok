@@ -488,6 +488,10 @@ def EMD_3D(dataset1, target_cells, ax=None):
     
     return sorted_results
 
+def EMD3D_clustermap(dataset):
+    dataset = dataset.fillna(0)
+    return (sns.clustermap(dataset, cmap='viridis', figsize=(80,80)))
+
 def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
     weightDF = convFactCalc()
     target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig = common_code(weightDF, dataset, signal_receptor, target_cells)

@@ -9,6 +9,7 @@ from .common import EMD_2D
 from .common import EMD_Distribution_Plot
 from .common import EMD_1D
 from .common import EMD_3D
+from .common import EMD3D_clustermap
 from .common import EMD1Dvs2D_Analysis
 from .common import Wass_KL_Dist
 from ..imports import importCITE 
@@ -36,6 +37,7 @@ def makeFigure():
     # EMD_2D(new_df, 'CD25', target_cells, ax = ax[0]) 
     # KL_divergence_2D(new_df, 'CD25', target_cells, ax[0])
     
+    '''
     resultsEMD = []
     for receptor in receptors:
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
@@ -44,6 +46,7 @@ def makeFigure():
     flattened_results = [result_tuple for inner_list in resultsEMD for result_tuple in inner_list]
     df_recep = pd.DataFrame(flattened_results, columns=['Distance', 'Receptor', 'Signal Receptor'])
     pivot_table = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
+    '''
     '''
     resultsKL = [] 
     for receptor in receptors:
@@ -54,9 +57,15 @@ def makeFigure():
     df_recep = pd.DataFrame(flattened_resultsKL, columns=['KLD', 'Receptor', 'Signal Receptor'])
     pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
     '''
-    f = EMD_clustermap(pivot_table) 
+    resultsEMD3D = []
+    val = EMD_3D(new_df, target_cells, ax = None) 
+    resultsEMD3D.append(val)
+    flattened_results = [result_tuple for inner_list in resultsEMD3D for result_tuple in inner_list]
+    df_recep = pd.DataFrame(flattened_results, columns=['Distance', 'Receptor', 'Signal Receptor'])
+    pivot_table3D = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
+    # f = EMD_clustermap(pivot_table) 
     
     # f = KLD_clustermap(pivot_tableKL) 
- 
+    f = EMD3D_clustermap(pivot_table3D)
 
     return f     
