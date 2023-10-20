@@ -104,7 +104,6 @@ def plotBispecific(ax, df, cellType, val=False):
     sns.lineplot(x="Abundance", y="Predicted", data=data_high, label="High(1e10)", ax=ax, legend="brief")
     ax.set(title=cellType + " - Dosed at 1nM", xlabel=r"Epitope X Abundance", ylabel="pSTAT", xscale="log", ylim=cellSTATlimDict[cellType])
 
-
 def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
     """Finds markers which have average greatest difference from other cells"""
     CITE_DF = importCITE()
@@ -397,51 +396,48 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
   
     return 
 
-def EMD_3D(dataset, ax=None):
+def EMD_3D(dataset, target_cells, ax=None):
+
     weightDF = convFactCalc()
-    
-    # Filter outliers
     exclude_columns = ['CellType1', 'CellType2', 'CellType3', 'Cell']
-
-    # Define a threshold multiplier to identify outliers (e.g., 3 times the standard deviation)
-    threshold_multiplier = 5
-
-    # Calculate the mean and standard deviation for each numeric column
-    numeric_columns = [col for col in dataset.columns if col not in exclude_columns]
-    column_means = dataset[numeric_columns].mean()
-    column_stddevs = dataset[numeric_columns].std()
-
-    # Identify outliers for each numeric column
-    outliers = {}
-    for column in numeric_columns:
-        threshold = column_means[column] + threshold_multiplier * column_stddevs[column]
-        outliers[column] = dataset[column] > threshold
-
-    # Create a mask to filter rows with outliers
-    outlier_mask = pd.DataFrame(outliers)
-    filtered_dataset = dataset[~outlier_mask.any(axis=1)]
-    
-    receptor_names = [col for col in filtered_dataset.columns if col not in exclude_columns]
-
+    receptor_names = [col for col in dataset.columns if col not in exclude_columns]
     results = []
-    
+
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells) | (dataset['CellType1'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells) | (dataset['CellType1'] == target_cells))]
+
+
     for receptor1_name in receptor_names:
         for receptor2_name in receptor_names:
             if receptor1_name != receptor2_name:
-                receptor1_counts = filtered_dataset[receptor1_name].values
-                receptor2_counts = filtered_dataset[receptor2_name].values
+                # Get on and off-target counts for receptor1
+                receptor1_on_target_counts = target_cells_df[receptor1_name].values
+                receptor1_off_target_counts = off_target_cells_df[receptor1_name].values
                 
-                average_counts_receptor1 = np.mean(receptor1_counts)
-                average_counts_receptor2 = np.mean(receptor2_counts)
+                # Get on and off-target counts for receptor2
+                receptor2_on_target_counts = target_cells_df[receptor2_name].values
+                receptor2_off_target_counts = off_target_cells_df[receptor2_name].values
                 
-                if average_counts_receptor1 > 5 and average_counts_receptor2 > 5 and average_counts_receptor1 > average_counts_receptor2:
-                    M = ot.dist(receptor1_counts[:, np.newaxis], receptor2_counts[:, np.newaxis])
-                    a = np.ones((receptor1_counts.shape[0],)) / receptor1_counts.shape[0]
-                    b = np.ones((receptor2_counts.shape[0],)) / receptor2_counts.shape[0]
-                    optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
-                    results.append((optimal_transport, receptor1_name, receptor2_name))
-                else:
-                    results.append((0, receptor1_name, receptor2_name))
+                # You may want to include code here to get the conversion factors for receptor1_name and receptor2_name
+                conversion_factor_receptor1 = get_conversion_factor(weightDF, receptor1_name)
+                conversion_factor_receptor2 = get_conversion_factor(weightDF, receptor2_name)
+                
+                # Apply the conversion factors to the counts
+                receptor1_on_target_counts = receptor1_on_target_counts * conversion_factor_receptor1
+                receptor1_off_target_counts = receptor1_off_target_counts * conversion_factor_receptor1
+                
+                receptor2_on_target_counts = receptor2_on_target_counts * conversion_factor_receptor2
+                receptor2_off_target_counts = receptor2_off_target_counts * conversion_factor_receptor2
+                
+                # Calculate the EMD between on-target and off-target counts for both receptors
+                M = ot.dist(np.column_stack((receptor1_on_target_counts, receptor2_on_target_counts)),
+                            np.column_stack((receptor1_off_target_counts, receptor2_off_target_counts)))
+                
+                a = np.ones((receptor1_on_target_counts.shape[0],)) / receptor1_on_target_counts.shape[0]
+                b = np.ones((receptor2_on_target_counts.shape[0],)) / receptor2_on_target_counts.shape[0]
+                
+                optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
+                results.append((optimal_transport, receptor1_name, receptor2_name))
     
     sorted_results = sorted(results, reverse=True)
     
