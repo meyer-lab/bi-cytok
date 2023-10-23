@@ -245,6 +245,7 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
             M = ot.dist(target_receptor_counts, off_target_receptor_counts)
             a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
             b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
+
             optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
             results.append((optimal_transport, receptor_name, signal_receptor))
         else:
@@ -426,65 +427,76 @@ def EMD_3D(dataset1, target_cells, ax=None):
 
     for receptor1_name in receptor_names:
         for receptor2_name in receptor_names:
-            if receptor1_name != receptor2_name:
-                # Get on and off-target counts for receptor1
-                receptor1_on_target_counts = target_cells_df[receptor1_name].values
-                receptor1_off_target_counts = off_target_cells_df[receptor1_name].values
-                
-                # Get on and off-target counts for receptor2
-                receptor2_on_target_counts = target_cells_df[receptor2_name].values
-                receptor2_off_target_counts = off_target_cells_df[receptor2_name].values
-                
-                # You may want to include code here to get the conversion factors for receptor1_name and receptor2_name
-                conversion_factor_receptor1 = get_conversion_factor(weightDF, receptor1_name)
-                conversion_factor_receptor2 = get_conversion_factor(weightDF, receptor2_name)
-                
-                # Apply the conversion factors to the counts
-                receptor1_on_target_counts = receptor1_on_target_counts * conversion_factor_receptor1
-                receptor1_off_target_counts = receptor1_off_target_counts * conversion_factor_receptor1
-                
-                receptor2_on_target_counts = receptor2_on_target_counts * conversion_factor_receptor2
-                receptor2_off_target_counts = receptor2_off_target_counts * conversion_factor_receptor2
+            for receptor3_name in receptor_names:
+                if receptor1_name != receptor2_name:
 
-
-                #
-                average_receptor_counts_1_on = np.mean(receptor1_on_target_counts)
-                average_receptor_counts_1_off = np.mean(receptor1_off_target_counts)
-                average_receptor_counts_2_on = np.mean(receptor2_on_target_counts)
-                average_receptor_counts_2_off = np.mean(receptor2_off_target_counts)
-
-                average_receptor_counts_1 = np.mean(np.concatenate((receptor1_on_target_counts, receptor1_off_target_counts)), axis=0)
-                average_receptor_counts_2 = np.mean(np.concatenate((receptor2_on_target_counts, receptor2_off_target_counts)), axis=0)
-                
-              
-
-                if average_receptor_counts_1_on > 5 and average_receptor_counts_2_on > 5 and average_receptor_counts_1_on > average_receptor_counts_1_off and average_receptor_counts_2_on > average_receptor_counts_2_off:
-                    receptor1_on_target_counts = receptor1_on_target_counts.astype(float) / average_receptor_counts_1
-                    receptor1_off_target_counts = receptor1_off_target_counts.astype(float) / average_receptor_counts_1
-                    receptor2_on_target_counts = receptor2_on_target_counts.astype(float) / average_receptor_counts_2
-                    receptor2_off_target_counts = receptor2_off_target_counts.astype(float) / average_receptor_counts_2
-                #
-                    # Calculate the EMD between on-target and off-target counts for both receptors
-                    M = ot.dist(np.column_stack((receptor1_on_target_counts, receptor2_on_target_counts)),
-                                np.column_stack((receptor1_off_target_counts, receptor2_off_target_counts))) 
+                    # Get on and off-target counts for receptor1
+                    receptor1_on_target_counts = target_cells_df[receptor1_name].values
+                    receptor1_off_target_counts = off_target_cells_df[receptor1_name].values
                     
-                    a = np.ones((receptor1_on_target_counts.shape[0],)) / receptor1_on_target_counts.shape[0]
-                    b = np.ones((receptor2_on_target_counts.shape[0],)) / receptor2_on_target_counts.shape[0]
-                    print ('a =', a)
-                    print ('b =', b)
-                    print ('M =', M)
-                    print("Number of elements in 'a':", len(a))
-                    print("Number of elements in 'b':", len(b))
-                    print("Dimensions of M:", M.shape)
-                    optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
-                    results.append((optimal_transport, receptor1_name, receptor2_name))
+                    # Get on and off-target counts for receptor2
+                    receptor2_on_target_counts = target_cells_df[receptor2_name].values
+                    receptor2_off_target_counts = off_target_cells_df[receptor2_name].values
 
-                else:
-                    results.append((0, receptor1_name, receptor2_name))
+                    receptor3_on_target_counts = target_cells_df[receptor3_name].values
+                    receptor3_off_target_counts = off_target_cells_df[receptor3_name].values
+                    
+                    # You may want to include code here to get the conversion factors for receptor1_name and receptor2_name
+                    conversion_factor_receptor1 = get_conversion_factor(weightDF, receptor1_name)
+                    conversion_factor_receptor2 = get_conversion_factor(weightDF, receptor2_name)
+                    conversion_factor_receptor3 = get_conversion_factor(weightDF, receptor3_name)
+                    
+                    # Apply the conversion factors to the counts
+                    receptor1_on_target_counts = receptor1_on_target_counts * conversion_factor_receptor1
+                    receptor1_off_target_counts = receptor1_off_target_counts * conversion_factor_receptor1
+                    
+                    receptor2_on_target_counts = receptor2_on_target_counts * conversion_factor_receptor2
+                    receptor2_off_target_counts = receptor2_off_target_counts * conversion_factor_receptor2
+                    
+                    receptor3_on_target_counts = receptor3_on_target_counts * conversion_factor_receptor3
+                    receptor3_off_target_counts = receptor3_off_target_counts * conversion_factor_receptor3
+
+
+                    #
+                    average_receptor_counts_1_on = np.mean(receptor1_on_target_counts)
+                    average_receptor_counts_1_off = np.mean(receptor1_off_target_counts)
+                    average_receptor_counts_2_on = np.mean(receptor2_on_target_counts)
+                    average_receptor_counts_2_off = np.mean(receptor2_off_target_counts)
+                    average_receptor_counts_3_on = np.mean(receptor3_on_target_counts)
+                    average_receptor_counts_3_off = np.mean(receptor3_off_target_counts)
+
+                    average_receptor_counts_1 = np.mean(np.concatenate((receptor1_on_target_counts, receptor1_off_target_counts)), axis=0)
+                    average_receptor_counts_2 = np.mean(np.concatenate((receptor2_on_target_counts, receptor2_off_target_counts)), axis=0)
+                    average_receptor_counts_3 = np.mean(np.concatenate((receptor3_on_target_counts, receptor3_off_target_counts)), axis=0)
+                
+                   
+                    if average_receptor_counts_1_on > 5 and average_receptor_counts_2_on > 5 and average_receptor_counts_3_on > 5 and average_receptor_counts_1_on > average_receptor_counts_1_off and average_receptor_counts_2_on > average_receptor_counts_2_off:
+                        receptor1_on_target_counts = receptor1_on_target_counts.astype(float) / average_receptor_counts_1
+                        receptor1_off_target_counts = receptor1_off_target_counts.astype(float) / average_receptor_counts_1
+                        receptor2_on_target_counts = receptor2_on_target_counts.astype(float) / average_receptor_counts_2
+                        receptor2_off_target_counts = receptor2_off_target_counts.astype(float) / average_receptor_counts_2
+                        receptor3_on_target_counts = receptor3_on_target_counts.astype(float) / average_receptor_counts_3
+                        receptor3_off_target_counts = receptor3_off_target_counts.astype(float) / average_receptor_counts_3
+                    #   
+                        # Calculate the EMD between on-target and off-target counts for both receptors # change this so its two [||]
+                        M = ot.dist((np.concatenate((receptor1_on_target_counts[:, np.newaxis], receptor2_on_target_counts[:, np.newaxis], receptor3_on_target_counts[:, np.newaxis]), axis=1))) 
+                        a = np.ones((receptor1_on_target_counts.shape[0],)) / receptor1_on_target_counts.shape[0]
+                        b = np.ones((receptor2_on_target_counts.shape[0],)) / receptor2_on_target_counts.shape[0]
+                        print ('a =', a)
+                        print ('b =', b)
+                        print ('M =', M)
+                        print("Number of elements in 'a':", len(a))
+                        print("Number of elements in 'b':", len(b))
+                        print("Dimensions of M:", M.shape)
+                        optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
+                        results.append((optimal_transport, receptor1_name, receptor2_name))
+
+                    else:
+                        results.append((0, receptor1_name, receptor2_name))
     
     sorted_results = sorted(results, reverse=True)
     
-    top_receptor_info = [(receptor1_name, receptor2_name, optimal_transport) for optimal_transport, receptor1_name, receptor2_name in sorted_results[:5]]
+    top_receptor_info = [(receptor1_name, receptor2_name, optimal_transport) for optimal_transport, receptor1_name, receptor2_name in sorted_results[:10]]
     
     # Bar graph 
     receptor_pairs = [(info[0], info[1]) for info in top_receptor_info]
@@ -494,7 +506,7 @@ def EMD_3D(dataset1, target_cells, ax=None):
         ax.bar(range(len(receptor_pairs)), distances)
         ax.set_xlabel('Receptor Pair')
         ax.set_ylabel('Distance')
-        ax.set_title('Top 5 Receptor Pair Distances (3D)')
+        ax.set_title('Top 10 Receptor Pair Distances (3D)')
         ax.set_xticks(range(len(receptor_pairs)))
         ax.set_xticklabels([f"{pair[0]} - {pair[1]}" for pair in receptor_pairs], rotation='vertical')
     
