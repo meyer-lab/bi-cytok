@@ -173,7 +173,7 @@ def bindingCalc(df: pd.DataFrame, targCell: string, offTCells: list, betaAffs: n
 bispecOpt_Vec = np.vectorize(cytBindingModel_bispecOpt, excluded=['recXaffs'])
 
 
-def minSelecFunc(recXaffs: np.array, signal: string, targets: list, targRecs: np.array, offTRecs: np.array, dose: float, valency: int):
+def minSelecFunc(recXaffs: np.array, signal: string, targets: list, targRecs: np.array, offTRecs: np.array, dose: float, vals: list):
     """Serves as the function which will have its return value minimized to get optimal selectivity
     To be used in conjunction with optimizeDesign()
     Args:
@@ -185,9 +185,6 @@ def minSelecFunc(recXaffs: np.array, signal: string, targets: list, targRecs: np
     affs = pd.DataFrame()
     for i, recXaff in enumerate(recXaffs):
         affs = np.append(affs, np.power(10, recXaff))
-    vals= [valency]
-    for i in targets:
-        vals.append(valency)
     holder = np.full((len(targets) + 1, len(targets) + 1), 1e2)
     np.fill_diagonal(holder, affs)
     affs = holder
@@ -208,7 +205,7 @@ def minSelecFunc(recXaffs: np.array, signal: string, targets: list, targRecs: np
     return offTargetBound / minSelecFunc.targetBound
 
 
-def optimizeDesign(signal: string, targets: list, targCell: string, offTCells: list, selectedDF: pd.DataFrame, dose: float, valency: int, prevOptAffs: list):
+def optimizeDesign(signal: string, targets: list, targCell: string, offTCells: list, selectedDF: pd.DataFrame, dose: float, valencies: list, prevOptAffs: list):
     """ A general purzse optimizer used to minimize selectivity output by varying affinity parameter.
     Args:
         targCell: string cell type which is target and signaling is desired (basis of selectivity)
@@ -224,7 +221,7 @@ def optimizeDesign(signal: string, targets: list, targCell: string, offTCells: l
     optBnds = Bounds(np.full_like(X0, [6.0, 6.0, 6.0]), np.full_like(X0, [9.0, 9.0, 9.0]))
     targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, signal, targets)
     print('Optimize')
-    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(signal, targets, targRecs, offTRecs, dose, valency), jac="3-point")
+    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(signal, targets, targRecs, offTRecs, dose, valencies), jac="3-point")
     print('Done')
     optSelectivity = optimized.fun
     optParams = optimized.x

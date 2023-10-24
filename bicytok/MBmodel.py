@@ -109,7 +109,7 @@ def cytBindingModel_CITEseq(counts, betaAffs, val, mut, x=False, date=False):
     return output
 
 
-def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
+def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, vals, mut, x=False):
     """Runs bispecific binding model built for CITEseq data for a given mutein, epitope, valency, dose, and cell type."""
 
     recXaff = np.power(10, recXaff)
@@ -131,9 +131,9 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
+            output[i] = polyc(dose / (vals[0] * 1e9), np.power(10, x[0]), recCount, [vals], [1.0], Affs)[1][0][1]
         else:
-            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
+            output[i] = polyc(dose / (vals[0] * 1e9), getKxStar(), recCount, [vals], [1.0], Affs)[1][0][1]
 
     return output
 
