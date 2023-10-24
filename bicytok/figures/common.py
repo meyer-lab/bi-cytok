@@ -506,7 +506,7 @@ def EMD_3D(dataset1, target_cells, ax=None):
         ax.bar(range(len(receptor_pairs)), distances)
         ax.set_xlabel('Receptor Pair')
         ax.set_ylabel('Distance')
-        ax.set_title('Top 10 Receptor Pair Distances (3D)')
+        ax.set_title('Top 10 Receptor Pair Distances (3D) for ', target_cells)
         ax.set_xticks(range(len(receptor_pairs)))
         ax.set_xticklabels([f"{pair[0]} - {pair[1]}" for pair in receptor_pairs], rotation='vertical') #adjust perhpas 
     
