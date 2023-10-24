@@ -23,7 +23,7 @@ def makeFigure():
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList['Epitope'].unique())
-    epitopesDF = getSampleAbundances(epitopes, cells, "CellType2")
+    epitopesDF = getSampleAbundances(epitopes, cells)
 
     doseVec = np.logspace(-3, 3, num=20)
     df = pd.DataFrame(columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
