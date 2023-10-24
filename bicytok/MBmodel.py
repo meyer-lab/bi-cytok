@@ -141,16 +141,14 @@ def cytBindingModel_bispecOpt(recCounts, affs, dose, vals, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     doseVec = np.array(dose)
 
-    # Check that values are in correct placement, can invert
-
     if doseVec.size == 1:
         doseVec = np.array([doseVec])
     output = np.zeros(doseVec.size)
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / (vals[0] * 1e9), np.power(10, x[0]), recCounts, [vals], [1.0], affs)[1][0][1]
+            output[i] = np.sum(polyc(dose / (vals[0] * 1e9), np.power(10, x[0]), recCounts, [vals], [1.0], affs)[1])
         else:
-            output[i] = polyc(dose / (vals[0] * 1e9), getKxStar(), recCounts, [vals], [1.0], affs)[1][0][1]
+            output[i] = np.sum(polyc(dose / (vals[0] * 1e9), getKxStar(), recCounts, [vals], [1.0], affs)[1])
     
     return output
