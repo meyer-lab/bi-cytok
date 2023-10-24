@@ -33,18 +33,33 @@ def makeFigure():
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
     ax, f = getSetup((40, 40), (1,1)) 
-    target_cells = 'CD8 T'
+    target_cells = 'Treg'
     # EMD_2D(new_df, 'CD25', target_cells, ax = ax[0]) 
     # KL_divergence_2D(new_df, 'CD25', target_cells, ax[0])
+    receptors = ['CD25']
     
-    '''
     resultsEMD = []
     for receptor in receptors:
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
         resultsEMD.append(val)
-        print ('working') # its looping over conversion factor too many times 
+        print ('yas')
     flattened_results = [result_tuple for inner_list in resultsEMD for result_tuple in inner_list]
+    
     df_recep = pd.DataFrame(flattened_results, columns=['Distance', 'Receptor', 'Signal Receptor'])
+    df_recep['Receptor Pair'] = df_recep['Receptor'] + ' - ' + df_recep['Signal Receptor']
+
+    # Sort the DataFrame by 'Distance' in descending order
+    df_sorted = df_recep.sort_values(by='Distance', ascending=False)
+
+    # Select the top 10 rows
+    top_10 = df_sorted.head(10)
+
+    ax[0].barh(top_10['Receptor Pair'], top_10['Distance'])
+    ax[0].set_xlabel('Distance')
+    ax[0].set_ylabel('Receptor Pair')
+    ax[0].set_title('Top 10 Distances and Their Receptor Pairs')
+    ax[0].invert_yaxis()
+    '''
     pivot_table = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
     '''
     '''
@@ -57,6 +72,7 @@ def makeFigure():
     df_recep = pd.DataFrame(flattened_resultsKL, columns=['KLD', 'Receptor', 'Signal Receptor'])
     pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
     '''
+    '''
     resultsEMD3D = []
     val = EMD_3D(new_df, target_cells, ax = None) 
     resultsEMD3D.append(val)
@@ -67,5 +83,5 @@ def makeFigure():
     
     # f = KLD_clustermap(pivot_tableKL) 
     f = EMD3D_clustermap(pivot_table3D)
-
+    '''
     return f     

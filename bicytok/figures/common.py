@@ -253,7 +253,7 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
             
     sorted_results = sorted(results, reverse=True)
     
-    top_receptor_info = [(receptor_name, optimal_transport, signal_receptor) for optimal_transport, receptor_name, signal_receptor in sorted_results[:5]]
+    top_receptor_info = [(receptor_name, optimal_transport, signal_receptor) for optimal_transport, receptor_name, signal_receptor in sorted_results[:10]]
     
     # bar graph 
     receptor_names = [info[0] for info in top_receptor_info]
@@ -508,7 +508,7 @@ def EMD_3D(dataset1, target_cells, ax=None):
         ax.set_ylabel('Distance')
         ax.set_title('Top 10 Receptor Pair Distances (3D)')
         ax.set_xticks(range(len(receptor_pairs)))
-        ax.set_xticklabels([f"{pair[0]} - {pair[1]}" for pair in receptor_pairs], rotation='vertical')
+        ax.set_xticklabels([f"{pair[0]} - {pair[1]}" for pair in receptor_pairs], rotation='vertical') #adjust perhpas 
     
     return sorted_results
 
@@ -539,7 +539,7 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
             results.append((-1, receptor_name, signal_receptor))
     
     sorted_results = sorted(results, reverse=True)
-    top_receptor_info = [(receptor_name, KL_div, signal_receptor) for KL_div, receptor_name, signal_receptor in sorted_results[:5]]
+    top_receptor_info = [(receptor_name, KL_div, signal_receptor) for KL_div, receptor_name, signal_receptor in sorted_results[:10]]
     
     # bar graph 
     receptor_names = [info[0] for info in top_receptor_info]
