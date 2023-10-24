@@ -147,8 +147,8 @@ def cytBindingModel_bispecOpt(recCounts, affs, dose, vals, x=False):
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = np.sum(polyc(dose / (vals[0] * 1e9), np.power(10, x[0]), recCounts, [vals], [1.0], affs)[1])
+            output[i] = polyc(dose / (vals[0] * 1e9), np.power(10, x[0]), recCounts, [vals], [1.0], affs)[1][0][0]
         else:
-            output[i] = np.sum(polyc(dose / (vals[0] * 1e9), getKxStar(), recCounts, [vals], [1.0], affs)[1])
+            output[i] = polyc(dose / (vals[0] * 1e9), getKxStar(), recCounts, [vals], [1.0], affs)[1][0][0]
     
     return output
