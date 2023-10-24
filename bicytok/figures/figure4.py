@@ -54,11 +54,24 @@ def makeFigure():
     # Select the top 10 rows
     top_10 = df_sorted.head(10)
 
-    ax[0].barh(top_10['Receptor Pair'], top_10['Distance'])
-    ax[0].set_xlabel('Distance')
-    ax[0].set_ylabel('Receptor Pair')
-    ax[0].set_title('Top 10 Distances and Their Receptor Pairs')
-    ax[0].invert_yaxis()
+    distance_values = top_10['Distance']
+    receptor_pairs = top_10['Receptor Pair']
+
+    # Create a bar plot on ax[0]
+    ax[0].bar(receptor_pairs, distance_values, color='skyblue')  # Horizontal bar plot
+
+    # Add labels and a title to the subplot
+    ax[0].set_ylabel('Distance', fontsize=30)
+    ax[0].set_xlabel('Receptor Pairs', fontsize=20)
+
+    # Add the title with a larger font size
+    title = ax[0].set_title(f'Top 10 Receptor Pairs for {target_cells} by Distance')
+    title.set_fontsize(45)  # Adjust the fontsize as needed
+
+    # Optionally, rotate the labels on the y-axis for better readability
+    ax[0].set_xticklabels(receptor_pairs, rotation=0)
+    # Adjust the fontsize of the tick labels
+    ax[0].tick_params(axis='both', labelsize=20) 
     '''
     pivot_table = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
     '''
