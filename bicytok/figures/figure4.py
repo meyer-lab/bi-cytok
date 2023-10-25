@@ -34,6 +34,7 @@ def makeFigure():
             receptors.append(column)
     ax, f = getSetup((40, 40), (1,1)) 
     target_cells = 'Treg'
+    '''
     # EMD_2D(new_df, 'CD25', target_cells, ax = ax[0]) 
     # KL_divergence_2D(new_df, 'CD25', target_cells, ax[0])
     # receptors = ['CD25', 'CD8', 'CD122', 'CD35', 'CD314']
@@ -93,8 +94,9 @@ def makeFigure():
     
     # Add a legend to differentiate CD8 T and Treg bars
     ax[0].legend(loc='upper right', fontsize=20)
-
-
+    '''
+    
+    EMD_3D(new_df, target_cells, ax = 0) # just run this one line for 2D with Treg
 
 
 
@@ -120,7 +122,7 @@ def makeFigure():
     pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
     '''
     '''
-    resultsEMD3D = 
+    resultsEMD3D = []
     val = EMD_3D(new_df, target_cells, ax = None) # just run this one line for 2D with Treg
     resultsEMD3D.append(val)
     flattened_resultsEMD3D = [result_tuple for inner_list in resultsEMD3D for result_tuple in inner_list]

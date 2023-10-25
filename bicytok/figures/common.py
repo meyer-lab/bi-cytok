@@ -482,28 +482,23 @@ def EMD_3D(dataset1, target_cells, ax=None):
                         M = ot.dist((np.concatenate((receptor1_on_target_counts[:, np.newaxis], receptor2_on_target_counts[:, np.newaxis], receptor3_on_target_counts[:, np.newaxis]), axis=1))) 
                         a = np.ones((receptor1_on_target_counts.shape[0],)) / receptor1_on_target_counts.shape[0]
                         b = np.ones((receptor2_on_target_counts.shape[0],)) / receptor2_on_target_counts.shape[0]
-                        print ('a =', a)
-                        print ('b =', b)
-                        print ('M =', M)
-                        print("Number of elements in 'a':", len(a))
-                        print("Number of elements in 'b':", len(b))
-                        print("Dimensions of M:", M.shape)
+               
                         optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
-                        results.append((optimal_transport, receptor1_name, receptor2_name))
+                        results.append((optimal_transport, receptor1_name, receptor2_name, receptor3_name))
 
                     else:
-                        results.append((0, receptor1_name, receptor2_name))
+                        results.append((0, receptor1_name, receptor2_name, receptor3_name))
     
     sorted_results = sorted(results, reverse=True)
     
-    top_receptor_info = [(receptor1_name, receptor2_name, optimal_transport) for optimal_transport, receptor1_name, receptor2_name in sorted_results[:10]]
+    top_receptor_info = [(receptor1_name, receptor2_name, receptor3_name, optimal_transport) for optimal_transport, receptor1_name, receptor2_name, receptor3_name in sorted_results[:10]]
     
     # Bar graph 
-    receptor_pairs = [(info[0], info[1]) for info in top_receptor_info]
-    distances = [info[2] for info in top_receptor_info]
+    receptor_pairs = [(info[0], info[1], info[2]) for info in top_receptor_info]
+    distances = [info[3] for info in top_receptor_info]
 
     if ax is not None:
-        ax.bar(range(len(receptor_pairs)), distances)
+        ax.bar(range(len(receptor_names)), distances)
         ax.set_xlabel('Receptor Pair')
         ax.set_ylabel('Distance')
         ax.set_title('Top 10 Receptor Pair Distances (3D) for ', target_cells)
