@@ -33,7 +33,7 @@ def makeFigure():
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
     ax, f = getSetup((40, 40), (1,1)) 
-    target_cells = 'CD8 T'
+    target_cells = 'Treg'
     # EMD_2D(new_df, 'CD25', target_cells, ax = ax[0]) 
     # KL_divergence_2D(new_df, 'CD25', target_cells, ax[0])
     # receptors = ['CD25', 'CD8', 'CD122', 'CD35', 'CD314']
@@ -120,8 +120,8 @@ def makeFigure():
     pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
     '''
     '''
-    resultsEMD3D = []
-    val = EMD_3D(new_df, target_cells, ax = None) 
+    resultsEMD3D = 
+    val = EMD_3D(new_df, target_cells, ax = None) # just run this one line for 2D with Treg
     resultsEMD3D.append(val)
     flattened_resultsEMD3D = [result_tuple for inner_list in resultsEMD3D for result_tuple in inner_list]
     df_recep = pd.DataFrame(flattened_resultsEMD3D, columns=['Distance', 'Receptor', 'Signal Receptor'])
