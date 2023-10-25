@@ -470,7 +470,7 @@ def EMD_3D(dataset1, target_cells, ax=None):
                     average_receptor_counts_3 = np.mean(np.concatenate((receptor3_on_target_counts, receptor3_off_target_counts)), axis=0)
                 
                    
-                    if average_receptor_counts_1_on > 5 and average_receptor_counts_2_on > 5 and average_receptor_counts_3_on > 5 and average_receptor_counts_1_on > average_receptor_counts_1_off and average_receptor_counts_2_on > average_receptor_counts_2_off:
+                    if average_receptor_counts_1_on > 5 and average_receptor_counts_2_on > 5 and average_receptor_counts_3_on > 5 and average_receptor_counts_1_on > average_receptor_counts_1_off and average_receptor_counts_2_on > average_receptor_counts_2_off and average_receptor_counts_3_on > average_receptor_counts_3_off:
                         receptor1_on_target_counts = receptor1_on_target_counts.astype(float) / average_receptor_counts_1
                         receptor1_off_target_counts = receptor1_off_target_counts.astype(float) / average_receptor_counts_1
                         receptor2_on_target_counts = receptor2_on_target_counts.astype(float) / average_receptor_counts_2
@@ -503,7 +503,7 @@ def EMD_3D(dataset1, target_cells, ax=None):
         ax.set_ylabel('Distance')
         ax.set_title('Top 10 Receptor Pair Distances (3D) for ', target_cells)
         ax.set_xticks(range(len(receptor_pairs)))
-        ax.set_xticklabels([f"{pair[0]} - {pair[1]}" for pair in receptor_pairs], rotation='vertical') #adjust perhpas 
+        ax.set_xticklabels([f"{pair[0]} - {pair[1]} - {pair[2]}" for pair in receptor_pairs], rotation='vertical') 
     
     return sorted_results
 
