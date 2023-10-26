@@ -97,7 +97,7 @@ def makeFigure():
     ax[0].legend(loc='upper right', fontsize=20)
     '''
     
-    EMD_3Dnew(new_df, target_cells, ax = 0) # just run this one line for 2D with Treg
+    print(EMD_3D(new_df, target_cells, ax[0])) # just run this one line for 2D with Treg
 
 
 

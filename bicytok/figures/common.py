@@ -488,6 +488,7 @@ def EMD_3D(dataset1, target_cells, ax=None):
 
                     else:
                         results.append((0, receptor1_name, receptor2_name, receptor3_name))
+                    print (results)
     
     sorted_results = sorted(results, reverse=True)
     
@@ -507,82 +508,6 @@ def EMD_3D(dataset1, target_cells, ax=None):
     
     return sorted_results
 
-def EMD_3Dnew(dataset1, target_cells, ax=None):
-
-    weightDF = convFactCalc()
-    exclude_columns = ['CellType1', 'CellType2', 'CellType3', 'Cell']
-    threshold_multiplier = 5
-
-    # Calculate the mean and standard deviation for each numeric column
-    numeric_columns = [col for col in dataset1.columns if col not in exclude_columns]
-    column_means = dataset1[numeric_columns].mean()
-    column_stddevs = dataset1[numeric_columns].std()
-
-    # Identify outliers for each numeric column
-    outliers = {}
-    for column in numeric_columns:
-        threshold = column_means[column] + threshold_multiplier * column_stddevs[column]
-        outliers[column] = dataset1[column] > threshold
-
-    # Create a mask to filter rows with outliers
-    outlier_mask = pd.DataFrame(outliers)
-    dataset = dataset1[~outlier_mask.any(axis=1)]
-
-    receptor_names = [col for col in dataset.columns if col not in exclude_columns]
-    results = []
-
-    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells) | (dataset['CellType1'] == target_cells)]
-    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells) | (dataset['CellType1'] == target_cells))]
-
-
-    # Precompute average receptor counts
-    average_receptor_counts_1_on = np.mean(target_cells_df[receptor_names].values, axis=0)
-    average_receptor_counts_1_off = np.mean(off_target_cells_df[receptor_names].values, axis=0)
-
-    for receptor1_name in receptor_names:
-        for receptor2_name in receptor_names:
-            for receptor3_name in receptor_names:
-                if receptor1_name != receptor2_name:
-                    # Calculate the EMD only if the condition is met
-                    if (average_receptor_counts_1_on > 5).all() and (average_receptor_counts_1_on > average_receptor_counts_1_off).all():
-                        # Get on and off-target counts for receptors 1, 2, and 3
-                        receptor_on_target_counts = target_cells_df[[receptor1_name, receptor2_name, receptor3_name]].values
-                        receptor_off_target_counts = off_target_cells_df[[receptor1_name, receptor2_name, receptor3_name]].values
-
-                        # You may want to include code here to get the conversion factors for all three receptors
-                        conversion_factor_receptor1 = get_conversion_factor(weightDF, receptor1_name)
-                        conversion_factor_receptor2 = get_conversion_factor(weightDF, receptor2_name)
-                        conversion_factor_receptor3 = get_conversion_factor(weightDF, receptor3_name)
-
-                        # Apply the conversion factors to the counts
-                        receptor_on_target_counts = receptor_on_target_counts * np.array([conversion_factor_receptor1, conversion_factor_receptor2, conversion_factor_receptor3])
-                        receptor_off_target_counts = receptor_off_target_counts * np.array([conversion_factor_receptor1, conversion_factor_receptor2, conversion_factor_receptor3])
-
-                        # Calculate the EMD between on-target and off-target counts for all three receptors
-                        M = ot.dist(receptor_on_target_counts)
-                        a = np.ones((receptor_on_target_counts.shape[0],)) / receptor_on_target_counts.shape[0]
-                        b = np.ones((receptor_on_target_counts.shape[0],)) / receptor_on_target_counts.shape[0]
-
-                        optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
-                        results.append((optimal_transport, receptor1_name, receptor2_name, receptor3_name))
-
-    sorted_results = sorted(results, reverse=True)
-
-    top_receptor_info = [(receptor1_name, receptor2_name, receptor3_name, optimal_transport) for optimal_transport, receptor1_name, receptor2_name, receptor3_name in sorted_results[:10]]
-
-    # Bar graph
-    receptor_pairs = [(info[0], info[1], info[2]) for info in top_receptor_info]
-    distances = [info[3] for info in top_receptor_info]
-
-    if ax is not None:
-        ax.bar(range(len(receptor_pairs)), distances)
-        ax.set_xlabel('Receptor Pair')
-        ax.set_ylabel('Distance')
-        ax.set_title(f'Top 10 Receptor Pair Distances (3D) for {target_cells}')
-        ax.set_xticks(range(len(receptor_pairs)))
-        ax.set_xticklabels([f"{pair[0]} - {pair[1]} - {pair[2]}" for pair in receptor_pairs], rotation='vertical')
-
-    return sorted_results
 
 def EMD3D_clustermap(dataset):
     dataset = dataset.fillna(0)
