@@ -9,6 +9,7 @@ from .common import EMD_2D
 from .common import EMD_Distribution_Plot
 from .common import EMD_1D
 from .common import EMD_3D
+from .common import EMD_3Dnew
 from .common import EMD3D_clustermap
 from .common import EMD1Dvs2D_Analysis
 from .common import Wass_KL_Dist
@@ -96,7 +97,7 @@ def makeFigure():
     ax[0].legend(loc='upper right', fontsize=20)
     '''
     
-    EMD_3D(new_df, target_cells, ax = 0) # just run this one line for 2D with Treg
+    EMD_3Dnew(new_df, target_cells, ax = 0) # just run this one line for 2D with Treg
 
 
 
