@@ -11,9 +11,9 @@ from ..imports import importCITE
 path_here = dirname(dirname(__file__))
 
 def makeFigure():
-    ax, f = getSetup((6, 3), (1, 2))
+    ax, f = getSetup((4, 3), (1, 1))
 
-    signal = ['CD25', 1]
+    signal = ['CD127', 1]
     allTargets = [[('CD25', 1)], [('CD25', 1), ('CD278', 1)], [('CD25', 1), ('CD278', 1), ('CD4-2', 1)],
         [('CD25', 4)], [('CD25', 4), ('CD278', 4)], [('CD25', 4), ('CD278', 4), ('CD4-2', 4)]]
 
@@ -26,34 +26,37 @@ def makeFigure():
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells)
 
-    doseVec = np.logspace(-3, 3, num=20)
+    dose = 10e-2
     df = pd.DataFrame(columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
 
-    for targetPairs in allTargets:
-        prevOptAffs = [8.0, 8.0, 8.0]
+    optAffs = [8.0, 8.0, 8.0]
 
-        valencies = [signal[1]]
-        targets = []
-        naming = []
-        for target, valency in targetPairs:
-            targets.append(target)
-            valencies.append(valency)
-            naming.append('{} ({})'.format(target, valency))
+    valencies = []
+    targets = []
+    for target, valency in allTargets:
+        targets.append(target)
+        valencies.append(valency)
 
-        for _, dose in enumerate(doseVec):
-            optParams = optimizeDesign(signal[0], targets, targCell, offTCells, epitopesDF, dose, valencies, prevOptAffs)
-            prevOptAffs = [optParams[1][0], optParams[1][1], optParams[1][2]]
+    for i, target1 in enumerate(targets):
+        for j, target2 in enumerate(targets):
+            if i == j:
+                targetsBoth = [target1]
+                valenciesBoth = [signal[1], valencies[i]]
+            else:
+                targetsBoth = [target1, target2]
+                valenciesBoth = [signal[1], valencies[i], valencies[j]]
                 
-            data = {'Dose': [dose],
-                'Selectivity': 1 / optParams[0],
-                'Target Bound': optParams[2],
-                'Ligand': ' + '.join(naming)
+            optParams = optimizeDesign(signal[0], targetsBoth, targCell, offTCells, epitopesDF, dose, valenciesBoth, optAffs)
+                
+            data = {'Target 1': '{} ({})'.format(target1, valencies[i]),
+                'Target 2': '{} ({})'.format(target2, valencies[j]),
+                'Selectivity': 1 / optParams[0]
             }
-            df_temp = pd.DataFrame(data, columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
+            df_temp = pd.DataFrame(data, columns=['KL Divergence', 'Wasserstein Distance', 'Selectivity'])
             df = pd.concat([df, df_temp], ignore_index=True)
 
-    sns.lineplot(data=df, x='Dose', y='Selectivity', hue='Ligand', ax=ax[0])
-    sns.lineplot(data=df, x='Dose', y='Target Bound', hue='Ligand', ax=ax[1])
+    sns.lineplot(data=df, x='KL Divergence', y='Selectivity', ax=ax[0])
+    sns.lineplot(data=df, x='Wasserstein Distance', y='Selectivity', ax=ax[1])
     ax[0].set(xscale='log')
     ax[1].set(xscale='log')
 
