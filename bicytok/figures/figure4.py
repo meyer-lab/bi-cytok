@@ -9,7 +9,6 @@ from .common import EMD_2D
 from .common import EMD_Distribution_Plot
 from .common import EMD_1D
 from .common import EMD_3D
-from .common import EMD_3Dnew
 from .common import EMD3D_clustermap
 from .common import EMD1Dvs2D_Analysis
 from .common import Wass_KL_Dist
