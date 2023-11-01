@@ -482,7 +482,7 @@ def EMD_3D(dataset1, target_cells, ax=None):
                         M = ot.dist((np.concatenate((receptor1_on_target_counts[:, np.newaxis], receptor2_on_target_counts[:, np.newaxis], receptor3_on_target_counts[:, np.newaxis]), axis=1))) 
                         a = np.ones((receptor1_on_target_counts.shape[0],)) / receptor1_on_target_counts.shape[0]
                         b = np.ones((receptor2_on_target_counts.shape[0],)) / receptor2_on_target_counts.shape[0]
-               
+                        print ('yuh')
                         optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
                         results.append((optimal_transport, receptor1_name, receptor2_name, receptor3_name))
 
