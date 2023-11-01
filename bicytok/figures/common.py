@@ -816,20 +816,16 @@ def bindingmodel_selectivity_pair(dataset, target_cells, signal_receptor, specia
     selectivity = 1/optParams1[0]
     return selectivity
 
-def correlation():
+def correlation(cell_type, relevant_epitopes):
         epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList['Epitope'].unique())
-    epitopesDF = getSampleAbundances(epitopes, np.array(['Treg']))
+    epitopesDF = getSampleAbundances(epitopes, np.array([cell_type]))
 
     df = pd.DataFrame()
     for index, row in epitopesDF.iterrows():
-        df[row['Epitope']] = row['Treg']
+        df[row['Epitope']] = row[cell_type]
     
-    corr = df.corr()
-
-    corr = corr.loc[:, ['CD25', 'CD122']]
-
-    print(corr)
+    corr = df.corr().loc[:, relevant_epitopes]
 
     order_bottom = np.argsort(corr.values, axis=1)[:, :1]
 
@@ -842,6 +838,5 @@ def correlation():
     for x in result_bottom.columns:
         result_bottom[x+"_Val"] = corr.lookup(corr.index, result_bottom[x])
     result_bottom.sort_values(by=['Last_Val'], inplace=True)
-    print(result_bottom)
 
     return corr, result_bottom
