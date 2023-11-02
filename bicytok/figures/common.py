@@ -424,6 +424,14 @@ def EMD_3D(dataset1, target_cells, ax=None):
     target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells) | (dataset['CellType1'] == target_cells)]
     off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells) | (dataset['CellType1'] == target_cells))]
 
+    average_on_target_counts = target_cells_df[receptor_names].mean()
+    average_off_target_counts = off_target_cells_df[receptor_names].mean()
+
+    # Filter the dataset based on your criteria
+    filter_condition = ((average_on_target_counts > 5) & (average_on_target_counts > average_off_target_counts))
+    dataset = dataset[filter_condition]
+    target_cells_df = target_cells_df[filter_condition]
+    off_target_cells_df = off_target_cells_df[filter_condition]
 
     for receptor1_name in receptor_names:
         for receptor2_name in receptor_names:
