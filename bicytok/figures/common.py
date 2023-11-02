@@ -479,18 +479,35 @@ def EMD_3D(dataset1, target_cells, ax=None):
                         receptor3_off_target_counts = receptor3_off_target_counts.astype(float) / average_receptor_counts_3
                     #   
                         # Calculate the EMD between on-target and off-target counts for both receptors # change this so its two [||]
-                        M = ot.dist((np.concatenate((receptor1_on_target_counts[:, np.newaxis], receptor2_on_target_counts[:, np.newaxis], receptor3_on_target_counts[:, np.newaxis]), axis=1))) 
-                        a = np.ones((receptor1_on_target_counts.shape[0],)) / receptor1_on_target_counts.shape[0]
-                        b = np.ones((receptor2_on_target_counts.shape[0],)) / receptor2_on_target_counts.shape[0]
+                        print("receptor1_on_target_counts shape:", receptor1_on_target_counts.shape)
+                        print("receptor2_on_target_counts shape:", receptor2_on_target_counts.shape)
+                        print("receptor3_on_target_counts shape:", receptor3_on_target_counts.shape)
+                        print("receptor1_off_target_counts shape:", receptor1_off_target_counts.shape)
+                        print("receptor2_off_target_counts shape:", receptor2_off_target_counts.shape)
+                        print("receptor3_off_target_counts shape:", receptor3_off_target_counts.shape)
+                        
+                        on_target_counts = np.column_stack((receptor1_on_target_counts, receptor2_on_target_counts, receptor3_on_target_counts))
+
+                        off_target_counts = np.column_stack((receptor1_off_target_counts, receptor2_off_target_counts, receptor3_off_target_counts))
+
+                        M = ot.dist(np.concatenate((on_target_counts, off_target_counts), axis=0))
+
+                        a = np.ones((M.shape[0],)) / M.shape[0]  
+                        b = np.ones((M.shape[1],)) / M.shape[1] 
+                        print("a shape:", a.shape)
+                        print("b shape:", b.shape)
+                        print("M shape:", M.shape)
                         print ('yuh')
                         optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
                         results.append((optimal_transport, receptor1_name, receptor2_name, receptor3_name))
+                        print ('ot:', optimal_transport)
 
                     else:
                         results.append((0, receptor1_name, receptor2_name, receptor3_name))
-                    print (results)
+                    
     
     sorted_results = sorted(results, reverse=True)
+    print ('sorted results:', sorted_results)
     
     top_receptor_info = [(receptor1_name, receptor2_name, receptor3_name, optimal_transport) for optimal_transport, receptor1_name, receptor2_name, receptor3_name in sorted_results[:10]]
     
