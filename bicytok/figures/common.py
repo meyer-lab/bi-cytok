@@ -486,13 +486,13 @@ def EMD_3D(dataset1, target_cells, ax=None):
                         print("receptor2_off_target_counts shape:", receptor2_off_target_counts.shape)
                         print("receptor3_off_target_counts shape:", receptor3_off_target_counts.shape)
                         
-                        on_target_counts = np.column_stack((receptor1_on_target_counts, receptor2_on_target_counts, receptor3_on_target_counts))
-
-                        off_target_counts = np.column_stack((receptor1_off_target_counts, receptor2_off_target_counts, receptor3_off_target_counts))
+                        on_target_counts = np.concatenate((receptor1_on_target_counts[:, np.newaxis], receptor2_on_target_counts[:, np.newaxis], receptor3_on_target_counts[:, np.newaxis]), axis=1)
+                        off_target_counts = np.concatenate((receptor1_off_target_counts[:, np.newaxis], receptor2_off_target_counts[:, np.newaxis], receptor3_off_target_counts[:, np.newaxis]), axis=1)
 
                         M = ot.dist(np.concatenate((on_target_counts, off_target_counts), axis=0))
-
-                        a = np.ones((M.shape[0],)) / M.shape[0]  
+                        a = np.ones((M.shape[0],)) / M.shape[0]  # Use M.shape[0] for a
+                        #a = np.ones((receptor1_on_target_counts.shape[0],)) / receptor1_on_target_counts.shape[0]
+                        #b = np.ones((receptor2_on_target_counts.shape[0],)) / receptor2_on_target_counts.shape[0]
                         b = np.ones((M.shape[1],)) / M.shape[1] 
                         print("a shape:", a.shape)
                         print("b shape:", b.shape)
