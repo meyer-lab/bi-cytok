@@ -418,20 +418,17 @@ def EMD_3D(dataset1, target_cells, ax=None):
     outlier_mask = pd.DataFrame(outliers)
     dataset = dataset1[~outlier_mask.any(axis=1)]
 
-    receptor_names = [col for col in dataset.columns if col not in exclude_columns]
+    # receptor_names = [col for col in dataset.columns if col not in exclude_columns]
     results = []
 
     target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells) | (dataset['CellType1'] == target_cells)]
     off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells) | (dataset['CellType1'] == target_cells))]
 
-    average_on_target_counts = target_cells_df[receptor_names].mean()
-    average_off_target_counts = off_target_cells_df[receptor_names].mean()
+    receptor_names = [col for col in dataset.columns if col not in exclude_columns and
+                   np.mean(target_cells_df[col]) > np.mean(off_target_cells_df[col]) and
+                   np.mean(dataset[col]) > 5]
 
-    # Filter the dataset based on your criteria
-    filter_condition = ((average_on_target_counts > 5) & (average_on_target_counts > average_off_target_counts))
-    dataset = dataset[filter_condition]
-    target_cells_df = target_cells_df[filter_condition]
-    off_target_cells_df = off_target_cells_df[filter_condition]
+
 
     for receptor1_name in receptor_names:
         for receptor2_name in receptor_names:
@@ -524,10 +521,10 @@ def EMD_3D(dataset1, target_cells, ax=None):
     distances = [info[3] for info in top_receptor_info]
 
     if ax is not None:
-        ax.bar(range(len(receptor_names)), distances)
+        ax.bar(range(len(receptor_pairs)), distances)
         ax.set_xlabel('Receptor Pair')
         ax.set_ylabel('Distance')
-        ax.set_title('Top 10 Receptor Pair Distances (3D) for ', target_cells)
+        ax.set_title(f'Top 10 Receptor Pair Distances (3D) for {target_cells}')
         ax.set_xticks(range(len(receptor_pairs)))
         ax.set_xticklabels([f"{pair[0]} - {pair[1]} - {pair[2]}" for pair in receptor_pairs], rotation='vertical') 
     
