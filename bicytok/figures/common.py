@@ -505,10 +505,10 @@ def EMD_3D(dataset1, target_cells, ax=None):
                     
     
     sorted_results = sorted(results, reverse=True)
-    print ('sorted results:', sorted_results)
+    
     
     top_receptor_info = [(receptor1_name, receptor2_name, receptor3_name, optimal_transport) for optimal_transport, receptor1_name, receptor2_name, receptor3_name in sorted_results[:10]]
-    
+    print ('top 10 dist:', top_receptor_info)
     # Bar graph 
     receptor_pairs = [(info[0], info[1], info[2]) for info in top_receptor_info]
     distances = [info[3] for info in top_receptor_info]

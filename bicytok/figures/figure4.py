@@ -33,7 +33,7 @@ def makeFigure():
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
     ax, f = getSetup((40, 40), (1,1)) 
-    target_cells = 'Treg' 
+    target_cells = 'Treg'  
     '''
     # EMD_2D(new_df, 'CD25', target_cells, ax = ax[0]) 
     # KL_divergence_2D(new_df, 'CD25', target_cells, ax[0])
@@ -96,7 +96,7 @@ def makeFigure():
     ax[0].legend(loc='upper right', fontsize=20)
     '''
     
-    print(EMD_3D(new_df, target_cells, ax[0])) # just run this one line for 2D with Treg
+    EMD_3D(new_df, target_cells, ax[0]) # just run this one line for 2D with Treg
 
 
 
