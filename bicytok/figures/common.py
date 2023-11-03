@@ -492,8 +492,7 @@ def EMD_3D(dataset1, target_cells, ax=None):
                         on_target_counts = on_target_counts.astype(float) / average_receptor_counts
                         off_target_counts = off_target_counts.astype(float) / average_receptor_counts
                         
-                        M = ot.dist(np.concatenate((on_target_counts, off_target_counts), axis=0))
-                        print("M:", M.shape)
+                        M = ot.dist(on_target_counts, off_target_counts)
                         a = np.ones(on_target_counts.shape[0]) / on_target_counts.shape[0]
                         b = np.ones(off_target_counts.shape[0]) / off_target_counts.shape[0]
                   
