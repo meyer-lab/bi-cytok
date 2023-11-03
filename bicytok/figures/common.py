@@ -488,17 +488,15 @@ def EMD_3D(dataset1, target_cells, ax=None):
                         
                         on_target_counts = np.concatenate((receptor1_on_target_counts[:, np.newaxis], receptor2_on_target_counts[:, np.newaxis], receptor3_on_target_counts[:, np.newaxis]), axis=1)
                         off_target_counts = np.concatenate((receptor1_off_target_counts[:, np.newaxis], receptor2_off_target_counts[:, np.newaxis], receptor3_off_target_counts[:, np.newaxis]), axis=1)
-                        print("on target counts:", on_target_counts)
-                        print("off target counts:", off_target_counts)
-
+                        average_receptor_counts = np.mean(np.concatenate((on_target_counts, off_target_counts)), axis=0)
+                        on_target_counts = on_target_counts.astype(float) / average_receptor_counts
+                        off_target_counts = off_target_counts.astype(float) / average_receptor_counts
+                        
                         M = ot.dist(np.concatenate((on_target_counts, off_target_counts), axis=0))
-                        print("M:", M)
-
-                        a = np.ones((M.shape[0],)) / M.shape[0]  # Use M.shape[0] for a
-                        #a = np.ones((receptor1_on_target_counts.shape[0],)) / receptor1_on_target_counts.shape[0]
-                        #b = np.ones((receptor2_on_target_counts.shape[0],)) / receptor2_on_target_counts.shape[0]
-                        b = np.ones((M.shape[1],)) / M.shape[1] 
-           
+                        print("M:", M.shape)
+                        a = np.ones(on_target_counts.shape[0]) / on_target_counts.shape[0]
+                        b = np.ones(off_target_counts.shape[0]) / off_target_counts.shape[0]
+                  
                         optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
                         results.append((optimal_transport, receptor1_name, receptor2_name, receptor3_name))
                         print ('ot:', optimal_transport)
