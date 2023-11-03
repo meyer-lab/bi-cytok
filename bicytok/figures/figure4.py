@@ -101,10 +101,10 @@ def makeFigure():
 
 
 
-    '''
+    ''' 
     resultsEMD2D = [] 
     for receptor in receptors:
-        val = EMD_2D(new_df, receptor, target_cells, ax = None) 
+        val = EMD_2D(new_df, receptor, target_cells, ax = None)  
         resultsKL.append(val)
         print('slay')
     flattened_resultsEMD2D = [result_tuple for inner_list in resultsEMD2D for result_tuple in inner_list]
