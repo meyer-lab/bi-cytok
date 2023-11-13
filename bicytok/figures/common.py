@@ -19,6 +19,9 @@ from ..selectivityFuncs import convFactCalc
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign
 from scipy.stats import norm
 from scipy.cluster import hierarchy
+from os.path import dirname, join
+
+path_here = dirname(dirname(__file__))
 
 matplotlib.rcParams["legend.labelspacing"] = 0.2
 matplotlib.rcParams["legend.fontsize"] = 8
@@ -793,7 +796,7 @@ def KL_divergence_2D_pair(dataset, target_cells, signal_receptor, special_recept
     target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
     off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
         
-    KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 1], off_target_receptor_counts[:, 1])
+    KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 0:2], off_target_receptor_counts[:, 0:2])
     
     print('KL', KL_div)
     return KL_div
@@ -817,7 +820,7 @@ def bindingmodel_selectivity_pair(dataset, target_cells, signal_receptor, specia
     return selectivity
 
 def correlation(cell_type, relevant_epitopes):
-        epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, np.array([cell_type]))
 
@@ -827,16 +830,4 @@ def correlation(cell_type, relevant_epitopes):
     
     corr = df.corr().loc[:, relevant_epitopes]
 
-    order_bottom = np.argsort(corr.values, axis=1)[:, :1]
-
-    result_bottom = pd.DataFrame(
-        corr.columns[order_bottom], 
-        columns=['Last'],
-        index=corr.index
-    )
-
-    for x in result_bottom.columns:
-        result_bottom[x+"_Val"] = corr.lookup(corr.index, result_bottom[x])
-    result_bottom.sort_values(by=['Last_Val'], inplace=True)
-
-    return corr, result_bottom
+    return corr

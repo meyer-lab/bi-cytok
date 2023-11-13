@@ -13,9 +13,9 @@ path_here = dirname(dirname(__file__))
 def makeFigure():
     ax, f = getSetup((6, 3), (1, 2))
 
-    signal = ['CD25', 1]
-    allTargets = [[('CD25', 1)], [('CD25', 1), ('CD278', 1)], [('CD25', 1), ('CD278', 1), ('CD4-2', 1)],
-        [('CD25', 4)], [('CD25', 4), ('CD278', 4)], [('CD25', 4), ('CD278', 4), ('CD4-2', 4)]]
+    signal = ['CD122', 1]
+    allTargets = [[('CD25', 4)], [('CD25', 4), ('CD278', 4)], [('CD25', 4), ('CD4-2', 4)],
+        [('CD25', 4), ('CD45RB', 4)], [('CD25', 4), ('GP130', 4)], [('CD25', 4), ('CD3-1', 4)]]
 
     cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
         'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
