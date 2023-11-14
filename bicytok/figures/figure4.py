@@ -20,6 +20,7 @@ from .common import calculate_kl_divergence_2D
 from .common import KL_divergence_2D
 from .common import KLD_clustermap
 from .common import EMD_clustermap
+from ..selectivityFuncs import getSampleAbundances, optimizeDesign, selecCalc, get_rec_vecs, minSelecFunc
 
 
 
@@ -33,8 +34,72 @@ def makeFigure():
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
     ax, f = getSetup((40, 40), (1,1)) 
-    target_cells = 'Treg'  
+    cell_types = set()  # Using a set to store unique values
+
+    for column in ['CellType1', 'CellType2', 'CellType3']:
+        if column in new_df.columns:
+            cell_types.update(new_df[column].tolist())
+    cell_types = list(cell_types) 
+    # parameters for selectivity 
+    
+    selectedDF = getSampleAbundances(receptors, cell_types, "CellType3")
+    targCell1 = 'Treg'
+    targCell2 = 'CD8 T'
+    offTCells1 = [cell for cell in cell_types if cell != targCell1]
+    offTCells2 = [cell for cell in cell_types if cell != targCell2]
+    offTCells1 = np.array(offTCells1)
+    offTCells2 = np.array(offTCells2)
+    valency = 2
+    prevOptAffs = [8.0, 8.0, 8.0]
+    doseVec = np.logspace(-3, 3, num=20)
+    secondary = 'CD122'
+    resultsTreg = []
+    resultsCD8T = []
+    for _, dose in enumerate(doseVec):
+        print ('slay0')
+        for receptor in receptors:
+            epitope = receptor 
+            selectivity1, _, _ = optimizeDesign(secondary, epitope, targCell1, offTCells1, selectedDF, dose, valency, prevOptAffs)
+            print ('slay1')
+            selectivity2, _, _ = optimizeDesign(secondary, epitope, targCell2, offTCells2, selectedDF, dose, valency, prevOptAffs)
+            print ('slay2')
+            resultsTreg.append({'Epitope': epitope, 'Dose': dose, 'Selectivity': selectivity1})
+            resultsCD8T.append({'Epitope': epitope, 'Dose': dose, 'Selectivity': selectivity2})
+
+
+
+
+    print ('slay3')
+    sorted_results_Treg = sorted(resultsTreg, key=lambda x: x['Selectivity'], reverse=True)[:10]
+    top_epitopes_Treg = [result['Epitope'] for result in sorted_results_Treg]
+    top_selectivity_values_Treg = [result['Selectivity'] for result in sorted_results_Treg]
+
+    # Fetch top 10 epitopes with highest selectivity values for CD8 T
+    sorted_results_CD8T = sorted(resultsCD8T, key=lambda x: x['Selectivity'], reverse=True)[:10]
+    top_epitopes_CD8T = [result['Epitope'] for result in sorted_results_CD8T]
+    top_selectivity_values_CD8T = [result['Selectivity'] for result in sorted_results_CD8T]
+
+    # Plotting the top 10 selectivity values for Treg and CD8 T
+    ax[0].barh(np.arange(10), top_selectivity_values_Treg, color='blue', alpha=0.6, label='Treg')
+    ax[0].barh(np.arange(10), top_selectivity_values_CD8T, color='orange', alpha=0.6, label='CD8 T')
+
+    # Adding labels for epitopes to the plot
+    for i, (value, epitope) in enumerate(zip(top_selectivity_values_Treg, top_epitopes_Treg)):
+        ax[0].text(value, i, f'{epitope}', ha='right', va='center', fontsize=8, color='blue')
+
+    for i, (value, epitope) in enumerate(zip(top_selectivity_values_CD8T, top_epitopes_CD8T)):
+        ax[0].text(value, i, f'{epitope}', ha='left', va='center', fontsize=8, color='orange')
+
+    # Adjusting plot aesthetics
+    ax[0].set_yticks(np.arange(10))
+    ax[0].set_yticklabels(np.arange(1, 11))
+    ax[0].set_xlabel('Selectivity')
+    ax[0].set_title('Top 10 Selectivity Values for Treg and CD8 T')
+    ax[0].legend()
+
+
     '''
+    target_cells = 'Treg'  
     # EMD_2D(new_df, 'CD25', target_cells, ax = ax[0]) 
     # KL_divergence_2D(new_df, 'CD25', target_cells, ax[0])
     # receptors = ['CD25', 'CD8', 'CD122', 'CD35', 'CD314']
@@ -96,7 +161,7 @@ def makeFigure():
     ax[0].legend(loc='upper right', fontsize=20)
     '''
     
-    EMD_3D(new_df, target_cells, ax[0]) # just run this one line for 2D with Treg
+    # EMD_3D(new_df, target_cells, ax[0]) # just run this one line for 2D with Treg
 
 
  
