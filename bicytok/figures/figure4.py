@@ -58,13 +58,12 @@ def makeFigure():
     for _, dose in enumerate(doseVec):
         print ('slay0')
         for receptor in receptors:
-            epitope = receptor 
-            selectivity1, _, _ = optimizeDesign(secondary, epitope, targCell1, offTCells1, selectedDF, dose, valency, prevOptAffs)
+            selectivity1, _, _ = optimizeDesign(secondary, receptor, targCell1, offTCells1, selectedDF, dose, valency, prevOptAffs)
             print ('slay1')
-            selectivity2, _, _ = optimizeDesign(secondary, epitope, targCell2, offTCells2, selectedDF, dose, valency, prevOptAffs)
+            selectivity2, _, _ = optimizeDesign(secondary, receptor, targCell2, offTCells2, selectedDF, dose, valency, prevOptAffs)
             print ('slay2')
-            resultsTreg.append({'Epitope': epitope, 'Dose': dose, 'Selectivity': selectivity1})
-            resultsCD8T.append({'Epitope': epitope, 'Dose': dose, 'Selectivity': selectivity2})
+            resultsTreg.append({'Epitope': receptor, 'Dose': dose, 'Selectivity': selectivity1})
+            resultsCD8T.append({'Epitope': receptor, 'Dose': dose, 'Selectivity': selectivity2})
 
 
 
