@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 from ..selectivityFuncs import get_cell_bindings, getSampleAbundances, get_rec_vecs, optimizeDesign, minSelecFunc
 from ..imports import importCITE
+from random import sample
 
 path_here = dirname(dirname(__file__))
 
@@ -18,7 +19,7 @@ def makeFigure():
 
     signal_receptor = 'CD122'
     signal_valency = 1
-    valencies = [1, 2, 3, 4]
+    valencies = [1, 2, 4]
     allTargets = [['CD25', 'CD278'], ['CD25', 'CD4-2'], ['CD25', 'CD45RB'], ['CD25', 'CD81'], ['CD278', 'CD4-2'],
         ['CD278', 'CD45RB'], ['CD278', 'CD81'], ['CD4-2', 'CD45RB'], ['CD4-2', 'CD81'], ['CD45RB', 'CD81']]
     dose = 10e-2
@@ -31,6 +32,14 @@ def makeFigure():
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells)
+
+    targetSize = 50
+    i = len(allTargets)
+    while i < targetSize:
+        targs = sample(epitopes, 2)
+        if not targs in allTargets:
+            allTargets.append(targs)
+            i += 1
 
     df = pd.DataFrame(columns=['KL Divergence', "Earth Mover's Distance", 'Correlation', 'Selectivity', 'Valency'])
 
