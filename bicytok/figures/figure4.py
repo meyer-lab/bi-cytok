@@ -99,7 +99,7 @@ def makeFigure():
     EMD_3D(new_df, target_cells, ax[0]) # just run this one line for 2D with Treg
 
 
-
+ 
 
     ''' 
     resultsEMD2D = [] 
