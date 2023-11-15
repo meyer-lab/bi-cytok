@@ -42,13 +42,15 @@ def makeFigure():
     cell_types = list(cell_types) 
     # parameters for selectivity 
     
-    selectedDF = getSampleAbundances(receptors, cell_types, "CellType3")
+    selectedDF = getSampleAbundances(receptors, cell_types, "CellType2") #figure out what column cd 8 t and treg are defined in 
     targCell1 = 'Treg'
     targCell2 = 'CD8 T'
+    print(new_df.CellType1.unique())
     offTCells1 = [cell for cell in cell_types if cell != targCell1]
     offTCells2 = [cell for cell in cell_types if cell != targCell2]
     offTCells1 = np.array(offTCells1)
     offTCells2 = np.array(offTCells2)
+    print(offTCells2)
     valency = 2
     prevOptAffs = [8.0, 8.0, 8.0]
     doseVec = np.logspace(-3, 3, num=20)
@@ -56,19 +58,15 @@ def makeFigure():
     resultsTreg = []
     resultsCD8T = []
     for _, dose in enumerate(doseVec):
-        print ('slay0')
         for receptor in receptors:
             selectivity1, _, _ = optimizeDesign(secondary, receptor, targCell1, offTCells1, selectedDF, dose, valency, prevOptAffs)
-            print ('slay1')
             selectivity2, _, _ = optimizeDesign(secondary, receptor, targCell2, offTCells2, selectedDF, dose, valency, prevOptAffs)
-            print ('slay2')
             resultsTreg.append({'Epitope': receptor, 'Dose': dose, 'Selectivity': selectivity1})
             resultsCD8T.append({'Epitope': receptor, 'Dose': dose, 'Selectivity': selectivity2})
 
 
 
 
-    print ('slay3')
     sorted_results_Treg = sorted(resultsTreg, key=lambda x: x['Selectivity'], reverse=True)[:10]
     top_epitopes_Treg = [result['Epitope'] for result in sorted_results_Treg]
     top_selectivity_values_Treg = [result['Selectivity'] for result in sorted_results_Treg]

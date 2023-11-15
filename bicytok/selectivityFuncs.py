@@ -174,16 +174,6 @@ bispecOpt_Vec = np.vectorize(cytBindingModel_bispecOpt)
 
 
 def minSelecFunc(recXaff: float, secondary: string, epitope: string, targRecs: np.array, offTRecs: np.array, dose: float, valency: int):
-    print ('recxaff:', recXaff)
-    print ('secondary:', secondary)
-    print ('epitope:', epitope)
-    print ('targRecs:', targRecs)
-    print ('offTRecs:', offTRecs)
-    print ('dose:', dose)
-    print ('valency:', valency)
-
-
-
     """Serves as the function which will have its return value minimized to get optimal selectivity
     To be used in conjunction with optimizeDesign()
     Args:
@@ -193,24 +183,17 @@ def minSelecFunc(recXaff: float, secondary: string, epitope: string, targRecs: n
         selectivity: value will be minimized, defined as ratio of off target to on target signaling
     """
     minSelecFunc.targetBound = 0
-    print ('work1')
     offTargetBound = 0
 
     if secondary == 'CD122':
         minSelecFunc.targetBound = np.sum(bispecOpt_Vec(secondary, epitope, targRecs[0, :], targRecs[1, :], targRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, valency))
-        print ('work2')
         offTargetBound = np.sum(bispecOpt_Vec(secondary, epitope, offTRecs[0, :], offTRecs[1, :], offTRecs[1, :], recXaff[0], recXaff[1], recXaff[2], dose, valency))
-        print ('work3')
     else:
         minSelecFunc.targetBound = np.sum(bispecOpt_Vec(secondary, epitope, targRecs[0, :], targRecs[1, :], None, recXaff[0], recXaff[1], None, dose, valency))
-        print ('work4')
         offTargetBound = np.sum(bispecOpt_Vec(secondary, epitope, offTRecs[0, :], offTRecs[1, :], None, recXaff[0], recXaff[1], None, dose, valency))
-        print ('work5')
-    print ('work6')
+
     minSelecFunc.targetBound /= targRecs.shape[0]
-    print ('work7')
     offTargetBound /= offTRecs.shape[0]
-    print ('work8')
 
     return offTargetBound / minSelecFunc.targetBound
 
@@ -232,7 +215,13 @@ def optimizeDesign(secondary: string, epitope: string, targCell: string, offTCel
         optBnds = Bounds(np.full_like(X0, [6.0, 6.0, 6.0]), np.full_like(X0, [9.0, 9.0, 9.0]))
     else:
         optBnds = Bounds(np.full_like(X0, [6.0, 6.0]), np.full_like(X0, [9.0, 9.0]))
+
+    
+    #possibly loop over this so new epitope each time 
+
     targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, secondary, epitope)
+    
+
     print('Optimize')
     optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(secondary, epitope, targRecs, offTRecs, dose, valency), jac="3-point")
     print('Done')
@@ -333,7 +322,6 @@ def get_rec_vecs(df: pd.DataFrame, targCell: string, offTCells: list, secondary:
         df2 = df.loc[(df.Epitope == epitope)]
     else:
         df2 = df.loc[(df.Epitope == 'CD25')]
-
     cd25CountTarg = np.zeros(df2[targCell].item().size)
     secondaryCountTarg = np.zeros(df2[targCell].item().size)
     epCountvecTarg = np.zeros(df2[targCell].item().size)
@@ -350,6 +338,8 @@ def get_rec_vecs(df: pd.DataFrame, targCell: string, offTCells: list, secondary:
             cd25CountOffT = np.append(cd25CountOffT, cd25DF[cellT].item()[i])
             secondaryCountOffT = np.append(secondaryCountOffT, secondaryDF[cellT].item()[i])
             epCountvecOffT = np.append(epCountvecOffT, epCount)
+
+
 
     return np.array([cd25CountTarg, secondaryCountTarg, epCountvecTarg]), np.array([cd25CountOffT, secondaryCountOffT, epCountvecOffT])
 
