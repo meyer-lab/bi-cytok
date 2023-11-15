@@ -174,6 +174,16 @@ bispecOpt_Vec = np.vectorize(cytBindingModel_bispecOpt)
 
 
 def minSelecFunc(recXaff: float, secondary: string, epitope: string, targRecs: np.array, offTRecs: np.array, dose: float, valency: int):
+    print ('recxaff:', recXaff)
+    print ('secondary:', secondary)
+    print ('epitope:', epitope)
+    print ('targRecs:', targRecs)
+    print ('offTRecs:', offTRecs)
+    print ('dose:', dose)
+    print ('valency:', valency)
+
+
+
     """Serves as the function which will have its return value minimized to get optimal selectivity
     To be used in conjunction with optimizeDesign()
     Args:
@@ -183,17 +193,24 @@ def minSelecFunc(recXaff: float, secondary: string, epitope: string, targRecs: n
         selectivity: value will be minimized, defined as ratio of off target to on target signaling
     """
     minSelecFunc.targetBound = 0
+    print ('work1')
     offTargetBound = 0
 
     if secondary == 'CD122':
         minSelecFunc.targetBound = np.sum(bispecOpt_Vec(secondary, epitope, targRecs[0, :], targRecs[1, :], targRecs[2, :], recXaff[0], recXaff[1], recXaff[2], dose, valency))
+        print ('work2')
         offTargetBound = np.sum(bispecOpt_Vec(secondary, epitope, offTRecs[0, :], offTRecs[1, :], offTRecs[1, :], recXaff[0], recXaff[1], recXaff[2], dose, valency))
+        print ('work3')
     else:
         minSelecFunc.targetBound = np.sum(bispecOpt_Vec(secondary, epitope, targRecs[0, :], targRecs[1, :], None, recXaff[0], recXaff[1], None, dose, valency))
+        print ('work4')
         offTargetBound = np.sum(bispecOpt_Vec(secondary, epitope, offTRecs[0, :], offTRecs[1, :], None, recXaff[0], recXaff[1], None, dose, valency))
-
+        print ('work5')
+    print ('work6')
     minSelecFunc.targetBound /= targRecs.shape[0]
+    print ('work7')
     offTargetBound /= offTRecs.shape[0]
+    print ('work8')
 
     return offTargetBound / minSelecFunc.targetBound
 
