@@ -46,7 +46,7 @@ def makeFigure():
     selectedDF2 = getSampleAbundances(receptors, cell_types, "CellType1") #figure out what column cd 8 t and treg are defined in 
     targCell1 = 'Treg'
     targCell2 = 'CD8 T'
-    print(new_df.CellType1.unique())
+
     offTCells1 = [cell for cell in cell_types if cell != targCell1]
     offTCells2 = [cell for cell in cell_types if cell != targCell2]
     offTCells1 = np.array(offTCells1)
@@ -58,6 +58,7 @@ def makeFigure():
     secondary = 'CD122'
     resultsTreg = []
     resultsCD8T = []
+
     for _, dose in enumerate(doseVec):
         for receptor in receptors:
             selectivity1, _, _ = optimizeDesign(secondary, receptor, targCell1, offTCells1, selectedDF1, dose, valency, prevOptAffs)

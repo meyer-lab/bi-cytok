@@ -38,7 +38,7 @@ def getSampleAbundances(epitopes: list, cellList: list, cellCat="CellType2"):
     for cellType in cellList:
         cellSample = []
         for i in np.arange(10):  # Averaging results of 10
-            sampleDF = CITE_DF.sample(161000, random_state=42)  # Of 1000 cells in the sample...
+            sampleDF = CITE_DF.sample(2000, random_state=42)  # Of 1000 cells in the sample...
             sampleSize = int(len(sampleDF.loc[sampleDF[cellCat] == cellType]))  # ...How many are this cell type
             cellSample.append(sampleSize)  # Sample size is equivalent to represented cell count out of 1000 cells
         meanSize = np.mean(cellSample)
