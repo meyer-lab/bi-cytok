@@ -58,13 +58,15 @@ def makeFigure():
     secondary = 'CD122'
     resultsTreg = []
     resultsCD8T = []
+    dose = .5
 
-    for _, dose in enumerate(doseVec):
-        for receptor in receptors:
-            selectivity1, _, _ = optimizeDesign(secondary, receptor, targCell1, offTCells1, selectedDF1, dose, valency, prevOptAffs)
-            selectivity2, _, _ = optimizeDesign(secondary, receptor, targCell2, offTCells2, selectedDF2, dose, valency, prevOptAffs)
-            resultsTreg.append({'Epitope': receptor, 'Dose': dose, 'Selectivity': selectivity1})
-            resultsCD8T.append({'Epitope': receptor, 'Dose': dose, 'Selectivity': selectivity2})
+    #for _, dose in enumerate(doseVec):
+    #for receptor in receptors:
+    for receptor in receptors[:10]:
+        selectivity1, _, _ = optimizeDesign(secondary, receptor, targCell1, offTCells1, selectedDF1, dose, valency, prevOptAffs)
+        selectivity2, _, _ = optimizeDesign(secondary, receptor, targCell2, offTCells2, selectedDF2, dose, valency, prevOptAffs)
+        resultsTreg.append({'Epitope': receptor, 'Dose': dose, 'Selectivity': selectivity1})
+        resultsCD8T.append({'Epitope': receptor, 'Dose': dose, 'Selectivity': selectivity2})
 
 
 
@@ -73,28 +75,36 @@ def makeFigure():
     top_epitopes_Treg = [result['Epitope'] for result in sorted_results_Treg]
     top_selectivity_values_Treg = [result['Selectivity'] for result in sorted_results_Treg]
 
+    print('sorted_results_Treg:', sorted_results_Treg)
     # Fetch top 10 epitopes with highest selectivity values for CD8 T
     sorted_results_CD8T = sorted(resultsCD8T, key=lambda x: x['Selectivity'], reverse=True)[:10]
     top_epitopes_CD8T = [result['Epitope'] for result in sorted_results_CD8T]
     top_selectivity_values_CD8T = [result['Selectivity'] for result in sorted_results_CD8T]
+    print('sorted_results_CD8T:', sorted_results_CD8T)
 
-    # Plotting the top 10 selectivity values for Treg and CD8 T
-    ax[0].barh(np.arange(10), top_selectivity_values_Treg, color='blue', alpha=0.6, label='Treg')
-    ax[0].barh(np.arange(10), top_selectivity_values_CD8T, color='orange', alpha=0.6, label='CD8 T')
+    bar_width = 0.4  # Width of the bars
 
-    # Adding labels for epitopes to the plot
+    # Plotting the top 10 selectivity values for Treg on ax[0]
+    ax[0].barh(np.arange(10), top_selectivity_values_Treg, height=bar_width, color='blue', alpha=0.6, label='Treg')
+
+    # Plotting the top 10 selectivity values for CD8 T on ax[0] with an offset
+    ax[0].barh(np.arange(10) + bar_width, top_selectivity_values_CD8T, height=bar_width, color='orange', alpha=0.6, label='CD8 T')
+
+    # Adding labels for epitopes to the plot for Treg on ax[0]
     for i, (value, epitope) in enumerate(zip(top_selectivity_values_Treg, top_epitopes_Treg)):
-        ax[0].text(value, i, f'{epitope}', ha='right', va='center', fontsize=8, color='blue')
+        ax[0].text(value, i, f'{epitope}', ha='right', va='center', fontsize=15, color='blue')
 
+    # Adding labels for epitopes to the plot for CD8 T on ax[0]
     for i, (value, epitope) in enumerate(zip(top_selectivity_values_CD8T, top_epitopes_CD8T)):
-        ax[0].text(value, i, f'{epitope}', ha='left', va='center', fontsize=8, color='orange')
+        ax[0].text(value, i + bar_width, f'{epitope}', ha='left', va='center', fontsize=15, color='red')
 
-    # Adjusting plot aesthetics
-    ax[0].set_yticks(np.arange(10))
-    ax[0].set_yticklabels(np.arange(1, 11))
-    ax[0].set_xlabel('Selectivity')
-    ax[0].set_title('Top 10 Selectivity Values for Treg and CD8 T')
-    ax[0].legend()
+    # Adjusting plot aesthetics on ax[0]
+    ax[0].set_yticks(np.arange(10) + bar_width / 2)
+    ax[0].set_yticklabels(np.arange(1, 11), fontsize=15)
+    ax[0].set_xlabel('Selectivity', fontsize=15)
+    ax[0].set_ylabel('Epitope Rank', fontsize=15)
+    ax[0].set_title('Top 10 Selectivity Values for Treg and CD8 T', fontsize=15)
+    ax[0].legend(fontsize=15)
 
 
     '''
@@ -198,4 +208,4 @@ def makeFigure():
     # f = KLD_clustermap(pivot_tableKL) 
     
     '''
-    return f     
+    return f    
