@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 from ..selectivityFuncs import get_cell_bindings, getSampleAbundances, get_rec_vecs, optimizeDesign, minSelecFunc
 from ..imports import importCITE
-from random import sample
+from random import sample, seed
 
 path_here = dirname(dirname(__file__))
 
@@ -15,7 +15,7 @@ def makeFigure():
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()
-    new_df = CITE_DF.sample(1000, random_state=42)
+    new_df = CITE_DF.sample(10000, random_state=42)
 
     signal_receptor = 'CD122'
     signal_valency = 1
@@ -31,9 +31,9 @@ def makeFigure():
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList['Epitope'].unique())
-    epitopesDF = getSampleAbundances(epitopes, cells)
+    epitopesDF = getSampleAbundances(epitopes, cells, numCells=10000)
 
-    targetSize = 50
+    targetSize = 30
     i = len(allTargets)
     while i < targetSize:
         targs = sample(epitopes, 2)
@@ -70,6 +70,5 @@ def makeFigure():
     sns.lineplot(data=df, x='Correlation', y='Selectivity', hue='Valency', ax=ax[2])
     ax[0].set(xscale='log')
     ax[1].set(xscale='log')
-    ax[2].set(xscale='log')
 
     return f

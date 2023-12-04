@@ -217,8 +217,14 @@ def optimizeDesign(signal: string, targets: list, targCell: string, offTCells: l
         optSelectivity: optimized selectivity value. Can also be modified to return optimized affinity parameter.
      """
     X0 = prevOptAffs
+    minAffs = [7.0]
+    maxAffs = [9.0]
+
+    for target in targets:
+        minAffs.append(7.0)
+        maxAffs.append(9.0)
     
-    optBnds = Bounds(np.full_like(X0, [6.0, 6.0, 6.0]), np.full_like(X0, [9.0, 9.0, 9.0]))
+    optBnds = Bounds(np.full_like(X0, minAffs), np.full_like(X0, maxAffs))
     targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, signal, targets)
     print('Optimize')
     optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(signal, targets, targRecs, offTRecs, dose, valencies), jac="3-point")
