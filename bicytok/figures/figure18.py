@@ -13,7 +13,7 @@ from scipy import stats
 path_here = dirname(dirname(__file__))
 
 def makeFigure():
-    ax, f = getSetup((30, 2), (1, 2))
+    ax, f = getSetup((12, 4), (1, 2))
 
     CITE_DF = importCITE()
     new_df = CITE_DF.sample(10000, random_state=42)
