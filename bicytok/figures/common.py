@@ -570,7 +570,7 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
 
 def KLD_clustermap(dataset):
     dataset = dataset.fillna(0)
-    return (sns.clustermap(dataset, cmap='viridis', figsize=(80,80)))
+    return (sns.clustermap(dataset, cmap='bwr', figsize=(10,10), annot_kws={'fontsize': 12}))
 
 def plot_kl_divergence_curves(dataset, signal_receptor, special_receptor, target_cells, ax):
     weightDF = convFactCalc()
