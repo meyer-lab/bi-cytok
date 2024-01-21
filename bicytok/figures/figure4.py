@@ -27,7 +27,7 @@ from ..selectivityFuncs import getSampleAbundances, optimizeDesign, selecCalc, g
 path_here = dirname(dirname(__file__))
 
 def makeFigure():  
-    markerDF = importCITE()
+    markerDF = importCITE() 
     new_df = markerDF.head(1000)
     receptors = []
     for column in new_df.columns:
@@ -53,7 +53,7 @@ def makeFigure():
     
    
     
-    f = EMD_clustermap(pivot_table) 
+    f = EMD_clustermap(pivot_table)
     f.ax_heatmap.set_xticklabels(f.ax_heatmap.get_xticklabels(), fontsize=12)
     f.ax_heatmap.set_yticklabels(f.ax_heatmap.get_yticklabels(), fontsize=12)
     f.fig.suptitle("Top EMD2D values for Treg Cells", fontsize=16)
