@@ -33,7 +33,7 @@ def makeFigure():
     for column in new_df.columns:
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
-    ax, f = getSetup((40, 40), (1,1)) 
+    ax, f = getSetup((10, 10), (1,1)) 
     
     target_cells = 'Treg' 
 
@@ -54,7 +54,9 @@ def makeFigure():
    
     
     f = EMD_clustermap(pivot_table) 
-    
+    f.ax_heatmap.set_xticklabels(f.ax_heatmap.get_xticklabels(), fontsize=12)
+    f.ax_heatmap.set_yticklabels(f.ax_heatmap.get_yticklabels(), fontsize=12)
+    f.fig.suptitle("Top EMD2D values for Treg Cells", fontsize=16)
     
     
     '''
