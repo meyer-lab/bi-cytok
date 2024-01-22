@@ -28,7 +28,9 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():  
     markerDF = importCITE() 
-    new_df = markerDF.head(1000)
+    #new_df = markerDF.head(1000)
+    new_df = markerDF.sample(n=5000, random_state=42)
+
     receptors = []
     for column in new_df.columns:
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:

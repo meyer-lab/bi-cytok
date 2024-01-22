@@ -246,7 +246,7 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
             a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
             b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
 
-            optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
+            optimal_transport = ot.emd2(a, b, M, numItermax=1000000000)
             results.append((optimal_transport, receptor_name, signal_receptor))
         else:
             results.append((0, receptor_name, signal_receptor))
