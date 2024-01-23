@@ -40,7 +40,7 @@ def makeFigure():
     '''
     receptors = ['TCR-2', 'CD357', 'CD95', 'CD68', 'CD370', 'CD126', 'CD62E', 'TIGIT', 'Siglec-8', 'CD4-2', 'Rat-IgG1-1', 'B7-H4', 'CD178', 'CD122', 'CD223', 'CD126', 'TCR-V-24-J-18', 'CD27', 'CD4-1', 'CD25', 'CD278', 'CD294']
     target_cells = 'Treg' 
-    
+    '''
     resultsEMD2D = [] 
     for receptor in receptors:
         val = EMD_2D(new_df, receptor, target_cells, ax = None)  
@@ -64,19 +64,21 @@ def makeFigure():
     f.ax_heatmap.set_ylabel(f.ax_heatmap.get_ylabel(), fontsize=16)
     f.fig.suptitle("Top EMD 2D values for Treg Cells", fontsize=20)
     
-    '''
+    ''' 
     resultsKL = [] 
     for receptor in receptors:
         val = KL_divergence_2D(new_df, receptor, target_cells, ax = None) 
         resultsKL.append(val)
     flattened_resultsKL = [result_tuple for inner_list in resultsKL for result_tuple in inner_list]
     df_recep = pd.DataFrame(flattened_resultsKL, columns=['KLD', 'Receptor', 'Signal Receptor'])
-    pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
+    df_recep_top100 = df_recep.nlargest(100, 'KLD')
+
+    pivot_tableKL = df_recep_top100.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
     f = KLD_clustermap(pivot_tableKL) 
     f.ax_heatmap.set_xticklabels(f.ax_heatmap.get_xticklabels(), fontsize=12)
     f.ax_heatmap.set_yticklabels(f.ax_heatmap.get_yticklabels(), fontsize=12)
     f.ax_heatmap.set_xlabel(f.ax_heatmap.get_xlabel(), fontsize=16)
     f.ax_heatmap.set_ylabel(f.ax_heatmap.get_ylabel(), fontsize=16)
     f.fig.suptitle("Top 2D KL values for Treg Cells", fontsize=20)
-    '''
+    
     return f    
