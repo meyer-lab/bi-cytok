@@ -10,20 +10,15 @@ from ..imports import importCITE
 
 path_here = dirname(dirname(__file__))
 
+plt.rcParams["svg.fonttype"] = "none"
+
 def makeFigure():
-    ax, f = getSetup((12, 6), (1, 2))
+    ax, f = getSetup((6, 3), (1, 2))
 
     signal = ['CD122', 1]
-    allTargets = [[('CD25', 1)], [('CD278', 1)], [('CD25', 1), ('CD278', 1)], [('CD278', 1), ('CD45RB', 1)],
-        [('CD278', 1), ('CD81', 1)], [('CD278', 1), ('CD4-2', 1)], [('CD25', 1), ('CD278', 1), ('CD45RB', 1)],
-        [('CD25', 1), ('CD278', 1), ('CD81', 1)], [('CD25', 1), ('CD278', 1), ('CD4-2', 1)],
-        [('CD25', 4)], [('CD278', 4)], [('CD25', 4), ('CD278', 4)], [('CD278', 4), ('CD45RB', 4)],
-        [('CD278', 4), ('CD81', 4)], [('CD278', 4), ('CD4-2', 4)], [('CD25', 4), ('CD278', 4), ('CD45RB', 4)],
-        [('CD25', 4), ('CD278', 4), ('CD81', 4)], [('CD25', 4), ('CD278', 4), ('CD4-2', 4)]]
-
-    """wt105Aff = 1.1e-1
-    wt109Aff = 5.4e-2
-    affs = [wt105Aff, wt109Aff]"""
+    allTargets = [[('CD25', 1)], [('CD25', 4)], [('CD25', 1), ('CD278', 1)], [('CD25', 4), ('CD278', 4)],
+        [('CD25', 1), ('CD27', 1)], [('CD25', 4), ('CD27', 4)], [('CD25', 1), ('CD146', 1)], [('CD25', 4), ('CD146', 4)],
+        [('CD25', 1), ('TIGIT', 1)], [('CD25', 4), ('TIGIT', 4)], [('CD25', 1), ('CD278', 1), ('CD27', 1)], [('CD25', 4), ('CD278', 4), ('CD27', 4)]]
 
     cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
         'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
@@ -39,6 +34,7 @@ def makeFigure():
     df2 = pd.DataFrame(columns=['Ligand', 'Dose', 'Affinities'])
 
     for targetPairs in allTargets:
+        print(targetPairs)
         prevOptAffs = [8.0]
         valencies = [signal[1]]
         targets = []
