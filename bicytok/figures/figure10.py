@@ -1,16 +1,12 @@
-from os.path import dirname, join
-from .common import getSetup
 import pandas as pd
 import seaborn as sns
 import numpy as np
-import scipy
 
+from .common import getSetup, Figure
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign, minSelecFunc, get_rec_vecs
-from ..imports import importCITE
 
-path_here = dirname(dirname(__file__))
 
-def makeFigure():
+def makeFigure() -> Figure:
     """Get a list of the axis objects and create a figure"""
     il2 = ['CD122', 'CD25', 8.222, 7.65072247, 9.14874165]
     il7 = ['CD127', None, 9.14874165, 7.14266751, None]
@@ -22,12 +18,12 @@ def makeFigure():
     wtSecondaryAff = il2[3]
     wtEpitopeAff = il2[4]
 
-    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList['Epitope'].unique())
 
     targCell = 'Treg'
-    cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
-    'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
+    cells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
+    'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright']
     offTCells = cells[cells != targCell]
 
     doseVec = np.logspace(-3, 3, num=20)

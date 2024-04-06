@@ -36,13 +36,11 @@ def makeFigure():
     targRecs[2, :] = 0
     offTRecs[2, :] = 0
     baseSelectivity = 1 / minSelecFunc([8, 8, 8], "CD122", "CD25", targRecs, offTRecs, 0.1, 2)
-    print(baseSelectivity)
 
     for i, epitope in enumerate(epitopesDF['Epitope']):
         # New form
         optSelectivity = 1 / (optimizeDesign("CD122", "CD25", targCell, offTCells, epitopesDF, 1, 2, [8, 8, 8]))[0]
         epitopesDF.loc[epitopesDF['Epitope'] == epitope, 'Selectivity'] = optSelectivity  # Store selectivity in DF to be used for plots
-        print(optSelectivity)
 
 
     # generate figures
@@ -51,7 +49,7 @@ def makeFigure():
     epitopesDF = epitopesDF.sort_values(by=['Selectivity'])
     xvalues = epitopesDF['Epitope']
     yvalues = ((epitopesDF['Selectivity'] / baseSelectivity) * 100) - 100
-    print(yvalues)
+
     cmap = sns.color_palette("husl", 10)
     sns.barplot(x=xvalues, y=yvalues, palette=cmap, ax=ax[0]).set_title('Title')
     ax[0].set_ylabel("Selectivity (% increase over standard IL2)")

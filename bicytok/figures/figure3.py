@@ -61,13 +61,6 @@ def makeFigure():
     # convert to np maybe? works.
     affinity_values1 = np.array(affinity_values1)
     affinity_values2 = np.array(affinity_values2)
-    
-    # check lengths
-    print(len(doseVec))
-    print(len(selectivity_values1))
-    print(len(selectivity_values2))
-    print(len(affinity_values1))
-    print(len(affinity_values2))
 
     # Plot the optimal affinity and optimal selectivity you get at each dose
     sns.lineplot(x=doseVec, y=selectivity_values1, ax=ax[0], label='Selectivity for bivalent')

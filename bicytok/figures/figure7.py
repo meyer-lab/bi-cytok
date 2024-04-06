@@ -1,15 +1,14 @@
 from os.path import dirname, join
-from .common import getSetup
+from .common import getSetup, Figure
 import pandas as pd
 import seaborn as sns
 import numpy as np
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign, minSelecFunc, get_rec_vecs
-from ..imports import importCITE
 
 path_here = dirname(dirname(__file__))
 
 
-def makeFigure():
+def makeFigure() -> Figure:
     """Get a list of the axis objects and create a figure"""
     ax, f = getSetup((4, 5), (1, 1))
 

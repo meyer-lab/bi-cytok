@@ -8,6 +8,7 @@ import seaborn as sns
 import numpy as np
 import matplotlib
 from matplotlib import gridspec, pyplot as plt
+from matplotlib.figure import Figure
 import pandas as pd
 from ..imports import importCITE
 from sklearn.neighbors import KernelDensity
@@ -15,10 +16,8 @@ from scipy import stats
 import ot
 import ot.plot
 from ..selectivityFuncs import convFactCalc
-from ..selectivityFuncs import convFactCalc
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign
-from scipy.stats import norm
-from scipy.cluster import hierarchy
+
 
 matplotlib.rcParams["legend.labelspacing"] = 0.2
 matplotlib.rcParams["legend.fontsize"] = 8
@@ -36,7 +35,7 @@ matplotlib.rcParams["legend.borderpad"] = 0.35
 dosemat = np.array([84, 28, 9.333333, 3.111, 1.037037, 0.345679, 0.115226, 0.038409, 0.012803, 0.004268, 0.001423, 0.000474])
 
 
-def getSetup(figsize, gridd, multz=None, empts=None):
+def getSetup(figsize, gridd, multz=None, empts=None) -> tuple:
     """Establish figure set-up with subplots."""
     sns.set(style="whitegrid", font_scale=0.7, color_codes=True, palette="colorblind", rc={"grid.linestyle": "dotted", "axes.linewidth": 0.6})
 

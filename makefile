@@ -7,7 +7,7 @@ flist = $(wildcard bicytok/figures/figure*.py)
 all: $(patsubst bicytok/figures/figure%.py, output/figure%.svg, $(flist))
 
 output/figure%.svg: bicytok/figures/figure%.py
-	mkdir -p ./output
+	@ mkdir -p ./output
 	poetry run fbuild $*
 
 clean:
@@ -22,3 +22,6 @@ testprofile:
 
 coverage.xml:
 	poetry run pytest --junitxml=junit.xml --cov=bicytok --cov-report xml:coverage.xml
+
+mypy:
+	poetry run mypy --install-types --non-interactive --ignore-missing-imports bicytok

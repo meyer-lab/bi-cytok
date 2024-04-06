@@ -6,9 +6,9 @@ jobs:
   build:
     runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Install dependencies
-      run: poetry install --no-interaction
+      run: poetry install
     - name: Run tests
       run: make coverage.xml
     - name: Upload coverage to Codecov

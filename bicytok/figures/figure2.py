@@ -48,7 +48,6 @@ def makeFigure():
 
     cell_type = 'NK'
     top_markers = find_best_markers(cell_type, df)
-    print(f"The top markers for {cell_type} are: {top_markers}")
 
 
     
@@ -95,6 +94,5 @@ def makeFigure():
     initial_guess = [7]
     result = minimize(optimization_function, initial_guess, bounds=[(5, 10)])
     optimized_Kav = result.x[0]
-    print(f"Optimized Kav: {optimized_Kav}")
 
     return fig
