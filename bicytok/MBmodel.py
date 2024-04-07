@@ -141,8 +141,7 @@ def cytBindingModel_bispecOpt(secondary, epitope, IL2RaRecs, secondaryRecs, epit
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     doseVec = np.array(dose)
 
-    affs = np.array([])
-    affs = np.append(affs, np.power(10, recXaff1))
+    affs = np.power(10, recXaff1)
     affs = np.append(affs, np.power(10, recXaff2))
 
     if secondary == 'CD122':

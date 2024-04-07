@@ -216,7 +216,7 @@ def optimizeDesign(secondary: str, epitope: str, targCell: str, offTCells: list,
         optBnds = Bounds(np.full_like(X0, [6.0, 6.0]), np.full_like(X0, [9.0, 9.0]))
     targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, secondary, epitope)
     print('Optimize')
-    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(secondary, epitope, targRecs, offTRecs, dose, valency), jac="3-point")
+    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(secondary, epitope, targRecs, offTRecs, dose, valency), jac="2-point")
     print('Done')
     optSelectivity = optimized.fun
     optParams = optimized.x

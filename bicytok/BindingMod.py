@@ -4,7 +4,7 @@ Implementation of a simple multivalent binding model.
 
 import numpy as np
 from numba import njit
-from scipy.optimize import root
+from scipy.optimize import fixed_point
 
 
 @njit(parallel=False)
@@ -14,7 +14,7 @@ def Req_func2(Req, Rtot, L0: float, KxStar: float, Cplx: np.ndarray, Ctheta, Kav
     Psinorm = (Psi / Psirs)
 
     Rbound = L0 / KxStar * np.sum(Ctheta.reshape(-1, 1) * np.dot(Cplx, Psinorm) * np.exp(np.dot(Cplx, np.log1p(Psirs - 1))), axis=0)
-    return Req + Rbound - Rtot
+    return Rtot - Rbound
 
 
 def commonChecks(L0: float, Rtot: np.ndarray, KxStar: float, Kav: np.ndarray, Ctheta: np.ndarray):
@@ -50,10 +50,10 @@ def polyc(L0: float, KxStar: float, Rtot: np.ndarray, Cplx: np.ndarray, Ctheta: 
     assert Kav.shape[0] == Cplx.shape[1]
     assert Cplx.shape[0] == Ctheta.size
 
+    arggs = (Rtot, L0, KxStar, Cplx.astype(float), Ctheta, Kav)
+
     # Solve Req
-    lsq = root(fun=Req_func2, x0=np.zeros_like(Rtot), args=(Rtot, L0, KxStar, Cplx.astype(float), Ctheta, Kav), method="lm", tol=1e-10)
-    assert lsq.success, "Failure in rootfinding. " + str(lsq)
-    Req = lsq.x
+    Req = fixed_point(Req_func2, np.zeros_like(Rtot), args=arggs)
 
     # Calculate the results
     Psi = np.ones((Kav.shape[0], Kav.shape[1] + 1))

@@ -3,11 +3,7 @@ from .common import getSetup
 import pandas as pd
 import seaborn as sns
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.optimize import least_squares
-from ..selectivityFuncs import get_cell_bindings, getSampleAbundances, get_rec_vecs, optimizeDesign, minSelecFunc
-from ..imports import importCITE
-from pandas.api.types import CategoricalDtype
+from ..selectivityFuncs import getSampleAbundances, optimizeDesign
 
 path_here = dirname(dirname(__file__))
 
@@ -17,7 +13,6 @@ def makeFigure():
 
     secondary = 'CD122'
     epitope = 'CD335'
-    secondaryAff = 6.0
     valency1 = 2
     valency2 = 4
 
