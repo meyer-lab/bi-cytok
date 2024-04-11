@@ -173,7 +173,7 @@ def bindingCalc(df: pd.DataFrame, targCell: string, offTCells: list, betaAffs: n
 bispecOpt_Vec = np.vectorize(cytBindingModel_bispecOpt)
 
 
-def minSelecFunc(recXaff: float, secondary: string, epitope: string, targRecs: np.array, offTRecs: np.array, dose: float, valency: int):
+def minSelecFunc(recXaff: float, secondary: str, epitope: str, targRecs: np.ndarray, offTRecs: np.ndarray, dose: float, valency: int):
     """Serves as the function which will have its return value minimized to get optimal selectivity
     To be used in conjunction with optimizeDesign()
     Args:
@@ -198,7 +198,7 @@ def minSelecFunc(recXaff: float, secondary: string, epitope: string, targRecs: n
     return offTargetBound / minSelecFunc.targetBound
 
 
-def optimizeDesign(secondary: string, epitope: string, targCell: string, offTCells: list, selectedDF: pd.DataFrame, dose: float, valency: int, prevOptAffs: list):
+def optimizeDesign(secondary: str, epitope: str, targCell: str, offTCells: list, selectedDF: pd.DataFrame, dose: float, valency: int, prevOptAffs: list):
     """ A general purzse optimizer used to minimize selectivity output by varying affinity parameter.
     Args:
         targCell: string cell type which is target and signaling is desired (basis of selectivity)
