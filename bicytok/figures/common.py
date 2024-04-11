@@ -336,7 +336,7 @@ def EMD_1D(dataset, target_cells, ax):
     print('The 5 receptors which achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return sorted_results
 
-def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset1, ax1, ax2, ax3, ax4):
+def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, ax1, ax2, ax3, ax4):
     filtered_data_1D = []
     filtered_data_2D = []
     filtered_data_selectivity = []
