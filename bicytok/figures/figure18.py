@@ -12,6 +12,8 @@ from scipy import stats
 
 path_here = dirname(dirname(__file__))
 
+plt.rcParams["svg.fonttype"] = "none"
+
 def makeFigure():
     ax, f = getSetup((12, 4), (1, 2))
 
@@ -23,6 +25,9 @@ def makeFigure():
     epitopes = list(epitopesList['Epitope'].unique())
 
     cells = list(CITE_DF[cellLevel].unique())
+    toRemove = ['Eryth', 'MAIT', 'ASDC', 'Platelet', 'gdT', 'dnT', 'B intermediate', 'CD4 CTL', 'NK Proliferating', 'CD8 Proliferating','CD4 Proliferating']
+    for removed in toRemove:
+        cells.remove(removed)
 
     df = pd.DataFrame(columns=['Cell', 'KL Divergence', "Earth Mover's Distance"])
 
@@ -57,7 +62,7 @@ def makeFigure():
             "Earth Mover's Distance": [EMD]}
         df_temp = pd.DataFrame(data, columns=['Cell', 'KL Marker', 'KL Divergence', 'EMD Marker', "Earth Mover's Distance"])
         df = pd.concat([df, df_temp], ignore_index=True)
-    print(df)
+
     sns.barplot(data=df.sort_values(by=['KL Divergence']), x='KL Marker', y='KL Divergence', ax=ax[0])
     sns.barplot(data=df.sort_values(by=["Earth Mover's Distance"]), x='EMD Marker', y="Earth Mover's Distance", ax=ax[1])
     ax[0].set_xticklabels(labels=ax[0].get_xticklabels(), rotation=45, horizontalalignment='right')
