@@ -137,48 +137,14 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
 
     return output
 
-def cytBindingModel_bispecOpt(secondary, epitope, IL2RaRecs, secondaryRecs, epitopeRecs, recXaff1, recXaff2, recXaff3, dose, val, x=False):
+def cytBindingModel_bispecOpt(recCount: np.ndarray, holder: np.ndarray, dose: float, val: int, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
-    doseVec = np.array(dose)
-
-    affs = pd.DataFrame()
-    affs = np.append(affs, np.power(10, recXaff1))
-    affs = np.append(affs, np.power(10, recXaff2))
-
-    if secondary == 'CD122':
-        affs = np.append(affs, np.power(10, recXaff3))
-        vals = [[val, val, val]]
-
-        if epitope == 'CD25':
-            holder = np.full((3, 2), 1e2)
-            holder[0, 0] = affs[0]
-            holder[1, 1] = affs[1]
-            holder[2, 0] = affs[2]
-            counts = [IL2RaRecs, secondaryRecs]
-        else:
-            holder = np.full((3, 3), 1e2)
-            np.fill_diagonal(holder, affs)
-            counts = [IL2RaRecs, secondaryRecs, epitopeRecs]
-
-    else:
-        vals = [[val, val]]
-        holder = np.full((2, 2), 1e2)
-        np.fill_diagonal(holder, affs)
-        counts = [IL2RaRecs, secondaryRecs]
-
-    affs = holder
-    recCount = np.ravel(counts)
-
     # Check that values are in correct placement, can invert
+    vals = np.full((1, holder.shape[0]), val)
 
-    if doseVec.size == 1:
-        doseVec = np.array([doseVec])
-    output = np.zeros(doseVec.size)
-
-    for i, dose in enumerate(doseVec):
-        if x:
-            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, vals, [1.0], affs)[1][0][1]
-        else:
-            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, vals, [1.0], affs)[1][0][1]
+    if x is False:
+        Kx = getKxStar()
+    else:
+        Kx = np.power(10, x[0])
     
-    return output
+    return polyc(dose / (val * 1e9), Kx, recCount, vals, [1.0], holder)[1][0][1]
