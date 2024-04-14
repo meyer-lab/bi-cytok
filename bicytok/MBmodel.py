@@ -39,9 +39,9 @@ def cytBindingModel(mut, val, doseVec, cellType, x=False, date=False):
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[1][0][1]
+            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[0][0][1]
         else:
-            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[1][0][1]  # IL2RB binding only
+            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[0][0][1]  # IL2RB binding only
     if date:
         convDict = getBindDict()
         if cellType[-1] == "$":  # if it is a binned pop, use ave fit
@@ -72,10 +72,10 @@ def cytBindingModel_basicSelec(counts, x=False, date=False):
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[1][0][1]
+            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[0][0][1]
         else:
             print(dose / 1e9, getKxStar(), recCount, [[val, val]], Affs)
-            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[1][0][1]  # IL2RB binding only
+            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[0][0][1]  # IL2RB binding only
     return output
 
 
@@ -102,9 +102,9 @@ def cytBindingModel_CITEseq(counts, betaAffs, val, mut, x=False, date=False):
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[1][0][1]
+            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[0][0][1]
         else:
-            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[1][0][1]
+            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[0][0][1]
 
     return output
 
@@ -131,54 +131,20 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, val, mut, x=False):
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
+            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, [[val, val, val]], [1.0], Affs)[0][0][1]
         else:
-            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[1][0][1]
+            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, [[val, val, val]], [1.0], Affs)[0][0][1]
 
     return output
 
-def cytBindingModel_bispecOpt(secondary, epitope, IL2RaRecs, secondaryRecs, epitopeRecs, recXaff1, recXaff2, recXaff3, dose, val, x=False):
+def cytBindingModel_bispecOpt(recCount: np.ndarray, holder: np.ndarray, dose: float, val: int, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
-    doseVec = np.array(dose)
-
-    affs = pd.DataFrame()
-    affs = np.append(affs, np.power(10, recXaff1))
-    affs = np.append(affs, np.power(10, recXaff2))
-
-    if secondary == 'CD122':
-        affs = np.append(affs, np.power(10, recXaff3))
-        vals = [[val, val, val]]
-
-        if epitope == 'CD25':
-            holder = np.full((3, 2), 1e2)
-            holder[0, 0] = affs[0]
-            holder[1, 1] = affs[1]
-            holder[2, 0] = affs[2]
-            counts = [IL2RaRecs, secondaryRecs]
-        else:
-            holder = np.full((3, 3), 1e2)
-            np.fill_diagonal(holder, affs)
-            counts = [IL2RaRecs, secondaryRecs, epitopeRecs]
-
-    else:
-        vals = [[val, val]]
-        holder = np.full((2, 2), 1e2)
-        np.fill_diagonal(holder, affs)
-        counts = [IL2RaRecs, secondaryRecs]
-
-    affs = holder
-    recCount = np.ravel(counts)
-
     # Check that values are in correct placement, can invert
+    vals = np.full((1, holder.shape[0]), val)
 
-    if doseVec.size == 1:
-        doseVec = np.array([doseVec])
-    output = np.zeros(doseVec.size)
-
-    for i, dose in enumerate(doseVec):
-        if x:
-            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, vals, [1.0], affs)[1][0][1]
-        else:
-            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, vals, [1.0], affs)[1][0][1]
+    if x is False:
+        Kx = getKxStar()
+    else:
+        Kx = np.power(10, x[0])
     
-    return output
+    return polyc(dose / (val * 1e9), Kx, recCount, vals, [1.0], holder)[0][0][1]
