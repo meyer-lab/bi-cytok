@@ -53,11 +53,10 @@ def polyc(L0: float, KxStar: float, Rtot: np.ndarray, Cplx: np.ndarray, Ctheta: 
     Psirs = np.sum(Psi, axis=1).reshape(-1, 1)
     Psinorm = (Psi / Psirs)[:, :-1]
 
-    Lbound = L0 / KxStar * Ctheta * np.expm1(np.dot(Cplx, np.log(Psirs))).flatten()
     Rbound = L0 / KxStar * Ctheta.reshape(-1, 1) * np.dot(Cplx, Psinorm) * np.exp(np.dot(Cplx, np.log(Psirs)))
     with np.errstate(divide='ignore'):
         Lfbnd = L0 / KxStar * Ctheta * np.exp(np.dot(Cplx, np.log(Psirs - 1.0))).flatten()
-    assert len(Lbound) == len(Ctheta)
+
     assert Rbound.shape[0] == len(Ctheta)
     assert Rbound.shape[1] == len(Rtot)
-    return Lbound, Rbound, Lfbnd
+    return Rbound, Lfbnd

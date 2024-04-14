@@ -120,10 +120,10 @@ def makeFigure():
     Rbound_bi_2 = []
 
     for conc in conc_range:
-        _, Rbound_mono_1_, _ = polyc(conc, Kx, Rtot_1, cplx_mono, Ctheta, Kav)
-        _, Rbound_mono_2_, _ = polyc(conc, Kx, Rtot_2, cplx_mono, Ctheta, Kav)
-        _, Rbound_bi_1_, _ = polyc(conc, Kx, Rtot_1, cplx_bi, Ctheta, Kav)
-        _, Rbound_bi_2_, _ = polyc(conc, Kx, Rtot_2, cplx_bi, Ctheta, Kav)
+        Rbound_mono_1_, _ = polyc(conc, Kx, Rtot_1, cplx_mono, Ctheta, Kav)
+        Rbound_mono_2_, _ = polyc(conc, Kx, Rtot_2, cplx_mono, Ctheta, Kav)
+        Rbound_bi_1_, _ = polyc(conc, Kx, Rtot_1, cplx_bi, Ctheta, Kav)
+        Rbound_bi_2_, _ = polyc(conc, Kx, Rtot_2, cplx_bi, Ctheta, Kav)
 
         Rbound_mono_1.extend(Rbound_mono_1_)
         Rbound_mono_2.extend(Rbound_mono_2_)

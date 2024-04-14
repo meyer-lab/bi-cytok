@@ -15,10 +15,8 @@ from scipy import stats
 import ot
 import ot.plot
 from ..selectivityFuncs import convFactCalc
-from ..selectivityFuncs import convFactCalc
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign
-from scipy.stats import norm
-from scipy.cluster import hierarchy
+
 
 matplotlib.rcParams["legend.labelspacing"] = 0.2
 matplotlib.rcParams["legend.fontsize"] = 8
@@ -105,7 +103,7 @@ def plotBispecific(ax, df, cellType, val=False):
     ax.set(title=cellType + " - Dosed at 1nM", xlabel=r"Epitope X Abundance", ylabel="pSTAT", xscale="log", ylim=cellSTATlimDict[cellType])
 
 
-def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
+def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0) -> pd.DataFrame:
     """Finds markers which have average greatest difference from other cells"""
     CITE_DF = importCITE()
 

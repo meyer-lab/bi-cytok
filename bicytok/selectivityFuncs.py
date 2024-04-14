@@ -209,7 +209,7 @@ def minSelecFunc(recXaff: np.ndarray, secondary: str, epitope: str, targRecs: np
     return offTargetBound / minSelecFunc.targetBound
 
 
-def optimizeDesign(secondary: str, epitope: str, targCell: str, offTCells: list, selectedDF: pd.DataFrame, dose: float, valency: int, prevOptAffs: list):
+def optimizeDesign(secondary: str, epitope: str, targCell: str, offTCells: list[str], selectedDF: pd.DataFrame, dose: float, valency: int, prevOptAffs):
     """ A general purzse optimizer used to minimize selectivity output by varying affinity parameter.
     Args:
         targCell: string cell type which is target and signaling is desired (basis of selectivity)
@@ -221,19 +221,14 @@ def optimizeDesign(secondary: str, epitope: str, targCell: str, offTCells: list,
         optSelectivity: optimized selectivity value. Can also be modified to return optimized affinity parameter.
      """
     X0 = prevOptAffs
-    
     optBnds = Bounds(6.0, 9.0)
     targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, secondary, epitope)
-    print('Optimize')
-    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(secondary, epitope, targRecs, offTRecs, dose, valency), jac="2-point")
-    print('Done')
-    optSelectivity = optimized.fun
-    optParams = optimized.x
-
-    return optSelectivity, optParams, minSelecFunc.targetBound
+    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(secondary, epitope, targRecs, offTRecs, dose, valency), jac="2-point", options={'iprint': 1})
+    print(optimized)
+    return optimized.fun, optimized.x, minSelecFunc.targetBound
 
 
-def selecCalc(df: pd.DataFrame, targCell: str, offTCells: list):
+def selecCalc(df: pd.DataFrame, targCell: str, offTCells: list) -> float:
     """Calculates selectivity for no additional epitope
     Args:
         targCell: string cell type which is target and signaling is desired (basis of selectivity)
@@ -284,7 +279,7 @@ markDict = {"CD25": "IL2Ra",
             "CD132": "gc"}
 
 
-def convFactCalc():
+def convFactCalc() -> pd.DataFrame:
     """Returns conversion factors by marker for converting CITEseq signal into abundance"""
     CITE_DF = importCITE()
     cellToI = ["CD4 TCM", "CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL", "CD8 TCM", "Treg", "CD4 TEM"]
@@ -316,7 +311,7 @@ def convFactCalc():
     return weightDF
 
 
-def get_rec_vecs(df: pd.DataFrame, targCell: str, offTCells: list, secondary: str, epitope: str):
+def get_rec_vecs(df: pd.DataFrame, targCell: str, offTCells: list, secondary: str, epitope: str) -> tuple[np.ndarray, np.ndarray]:
     """Returns vector of target and off target receptors"""
     cd25DF = df.loc[(df.Epitope == 'CD25')]
     secondaryDF = df.loc[(df.Epitope == secondary)]
@@ -345,7 +340,7 @@ def get_rec_vecs(df: pd.DataFrame, targCell: str, offTCells: list, secondary: st
     return np.array([cd25CountTarg, secondaryCountTarg, epCountvecTarg]), np.array([cd25CountOffT, secondaryCountOffT, epCountvecOffT])
 
 
-def get_cell_bindings(affs: np.ndarray, cells: np.ndarray, df: pd.DataFrame, secondary: str, epitope: str, dose: float, valency: int):
+def get_cell_bindings(affs: np.ndarray, cells: list, df: pd.DataFrame, secondary: str, epitope: str, dose: float, valency: int):
     df_return = pd.DataFrame(columns=['Cell Type', 'Secondary Bound', 'Total Secondary'])
 
     cd25DF = df.loc[(df.Epitope == 'CD25')]
@@ -377,10 +372,8 @@ def get_cell_bindings(affs: np.ndarray, cells: np.ndarray, df: pd.DataFrame, sec
             'Total Secondary': [np.sum(recs[1]) / numCells]
         }
 
-        print(data)
-
         df_temp = pd.DataFrame(data, columns=['Cell Type', 'Secondary Bound', 'Total Secondary'])
-        df_return = df_return.append(df_temp, ignore_index=True)
-    
+        df_return = pd.concat((df_return, df_temp))
+
     return df_return
 

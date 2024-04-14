@@ -1,14 +1,9 @@
-from os.path import dirname, join
 from .common import getSetup
 import pandas as pd
 import seaborn as sns
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.optimize import least_squares
 from ..selectivityFuncs import get_cell_bindings, getSampleAbundances, get_rec_vecs, optimizeDesign, minSelecFunc
-from ..imports import importCITE
 
-path_here = dirname(dirname(__file__))
 
 def makeFigure():
     ax, f = getSetup((12, 6), (2, 10), multz={0:2, 5:2, 7:1, 10:1, 12:1, 14:1, 16:1, 18:1})
@@ -22,21 +17,22 @@ def makeFigure():
     wtSecondaryAff = 7.65072247
     wtEpitopeAff = 9.14874165
 
-    cells1 = np.array(['Treg', 'CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD4 TEM', 'NK Proliferating',
-    'NK_CD56bright'])
-    cells2 = np.array(['Treg Memory', 'Treg Naive'])
+    cells1 = ['Treg', 'CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD4 TEM', 'NK Proliferating',
+    'NK_CD56bright']
+    cells2 = ['Treg Memory', 'Treg Naive']
 
-    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList['Epitope'].unique())
 
     epitopesDF1 = getSampleAbundances(epitopes, cells1, "CellType2")
     epitopesDF2 = getSampleAbundances(epitopes, cells2, "CellType3")
 
-    bindings1 = get_cell_bindings([8.5, secondaryAff, 8.5], cells1, epitopesDF1, secondary, epitope, 0.1, valency)
+    affs = np.array([[8.5, secondaryAff, 8.5]])
+    bindings1 = get_cell_bindings(affs, cells1, epitopesDF1, secondary, epitope, 0.1, valency)
     bindings1['Percent Bound of Secondary'] = (bindings1['Secondary Bound'] / bindings1['Total Secondary']) * 100
     print(bindings1)
 
-    bindings2 = get_cell_bindings([8.5, secondaryAff, 8.5], cells2, epitopesDF2, secondary, epitope, 0.1, valency)
+    bindings2 = get_cell_bindings(affs, cells2, epitopesDF2, secondary, epitope, 0.1, valency)
     bindings2['Percent Bound of Secondary'] = (bindings2['Secondary Bound'] / bindings2['Total Secondary']) * 100
     print(bindings2)
 
@@ -52,9 +48,9 @@ def makeFigure():
 
 
     targCell = 'Treg Memory'
-    cells = np.array(['Treg Memory', 'Treg Naive', 'CD8 Naive', 'NK_2', 'CD8 TEM_1', 'CD4 Naive', 'CD4 CTL', 'CD4 TCM_3', 'CD4 TCM_2',
-    'CD8 TCM_1', 'NK_4', 'Treg Naive', 'CD4 TEM_1', 'CD4 TEM_3', 'NK Proliferating', 'CD8 TEM_4', 'NK_CD56bright', 'CD4 TEM_4', 'NK_3'])
-    offTCells = cells[cells != targCell]
+    cells = ['Treg Memory', 'Treg Naive', 'CD8 Naive', 'NK_2', 'CD8 TEM_1', 'CD4 Naive', 'CD4 CTL', 'CD4 TCM_3', 'CD4 TCM_2',
+    'CD8 TCM_1', 'NK_4', 'Treg Naive', 'CD4 TEM_1', 'CD4 TEM_3', 'NK Proliferating', 'CD8 TEM_4', 'NK_CD56bright', 'CD4 TEM_4', 'NK_3']
+    offTCells = [c for c in cells if c != targCell]
 
     doseVec = np.logspace(-3, 3, num=20)
     epitopesDF = getSampleAbundances(epitopes, cells, "CellType3")
@@ -66,7 +62,9 @@ def makeFigure():
 
     for _, dose in enumerate(doseVec):
         optParams = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency, prevOptAffs)
-        LD = minSelecFunc([wtIL2RaAff, wtSecondaryAff, wtEpitopeAff], secondary, epitope, targRecs, offTRecs, dose, valency)
+        
+        affs = np.array([[wtIL2RaAff, wtSecondaryAff, wtEpitopeAff]])
+        LD = minSelecFunc(affs, secondary, epitope, targRecs, offTRecs, dose, valency)
         prevOptAffs = [optParams[1][0], optParams[1][1], optParams[1][2]]
         epitopeAff = optParams[1][2]
 

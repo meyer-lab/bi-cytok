@@ -85,10 +85,10 @@ def makeFigure():
         # Got rid of initial loop
 
         for i, _ in enumerate(nk_marker):
-            _, NKbinding, _ = polyc(L0, KxStar, np.array([nk_cd122[i] * 100, nk_marker[i] * 100]), cplx, Ctheta, Kav_matrix)
+            NKbinding, _ = polyc(L0, KxStar, np.array([nk_cd122[i] * 100, nk_marker[i] * 100]), cplx, Ctheta, Kav_matrix)
             NKIL2_bound += NKbinding[0][0]
         for i, _ in enumerate(non_nk_marker):
-            _, non_NKbinding, _ = polyc(L0, KxStar, np.array([non_nk_cd122[i] * 100, non_nk_marker[i] * 100]), cplx, Ctheta, Kav_matrix)
+            non_NKbinding, _ = polyc(L0, KxStar, np.array([non_nk_cd122[i] * 100, non_nk_marker[i] * 100]), cplx, Ctheta, Kav_matrix)
             non_NKIL2_bound += non_NKbinding[0][0]
         return non_NKIL2_bound / NKIL2_bound
     
