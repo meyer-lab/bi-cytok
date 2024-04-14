@@ -40,17 +40,9 @@ def makeFigure():
     for dose in doseVec:
         # this function gets the optimal affinties and returns the optimal selectivity (first output),
         # and affinities (second outputs) plot these dose on bottom for all, 2 have selectivity, 2 have affinity
-
-        from cProfile import Profile
-        pf = Profile()
-        pf.enable()
-
         selectivity1, prevOptAffs, _ = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency1, prevOptAffs)
         selectivity_values1.append(selectivity1)
         affinity_values1.append(prevOptAffs[0])
-
-        pf.disable()
-        pf.dump_stats("profile")
 
     for dose in doseVec:
         # this function gets the optimal affinties and returns the optimal selectivity (first output),
