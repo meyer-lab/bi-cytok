@@ -223,8 +223,7 @@ def optimizeDesign(secondary: str, epitope: str, targCell: str, offTCells: list[
     X0 = prevOptAffs
     optBnds = Bounds(6.0, 9.0)
     targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, secondary, epitope)
-    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(secondary, epitope, targRecs, offTRecs, dose, valency), jac="2-point", options={'iprint': 1})
-    print(optimized)
+    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(secondary, epitope, targRecs, offTRecs, dose, valency), jac="2-point")
     return optimized.fun, optimized.x, minSelecFunc.targetBound
 
 
