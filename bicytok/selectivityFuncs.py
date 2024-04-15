@@ -278,22 +278,32 @@ def convFactCalc() -> pd.DataFrame:
     CITE_DF = importCITE()
     cellToI = ["CD4 TCM", "CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL", "CD8 TCM", "Treg", "CD4 TEM"]
     markers = ["CD122", "CD127", "CD25"]
-    markerDF = pd.DataFrame(columns=["Marker", "Cell Type", "Amount", "Number"])
+    markerDF = None
     for marker in markers:
         for cell in cellToI:
             cellTDF = CITE_DF.loc[CITE_DF["CellType2"] == cell][marker]
-            markerDF = pd.concat([markerDF, pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Amount": cellTDF.mean(), "Number": cellTDF.size})])
+            dftemp = pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Amount": cellTDF.mean(), "Number": cellTDF.size})
+
+            if markerDF is None:
+                markerDF = dftemp
+            else:
+                markerDF = pd.concat([markerDF, dftemp])
 
     markerDF = markerDF.replace({"Marker": markDict, "Cell Type": cellDict})
-    markerDFw = pd.DataFrame(columns=["Marker", "Cell Type", "Average"])
+    markerDFw = None
     for marker in markerDF.Marker.unique():
         for cell in markerDF["Cell Type"].unique():
             subDF = markerDF.loc[(markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)]
             wAvg = np.sum(subDF.Amount.values * subDF.Number.values) / np.sum(subDF.Number.values)
-            markerDFw = pd.concat([markerDFw, pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Average": wAvg})])
+            dftemp = pd.DataFrame({"Marker": [marker], "Cell Type": cell, "Average": wAvg})
+
+            if markerDFw is None:
+                markerDFw = dftemp
+            else:
+                markerDFw = pd.concat([markerDFw, dftemp])
 
     recDF = importReceptors()
-    weightDF = pd.DataFrame(columns=["Receptor", "Weight"])
+    weightDF = None
 
     for rec in markerDFw.Marker.unique():
         CITEval = np.array([])
@@ -301,7 +311,13 @@ def convFactCalc() -> pd.DataFrame:
         for cell in markerDF["Cell Type"].unique():
             CITEval = np.concatenate((CITEval, markerDFw.loc[(markerDFw["Cell Type"] == cell) & (markerDFw["Marker"] == rec)].Average.values))
             Quantval = np.concatenate((Quantval, recDF.loc[(recDF["Cell Type"] == cell) & (recDF["Receptor"] == rec)].Mean.values))
-        weightDF = pd.concat([weightDF, pd.DataFrame({"Receptor": [rec], "Weight": np.linalg.lstsq(np.reshape(CITEval, (-1, 1)).astype(float), Quantval, rcond=None)[0]})])
+        dftemp = pd.DataFrame({"Receptor": [rec], "Weight": np.linalg.lstsq(np.reshape(CITEval, (-1, 1)).astype(float), Quantval, rcond=None)[0]})
+
+        if weightDF is None:
+            weightDF = dftemp
+        else:
+            weightDF = pd.concat([weightDF, dftemp])
+
     return weightDF
 
 
