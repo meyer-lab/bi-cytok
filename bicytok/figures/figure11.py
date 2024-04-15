@@ -1,16 +1,12 @@
 """
 This creates Figure 11, used to plot amount of IL2Rb bound to each cell type.
 """
-from os.path import dirname, join
 from .common import getSetup
 import pandas as pd
 import seaborn as sns
 import numpy as np
 
 from ..selectivityFuncs import get_cell_bindings, getSampleAbundances
-
-
-path_here = dirname(dirname(__file__))
 
 
 def makeFigure():
@@ -29,11 +25,12 @@ def makeFigure():
     cells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM',
     'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright']
 
-    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells)
 
-    bindings = get_cell_bindings([8.5, secondaryAff, 8.5], cells, epitopesDF, secondary, epitope, 0.1, valency)
+    affs = np.array([[8.5, secondaryAff, 8.5]])
+    bindings = get_cell_bindings(affs, cells, epitopesDF, secondary, epitope, 0.1, valency)
     bindings['Percent Bound of Secondary'] = (bindings['Secondary Bound'] / bindings['Total Secondary']) * 100
     print(bindings)
 

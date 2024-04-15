@@ -39,9 +39,9 @@ def cytBindingModel(mut, val, doseVec, cellType, x=False, date=False):
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[1][0][1]
+            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[0][0][1]
         else:
-            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[1][0][1]  # IL2RB binding only
+            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[0][0][1]  # IL2RB binding only
     if date:
         convDict = getBindDict()
         if cellType[-1] == "$":  # if it is a binned pop, use ave fit
@@ -72,10 +72,10 @@ def cytBindingModel_basicSelec(counts, x=False, date=False):
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[1][0][1]
+            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[0][0][1]
         else:
             print(dose / 1e9, getKxStar(), recCount, [[val, val]], Affs)
-            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[1][0][1]  # IL2RB binding only
+            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[0][0][1]  # IL2RB binding only
     return output
 
 
@@ -102,9 +102,9 @@ def cytBindingModel_CITEseq(counts, betaAffs, val, mut, x=False, date=False):
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[1][0][1]
+            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], [1.0], Affs)[0][0][1]
         else:
-            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[1][0][1]
+            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], [1.0], Affs)[0][0][1]
 
     return output
 
@@ -151,4 +151,4 @@ def cytBindingModel_bispecOpt(recCounts, affs, dose, vals, x=False):
         else:
             output[i] = polyc(dose / (vals[0] * 1e9), getKxStar(), recCounts, [vals], [1.0], affs)[1][0][0]
     
-    return output
+    return polyc(dose / (val * 1e9), Kx, recCount, vals, [1.0], holder)[0][0][1]

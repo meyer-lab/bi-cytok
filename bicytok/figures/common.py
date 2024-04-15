@@ -15,7 +15,6 @@ from scipy import stats
 import ot
 import ot.plot
 from ..selectivityFuncs import convFactCalc
-from ..selectivityFuncs import convFactCalc
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign
 from scipy.stats import norm
 from scipy.cluster import hierarchy
@@ -76,7 +75,7 @@ def genFigure():
 
     exec("from bicytok.figures." + nameOut + " import makeFigure", globals())
     ff = makeFigure()
-    ff.savefig(fdir + nameOut + ".svg", dpi=ff.dpi, bbox_inches="tight", pad_inches=0)
+    # ff.savefig(fdir + nameOut + ".svg", dpi=ff.dpi, bbox_inches="tight", pad_inches=0) edit out for cluster
 
     print(f"Figure {sys.argv[1]} is done after {time.time() - start} seconds.\n")
 
@@ -108,7 +107,7 @@ def plotBispecific(ax, df, cellType, val=False):
     ax.set(title=cellType + " - Dosed at 1nM", xlabel=r"Epitope X Abundance", ylabel="pSTAT", xscale="log", ylim=cellSTATlimDict[cellType])
 
 
-def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0):
+def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0) -> pd.DataFrame:
     """Finds markers which have average greatest difference from other cells"""
     CITE_DF = importCITE()
 
@@ -190,8 +189,8 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
             non_signal_receptors.append(column)
 
     results = []
-    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
-    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)| (dataset['CellType1'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)| (dataset['CellType1'] == target_cells))]
     
     if signal_receptor == 'CD122':
         conversion_factor_sig = IL2Rb_factor
@@ -201,6 +200,8 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         conversion_factor_sig = IL7Ra_factor
     else:
         conversion_factor_sig = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
+    
+    #non_signal_receptors = ["CD25", "CD57"]
     
     for receptor_name in non_signal_receptors:
         target_receptor_counts = target_cells_df[[signal_receptor, receptor_name]].values
@@ -221,19 +222,19 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         target_receptor_counts[:, 1] *= conversion_factor
         off_target_receptor_counts[:, 1] *= conversion_factor
         
-        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)), axis=0)
 
         # Normalize the counts by dividing by the average
-        target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
-        off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
-        
-        # Matrix for emd parameter
-        M = ot.dist(target_receptor_counts, off_target_receptor_counts)
-        # optimal transport distance
-        a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
-        b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
-        optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
-        if np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]): 
+        if average_receptor_counts[0] > 5 and average_receptor_counts[1] > 5 and np.mean(target_receptor_counts[:, 0]) > np.mean(off_target_receptor_counts[:, 0]) and np.mean(target_receptor_counts[:, 1]) > np.mean(off_target_receptor_counts[:, 1]):
+            target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+            off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
+            
+            # Matrix for emd parameter
+            M = ot.dist(target_receptor_counts, off_target_receptor_counts)
+            # optimal transport distance
+            a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
+            b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
+            optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
             results.append((optimal_transport, receptor_name, signal_receptor)) #indent if using if statement
         else:
             results.append((0, receptor_name, signal_receptor))
@@ -256,6 +257,10 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
         ax.set_xticklabels(receptor_names, rotation='vertical')
     
     return sorted_results
+
+def EMD_clustermap(dataset):
+    dataset = dataset.fillna(0)
+    return (sns.clustermap(dataset, cmap='viridis', figsize=(80,80)))
 
 def EMD_1D(dataset, target_cells, ax):
     weightDF = convFactCalc()
@@ -289,7 +294,7 @@ def EMD_1D(dataset, target_cells, ax):
         off_target_receptor_counts = off_target_receptor_counts.astype(float) * conversion_factor
         
        
-        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)), axis=0)
 
         #Normalize the counts by dividing by the average
         target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
@@ -428,7 +433,7 @@ def EMD_3D(dataset, signaling_receptor, target_cells, ax):
         target_receptor_counts[:, 2] *= conversion_factor 
         off_target_receptor_counts[:, 2] *= conversion_factor
 
-        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+        average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)), axis=0)
 
         # Normalize the counts by dividing by the average
         target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
@@ -462,16 +467,6 @@ def EMD_3D(dataset, signaling_receptor, target_cells, ax):
     print('The 5 non-signaling receptors that achieve the greatest positive distance from target-off-target cells are:', top_receptor_info)
     return sorted_results
 
-def calculate_kl_divergence_2D(targCellMark, offTargCellMark):
-    kdeTarg = KernelDensity(kernel='gaussian').fit(targCellMark.reshape(-1, 1))
-    kdeOffTarg = KernelDensity(kernel='gaussian').fit(offTargCellMark.reshape(-1, 1))
-    minVal = np.minimum(targCellMark.min(), offTargCellMark.min()) - 10
-    maxVal = np.maximum(targCellMark.max(), offTargCellMark.max()) + 10
-    outcomes = np.arange(minVal, maxVal + 1).reshape(-1, 1)
-    distTarg = np.exp(kdeTarg.score_samples(outcomes))
-    distOffTarg = np.exp(kdeOffTarg.score_samples(outcomes))
-    KL_div = stats.entropy(distOffTarg.flatten() + 1e-200, distTarg.flatten() + 1e-200, base=2)
-    return KL_div
 
 def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
     weightDF = convFactCalc()
@@ -541,6 +536,10 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
     return sorted_results
 
     
+
+def KLD_clustermap(dataset):
+    dataset = dataset.fillna(0)
+    return (sns.clustermap(dataset, cmap='viridis', figsize=(80,80)))
 
 def plot_kl_divergence_curves(dataset, signal_receptor, special_receptor, target_cells, ax):
     weightDF = convFactCalc()
@@ -724,7 +723,8 @@ def EMD_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
     target_receptor_counts[:, 1] *= conversion_factor
     off_target_receptor_counts[:, 1] *= conversion_factor
         
-    average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+    average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)), axis=0)
+    print(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
 
     # Normalize the counts by dividing by the average
     target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
@@ -790,7 +790,7 @@ def KL_divergence_2D_pair(dataset, target_cells, signal_receptor, special_recept
     target_receptor_counts[:, 1] *= conversion_factor
     off_target_receptor_counts[:, 1] *= conversion_factor
         
-    average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+    average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)), axis=0)
 
     # Normalize the counts by dividing by the average
     target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
