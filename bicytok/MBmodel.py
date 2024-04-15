@@ -119,6 +119,6 @@ def cytBindingModel_bispecOpt(recCount: np.ndarray, holder: np.ndarray, dose: fl
     output = np.zeros(doseVec.size)
 
     for i, dose in enumerate(doseVec):
-        output[i] = polyc(dose / (vals[0] * 1e9), Kx, recCount, [vals], holder)[0][1]
+        output[i] = polyc(dose / (vals[0] * 1e9), Kx, recCount, [vals], holder)[0][0]
 
     return output
