@@ -3,12 +3,9 @@ Functions used in binding and selectivity analysis
 """
 from .imports import importCITE, importReceptors
 from .MBmodel import cytBindingModel_CITEseq, cytBindingModel_bispecCITEseq, cytBindingModel_bispecOpt, cytBindingModel_basicSelec
-from os.path import dirname
 from scipy.optimize import minimize, Bounds
 import pandas as pd
 import numpy as np
-
-path_here = dirname(dirname(__file__))
 
 
 def getSampleAbundances(epitopes: list, cellList: list, cellCat="CellType2"):
@@ -98,12 +95,11 @@ def getSignaling(betaAffs: np.ndarray, targCell: str, offTCells: list, epitopesD
     vals = [1, 2, 4]
 
     for i, aff in enumerate(betaAffs):
+        print(i)
         for j, mut in enumerate(muts):
             for k, val in enumerate(vals):
                 n = (3 * j) + k
-                target_sig, offTarg_sig = bindingCalc(epitopesDF, targCell, offTCells, aff, val, mut)
-                target_sigs[n, i] = target_sig
-                offTarg_sigs[n, i] = offTarg_sig
+                target_sigs[n, i], offTarg_sigs[n, i] = bindingCalc(epitopesDF, targCell, offTCells, aff, val, mut)
 
         target_sig_bi, offTarg_sig_bi = bindingCalc(epitopesDF, targCell, offTCells, aff, 1, 'R38Q/H16N', bispec=True, epitope='CD25')
         target_sigs[6, i] = target_sig_bi
@@ -137,34 +133,36 @@ def bindingCalc(df: pd.DataFrame, targCell: str, offTCells: list, betaAffs: np.n
 
     cd25DF = df.loc[(df.Epitope == 'CD25')]
     cd122DF = df.loc[(df.Epitope == 'CD122')]
+    mutAffDF = pd.read_csv("./bicytok/data/WTmutAffData.csv")
+    mutAffDF = mutAffDF.loc[(mutAffDF.Mutein == mut)]
 
-    if(bispec):
+    if bispec:
         epitopeDF = df.loc[(df.Epitope == epitope)]
 
         for i, cd25Count in enumerate(cd25DF[targCell].item()):
             cd122Count = cd122DF[targCell].item()[i]
             epitopeCount = epitopeDF[targCell].item()[i]
             counts = [cd25Count, cd122Count, epitopeCount]
-            targetBound += cytBindingModel_bispecCITEseq(counts, betaAffs, 9.0, val, mut)
+            targetBound += cytBindingModel_bispecCITEseq(mutAffDF, counts, betaAffs, 9.0, val)
 
         for cellT in offTCells:
             for i, cd25Count in enumerate(cd25DF[cellT].item()):
                 cd122Count = cd122DF[cellT].item()[i]
                 epitopeCount = epitopeDF[cellT].item()[i]
                 counts = [cd25Count, cd122Count, epitopeCount]
-                offTargetBound += cytBindingModel_bispecCITEseq(counts, betaAffs, 9.0, val, mut)
+                offTargetBound += cytBindingModel_bispecCITEseq(mutAffDF, counts, betaAffs, 9.0, val)
 
     else:
         for i, cd25Count in enumerate(cd25DF[targCell].item()):
             cd122Count = cd122DF[targCell].item()[i]
             counts = [cd25Count, cd122Count]
-            targetBound += cytBindingModel_CITEseq(counts, betaAffs, val, mut)
+            targetBound += cytBindingModel_CITEseq(mutAffDF, counts, betaAffs, val)
 
         for cellT in offTCells:
             for i, cd25Count in enumerate(cd25DF[cellT].item()):
                 cd122Count = cd122DF[cellT].item()[i]
                 counts = [cd25Count, cd122Count]
-                offTargetBound += cytBindingModel_CITEseq(counts, betaAffs, val, mut)
+                offTargetBound += cytBindingModel_CITEseq(mutAffDF, counts, betaAffs, val)
 
     return targetBound, offTargetBound
 
@@ -209,7 +207,7 @@ def minSelecFunc(recXaff: np.ndarray, secondary: str, epitope: str, targRecs: np
     return offTargetBound / minSelecFunc.targetBound
 
 
-def optimizeDesign(secondary: str, epitope: str, targCell: str, offTCells: list[str], selectedDF: pd.DataFrame, dose: float, valency: int, prevOptAffs):
+def optimizeDesign(secondary: str, epitope: str, targCell: str, offTCells: list[str], selectedDF: pd.DataFrame, dose: float, valency: int):
     """ A general purzse optimizer used to minimize selectivity output by varying affinity parameter.
     Args:
         targCell: string cell type which is target and signaling is desired (basis of selectivity)
@@ -220,10 +218,10 @@ def optimizeDesign(secondary: str, epitope: str, targCell: str, offTCells: list[
     Return:
         optSelectivity: optimized selectivity value. Can also be modified to return optimized affinity parameter.
      """
-    X0 = prevOptAffs
     optBnds = Bounds(6.0, 9.0)
     targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, secondary, epitope)
-    optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(secondary, epitope, targRecs, offTRecs, dose, valency), jac="2-point")
+    x0 = np.full(targRecs.shape[0], 7.0)
+    optimized = minimize(minSelecFunc, x0, bounds=optBnds, args=(secondary, epitope, targRecs, offTRecs, dose, valency), jac="2-point")
     return optimized.fun, optimized.x, minSelecFunc.targetBound
 
 

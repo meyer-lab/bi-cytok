@@ -341,13 +341,12 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     epitopes = [column for column in dataset.columns if column not in ['CellType1', 'CellType2', 'CellType3']]
     # below must be changed depending on target cell, celltype3 for treg mem, celltype 2 for treg 
     epitopesDF = getSampleAbundances(epitopes, cell_types, "CellType2") 
-    prevOptAffs = [8.0, 8.0, 8.0]
     dose = 1
     valency = 2
     
     for receptor_name in receptor_names:
         print("Receptor name:", receptor_name)
-        optParams1 = optimizeDesign(signal_receptor, receptor_name, target_cells, offtarg_cell_types, epitopesDF, dose, valency, prevOptAffs)
+        optParams1 = optimizeDesign(signal_receptor, receptor_name, target_cells, offtarg_cell_types, epitopesDF, dose, valency)
         selectivity = 1/optParams1[0]
         filtered_data_selectivity.append([receptor_name, selectivity])
     
@@ -802,15 +801,12 @@ def bindingmodel_selectivity_pair(dataset, target_cells, signal_receptor, specia
     offtarg_cell_types = [cell_type for cell_type in cell_types if cell_type != target_cells]
     epitopes = [column for column in dataset.columns if column not in ['CellType1', 'CellType2', 'CellType3']]
     epitopesDF = getSampleAbundances(epitopes, cell_types, "CellType2") 
-
-    # Set the appropriate number of affinity parameters based on the signal_receptor
-    prevOptAffs = [8.0, 8.0, 8.0] if signal_receptor == 'CD122' else [8.0, 8.0]
     
     dose = 1
     valency = 2
 
     print(epitopesDF.shape)
     print(epitopesDF.values[1, 1])
-    optParams1 = optimizeDesign(signal_receptor, special_receptor, target_cells, offtarg_cell_types, epitopesDF, dose, valency, prevOptAffs)
+    optParams1 = optimizeDesign(signal_receptor, special_receptor, target_cells, offtarg_cell_types, epitopesDF, dose, valency)
     selectivity = 1/optParams1[0]
     return selectivity

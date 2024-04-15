@@ -1,15 +1,9 @@
 """
 This creates Figure 6, plotting Treg to off target signaling for vaying IL2Rb affinity for different IL2 formats
 """
-from email.mime import base
-from os.path import dirname, join
 from .common import getSetup
 from ..selectivityFuncs import getSampleAbundances, getSignaling
-import pandas as pd
-import seaborn as sns
 import numpy as np
-
-path_here = dirname(dirname(__file__))
 
 
 def makeFigure():
@@ -27,7 +21,7 @@ def makeFigure():
     # Each frame contains a list of single cell abundances (of size determined in function) for that epitope and cell type
 
     # range from 0.0001 <-> 100
-    betaAffs = np.logspace(-4, 2, 30)  # Last number is # of points (should be 30 for smooth curve)
+    betaAffs = np.logspace(-4, 2, 9)  # Last number is # of points (should be 30 for smooth curve)
     # Fills arrays of target and off target signals for given array of parameters
     treg_sigs, offTarg_sigs = getSignaling(betaAffs, targCell, offTCells, epitopesDF)
 

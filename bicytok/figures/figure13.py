@@ -58,14 +58,11 @@ def makeFigure():
     df2 = pd.DataFrame(columns=['Dose', 'Target Bound', 'Ligand'])
     targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, secondary, epitope)
 
-    prevOptAffs = [8.0, 8.0, 8.0]
-
     for _, dose in enumerate(doseVec):
-        optParams = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency, prevOptAffs)
+        optParams = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency)
         
         affs = np.array([[wtIL2RaAff, wtSecondaryAff, wtEpitopeAff]])
         LD = minSelecFunc(affs, secondary, epitope, targRecs, offTRecs, dose, valency)
-        prevOptAffs = [optParams[1][0], optParams[1][1], optParams[1][2]]
         epitopeAff = optParams[1][2]
 
         data = {'Dose': [dose],

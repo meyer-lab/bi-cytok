@@ -29,7 +29,6 @@ def makeFigure():
     # This is just grabbing vectors of receptors to use in the function. Take a look at the output to see what's happening
     doseVec = np.logspace(-3, 3, num=5) #changed num = 2 so runs faster when practicing 
     epitopesDF = getSampleAbundances(epitopes, cells, "CellType2")
-    prevOptAffs = np.array([8.0, 8.0, 8.0])
     selectivity_values1 = []
     affinity_values1 = []
     selectivity_values2 = []
@@ -40,14 +39,14 @@ def makeFigure():
     for dose in doseVec:
         # this function gets the optimal affinties and returns the optimal selectivity (first output),
         # and affinities (second outputs) plot these dose on bottom for all, 2 have selectivity, 2 have affinity
-        selectivity1, prevOptAffs, _ = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency1, prevOptAffs)
+        selectivity1, prevOptAffs, _ = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency1)
         selectivity_values1.append(selectivity1)
         affinity_values1.append(prevOptAffs[0])
 
     for dose in doseVec:
         # this function gets the optimal affinties and returns the optimal selectivity (first output),
         # and affinities (second outputs) plot these dose on bottom for all, 2 have selectivity, 2 have affinity 
-        selectivity2, prevOptAffs, _ = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency2, prevOptAffs)
+        selectivity2, prevOptAffs, _ = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency2)
         selectivity_values2.append(selectivity2)
         affinity_values2.append(prevOptAffs[0])
     

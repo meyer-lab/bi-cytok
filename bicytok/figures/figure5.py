@@ -1,24 +1,18 @@
 """
 This creates Figure 5, used to find optimal epitope classifier.
 """
-from os.path import dirname, join
 from .common import getSetup
-from ..selectivityFuncs import getSampleAbundances, optimizeDesign, selecCalc, get_rec_vecs, minSelecFunc
+from ..selectivityFuncs import getSampleAbundances, optimizeDesign, get_rec_vecs, minSelecFunc
 from ..imports import importCITE
-from copy import copy
 import pandas as pd
 import seaborn as sns
-import numpy as np
-
-
-path_here = dirname(dirname(__file__))
 
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
     ax, f = getSetup((9, 12), (1, 1))
 
-    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList['Epitope'].unique())  # List epitopes to be included in analysis
 
     # List cells to be included in analysis (Both on and off target)
@@ -40,7 +34,7 @@ def makeFigure():
 
     for i, epitope in enumerate(epitopesDF['Epitope']):
         # New form
-        optSelectivity = 1 / (optimizeDesign("CD122", "CD25", targCell, offTCells, epitopesDF, 1, 2, [8, 8, 8]))[0]
+        optSelectivity = 1 / (optimizeDesign("CD122", "CD25", targCell, offTCells, epitopesDF, 1, 2))[0]
         epitopesDF.loc[epitopesDF['Epitope'] == epitope, 'Selectivity'] = optSelectivity  # Store selectivity in DF to be used for plots
         print(optSelectivity)
 

@@ -1,4 +1,3 @@
-from os.path import dirname, join
 from .common import getSetup
 import pandas as pd
 import seaborn as sns
@@ -21,9 +20,6 @@ from .common import KL_divergence_2D
 from .common import KLD_clustermap
 from .common import EMD_clustermap
 
-
-
-path_here = dirname(dirname(__file__))
 
 def makeFigure():  
     markerDF = importCITE()

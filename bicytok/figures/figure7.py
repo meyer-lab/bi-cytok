@@ -32,7 +32,7 @@ def makeFigure():
 
     for i in range(len(epitopes)):
         
-        _, optParams, _ = optimizeDesign("CD122", epitopes[i], targCell, offTCells, epitopesDF, 0.1, 1, [8, 8, 8])
+        _, optParams, _ = optimizeDesign("CD122", epitopes[i], targCell, offTCells, epitopesDF, 0.1, 1)
         targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, "CD122", epitopes[i])
 
         for j, dose in enumerate(doseVec):

@@ -1,13 +1,5 @@
-from os.path import dirname, join
-from .common import getSetup
-import pandas as pd
-import seaborn as sns
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.optimize import least_squares
-from .common import Wass_KL_Dist
+from .common import getSetup, Wass_KL_Dist
 
-path_here = dirname(dirname(__file__))
 
 def makeFigure():
     ax, f = getSetup((8, 8), (3, 2))

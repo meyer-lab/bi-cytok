@@ -1,7 +1,6 @@
 """
 This creates Figure 5, used to find optimal epitope classifier.
 """
-from os.path import dirname, join
 from .common import getSetup
 import pandas as pd
 import seaborn as sns
@@ -14,8 +13,6 @@ from sklearn.model_selection import KFold
 from sklearn.metrics import r2_score
 from ..BindingMod import polyc
 from ..imports import importCITE
-
-path_here = dirname(dirname(__file__))
 
 
 def makeFigure():
@@ -110,7 +107,6 @@ def makeFigure():
     Rtot_2 = np.array([10000])
     cplx_mono = np.array([[1]])
     cplx_bi = np.array([[2]])
-    Ctheta = np.array([1])
     Kav = np.array([[1e9]])
     conc_range = np.logspace(-12, -9, num=100)
     
@@ -120,10 +116,10 @@ def makeFigure():
     Rbound_bi_2 = []
 
     for conc in conc_range:
-        Rbound_mono_1_, _ = polyc(conc, Kx, Rtot_1, cplx_mono, Ctheta, Kav)
-        Rbound_mono_2_, _ = polyc(conc, Kx, Rtot_2, cplx_mono, Ctheta, Kav)
-        Rbound_bi_1_, _ = polyc(conc, Kx, Rtot_1, cplx_bi, Ctheta, Kav)
-        Rbound_bi_2_, _ = polyc(conc, Kx, Rtot_2, cplx_bi, Ctheta, Kav)
+        Rbound_mono_1_, _ = polyc(conc, Kx, Rtot_1, cplx_mono, Kav)
+        Rbound_mono_2_, _ = polyc(conc, Kx, Rtot_2, cplx_mono, Kav)
+        Rbound_bi_1_, _ = polyc(conc, Kx, Rtot_1, cplx_bi, Kav)
+        Rbound_bi_2_, _ = polyc(conc, Kx, Rtot_2, cplx_bi, Kav)
 
         Rbound_mono_1.extend(Rbound_mono_1_)
         Rbound_mono_2.extend(Rbound_mono_2_)
