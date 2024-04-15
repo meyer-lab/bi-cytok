@@ -95,7 +95,6 @@ def getSignaling(betaAffs: np.ndarray, targCell: str, offTCells: list, epitopesD
     vals = [1, 2, 4]
 
     for i, aff in enumerate(betaAffs):
-        print(i)
         for j, mut in enumerate(muts):
             for k, val in enumerate(vals):
                 n = (3 * j) + k
@@ -253,8 +252,6 @@ def selecCalc(df: pd.DataFrame, targCell: str, offTCells: list) -> float:
             counts = [cd25Count, cd122Count]
             offTargetBound += cytBindingModel_basicSelec(counts)
             offTCellCount += 1
-    print(offTCellCount)
-    print(targCellCount)
 
     return (offTargetBound / offTCellCount) / (targetBound / targCellCount)
 

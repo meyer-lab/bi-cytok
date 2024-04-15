@@ -71,7 +71,7 @@ def makeFigure():
         # Got rid of initial loop
 
         for i, _ in enumerate(nk_marker):
-            NKbinding, _ = polyc(
+            NKbinding = polyc(
                 L0,
                 KxStar,
                 np.array([nk_cd122[i] * 100, nk_marker[i] * 100]),
@@ -80,7 +80,7 @@ def makeFigure():
             )
             NKIL2_bound += NKbinding[0][0]
         for i, _ in enumerate(non_nk_marker):
-            non_NKbinding, _ = polyc(
+            non_NKbinding = polyc(
                 L0,
                 KxStar,
                 np.array([non_nk_cd122[i] * 100, non_nk_marker[i] * 100]),

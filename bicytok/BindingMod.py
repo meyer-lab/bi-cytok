@@ -50,9 +50,7 @@ def polyc(L0: float, KxStar: float, Rtot: np.ndarray, Cplx: np.ndarray, Kav: np.
     Psinorm = Psi / Psirs[:, np.newaxis]
 
     Rbound = L0 / KxStar * np.dot(Cplx, Psinorm) * np.exp(np.dot(Cplx, np.log(Psirs)))
-    with np.errstate(divide='ignore'):
-        Lfbnd = L0 / KxStar * np.exp(np.dot(Cplx, np.log(Psirs - 1.0))).flatten()
 
     assert Rbound.shape[0] == 1
     assert Rbound.shape[1] == len(Rtot)
-    return Rbound, Lfbnd
+    return Rbound
