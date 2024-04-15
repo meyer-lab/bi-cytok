@@ -2,6 +2,7 @@ from .common import getSetup
 import pandas as pd
 import seaborn as sns
 import numpy as np
+from concurrent.futures import ProcessPoolExecutor
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign
 
 
@@ -29,31 +30,25 @@ def makeFigure():
     # This is just grabbing vectors of receptors to use in the function. Take a look at the output to see what's happening
     doseVec = np.logspace(-3, 3, num=5) #changed num = 2 so runs faster when practicing 
     epitopesDF = getSampleAbundances(epitopes, cells, "CellType2")
-    prevOptAffs = np.array([8.0, 8.0, 8.0])
-    selectivity_values1 = []
-    affinity_values1 = []
-    selectivity_values2 = []
-    affinity_values2 = []
+    futures1 = []
+    futures2 = []
+
+    executor = ProcessPoolExecutor(max_workers=10)
 
     print("Starting optimization")
-    
+
+    # this function gets the optimal affinties and returns the optimal selectivity (first output),
+    # and affinities (second outputs) plot these dose on bottom for all, 2 have selectivity, 2 have affinity
     for dose in doseVec:
-        # this function gets the optimal affinties and returns the optimal selectivity (first output),
-        # and affinities (second outputs) plot these dose on bottom for all, 2 have selectivity, 2 have affinity
-        selectivity1, prevOptAffs, _ = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency1, prevOptAffs)
-        selectivity_values1.append(selectivity1)
-        affinity_values1.append(prevOptAffs[0])
+        futures1.append(executor.submit(optimizeDesign, secondary, epitope, targCell, offTCells, epitopesDF, dose, valency1))
 
     for dose in doseVec:
-        # this function gets the optimal affinties and returns the optimal selectivity (first output),
-        # and affinities (second outputs) plot these dose on bottom for all, 2 have selectivity, 2 have affinity 
-        selectivity2, prevOptAffs, _ = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency2, prevOptAffs)
-        selectivity_values2.append(selectivity2)
-        affinity_values2.append(prevOptAffs[0])
-    
-    # convert to np maybe? works.
-    affinity_values1 = np.array(affinity_values1)
-    affinity_values2 = np.array(affinity_values2)
+        futures2.append(executor.submit(optimizeDesign, secondary, epitope, targCell, offTCells, epitopesDF, dose, valency2))
+
+    affinity_values1 = np.array([fut.result()[1][0] for fut in futures1])
+    affinity_values2 = np.array([fut.result()[1][0] for fut in futures2])
+    selectivity_values1 = np.array([fut.result()[0] for fut in futures1])
+    selectivity_values2 = np.array([fut.result()[0] for fut in futures2])
 
     # Plot the optimal affinity and optimal selectivity you get at each dose
     sns.lineplot(x=doseVec, y=selectivity_values1, ax=ax[0], label='Selectivity for bivalent')

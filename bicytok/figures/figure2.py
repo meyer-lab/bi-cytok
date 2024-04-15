@@ -67,27 +67,24 @@ def makeFigure():
         cplx = np.array(
             [[1, 1]]
         )  # Changed - before this was saying there are two different types of ligand, now its a single ligand with two components
-        Ctheta = np.array([1])
 
         # Got rid of initial loop
 
         for i, _ in enumerate(nk_marker):
-            NKbinding, _ = polyc(
+            NKbinding = polyc(
                 L0,
                 KxStar,
                 np.array([nk_cd122[i] * 100, nk_marker[i] * 100]),
                 cplx,
-                Ctheta,
                 Kav_matrix,
             )
             NKIL2_bound += NKbinding[0][0]
         for i, _ in enumerate(non_nk_marker):
-            non_NKbinding, _ = polyc(
+            non_NKbinding = polyc(
                 L0,
                 KxStar,
                 np.array([non_nk_cd122[i] * 100, non_nk_marker[i] * 100]),
                 cplx,
-                Ctheta,
                 Kav_matrix,
             )
             non_NKIL2_bound += non_NKbinding[0][0]

@@ -8,14 +8,14 @@ from bicytok.selectivityFuncs import getSampleAbundances, optimizeDesign
 
 def test_optimize_design():
     targCell = "Treg"
-    offTCells = np.array(["CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL"])
-    cells = np.append(offTCells, targCell)
+    offTCells = ["CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL"]
+    cells = offTCells + [targCell]
 
     epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
     epitopesDF = getSampleAbundances(epitopes, cells)
 
-    result = optimizeDesign(
+    optimizeDesign(
         secondary="CD122",
         epitope="CD25",
         targCell=targCell,
@@ -23,5 +23,4 @@ def test_optimize_design():
         selectedDF=epitopesDF,
         dose=0.1,
         valency=2,
-        prevOptAffs=[8.0, 8.0, 8.0],
     )

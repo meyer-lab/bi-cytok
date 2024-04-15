@@ -7,7 +7,7 @@ flist = $(wildcard bicytok/figures/figure*.py)
 all: $(patsubst bicytok/figures/figure%.py, output/figure%.svg, $(flist))
 
 output/figure%.svg: bicytok/figures/figure%.py
-	mkdir -p ./output
+	@ mkdir -p ./output
 	poetry run fbuild $*
 
 clean:

@@ -1,14 +1,10 @@
-from os.path import dirname, join
 from .common import getSetup
 import pandas as pd
 import seaborn as sns
 import numpy as np
-import scipy
 
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign, minSelecFunc, get_rec_vecs
-from ..imports import importCITE
 
-path_here = dirname(dirname(__file__))
 
 def makeFigure():
     """Get a list of the axis objects and create a figure"""
@@ -22,7 +18,7 @@ def makeFigure():
     wtSecondaryAff = il2[3]
     wtEpitopeAff = il2[4]
 
-    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList['Epitope'].unique())
 
     targCell = 'Treg'
@@ -36,20 +32,13 @@ def makeFigure():
     df2 = pd.DataFrame(columns=['Dose', 'Target Bound', 'Ligand'])
     targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, secondary, epitope)
 
-    if secondary == 'CD122':
-        prevOptAffs = [8.0, 8.0, 8.0]
-    else:
-        prevOptAffs = [8.0, 8.0]
-
     for _, dose in enumerate(doseVec):
-        optParams = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency, prevOptAffs)
+        optParams = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency)
         if secondary == 'CD122':
             LD = minSelecFunc([wtIL2RaAff, wtSecondaryAff, wtEpitopeAff], secondary, epitope, targRecs, offTRecs, dose, valency)
-            prevOptAffs = [optParams[1][0], optParams[1][1], optParams[1][2]]
             epitopeAff = optParams[1][2]
         else:
             LD = minSelecFunc([wtIL2RaAff, wtSecondaryAff], secondary, epitope, targRecs, offTRecs, dose, valency)
-            prevOptAffs = [optParams[1][0], optParams[1][1]]
             epitopeAff = None
 
         data = {'Dose': [dose],

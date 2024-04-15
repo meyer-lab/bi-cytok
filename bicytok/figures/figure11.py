@@ -32,7 +32,6 @@ def makeFigure():
     affs = np.array([[8.5, secondaryAff, 8.5]])
     bindings = get_cell_bindings(affs, cells, epitopesDF, secondary, epitope, 0.1, valency)
     bindings['Percent Bound of Secondary'] = (bindings['Secondary Bound'] / bindings['Total Secondary']) * 100
-    print(bindings)
 
     palette = sns.color_palette("husl", 10)
     sns.barplot(data=bindings, x='Cell Type', y='Secondary Bound', palette=palette, ax=ax[0])
