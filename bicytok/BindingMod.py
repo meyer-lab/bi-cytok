@@ -31,8 +31,6 @@ def polyc(L0: float, KxStar: float, Rtot: np.ndarray, Cplx: np.ndarray, Kav: np.
         Rbound: a list of Rbound of each kind of receptor
     """
     # Consistency check
-    Kav = np.array(Kav, dtype=float)
-    Rtot = np.array(Rtot, dtype=float)
     Cplx = np.array(Cplx, dtype=float)
     assert Rtot.ndim <= 1
     assert Kav.shape == (Cplx.shape[1], Rtot.size)
@@ -43,14 +41,4 @@ def polyc(L0: float, KxStar: float, Rtot: np.ndarray, Cplx: np.ndarray, Kav: np.
     args = (Rtot, L0, KxStar, Cplx, Kav)
     Req, _, _, msg, ier = leastsq(Req_func2, np.zeros_like(Rtot), args=args, full_output=True) # type: ignore
     assert ier in (1, 2, 3, 4), "Failure in rootfinding. " + str(msg)
-
-    # Calculate the results
-    Psi = Req * Kav * KxStar
-    Psirs = Psi.sum(axis=1) + 1
-    Psinorm = Psi / Psirs[:, np.newaxis]
-
-    Rbound = L0 / KxStar * np.dot(Cplx, Psinorm) * np.exp(np.dot(Cplx, np.log(Psirs)))
-
-    assert Rbound.shape[0] == 1
-    assert Rbound.shape[1] == len(Rtot)
-    return Rbound
+    return Rtot - Req
