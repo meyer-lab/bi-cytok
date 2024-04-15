@@ -18,6 +18,11 @@ import ot
 import ot.plot
 from ..selectivityFuncs import convFactCalc
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign
+from scipy.stats import norm
+from scipy.cluster import hierarchy
+from os.path import dirname, join
+
+path_here = dirname(dirname(__file__))
 
 
 matplotlib.rcParams["legend.labelspacing"] = 0.2
@@ -788,7 +793,7 @@ def KL_divergence_2D_pair(dataset, target_cells, signal_receptor, special_recept
     target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
     off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
         
-    KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 1], off_target_receptor_counts[:, 1])
+    KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 0:2], off_target_receptor_counts[:, 0:2])
     
     print('KL', KL_div)
     return KL_div
@@ -807,3 +812,16 @@ def bindingmodel_selectivity_pair(dataset, target_cells, signal_receptor, specia
     optParams1 = optimizeDesign(signal_receptor, special_receptor, target_cells, offtarg_cell_types, epitopesDF, dose, valency)
     selectivity = 1/optParams1[0]
     return selectivity
+
+def correlation(cell_type, relevant_epitopes):
+    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopes = list(epitopesList['Epitope'].unique())
+    epitopesDF = getSampleAbundances(epitopes, np.array([cell_type]))
+
+    df = pd.DataFrame()
+    for index, row in epitopesDF.iterrows():
+        df[row['Epitope']] = row[cell_type]
+
+    corr = df.corr().loc[:, relevant_epitopes]
+
+    return corr

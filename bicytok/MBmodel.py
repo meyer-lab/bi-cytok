@@ -82,27 +82,43 @@ def cytBindingModel_CITEseq(mutAffDF, counts, betaAffs, val) -> float:
     return polyc(dose / 1e9, getKxStar(), recCount, vals, Affs)[0][1]
 
 
-def cytBindingModel_bispecCITEseq(mutAffDF, counts, betaAffs, recXaff, val) -> float:
+def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, vals, mut, x=False) -> float:
     """Runs bispecific binding model built for CITEseq data for a given mutein, epitope, valency, dose, and cell type."""
 
     recXaff = np.power(10, recXaff)
-    dose = 0.1
+    doseVec = np.array([0.1])
     recCount = np.ravel(counts)
-
-    Affs = np.power(np.array([mutAffDF["IL2RaKD"].values, [betaAffs]]) / 1e9, -1)
+    mutAffDF = pd.read_csv(join(path_here, "bicytok/data/WTmutAffData.csv"))
+    Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
+    Affs = np.power(np.array([Affs["IL2RaKD"].values, [betaAffs]]) / 1e9, -1)
     Affs = np.reshape(Affs, (1, -1))
     Affs = np.append(Affs, recXaff)
     holder = np.full((3, 3), 1e2)
     np.fill_diagonal(holder, Affs)
     Affs = holder
-    vals = np.full((1, 3), val)
+    if doseVec.size == 1:
+        doseVec = np.array([doseVec])
+    output = np.zeros(doseVec.size)
 
-    return polyc(dose / (val * 1e9), getKxStar(), recCount, vals, Affs)[0][1]
+    for i, dose in enumerate(doseVec):
+        if x:
+            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, vals, Affs)[0][1]
+        else:
+            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, vals, Affs)[0][1]
 
-def cytBindingModel_bispecOpt(recCount: np.ndarray, holder: np.ndarray, dose: float, val: int):
+    return output
+
+def cytBindingModel_bispecOpt(recCount: np.ndarray, holder: np.ndarray, dose: float, vals: np.ndarray, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     # Check that values are in correct placement, can invert
-    vals = np.full((1, holder.shape[0]), val)
+    doseVec = np.array(dose)
     Kx = getKxStar()
-    
-    return polyc(dose / (val * 1e9), Kx, recCount, vals, holder)[0][1]
+
+    if doseVec.size == 1:
+        doseVec = np.array([doseVec])
+    output = np.zeros(doseVec.size)
+
+    for i, dose in enumerate(doseVec):
+        output[i] = polyc(dose / (vals[0] * 1e9), Kx, recCount, [vals], holder)[0][1]
+
+    return output
