@@ -2,7 +2,7 @@
 Functions used in binding and selectivity analysis
 """
 from .imports import importCITE, importReceptors
-from .MBmodel import cytBindingModel_CITEseq, cytBindingModel_bispecCITEseq, cytBindingModel_bispecOpt, cytBindingModel_basicSelec
+from .MBmodel import cytBindingModel_bispecOpt, cytBindingModel_basicSelec
 from scipy.optimize import minimize, Bounds
 import pandas as pd
 import numpy as np
