@@ -1,7 +1,8 @@
 from .common import getSetup, Wass_KL_Dist
 
 
-"""def makeFigure():
+def makeFigure():
+    """1D KL divergence and EMD for given cell type/subset."""
     ax, f = getSetup((8, 8), (3, 2))
 
     Wass_KL_Dist(ax[0:2], "Treg Memory", 10)
@@ -9,4 +10,3 @@ from .common import getSetup, Wass_KL_Dist
     Wass_KL_Dist(ax[4:6], "Treg Memory", 10, offTargState=2)
   
     return f
-"""

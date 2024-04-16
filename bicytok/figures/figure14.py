@@ -10,14 +10,13 @@ from ..imports import importCITE
 
 path_here = dirname(dirname(__file__))
 
-plt.rcParams["svg.fonttype"] = "none"
-
 def makeFigure():
-    ax, f = getSetup((6, 3), (1, 2))
+    """Bispecific ligand selectivity heatmap.""" 
+    ax, f = getSetup((4, 3), (1, 1))
 
     signal = ['CD122', 1]
-    allTargets = [[('CD25', 1)], [('CD25', 4)], [('CD25', 1), ('CD278', 1)], [('CD25', 4), ('CD278', 4)], [('CD25', 1), ('CD27', 1)],
-        [('CD25', 4), ('CD27', 4)], [('CD25', 1), ('CD278', 1), ('CD27', 1)], [('CD25', 4), ('CD278', 4), ('CD27', 4)]]
+    allTargets = [('CD25', 1), ('CD278', 1), ('CD45RB', 1), ('CD4-2', 1), ('CD81', 1)]
+    dose = 10e-2
 
     cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
         'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
@@ -28,47 +27,35 @@ def makeFigure():
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells)
 
-    doseVec = np.logspace(-2, 2, num=5)
-    df = pd.DataFrame(columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
-    df2 = pd.DataFrame(columns=['Ligand', 'Dose', 'Affinities'])
+    df = pd.DataFrame(columns=['Target 1', 'Target 2', 'Selectivity'])
 
-    for targetPairs in allTargets:
-        print(targetPairs)
-        prevOptAffs = [8.0]
-        valencies = [signal[1]]
-        targets = []
-        naming = []
-        for target, valency in targetPairs:
-            prevOptAffs.append(8.0)
-            targets.append(target)
-            valencies.append(valency)
-            naming.append('{} ({})'.format(target, valency))
+    optAffs = [8.0, 8.0, 8.0]
 
-        for _, dose in enumerate(doseVec):
-            optParams = optimizeDesign(signal[0], targets, targCell, offTCells, epitopesDF, dose, valencies, prevOptAffs)
-            prevOptAffs = optParams[1]
+    valencies = []
+    targets = []
+    for target, valency in allTargets:
+        targets.append(target)
+        valencies.append(valency)
 
-            data = {'Dose': [dose],
-                'Selectivity': 1 / optParams[0],
-                'Target Bound': optParams[2],
-                'Ligand': ' + '.join(naming)
+    for i, target1 in enumerate(targets):
+        for j, target2 in enumerate(targets):
+            if i == j:
+                targetsBoth = [target1]
+                valenciesBoth = [signal[1], valencies[i]]
+            else:
+                targetsBoth = [target1, target2]
+                valenciesBoth = [signal[1], valencies[i], valencies[j]]
+
+            optParams = optimizeDesign(signal[0], targetsBoth, targCell, offTCells, epitopesDF, dose, valenciesBoth, optAffs)
+
+            data = {'Target 1': '{} ({})'.format(target1, valencies[i]),
+                'Target 2': '{} ({})'.format(target2, valencies[j]),
+                'Selectivity': 1 / optParams[0]
             }
-            df_temp = pd.DataFrame(data, columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
+            df_temp = pd.DataFrame(data, columns=['Target 1', 'Target 2', 'Selectivity'], index=[0])
             df = pd.concat([df, df_temp], ignore_index=True)
-            print(optParams[1])
 
-            data = {'Ligand': ' + '.join(naming),
-                'Dose': dose,
-                'Affinities': optParams[1]
-            }
-            df2_temp = pd.DataFrame(data, columns=['Ligand', 'Dose', 'Affinities'])
-            df2 = pd.concat([df2, df2_temp], ignore_index=True)
-
-    print(df2)
-
-    sns.lineplot(data=df, x='Dose', y='Selectivity', hue='Ligand', ax=ax[0])
-    sns.lineplot(data=df, x='Dose', y='Target Bound', hue='Ligand', ax=ax[1])
-    ax[0].set(xscale='log')
-    ax[1].set(xscale='log')
+    selectivities = df.pivot(index="Target 1", columns="Target 2", values="Selectivity")
+    sns.heatmap(selectivities)
 
     return f

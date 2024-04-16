@@ -6,6 +6,8 @@ from ..selectivityFuncs import get_cell_bindings, getSampleAbundances, get_rec_v
 
 
 def makeFigure():
+    """ Figure to generate collection of graphs: simple dose response curves, amount of receptor bound dose response curves,
+    affinity dose response curves, and amount of receptor bound bar plots."""
     ax, f = getSetup((12, 6), (2, 10), multz={0:2, 5:2, 7:1, 10:1, 12:1, 14:1, 16:1, 18:1})
 
     secondary = 'CD122'
@@ -17,6 +19,8 @@ def makeFigure():
     wtSecondaryAff = 7.65072247
     wtEpitopeAff = 9.14874165
 
+    affs = np.array([secondaryAff, 8.5, 8.5])
+
     cells1 = ['Treg', 'CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD4 TEM', 'NK Proliferating',
     'NK_CD56bright']
     cells2 = ['Treg Memory', 'Treg Naive']
@@ -24,14 +28,13 @@ def makeFigure():
     epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList['Epitope'].unique())
 
-    epitopesDF1 = getSampleAbundances(epitopes, cells1, "CellType2")
-    epitopesDF2 = getSampleAbundances(epitopes, cells2, "CellType3")
+    epitopesDF1 = getSampleAbundances(epitopes, cells1, 1000, "CellType2")
+    epitopesDF2 = getSampleAbundances(epitopes, cells2, 1000, "CellType3")
 
-    affs = np.array([[8.5, secondaryAff, 8.5]])
-    bindings1 = get_cell_bindings(affs, cells1, epitopesDF1, secondary, epitope, 0.1, valency)
+    bindings1 = get_cell_bindings(affs, cells1, epitopesDF1, secondary, epitope, 0.1, [valency, valency, valency])
     bindings1['Percent Bound of Secondary'] = (bindings1['Secondary Bound'] / bindings1['Total Secondary']) * 100
 
-    bindings2 = get_cell_bindings(affs, cells2, epitopesDF2, secondary, epitope, 0.1, valency)
+    bindings2 = get_cell_bindings(affs, cells2, epitopesDF2, secondary, epitope, 0.1, [valency, valency, valency])
     bindings2['Percent Bound of Secondary'] = (bindings2['Secondary Bound'] / bindings2['Total Secondary']) * 100
 
     palette = sns.color_palette("husl", 10)
@@ -51,16 +54,16 @@ def makeFigure():
     offTCells = [c for c in cells if c != targCell]
 
     doseVec = np.logspace(-3, 3, num=20)
-    epitopesDF = getSampleAbundances(epitopes, cells, "CellType3")
+    epitopesDF = getSampleAbundances(epitopes, cells, 1000, "CellType3")
     df = pd.DataFrame(columns=['Dose', 'Affinity (IL2Ra)', 'Affinity (secondary)', 'Affinity (epitope)', 'Selectivity', 'Ligand'])
     df2 = pd.DataFrame(columns=['Dose', 'Target Bound', 'Ligand'])
-    targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, secondary, epitope)
+    targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, secondary, [epitope, 'CD25'])
 
     for _, dose in enumerate(doseVec):
-        optParams = optimizeDesign(secondary, epitope, targCell, offTCells, epitopesDF, dose, valency)
+        optParams = optimizeDesign(secondary, [epitope, 'CD25'], targCell, offTCells, epitopesDF, dose, [valency, valency, valency], affs)
         
-        affs = np.array([[wtIL2RaAff, wtSecondaryAff, wtEpitopeAff]])
-        LD = minSelecFunc(affs, secondary, epitope, targRecs, offTRecs, dose, valency)
+        affs = np.array([wtSecondaryAff, wtEpitopeAff, wtIL2RaAff])
+        LD = minSelecFunc(affs, secondary, [epitope, 'CD25'], targRecs, offTRecs, dose, [valency, valency, valency])
         epitopeAff = optParams[1][2]
 
         data = {'Dose': [dose],

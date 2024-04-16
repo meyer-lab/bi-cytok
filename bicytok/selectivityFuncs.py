@@ -179,7 +179,7 @@ def minSelecFunc(recXaffs: np.array, signal: str, targets: list, targRecs: np.ar
     affs = pd.DataFrame()
     for i, recXaff in enumerate(recXaffs):
         affs = np.append(affs, np.power(10, recXaff))
-    holder = np.full((len(targets) + 1, len(targets) + 1), 1e2)
+    holder = np.full((recXaffs.size, recXaffs.size), 1e2)
     np.fill_diagonal(holder, affs)
     affs = holder
 
@@ -357,8 +357,15 @@ def get_rec_vecs(df: pd.DataFrame, targCell: str, offTCells: list, signal: str, 
     return countTarg, countOffT
 
 
-def get_cell_bindings(affs: np.ndarray, cells: list, df: pd.DataFrame, secondary: str, epitope: str, dose: float, valency: int):
+def get_cell_bindings(recXaffs: np.ndarray, cells: list, df: pd.DataFrame, secondary: str, epitope: str, dose: float, valency: np.ndarray):
     df_return = pd.DataFrame(columns=['Cell Type', 'Secondary Bound', 'Total Secondary'])
+    
+    affs = pd.DataFrame()
+    for i, recXaff in enumerate(recXaffs):
+        affs = np.append(affs, np.power(10, recXaff))
+    holder = np.full((recXaffs.size, recXaffs.size), 1e2)
+    np.fill_diagonal(holder, affs)
+    affs = holder
 
     cd25DF = df.loc[(df.Epitope == 'CD25')]
     secondaryDF = df.loc[(df.Epitope == secondary)]
@@ -385,7 +392,7 @@ def get_cell_bindings(affs: np.ndarray, cells: list, df: pd.DataFrame, secondary
             secondaryBound += cytBindingModel_bispecOpt(recs[:, i], affs[0:3], dose, valency)
 
         data = {'Cell Type': [cell],
-            'Secondary Bound': [secondaryBound / numCells],
+            'Secondary Bound': [secondaryBound / numCells][0],
             'Total Secondary': [np.sum(recs[1]) / numCells]
         }
 
