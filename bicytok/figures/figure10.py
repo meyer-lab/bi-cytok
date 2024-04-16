@@ -13,7 +13,7 @@ path_here = dirname(dirname(__file__))
 plt.rcParams["svg.fonttype"] = "none"
 
 def makeFigure():
-    """ Figure to generate dose response curves for any combination of multivalent and multispecific ligands."""
+    """Figure to generate dose response curves for any combination of multivalent and multispecific ligands."""
     ax, f = getSetup((6, 3), (1, 2))
 
     signal = ['CD122', 1]
@@ -29,7 +29,7 @@ def makeFigure():
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells)
 
-    doseVec = np.logspace(-2, 2, num=5)
+    doseVec = np.logspace(-2, 2, num=20)
     df = pd.DataFrame(columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
     df2 = pd.DataFrame(columns=['Ligand', 'Dose', 'Affinities'])
 

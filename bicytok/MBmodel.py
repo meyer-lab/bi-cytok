@@ -39,9 +39,9 @@ def cytBindingModel(mut, val, doseVec, cellType, x=False, date=False):
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], Affs)[1]
+            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], Affs)[0]
         else:
-            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], Affs)[1]  # IL2RB binding only
+            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], Affs)[0]  # IL2RB binding only
     if date:
         convDict = getBindDict()
         if cellType[-1] == "$":  # if it is a binned pop, use ave fit
@@ -65,7 +65,7 @@ def cytBindingModel_basicSelec(counts) -> float:
     Affs = np.repeat(Affs, 2, axis=0)
     np.fill_diagonal(Affs, 1e2)  # Each cytokine can only bind one a and one b
 
-    return polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], Affs)[1]  # IL2RB binding only
+    return polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], Affs)[0]  # IL2RB binding only
 
 
 # CITEseq Tetra valent exploration functions below
@@ -83,7 +83,7 @@ def cytBindingModel_CITEseq(mutAffDF, counts, betaAffs, val) -> float:
     np.fill_diagonal(Affs, 1e2)  # Each cytokine can only bind one a and one b
     vals = np.full((1, 2), val)
 
-    return polyc(dose / 1e9, getKxStar(), recCount, vals, Affs)[1]
+    return polyc(dose / 1e9, getKxStar(), recCount, vals, Affs)[0]
 
 
 def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, vals, mut, x=False) -> float:
@@ -106,9 +106,9 @@ def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, vals, mut, x=False)
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, vals, Affs)[0][1]
+            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, vals, Affs)[0]
         else:
-            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, vals, Affs)[0][1]
+            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, vals, Affs)[0]
 
     return output
 
@@ -123,6 +123,6 @@ def cytBindingModel_bispecOpt(recCount: np.ndarray, holder: np.ndarray, dose: fl
     output = np.zeros(doseVec.size)
 
     for i, dose in enumerate(doseVec):
-        output[i] = polyc(dose / (vals[0] * 1e9), Kx, recCount, [vals], holder)[0][0]
+        output[i] = polyc(dose / (vals[0] * 1e9), Kx, recCount, [vals], holder)[0]
 
     return output
