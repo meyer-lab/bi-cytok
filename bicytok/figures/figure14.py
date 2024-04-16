@@ -29,8 +29,6 @@ def makeFigure():
 
     df = pd.DataFrame(columns=['Target 1', 'Target 2', 'Selectivity'])
 
-    optAffs = [8.0, 8.0, 8.0]
-
     valencies = []
     targets = []
     for target, valency in allTargets:
@@ -41,9 +39,11 @@ def makeFigure():
         for j, target2 in enumerate(targets):
             if i == j:
                 targetsBoth = [target1]
+                optAffs = [8.0, 8.0]
                 valenciesBoth = [signal[1], valencies[i]]
             else:
                 targetsBoth = [target1, target2]
+                optAffs = [8.0, 8.0, 8.0]
                 valenciesBoth = [signal[1], valencies[i], valencies[j]]
 
             optParams = optimizeDesign(signal[0], targetsBoth, targCell, offTCells, epitopesDF, dose, valenciesBoth, optAffs)
