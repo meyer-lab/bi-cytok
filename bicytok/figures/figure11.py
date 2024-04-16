@@ -15,12 +15,8 @@ def makeFigure():
     ax, f = getSetup((4, 3), (1, 1))
 
     signal = ['CD122', 1]
-    allTargets = [[('CD25', 1)], [('CD278', 1)], [('CD25', 1), ('CD278', 1)], [('CD278', 1), ('CD45RB', 1)],
-        [('CD278', 1), ('CD81', 1)], [('CD278', 1), ('CD4-2', 1)], [('CD25', 1), ('CD278', 1), ('CD45RB', 1)],
-        [('CD25', 1), ('CD278', 1), ('CD81', 1)], [('CD25', 1), ('CD278', 1), ('CD4-2', 1)],
-        [('CD25', 4)], [('CD278', 4)], [('CD25', 4), ('CD278', 4)], [('CD278', 4), ('CD45RB', 4)],
-        [('CD278', 4), ('CD81', 4)], [('CD278', 4), ('CD4-2', 4)], [('CD25', 4), ('CD278', 4), ('CD45RB', 4)],
-        [('CD25', 4), ('CD278', 4), ('CD81', 4)], [('CD25', 4), ('CD278', 4), ('CD4-2', 4)]]
+    allTargets = [[('CD25', 1)], [('CD25', 4)], [('CD25', 1), ('CD278', 1)], [('CD25', 4), ('CD278', 4)], [('CD25', 1), ('CD27', 1)],
+        [('CD25', 4), ('CD27', 4)], [('CD25', 1), ('CD278', 1), ('CD27', 1)], [('CD25', 4), ('CD278', 4), ('CD27', 4)]]
     dose = 10e-1
 
     cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
@@ -35,12 +31,12 @@ def makeFigure():
     df = pd.DataFrame(columns=['Selectivity', 'Ligand'])
 
     for targetPairs in allTargets:
-        optAffs = [8.0, 8.0, 8.0]
-
+        optAffs = [8.0]
         valencies = [signal[1]]
         targets = []
         naming = []
         for target, valency in targetPairs:
+            optAffs.append(8.0)
             targets.append(target)
             valencies.append(valency)
             naming.append('{} ({})'.format(target, valency))
