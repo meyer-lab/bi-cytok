@@ -22,3 +22,6 @@ testprofile:
 
 coverage.xml:
 	poetry run pytest --junitxml=junit.xml --cov=bicytok --cov-report xml:coverage.xml
+
+mypy:
+	poetry run mypy --install-types --non-interactive --ignore-missing-imports bicytok

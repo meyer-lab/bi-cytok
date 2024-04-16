@@ -73,7 +73,7 @@ def genFigure():
     nameOut = "figure" + sys.argv[1]
 
     exec("from bicytok.figures." + nameOut + " import makeFigure", globals())
-    ff = makeFigure()
+    ff = makeFigure()  # noqa: F821
     ff.savefig(fdir + nameOut + ".svg", dpi=ff.dpi, bbox_inches="tight", pad_inches=0)
 
     print(f"Figure {sys.argv[1]} is done after {time.time() - start} seconds.\n")

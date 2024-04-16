@@ -78,7 +78,7 @@ def makeFigure():
                 cplx,
                 Kav_matrix,
             )
-            NKIL2_bound += NKbinding[0][0]
+            NKIL2_bound += NKbinding[0]
         for i, _ in enumerate(non_nk_marker):
             non_NKbinding = polyc(
                 L0,
@@ -87,7 +87,7 @@ def makeFigure():
                 cplx,
                 Kav_matrix,
             )
-            non_NKIL2_bound += non_NKbinding[0][0]
+            non_NKIL2_bound += non_NKbinding[0]
         return non_NKIL2_bound / NKIL2_bound
 
     initial_guess = [7]
