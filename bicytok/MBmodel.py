@@ -2,10 +2,14 @@
 Implementation of a simple multivalent binding model.
 """
 
+import os
 import numpy as np
 import pandas as pd
 from .BindingMod import polyc
 from .imports import getBindDict, importReceptors
+from os.path import join
+
+path_here = os.path.dirname(os.path.dirname(__file__))
 
 
 def getKxStar():

@@ -6,6 +6,7 @@ from ..selectivityFuncs import getSampleAbundances, optimizeDesign, get_rec_vecs
 from ..imports import importCITE
 import pandas as pd
 import seaborn as sns
+import numpy as np
 
 
 def makeFigure():
@@ -26,14 +27,12 @@ def makeFigure():
     # EpitopeDF now contains a data of single cell abundances for each cell type for each epitope
     epitopesDF["Selectivity"] = -1
     # New column which will hold selectivity per epitope
-    targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, "CD122", epitopes[0])
-    targRecs[2, :] = 0
-    offTRecs[2, :] = 0
-    baseSelectivity = 1 / minSelecFunc([8, 8, 8], "CD122", "CD25", targRecs, offTRecs, 0.1, 2)
+    targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, "CD122", [epitopes[0]])
+    baseSelectivity = 1 / minSelecFunc(np.array([8, 8]), "CD122", ["CD25"], targRecs, offTRecs, 0.1, [2, 2])
 
     for i, epitope in enumerate(epitopesDF['Epitope']):
         # New form
-        optSelectivity = 1 / (optimizeDesign("CD122", "CD25", targCell, offTCells, epitopesDF, 1, 2))[0]
+        optSelectivity = 1 / (optimizeDesign("CD122", ["CD25"], targCell, offTCells, epitopesDF, 1, [2, 2], np.array([8, 8])))[1][0]
         epitopesDF.loc[epitopesDF['Epitope'] == epitope, 'Selectivity'] = optSelectivity  # Store selectivity in DF to be used for plots
 
 

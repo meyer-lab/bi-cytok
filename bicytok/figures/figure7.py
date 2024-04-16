@@ -31,12 +31,11 @@ def makeFigure():
     output = np.zeros(doseVec.size)
 
     for i in range(len(epitopes)):
-        
-        _, optParams, _ = optimizeDesign("CD122", epitopes[i], targCell, offTCells, epitopesDF, 0.1, 1)
-        targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, "CD122", epitopes[i])
+        _, optParams, _ = optimizeDesign("CD122", [epitopes[i]], targCell, offTCells, epitopesDF, 0.1, [1, 1], np.array([8, 8]))
+        targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, "CD122", [epitopes[i]])
 
         for j, dose in enumerate(doseVec):
-            output[j] = 1 / minSelecFunc(optParams, "CD122", epitopes[i], targRecs, offTRecs, dose, 2)
+            output[j] = 1 / minSelecFunc(np.array([8, optParams[1]]), "CD122", [epitopes[i]], targRecs, offTRecs, dose, [2, 2])
 
         data = {'Epitope': epitopes[i],
             'Dose': doseVec,

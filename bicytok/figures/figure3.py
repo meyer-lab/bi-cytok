@@ -29,7 +29,7 @@ def makeFigure():
 
     # This is just grabbing vectors of receptors to use in the function. Take a look at the output to see what's happening
     doseVec = np.logspace(-3, 3, num=5) #changed num = 2 so runs faster when practicing 
-    epitopesDF = getSampleAbundances(epitopes, cells, "CellType2")
+    epitopesDF = getSampleAbundances(epitopes, cells, 1000, "CellType2")
     futures1 = []
     futures2 = []
 
@@ -40,10 +40,10 @@ def makeFigure():
     # this function gets the optimal affinties and returns the optimal selectivity (first output),
     # and affinities (second outputs) plot these dose on bottom for all, 2 have selectivity, 2 have affinity
     for dose in doseVec:
-        futures1.append(executor.submit(optimizeDesign, secondary, epitope, targCell, offTCells, epitopesDF, dose, valency1))
+        futures1.append(executor.submit(optimizeDesign, secondary, [epitope], targCell, offTCells, epitopesDF, dose, [valency1, valency1], [8.0, 8.0]))
 
     for dose in doseVec:
-        futures2.append(executor.submit(optimizeDesign, secondary, epitope, targCell, offTCells, epitopesDF, dose, valency2))
+        futures2.append(executor.submit(optimizeDesign, secondary, [epitope], targCell, offTCells, epitopesDF, dose, [valency2, valency2], [8.0, 8.0]))
 
     affinity_values1 = np.array([fut.result()[1][0] for fut in futures1])
     affinity_values2 = np.array([fut.result()[1][0] for fut in futures2])
