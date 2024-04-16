@@ -1,153 +1,75 @@
-"""
-This creates Figure 5, used to find optimal epitope classifier.
-"""
+from os.path import dirname, join
 from .common import getSetup
 import pandas as pd
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
-from sklearn.cross_decomposition import PLSRegression
-from sklearn.datasets import fetch_california_housing
-from sklearn.model_selection import KFold
-from sklearn.metrics import r2_score
-from ..BindingMod import polyc
+from ..selectivityFuncs import get_cell_bindings, getSampleAbundances, get_rec_vecs, optimizeDesign, minSelecFunc
 from ..imports import importCITE
 
+path_here = dirname(dirname(__file__))
+
+plt.rcParams["svg.fonttype"] = "none"
 
 def makeFigure():
-    ax, f = getSetup((12, 12), (1, 1))
-    a = importCITE()
-    sns.boxplot(data=a, x="CellType2", y="CD278", ax=ax[0])
-    ax[0].set_xticklabels(labels=ax[0].get_xticklabels(), rotation=45, horizontalalignment='right')
-    """
-    
-    def linregression(params, Xs):
-       A, B = params
-       Ys = A*Xs + B
-       return Ys
-    
-    def plotLin(Xs, Ys, ax):
-        sns.lineplot(x=Xs, y=Ys, ax=ax)
-    
-    params = np.array([2,1])
-    Xs = np.linspace(0,10, 100)
-    Ys = linregression(params, Xs)
-    plotLin(Xs, Ys, ax[0])
-    
-    x = np.arange(0,100, 1)
-    y = 2*x + 5
-    noise = np.random.normal(loc=0, scale=1, size=len(x))
-    y_noisy = y + noise
+    """Figure to generate dose response curves for any combination of multivalent and multispecific ligands."""
+    ax, f = getSetup((6, 3), (1, 2))
 
-    def residuals(params, X, Y):
-        A, B = params
-        model_predictions = A*X + B
-        error = model_predictions - Y
-        return error
-    
-    ogparams = [0,0]
-    optimized = least_squares(residuals, ogparams, args=(x, y_noisy))
-    optimized_params = optimized.x
-    ax[1].scatter(x, y_noisy, label='Simulated data')
-    ax[1].plot(x, optimized_params[0]*x + optimized_params[1], 'r-', label='Fitted line')
-    ax[1].legend()
+    signal = ['CD122', 1]
+    allTargets = [[('CD25', 1)], [('CD25', 4)], [('CD25', 1), ('CD278', 1)], [('CD25', 4), ('CD278', 4)], [('CD25', 1), ('CD27', 1)],
+        [('CD25', 4), ('CD27', 4)], [('CD25', 1), ('CD278', 1), ('CD27', 1)], [('CD25', 4), ('CD278', 4), ('CD27', 4)]]
 
-    california_housing = fetch_california_housing()
-    X, Y = california_housing.data, california_housing.target
-    
-    model = PLSRegression()
-    model.fit(X,Y)
-    
-    Y_pred = model.predict(X)
-    ax[2].scatter(Y, Y_pred, label='Actual values vs Predictions')
+    cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
+        'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
+    targCell = 'Treg'
+    offTCells = cells[cells != targCell]
 
-    x_loadings = model.x_loadings_[:, :2]
-    y_loadings = model.y_loadings_[:, :2]
-    feature_names = california_housing.feature_names
+    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopes = list(epitopesList['Epitope'].unique())
+    epitopesDF = getSampleAbundances(epitopes, cells)
 
-    for i in range(x_loadings.shape[0]):
-        ax[3].annotate(feature_names[i], (x_loadings[i, 0], x_loadings[i, 1]))
-    ax[3].set_xlabel('Component 1')
-    ax[3].set_ylabel('Component 2')
-    ax[3].set_title('X Loadings')
+    doseVec = np.logspace(-2, 2, num=20)
+    df = pd.DataFrame(columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
+    df2 = pd.DataFrame(columns=['Ligand', 'Dose', 'Affinities'])
 
-    ax[3].scatter(x_loadings[:, 0], x_loadings[:, 1])
-   
-    ax[4].scatter(y_loadings[:, 0], y_loadings[:, 1])
-    ax[4].annotate('Price', (y_loadings[0, 0], y_loadings[0, 1]))
-    ax[4].set_xlabel('Component 1')
-    ax[4].set_ylabel('Component 2')
-    ax[4].set_title('Y Loadings')
+    for targetPairs in allTargets:
+        print(targetPairs)
+        prevOptAffs = [8.0]
+        valencies = [signal[1]]
+        targets = []
+        naming = []
+        for target, valency in targetPairs:
+            prevOptAffs.append(8.0)
+            targets.append(target)
+            valencies.append(valency)
+            naming.append('{} ({})'.format(target, valency))
 
-    kf = KFold(n_splits=10, shuffle=True, random_state=42)
-    Y_true, Y_pred = [], []
-    for train_index, test_index in kf.split(X, Y):
-        X_train, X_test = X[train_index], X[test_index]
-        Y_train, Y_test = Y[train_index], Y[test_index]
+        for _, dose in enumerate(doseVec):
+            optParams = optimizeDesign(signal[0], targets, targCell, offTCells, epitopesDF, dose, valencies, prevOptAffs)
+            prevOptAffs = optParams[1]
 
-        model.fit(X_train, Y_train)
-        Y_test_pred = model.predict(X_test)
+            data = {'Dose': [dose],
+                'Selectivity': 1 / optParams[0],
+                'Target Bound': optParams[2],
+                'Ligand': ' + '.join(naming)
+            }
+            df_temp = pd.DataFrame(data, columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
+            df = pd.concat([df, df_temp], ignore_index=True)
+            print(optParams[1])
 
-        Y_true.extend(Y_test)
-        Y_pred.extend(Y_test_pred)
+            data = {'Ligand': ' + '.join(naming),
+                'Dose': dose,
+                'Affinities': optParams[1]
+            }
+            df2_temp = pd.DataFrame(data, columns=['Ligand', 'Dose', 'Affinities'])
+            df2 = pd.concat([df2, df2_temp], ignore_index=True)
 
-    ax[5].scatter(Y_true, Y_pred, label='Actual values vs Predictions')
-    ax[5].set_xlabel('Actual prices')
-    ax[5].set_ylabel('Predicted prices')
-    ax[5].set_title('Actual vs Predicted Prices')
-    accuracy = r2_score(Y_true, Y_pred)
-    print('R2 Accuracy:', accuracy)
-    """
-    
-    """ Slayboss model time begins here"""
-    """
-    Kx = 1e-12
-    Rtot_1 = np.array([100])
-    Rtot_2 = np.array([10000])
-    cplx_mono = np.array([[1]])
-    cplx_bi = np.array([[2]])
-    Kav = np.array([[1e9]])
-    conc_range = np.logspace(-12, -9, num=100)
-    
-    Rbound_mono_1 = []
-    Rbound_mono_2 = []
-    Rbound_bi_1 = []
-    Rbound_bi_2 = []
+    print(df2)
 
-    for conc in conc_range:
-        Rbound_mono_1_ = polyc(conc, Kx, Rtot_1, cplx_mono, Kav)
-        Rbound_mono_2_ = polyc(conc, Kx, Rtot_2, cplx_mono, Kav)
-        Rbound_bi_1_ = polyc(conc, Kx, Rtot_1, cplx_bi, Kav)
-        Rbound_bi_2_ = polyc(conc, Kx, Rtot_2, cplx_bi, Kav)
-
-        Rbound_mono_1.extend(Rbound_mono_1_)
-        Rbound_mono_2.extend(Rbound_mono_2_)
-        Rbound_bi_1.extend(Rbound_bi_1_)
-        Rbound_bi_2.extend(Rbound_bi_2_)
-  
-    Rbound_mono_1 = np.ravel(Rbound_mono_1)
-    Rbound_mono_2 = np.ravel(Rbound_mono_2)
-    Rbound_bi_1 = np.ravel(Rbound_bi_1)
-    Rbound_bi_2 = np.ravel(Rbound_bi_2)
-    
-    sns.lineplot(x=conc_range, y=Rbound_mono_1, label='Cell Type 1', ax=ax[6])
-    sns.lineplot(x=conc_range, y=Rbound_mono_2, label='Cell Type 2', ax=ax[6])
-    ax[6].set_xscale('log')
-    ax[6].set_xlabel('Concentration (M)')
-    ax[6].set_ylabel('Receptor Bound')
-    ax[6].set_title('Monovalnt Ligand')
-    ax[6].legend()
-
-    sns.lineplot(x=conc_range, y=Rbound_bi_1, label='Cell Type 1', ax=ax[7])
-    sns.lineplot(x=conc_range, y=Rbound_bi_2, label='Cell Type 2', ax=ax[7])
-    ax[7].set_xscale('log')
-    ax[7].set_xlabel('Concentratin (M)')
-    ax[7].set_ylabel('Receptor Bound')
-    ax[7].set_title('Bivalent Ligand')
-    ax[7].legend()
-    """
+    sns.lineplot(data=df, x='Dose', y='Selectivity', hue='Ligand', ax=ax[0])
+    sns.lineplot(data=df, x='Dose', y='Target Bound', hue='Ligand', ax=ax[1])
+    ax[0].set(xscale='log')
+    ax[1].set(xscale='log')
 
     return f
-
-   

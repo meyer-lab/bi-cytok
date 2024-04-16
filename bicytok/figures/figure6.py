@@ -1,55 +1,72 @@
-"""
-This creates Figure 6, plotting Treg to off target signaling for vaying IL2Rb affinity for different IL2 formats
-"""
-from .common import getSetup
-from ..selectivityFuncs import getSampleAbundances, getSignaling
+from os.path import dirname, join
+from .common import getSetup, Wass_KL_Dist, correlation
+import pandas as pd
+import seaborn as sns
 import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import least_squares
+from ..imports import importCITE
+from sklearn.neighbors import KernelDensity
+from random import sample, seed
+from scipy import stats
 
+path_here = dirname(dirname(__file__))
+
+plt.rcParams["svg.fonttype"] = "none"
 
 def makeFigure():
-    """Get a list of the axis objects and create a figure"""
-    ax, f = getSetup((13, 4), (1, 3))
+    """Bar plots of KL divergence and EMD of most unique receptor for all cell types."""
+    ax, f = getSetup((12, 4), (1, 2))
 
-    # List epitopes to be included in analysis
-    epitopes = ['CD25', 'CD122']
-    # List cells to be included in analysis (Both on and off target)
-    targCell = 'Treg'
-    offTCells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD8 TCM']
-    cells = offTCells + [targCell]
+    CITE_DF = importCITE()
+    new_df = CITE_DF.sample(10000, random_state=42)
+    cellLevel = "CellType2"
 
-    epitopesDF = getSampleAbundances(epitopes, cells)  # epitopesDF: Rows are eptitopes, columns are cell types.
-    # Each frame contains a list of single cell abundances (of size determined in function) for that epitope and cell type
+    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopes = list(epitopesList['Epitope'].unique())
 
-    # range from 0.0001 <-> 100
-    betaAffs = np.logspace(-4, 2, 9)  # Last number is # of points (should be 30 for smooth curve)
-    # Fills arrays of target and off target signals for given array of parameters
-    treg_sigs, offTarg_sigs = getSignaling(betaAffs, targCell, offTCells, epitopesDF)
+    cells = list(CITE_DF[cellLevel].unique())
+    toRemove = ['Eryth', 'MAIT', 'ASDC', 'Platelet', 'gdT', 'dnT', 'B intermediate', 'CD4 CTL', 'NK Proliferating', 'CD8 Proliferating','CD4 Proliferating']
+    for removed in toRemove:
+        cells.remove(removed)
 
-    def plotSignals(types, ax):
-        # Add standard colors/line types
-        if 'WT' in types:
-            ax.plot(norm(treg_sigs[0]), norm(offTarg_sigs[0]), label='WT', c='blue')
-            ax.plot(norm(treg_sigs[1]), norm(offTarg_sigs[1]), label='WT Bival', c='green')
-            ax.plot(norm(treg_sigs[2]), norm(offTarg_sigs[2]), label='WT Tetraval', c='c')
-        if 'R38Q/H16N' in types:
-            ax.plot(norm(treg_sigs[3]), norm(offTarg_sigs[3]), '--', label='R38Q/H16N', c='red')
-            ax.plot(norm(treg_sigs[4]), norm(offTarg_sigs[4]), '--', label='R38Q/H16N Bival', c='y')
-            ax.plot(norm(treg_sigs[5]), norm(offTarg_sigs[5]), '--', label='R38Q/H16N Tetraval', c='orange')
-        if 'Live/Dead' in types:
-            ax.plot(norm(treg_sigs[6]), norm(offTarg_sigs[6]), '-.', label='CD25 Live/Dead', c='indigo')
-            ax.plot(norm(treg_sigs[7]), norm(offTarg_sigs[7]), '-.', label='CD25 Bivalent Live/Dead', c='magenta')
+    df = pd.DataFrame(columns=['Cell', 'KL Divergence', "Earth Mover's Distance"])
 
-        ax.set_xlabel('Treg Signaling', fontsize=12)
-        ax.set_ylabel('Off Target Signaling', fontsize=12)
-        ax.legend()
+    for targCell in cells:
+        markerDF = pd.DataFrame(columns=["Marker", "KL", "EMD"])
+        for marker in CITE_DF.loc[:, ((CITE_DF.columns != 'CellType1') & (CITE_DF.columns != 'CellType2') & (CITE_DF.columns != 'CellType3') & (CITE_DF.columns != 'Cell'))].columns:
+            markAvg = np.mean(CITE_DF[marker].values)
+            if markAvg > 0.0001:
+                targCellMark = CITE_DF.loc[CITE_DF[cellLevel] == targCell][marker].values / markAvg
+                offTargCellMark = CITE_DF.loc[CITE_DF[cellLevel] != targCell][marker].values / markAvg
+                if np.mean(targCellMark) > np.mean(offTargCellMark):
+                    kdeTarg = KernelDensity(kernel='gaussian').fit(targCellMark.reshape(-1, 1))
+                    kdeOffTarg = KernelDensity(kernel='gaussian').fit(offTargCellMark.reshape(-1, 1))
+                    minVal = np.minimum(targCellMark.min(), offTargCellMark.min()) - 10
+                    maxVal = np.maximum(targCellMark.max(), offTargCellMark.max()) + 10
+                    outcomes = np.arange(minVal, maxVal + 1).reshape(-1, 1)
+                    distTarg = np.exp(kdeTarg.score_samples(outcomes))
+                    distOffTarg = np.exp(kdeOffTarg.score_samples(outcomes))
+                    KL_div = stats.entropy(distOffTarg.flatten() + 1e-200, distTarg.flatten() + 1e-200, base=2)
+                    markerDF = pd.concat([markerDF, pd.DataFrame({"Marker": [marker], "KL": KL_div, "EMD": stats.wasserstein_distance(targCellMark, offTargCellMark)})], ignore_index=True)
+        KLrow = markerDF.iloc[markerDF['KL'].idxmax()]
+        markerKL = KLrow['Marker']
+        KL = KLrow['KL']
+        EMDrow = markerDF.iloc[markerDF['EMD'].idxmax()]
+        markerEMD = EMDrow['Marker']
+        EMD = EMDrow['EMD']
 
-    plotSignals(['WT', 'R38Q/H16N'], ax[0])
-    plotSignals(['WT', 'Live/Dead'], ax[1])
-    plotSignals(['R38Q/H16N', 'Live/Dead'], ax[2])
-    f.suptitle('Treg vs. Off Target Signaling Varing Beta Affinity', fontsize=18)
+        data = {'Cell': targCell,
+            'KL Marker': targCell + ' ' + markerKL,
+            'KL Divergence': [KL],
+            'EMD Marker': targCell + ' ' + markerEMD,
+            "Earth Mover's Distance": [EMD]}
+        df_temp = pd.DataFrame(data, columns=['Cell', 'KL Marker', 'KL Divergence', 'EMD Marker', "Earth Mover's Distance"])
+        df = pd.concat([df, df_temp], ignore_index=True)
+
+    sns.barplot(data=df.sort_values(by=['KL Divergence']), x='KL Marker', y='KL Divergence', ax=ax[0])
+    sns.barplot(data=df.sort_values(by=["Earth Mover's Distance"]), x='EMD Marker', y="Earth Mover's Distance", ax=ax[1])
+    ax[0].set_xticklabels(labels=ax[0].get_xticklabels(), rotation=45, horizontalalignment='right')
+    ax[1].set_xticklabels(labels=ax[1].get_xticklabels(), rotation=45, horizontalalignment='right')
 
     return f
-
-
-def norm(data):
-    return data / max(data)

@@ -2,10 +2,14 @@
 Implementation of a simple multivalent binding model.
 """
 
+import os
 import numpy as np
 import pandas as pd
 from .BindingMod import polyc
 from .imports import getBindDict, importReceptors
+from os.path import join
+
+path_here = os.path.dirname(os.path.dirname(__file__))
 
 
 def getKxStar():
@@ -35,9 +39,9 @@ def cytBindingModel(mut, val, doseVec, cellType, x=False, date=False):
 
     for i, dose in enumerate(doseVec):
         if x:
-            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], Affs)[1]
+            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], Affs)[0]
         else:
-            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], Affs)[1]  # IL2RB binding only
+            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], Affs)[0]  # IL2RB binding only
     if date:
         convDict = getBindDict()
         if cellType[-1] == "$":  # if it is a binned pop, use ave fit
@@ -61,48 +65,22 @@ def cytBindingModel_basicSelec(counts) -> float:
     Affs = np.repeat(Affs, 2, axis=0)
     np.fill_diagonal(Affs, 1e2)  # Each cytokine can only bind one a and one b
 
-    return polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], Affs)[1]  # IL2RB binding only
+    return polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], Affs)[0]  # IL2RB binding only
 
 
 # CITEseq Tetra valent exploration functions below
 
-def cytBindingModel_CITEseq(mutAffDF, counts, betaAffs, val) -> float:
-    """Runs binding model for a given epitopes abundance, betaAffinity, valency, and mutein type."""
-
-    dose = 0.1
-    recCount = np.ravel(counts)
-
-    Affs = np.power(np.array([mutAffDF["IL2RaKD"].values, [betaAffs]]) / 1e9, -1)
-
-    Affs = np.reshape(Affs, (1, -1))
-    Affs = np.repeat(Affs, 2, axis=0)
-    np.fill_diagonal(Affs, 1e2)  # Each cytokine can only bind one a and one b
-    vals = np.full((1, 2), val)
-
-    return polyc(dose / 1e9, getKxStar(), recCount, vals, Affs)[1]
-
-
-def cytBindingModel_bispecCITEseq(mutAffDF, counts, betaAffs, recXaff, val) -> float:
-    """Runs bispecific binding model built for CITEseq data for a given mutein, epitope, valency, dose, and cell type."""
-
-    recXaff = np.power(10, recXaff)
-    dose = 0.1
-    recCount = np.ravel(counts)
-
-    Affs = np.power(np.array([mutAffDF["IL2RaKD"].values, [betaAffs]]) / 1e9, -1)
-    Affs = np.reshape(Affs, (1, -1))
-    Affs = np.append(Affs, recXaff)
-    holder = np.full((3, 3), 1e2)
-    np.fill_diagonal(holder, Affs)
-    Affs = holder
-    vals = np.full((1, 3), val)
-
-    return polyc(dose / (val * 1e9), getKxStar(), recCount, vals, Affs)[1]
-
-def cytBindingModel_bispecOpt(recCount: np.ndarray, holder: np.ndarray, dose: float, val: int):
+def cytBindingModel_bispecOpt(recCount: np.ndarray, holder: np.ndarray, dose: float, vals: np.ndarray, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     # Check that values are in correct placement, can invert
-    vals = np.full((1, holder.shape[0]), val)
+    doseVec = np.array(dose)
     Kx = getKxStar()
-    
-    return polyc(dose / (val * 1e9), Kx, recCount, vals, holder)[1]
+
+    if doseVec.size == 1:
+        doseVec = np.array([doseVec])
+    output = np.zeros(doseVec.size)
+
+    for i, dose in enumerate(doseVec):
+        output[i] = polyc(dose / (vals[0] * 1e9), Kx, recCount, [vals], holder)[0]
+
+    return output
