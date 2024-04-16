@@ -1,7 +1,6 @@
 """
 Unit test file.
 """
-import numpy as np
 import pandas as pd
 from bicytok.selectivityFuncs import getSampleAbundances, optimizeDesign
 
