@@ -1,102 +1,61 @@
+from os.path import dirname, join
 from .common import getSetup
 import pandas as pd
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
-from .common import EMD_2D
-from .common import EMD_Distribution_Plot
-from .common import EMD_1D
-from .common import EMD_3D
-from .common import EMD1Dvs2D_Analysis
-from .common import Wass_KL_Dist
-from ..imports import importCITE 
-from .common import KL_divergence_forheatmap
-from .common import plot_kl_divergence_curves
-from .common import plot_2d_density_visualization
-from .common import EMD_2D_pair
-from .common import calculate_kl_divergence_2D
-from .common import KL_divergence_2D
-from .common import KLD_clustermap
-from .common import EMD_clustermap
+from ..selectivityFuncs import get_cell_bindings, getSampleAbundances, get_rec_vecs, optimizeDesign, minSelecFunc
+from ..imports import importCITE
 
+path_here = dirname(dirname(__file__))
 
-def makeFigure():  
-    markerDF = importCITE()
-    new_df = markerDF.head(1000)
-    receptors = []
-    for column in new_df.columns:
-        if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
-            receptors.append(column)
-    ax, f = getSetup((40, 40), (1,1)) 
+def makeFigure():
+    """Bispecific ligand selectivity heatmap.""" 
+    ax, f = getSetup((4, 3), (1, 1))
 
-    
-    cd8_t_df = new_df[new_df['CellType2'] == 'Treg']
-    off_target_df = new_df[new_df['CellType2'] != 'Treg'] 
-    
-    receptor_columns = ['CD25', 'CD57']
-    receptor_df = cd8_t_df[receptor_columns]
-    receptor_df_off_target = off_target_df[receptor_columns]
-    print(cd8_t_df['CD57'].mean())
-    print(receptor_df_off_target['CD57'].mean())
-    ######################################################
-    sns.kdeplot(cd8_t_df['CD25'], ax=ax[0], label='CD25 (CD8 T)', shade=True)
-    sns.kdeplot(cd8_t_df['CD57'], ax=ax[0], label='CD57 (CD8 T)', shade=True)
-    sns.kdeplot(receptor_df_off_target['CD25'], ax=ax[0], label='CD25 (Off-Target)', shade=True)
-    sns.kdeplot(receptor_df_off_target['CD57'], ax=ax[0], label='CD57 (Off-Target)', shade=True)
-    ax[0].set_title('Receptor Distributions for CD8 T Cells and Off-Target Cells')    
-    ax[0].set_xlabel('Receptor Expression')
-    #ax[0].set_xlim(0, 600)
-    ax[0].legend()
-   
-    '''
-    resultsEMD = []
+    signal = ['CD122', 1]
+    allTargets = [('CD25', 1), ('CD278', 1), ('CD45RB', 1), ('CD4-2', 1), ('CD81', 1)]
+    dose = 10e-2
 
-    for receptor in receptors:
-        val = EMD_2D(new_df, receptor, target_cells, ax = None) 
-        print(val)
-        resultsEMD.append(val)
-        print ('working')
-    flattened_results = [result_tuple for inner_list in resultsEMD for result_tuple in inner_list]
-    # Create a DataFrame from the flattened_results
-    df_recep = pd.DataFrame(flattened_results, columns=['Distance', 'Receptor', 'Signal Receptor'])
-    pivot_table = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
-    # Create the heatmap on ax[0] 
-    
-    sns.heatmap(pivot_table, annot=False, fmt='.2f', cmap='viridis', ax=ax[0])
+    cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
+        'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
+    targCell = 'Treg'
+    offTCells = cells[cells != targCell]
 
-    # Customize the heatmap appearance (e.g., add colorbar, labels)
-    ax[0].set_xlabel('Receptor')
-    ax[0].set_ylabel('Receptor')
-    ax[0].set_title('EMD Heatmap')
-    ######################################################
-    
-    resultsKL = []
-    for receptor in receptors[0:5]:
-        val = KL_divergence_2D(new_df, receptor, target_cells, ax = None) 
-        resultsKL.append(val)
-        print('slay')
-    flattened_resultsKL = [result_tuple for inner_list in resultsKL for result_tuple in inner_list]
+    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopes = list(epitopesList['Epitope'].unique())
+    epitopesDF = getSampleAbundances(epitopes, cells)
 
-    # Create a DataFrame from the flattened_results
-    df_recep = pd.DataFrame(flattened_resultsKL, columns=['KLD', 'Receptor', 'Signal Receptor'])
-    pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
-    # Create the heatmap on ax[0] 
-    
-    sns.heatmap(pivot_tableKL, annot=False, fmt='.2f', cmap='viridis', ax=ax[0])
+    df = pd.DataFrame(columns=['Target 1', 'Target 2', 'Selectivity'])
 
-    # Customize the heatmap appearance (e.g., add colorbar, labels)
-    ax[0].set_xlabel('Receptor')
-    ax[0].set_ylabel('Receptor')
-    ax[0].set_title('KL Heatmap')
-    # f = KLD_clustermap(pivot_tableKL)
-    
-    # f = EMD_clustermap(pivot_table)
-    
-   
-    f = KLD_clustermap(pivot_tableKL)
-    # you are running cluster EMD look for title slay 
-    # f = EMD_clustermap(pivot_table)
-    '''
+    valencies = []
+    targets = []
+    for target, valency in allTargets:
+        targets.append(target)
+        valencies.append(valency)
 
-    return f     
+    for i, target1 in enumerate(targets):
+        for j, target2 in enumerate(targets):
+            if i == j:
+                targetsBoth = [target1]
+                optAffs = [8.0, 8.0]
+                valenciesBoth = [signal[1], valencies[i]]
+            else:
+                targetsBoth = [target1, target2]
+                optAffs = [8.0, 8.0, 8.0]
+                valenciesBoth = [signal[1], valencies[i], valencies[j]]
+
+            optParams = optimizeDesign(signal[0], targetsBoth, targCell, offTCells, epitopesDF, dose, valenciesBoth, optAffs)
+
+            data = {'Target 1': '{} ({})'.format(target1, valencies[i]),
+                'Target 2': '{} ({})'.format(target2, valencies[j]),
+                'Selectivity': 1 / optParams[0]
+            }
+            df_temp = pd.DataFrame(data, columns=['Target 1', 'Target 2', 'Selectivity'], index=[0])
+            df = pd.concat([df, df_temp], ignore_index=True)
+
+    selectivities = df.pivot(index="Target 1", columns="Target 2", values="Selectivity")
+    sns.heatmap(selectivities)
+
+    return f

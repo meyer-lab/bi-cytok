@@ -70,48 +70,6 @@ def cytBindingModel_basicSelec(counts) -> float:
 
 # CITEseq Tetra valent exploration functions below
 
-def cytBindingModel_CITEseq(mutAffDF, counts, betaAffs, val) -> float:
-    """Runs binding model for a given epitopes abundance, betaAffinity, valency, and mutein type."""
-
-    dose = 0.1
-    recCount = np.ravel(counts)
-
-    Affs = np.power(np.array([mutAffDF["IL2RaKD"].values, [betaAffs]]) / 1e9, -1)
-
-    Affs = np.reshape(Affs, (1, -1))
-    Affs = np.repeat(Affs, 2, axis=0)
-    np.fill_diagonal(Affs, 1e2)  # Each cytokine can only bind one a and one b
-    vals = np.full((1, 2), val)
-
-    return polyc(dose / 1e9, getKxStar(), recCount, vals, Affs)[0]
-
-
-def cytBindingModel_bispecCITEseq(counts, betaAffs, recXaff, vals, mut, x=False) -> float:
-    """Runs bispecific binding model built for CITEseq data for a given mutein, epitope, valency, dose, and cell type."""
-
-    recXaff = np.power(10, recXaff)
-    doseVec = np.array([0.1])
-    recCount = np.ravel(counts)
-    mutAffDF = pd.read_csv(join(path_here, "bicytok/data/WTmutAffData.csv"))
-    Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
-    Affs = np.power(np.array([Affs["IL2RaKD"].values, [betaAffs]]) / 1e9, -1)
-    Affs = np.reshape(Affs, (1, -1))
-    Affs = np.append(Affs, recXaff)
-    holder = np.full((3, 3), 1e2)
-    np.fill_diagonal(holder, Affs)
-    Affs = holder
-    if doseVec.size == 1:
-        doseVec = np.array([doseVec])
-    output = np.zeros(doseVec.size)
-
-    for i, dose in enumerate(doseVec):
-        if x:
-            output[i] = polyc(dose / (val * 1e9), np.power(10, x[0]), recCount, vals, Affs)[0]
-        else:
-            output[i] = polyc(dose / (val * 1e9), getKxStar(), recCount, vals, Affs)[0]
-
-    return output
-
 def cytBindingModel_bispecOpt(recCount: np.ndarray, holder: np.ndarray, dose: float, vals: np.ndarray, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     # Check that values are in correct placement, can invert

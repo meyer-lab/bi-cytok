@@ -1,50 +1,75 @@
-"""
-This creates Figure 5, used to find optimal epitope classifier.
-"""
-from .common import getSetup
-from ..selectivityFuncs import getSampleAbundances, optimizeDesign, get_rec_vecs, minSelecFunc
-from ..imports import importCITE
+from os.path import dirname, join
+from .common import getSetup, KL_divergence_2D_pair, EMD_2D_pair, correlation
 import pandas as pd
 import seaborn as sns
 import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import least_squares
+from ..selectivityFuncs import get_cell_bindings, getSampleAbundances, get_rec_vecs, optimizeDesign, minSelecFunc
+from ..imports import importCITE
+from random import sample, seed
 
+path_here = dirname(dirname(__file__))
 
 def makeFigure():
-    """Get a list of the axis objects and create a figure"""
-    ax, f = getSetup((9, 12), (1, 1))
+    """KL divergence, EMD, and anti-correlation correlation with selectivity at a given dose."""
+    ax, f = getSetup((9, 3), (1, 3))
 
-    epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
-    epitopes = list(epitopesList['Epitope'].unique())  # List epitopes to be included in analysis
+    CITE_DF = importCITE()
+    new_df = CITE_DF.sample(10000, random_state=42)
 
-    # List cells to be included in analysis (Both on and off target)
+    signal_receptor = 'CD122'
+    signal_valency = 1
+    valencies = [1, 2, 4]
+    allTargets = [['CD25', 'CD278'], ['CD25', 'CD4-2'], ['CD25', 'CD45RB'], ['CD25', 'CD81'], ['CD278', 'CD4-2'],
+        ['CD278', 'CD45RB'], ['CD278', 'CD81'], ['CD4-2', 'CD45RB'], ['CD4-2', 'CD81'], ['CD45RB', 'CD81']]
+    dose = 10e-2
+
+    cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
+        'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
     targCell = 'Treg'
-    cells = importCITE()["CellType2"].unique()
     offTCells = cells[cells != targCell]
-    #offTCells = ['CD8 Naive', 'NK', 'CD8 TEM', 'CD8 TCM']
 
-    epitopesDF = getSampleAbundances(epitopes, cells)  # epitopesDF: Rows are eptitopes, columns are cell types.
-    # Each frame contains a list of single cell abundances (of size determined in function) for that epitope and cell type
-    # EpitopeDF now contains a data of single cell abundances for each cell type for each epitope
-    epitopesDF["Selectivity"] = -1
-    # New column which will hold selectivity per epitope
-    targRecs, offTRecs = get_rec_vecs(epitopesDF, targCell, offTCells, "CD122", [epitopes[0]])
-    baseSelectivity = 1 / minSelecFunc(np.array([8, 8]), "CD122", ["CD25"], targRecs, offTRecs, 0.1, [2, 2])
+    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopes = list(epitopesList['Epitope'].unique())
+    epitopesDF = getSampleAbundances(epitopes, cells, numCells=10000)
 
-    for i, epitope in enumerate(epitopesDF['Epitope']):
-        # New form
-        optSelectivity = 1 / (optimizeDesign("CD122", ["CD25"], targCell, offTCells, epitopesDF, 1, [2, 2], np.array([8, 8])))[1][0]
-        epitopesDF.loc[epitopesDF['Epitope'] == epitope, 'Selectivity'] = optSelectivity  # Store selectivity in DF to be used for plots
+    targetSize = 30
+    i = len(allTargets)
+    while i < targetSize:
+        targs = sample(epitopes, 2)
+        if not targs in allTargets:
+            allTargets.append(targs)
+            i += 1
 
+    df = pd.DataFrame(columns=['KL Divergence', "Earth Mover's Distance", 'Correlation', 'Selectivity', 'Valency'])
 
-    # generate figures
-    # bar plot of each epitope
+    for val in valencies:
+        for targets in allTargets:
+            prevOptAffs = [8.0, 8.0, 8.0]
 
-    epitopesDF = epitopesDF.sort_values(by=['Selectivity'])
-    xvalues = epitopesDF['Epitope']
-    yvalues = ((epitopesDF['Selectivity'] / baseSelectivity) * 100) - 100
+            vals = [signal_valency, val, val]
 
-    cmap = sns.color_palette("husl", 10)
-    sns.barplot(x=xvalues, y=yvalues, palette=cmap, ax=ax[0]).set_title('Title')
-    ax[0].set_ylabel("Selectivity (% increase over standard IL2)")
+            optParams = optimizeDesign(signal_receptor, targets, targCell, offTCells, epitopesDF, dose, vals, prevOptAffs)
+            prevOptAffs = [optParams[1][0], optParams[1][1], optParams[1][2]]
+
+            KLD = KL_divergence_2D_pair(new_df, targCell, targets[0], targets[1])
+            EMD = EMD_2D_pair(new_df, targCell, targets[0], targets[1])
+            corr = correlation(targCell, targets).loc[targets[0], targets[1]]
+
+            data = {'KL Divergence': [KLD],
+                "Earth Mover's Distance": [EMD],
+                'Correlation': [corr],
+                'Selectivity': 1 / optParams[0],
+                'Valency': val
+            }
+            df_temp = pd.DataFrame(data, columns=['KL Divergence', "Earth Mover's Distance", 'Correlation', 'Selectivity', 'Valency'])
+            df = pd.concat([df, df_temp], ignore_index=True)
+
+    sns.lineplot(data=df, x='KL Divergence', y='Selectivity', hue='Valency', ax=ax[0])
+    sns.lineplot(data=df, x="Earth Mover's Distance", y='Selectivity', hue='Valency', ax=ax[1])
+    sns.lineplot(data=df, x='Correlation', y='Selectivity', hue='Valency', ax=ax[2])
+    ax[0].set(xscale='log')
+    ax[1].set(xscale='log')
 
     return f
