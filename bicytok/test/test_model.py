@@ -18,7 +18,7 @@ def test_optimize_design():
         signal="CD122",
         targets=["CD25"],
         targCell=targCell,
-        offTCells=[offTCells],
+        offTCells=offTCells,
         selectedDF=epitopesDF,
         dose=0.1,
         valencies=[2,2],
