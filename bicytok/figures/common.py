@@ -105,7 +105,6 @@ def plotBispecific(ax: Axes, df, cellType: str, val=False):
     sns.lineplot(x="Abundance", y="Predicted", data=data_high, label="High(1e10)", ax=ax, legend="brief")
     ax.set(title=cellType + " - Dosed at 1nM", xlabel=r"Epitope X Abundance", ylabel="pSTAT", xscale="log", ylim=cellSTATlimDict[cellType])
 
-
 def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0) -> pd.DataFrame:
     """Finds markers which have average greatest difference from other cells"""
     CITE_DF = importCITE()
@@ -147,33 +146,8 @@ def Wass_KL_Dist(ax, targCell, numFactors, RNA=False, offTargState=0) -> pd.Data
         ax[1].set(title="KL Divergence - Surface Markers")
     return corrsDF
 
-def EMD_Distribution_Plot(ax, dataset, signal_receptor, non_signal_receptor, target_cells):
-    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
-    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
-    
-    xs = target_cells_df[[signal_receptor, non_signal_receptor]].values
-    xt = off_target_cells_df[[signal_receptor, non_signal_receptor]].values
-
-    M = ot.dist(xs, xt)
-    a = np.ones((xs.shape[0],)) / xs.shape[0]
-    b = np.ones((xt.shape[0],)) / xt.shape[0]
-  
-    G0 = ot.emd2(a, b, M, numItermax=10000000)
-
-    ax.plot(xt[:, 0], xt[:, 1], '.r', label='Off-target cells')
-    ax.plot(xs[:, 0], xs[:, 1], '.b', label='Target cells')
-    
-    ax.legend(loc=0)
-    ax.set_title('Target cell and off-target cell distributions')
-
-    ax.set_xlabel(signal_receptor)
-    ax.set_ylabel(non_signal_receptor)
-    
-    ax.set_xscale('log')  # Set x-axis to logarithmic scale
-    ax.set_yscale('log')
-    ax.legend(loc=0, fontsize=12)
-
 def common_code(weightDF, dataset, signal_receptor, target_cells):
+    '''used in EMD2D and KL2D to make target and off target cell dfs'''
     non_signal_receptors = []
     for column in dataset.columns:
         if column != signal_receptor and column not in ['CellType1', 'CellType2', 'CellType3']:
@@ -184,6 +158,7 @@ def common_code(weightDF, dataset, signal_receptor, target_cells):
     return target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig
 
 def get_conversion_factor(weightDF, receptor_name):
+    '''conversion factors used for citeseq dataset'''
     IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
     IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
     IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
@@ -196,7 +171,7 @@ def get_conversion_factor(weightDF, receptor_name):
     else: return (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
 
 def EMD_2D(dataset, signal_receptor, target_cells, ax):
-
+    '''returns list of descending EMD values for specified target cell (2 receptors) '''
     weightDF = convFactCalc()
     # filter those outliers! 
     exclude_columns = ['CellType1', 'CellType2', 'CellType3', 'Cell']
@@ -257,6 +232,8 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
     return sorted_results
 
 def EMD_3D(dataset1, target_cells, ax=None):
+    '''returns list of descending EMD values for specified target cell (3 receptors)'''
+
     weightDF = convFactCalc()
     exclude_columns = ['CellType1', 'CellType2', 'CellType3', 'Cell']
     threshold_multiplier = 5
@@ -347,6 +324,7 @@ def EMD_3D(dataset1, target_cells, ax=None):
     return sorted_results
 
 def EMD_KL_clustermap(dataset):
+    '''turns datasets from EMD and KL into clustermap'''
     dataset = dataset.fillna(0)
     return (sns.clustermap(dataset, cmap='bwr', figsize=(10,10), annot_kws={'fontsize': 16}))
 
