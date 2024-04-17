@@ -326,6 +326,110 @@ def EMD_3D(dataset1, target_cells, ax=None):
         ax.set_xticklabels([f"{pair[0]} - {pair[1]} - {pair[2]}" for pair in receptor_pairs], rotation='vertical', fontsize=14) 
     return sorted_results
 
+def EMD_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
+    weightDF = convFactCalc()
+    # target and off-target cells
+    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
+
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+    
+    if signal_receptor == 'CD122':
+        conversion_factor_sig = IL2Rb_factor
+    elif signal_receptor == 'CD25':
+        conversion_factor_sig = IL2Ra_factor
+    elif signal_receptor == 'CD127':
+        conversion_factor_sig = IL7Ra_factor
+    else:
+        conversion_factor_sig = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
+    
+    
+    target_receptor_counts = target_cells_df[[signal_receptor, special_receptor]].values
+    off_target_receptor_counts = off_target_cells_df[[signal_receptor, special_receptor]].values
+
+    if special_receptor == 'CD122':
+        conversion_factor = IL2Rb_factor
+    elif special_receptor == 'CD25':
+        conversion_factor = IL2Ra_factor
+    elif special_receptor == 'CD127':
+        conversion_factor = IL7Ra_factor
+    else:
+        conversion_factor = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
+
+    target_receptor_counts[:, 0] *= conversion_factor_sig
+    off_target_receptor_counts[:, 0] *= conversion_factor_sig
+
+    target_receptor_counts[:, 1] *= conversion_factor
+    off_target_receptor_counts[:, 1] *= conversion_factor
+        
+    average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)), axis=0)
+    print(np.concatenate((target_receptor_counts, off_target_receptor_counts)))
+
+    # Normalize the counts by dividing by the average
+    target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+    off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
+        
+    # Matrix for emd parameter
+    M = ot.dist(target_receptor_counts, off_target_receptor_counts)
+    # optimal transport distance
+    a = np.ones((target_receptor_counts.shape[0],)) / target_receptor_counts.shape[0]
+    b = np.ones((off_target_receptor_counts.shape[0],)) / off_target_receptor_counts.shape[0]
+    optimal_transport = ot.emd2(a, b, M, numItermax=10000000)
+
+    print('OT', optimal_transport)
+    return optimal_transport
+
+def KL_divergence_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
+    weightDF = convFactCalc()
+    # target and off-target cells
+    IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
+    IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
+    IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
+
+    target_cells_df = dataset[(dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells)]
+    off_target_cells_df = dataset[~((dataset['CellType3'] == target_cells) | (dataset['CellType2'] == target_cells))]
+    
+    if signal_receptor == 'CD122':
+        conversion_factor_sig = IL2Rb_factor
+    elif signal_receptor == 'CD25':
+        conversion_factor_sig = IL2Ra_factor
+    elif signal_receptor == 'CD127':
+        conversion_factor_sig = IL7Ra_factor
+    else:
+        conversion_factor_sig = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
+    
+    
+    target_receptor_counts = target_cells_df[[signal_receptor, special_receptor]].values
+    off_target_receptor_counts = off_target_cells_df[[signal_receptor, special_receptor]].values
+
+    if special_receptor == 'CD122':
+        conversion_factor = IL2Rb_factor
+    elif special_receptor == 'CD25':
+        conversion_factor = IL2Ra_factor
+    elif special_receptor == 'CD127':
+        conversion_factor = IL7Ra_factor
+    else:
+        conversion_factor = (IL7Ra_factor+IL2Ra_factor+IL2Rb_factor)/3
+
+    target_receptor_counts[:, 0] *= conversion_factor_sig
+    off_target_receptor_counts[:, 0] *= conversion_factor_sig
+
+    target_receptor_counts[:, 1] *= conversion_factor
+    off_target_receptor_counts[:, 1] *= conversion_factor
+        
+    average_receptor_counts = np.mean(np.concatenate((target_receptor_counts, off_target_receptor_counts)), axis=0)
+
+    # Normalize the counts by dividing by the average
+    target_receptor_counts = target_receptor_counts.astype(float) / average_receptor_counts
+    off_target_receptor_counts = off_target_receptor_counts.astype(float) / average_receptor_counts
+        
+    KL_div = calculate_kl_divergence_2D(target_receptor_counts[:, 1], off_target_receptor_counts[:, 1])
+    
+    print('KL', KL_div)
+    return KL_div
+
 def EMD_KL_clustermap(dataset):
     '''turns datasets from EMD and KL into clustermap'''
     dataset = dataset.fillna(0)

@@ -1,9 +1,13 @@
 from os.path import dirname, join
-from .common import getSetup, KL_divergence_2D_pair, EMD_2D_pair, correlation
+from .common import getSetup, correlation
 import pandas as pd
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
+from .common import KL_divergence_2D_pair
+from .common import EMD_2D_pair
+
+
 from scipy.optimize import least_squares
 from ..selectivityFuncs import get_cell_bindings, getSampleAbundances, get_rec_vecs, optimizeDesign, minSelecFunc
 from ..imports import importCITE
@@ -16,7 +20,7 @@ def makeFigure():
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()
-    new_df = CITE_DF.sample(10000, random_state=42)
+    new_df = CITE_DF.sample(100, random_state=42)
 
     signal_receptor = 'CD122'
     signal_valency = 1
