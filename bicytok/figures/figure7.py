@@ -24,6 +24,7 @@ def makeFigure():
    
     # Clustermap for EMD
     resultsEMD = []
+    receptors = ['CD25', 'CD35']
     for receptor in receptors:
         val = EMD_2D(new_df, receptor, target_cells, ax = None) 
         resultsEMD.append(val)
