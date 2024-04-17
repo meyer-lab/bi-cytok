@@ -435,6 +435,18 @@ def EMD_KL_clustermap(dataset):
     dataset = dataset.fillna(0)
     return (sns.clustermap(dataset, cmap='bwr', figsize=(10,10), annot_kws={'fontsize': 16}))
 
+def calculate_kl_divergence_2D(targCellMark, offTargCellMark):
+    kdeTarg = KernelDensity(kernel='gaussian').fit(targCellMark.reshape(-1, 2))
+    kdeOffTarg = KernelDensity(kernel='gaussian').fit(offTargCellMark.reshape(-1, 2))
+    minVal = np.minimum(targCellMark.min(), offTargCellMark.min()) - 10
+    maxVal = np.maximum(targCellMark.max(), offTargCellMark.max()) + 10
+    X, Y = np.mgrid[minVal:maxVal:((maxVal-minVal) / 100), minVal:maxVal:((maxVal-minVal) / 100)]
+    outcomes = np.concatenate((X.reshape(-1, 1), Y.reshape(-1, 1)), axis=1)
+    distTarg = np.exp(kdeTarg.score_samples(outcomes))
+    distOffTarg = np.exp(kdeOffTarg.score_samples(outcomes))
+    KL_div = stats.entropy(distOffTarg.flatten() + 1e-200, distTarg.flatten() + 1e-200, base=2)
+    return KL_div
+
 def EMD_1D(dataset, target_cells, ax):
     weightDF = convFactCalc()
     # target and off-target cells

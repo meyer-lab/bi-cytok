@@ -20,7 +20,7 @@ def makeFigure():
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()
-    new_df = CITE_DF.sample(100, random_state=42)
+    new_df = CITE_DF.sample(1000, random_state=42)
 
     signal_receptor = 'CD122'
     signal_valency = 1
