@@ -20,17 +20,16 @@ def makeFigure():
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()
-    new_df = CITE_DF.sample(1000, random_state=42)
+    new_df = CITE_DF.sample(100, random_state=42)
 
     signal_receptor = 'CD122'
     signal_valency = 1
     valencies = [1, 2, 4]
-    allTargets = [['CD25', 'CD278'], ['CD25', 'CD4-2'], ['CD25', 'CD45RB'], ['CD25', 'CD81'], ['CD278', 'CD4-2'],
-        ['CD278', 'CD45RB'], ['CD278', 'CD81'], ['CD4-2', 'CD45RB'], ['CD4-2', 'CD81'], ['CD45RB', 'CD81']]
+    allTargets = [['CD25', 'CD278'], ['CD25', 'CD4-2']]
+    # allTargets = [['CD25', 'CD278'], ['CD25', 'CD4-2'], ['CD25', 'CD45RB'], ['CD25', 'CD81'], ['CD278', 'CD4-2'],['CD278', 'CD45RB'], ['CD278', 'CD81'], ['CD4-2', 'CD45RB'], ['CD4-2', 'CD81'], ['CD45RB', 'CD81']]
     dose = 10e-2
-
-    cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
-        'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
+    cells = np.array(['CD8 Naive', 'NK', 'Treg']) ####
+    # cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating','Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
     targCell = 'Treg'
     offTCells = cells[cells != targCell]
 
@@ -38,7 +37,7 @@ def makeFigure():
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells, numCells=10000)
 
-    targetSize = 30
+    targetSize = 30 
     i = len(allTargets)
     while i < targetSize:
         targs = sample(epitopes, 2)
