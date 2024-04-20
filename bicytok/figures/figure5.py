@@ -1,9 +1,13 @@
 from os.path import dirname, join
-from .common import getSetup, KL_divergence_2D_pair, EMD_2D_pair, correlation
+from .common import getSetup, correlation
 import pandas as pd
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
+from .common import KL_divergence_2D_pair
+from .common import EMD_2D_pair
+
+
 from scipy.optimize import least_squares
 from ..selectivityFuncs import get_cell_bindings, getSampleAbundances, get_rec_vecs, optimizeDesign, minSelecFunc
 from ..imports import importCITE
@@ -21,12 +25,9 @@ def makeFigure():
     signal_receptor = 'CD122'
     signal_valency = 1
     valencies = [1, 2, 4]
-    allTargets = [['CD25', 'CD278'], ['CD25', 'CD4-2'], ['CD25', 'CD45RB'], ['CD25', 'CD81'], ['CD278', 'CD4-2'],
-        ['CD278', 'CD45RB'], ['CD278', 'CD81'], ['CD4-2', 'CD45RB'], ['CD4-2', 'CD81'], ['CD45RB', 'CD81']]
+    allTargets = [['CD25', 'CD278'], ['CD25', 'CD4-2'], ['CD25', 'CD45RB'], ['CD25', 'CD81'], ['CD278', 'CD4-2'],['CD278', 'CD45RB'], ['CD278', 'CD81'], ['CD4-2', 'CD45RB'], ['CD4-2', 'CD81'], ['CD45RB', 'CD81']]
     dose = 10e-2
-
-    cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
-        'Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
+    cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating','Treg', 'CD4 TEM', 'NK Proliferating', 'NK_CD56bright'])
     targCell = 'Treg'
     offTCells = cells[cells != targCell]
 
@@ -34,7 +35,7 @@ def makeFigure():
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells, numCells=10000)
 
-    targetSize = 30
+    targetSize = 30 
     i = len(allTargets)
     while i < targetSize:
         targs = sample(epitopes, 2)
