@@ -1,4 +1,14 @@
 # NOTE: GENERALLY REORGANIZE TO MAKE SENSE
+import seaborn as sns
+import numpy as np
+import pandas as pd
+from sklearn.neighbors import KernelDensity
+from scipy import stats
+import ot
+import ot.plot
+from ..selectivityFuncs import convFactCalc
+from ..selectivityFuncs import getSampleAbundances, optimizeDesign
+from os.path import join
 
 # NOTE: SEPARATE INTO FIGURE GENERATION IN FIGURE AND CALCULATIONS HERE @MYSELF
 def KL_EMD_1D(ax, targCell, numFactors, RNA=False, offTargState=0) -> pd.DataFrame:
