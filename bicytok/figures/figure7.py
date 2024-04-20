@@ -5,10 +5,8 @@ import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
-from .common import EMD_2D
-from ..imports import importCITE 
-from .common import KL_divergence_2D
-from .common import EMD_KL_clustermap
+from ..distanceMetricFuncs import EMD_2D, KL_divergence_2D, EMD_KL_clustermap
+from ..imports import importCITE
 
 
 def makeFigure():  

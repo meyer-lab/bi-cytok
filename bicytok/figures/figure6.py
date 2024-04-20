@@ -1,5 +1,5 @@
 from os.path import dirname, join
-from .common import getSetup, Wass_KL_Dist, correlation
+from .common import getSetup
 import pandas as pd
 import seaborn as sns
 import numpy as np
@@ -9,6 +9,7 @@ from ..imports import importCITE
 from sklearn.neighbors import KernelDensity
 from random import sample, seed
 from scipy import stats
+from ..distanceMetricFuncs import KL_EMD_1D, correlation
 
 path_here = dirname(dirname(__file__))
 

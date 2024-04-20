@@ -4,8 +4,7 @@ import pandas as pd
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
-from .common import KL_divergence_2D_pair
-from .common import EMD_2D_pair
+from ..distanceMetricFuncs import KL_divergence_2D_pair, EMD_2D_pair
 
 
 from scipy.optimize import least_squares
