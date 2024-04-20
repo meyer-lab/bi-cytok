@@ -2,7 +2,7 @@
 Functions used in binding and selectivity analysis
 """
 from .imports import importCITE, importReceptors
-from .MBmodel import cytBindingModel_bispecOpt, cytBindingModel_basicSelec
+from .MBmodel import cytBindingModel
 from scipy.optimize import minimize, Bounds
 import pandas as pd
 import numpy as np
@@ -70,7 +70,7 @@ def getSampleAbundances(epitopes: list, cellList: list, numCells=1000, cellCat="
 
     return epitopesDF
 
-bispecOpt_Vec = np.vectorize(cytBindingModel_bispecOpt, excluded=['recXaffs'])
+bispecOpt_Vec = np.vectorize(cytBindingModel, excluded=['recXaffs'])
 
 def minSelecFunc(recXaffs: np.array, signal: str, targets: list, targRecs: np.array, offTRecs: np.array, dose: float, vals: list):
     """Serves as the function which will have its return value minimized to get optimal selectivity
@@ -91,9 +91,9 @@ def minSelecFunc(recXaffs: np.array, signal: str, targets: list, targRecs: np.ar
     targetBoundPerCell = np.array([])
     offTargetBoundPerCell = np.array([])
     for i in range(len(targRecs[0])):
-        targetBoundPerCell = np.append(targetBoundPerCell, cytBindingModel_bispecOpt(np.ravel(np.rot90(targRecs)[i]), affs, dose, vals))
+        targetBoundPerCell = np.append(targetBoundPerCell, cytBindingModel(np.ravel(np.rot90(targRecs)[i]), affs, dose, vals))
     for i in range(len(offTRecs[0])):
-        offTargetBoundPerCell = np.append(offTargetBoundPerCell, cytBindingModel_bispecOpt(np.ravel(np.rot90(offTRecs)[i]), affs, dose, vals))
+        offTargetBoundPerCell = np.append(offTargetBoundPerCell, cytBindingModel(np.ravel(np.rot90(offTRecs)[i]), affs, dose, vals))
 
     minSelecFunc.targetBound = np.sum(targetBoundPerCell)
     offTargetBound = np.sum(offTargetBoundPerCell)
@@ -132,38 +132,6 @@ def optimizeDesign(signal: str, targets: list, targCell: str, offTCells: list, s
     optParams = optimized.x
 
     return optSelectivity, optParams, minSelecFunc.targetBound
-
-
-def selecCalc(df: pd.DataFrame, targCell: str, offTCells: list) -> float:
-    """Calculates selectivity for no additional epitope
-    Args:
-        targCell: string cell type which is target and signaling is desired (basis of selectivity)
-        offTCells: list of strings of cell types for which signaling is undesired
-        df: contains epitope abundance information by cell type(importantly including cd25 anf cd122 here)
-    Returns:
-        selectivity value of standard IL2 based on abundances
-    """
-    targetBound = 0
-    offTargetBound = 0
-
-    cd25DF = df.loc[(df.Epitope == 'CD25')]
-    cd122DF = df.loc[(df.Epitope == 'CD122')]
-    targCellCount = 0
-    offTCellCount = 0
-
-    for i, cd25Count in enumerate(cd25DF[targCell].item()):
-        cd122Count = cd122DF[targCell].item()[i]
-        counts = [cd25Count, cd122Count]
-        targetBound += cytBindingModel_basicSelec(counts)
-        targCellCount += 1
-    for cellT in offTCells:
-        for i, cd25Count in enumerate(cd25DF[cellT].item()):
-            cd122Count = cd122DF[cellT].item()[i]
-            counts = [cd25Count, cd122Count]
-            offTargetBound += cytBindingModel_basicSelec(counts)
-            offTCellCount += 1
-
-    return (offTargetBound / offTCellCount) / (targetBound / targCellCount)
 
 
 cellDict = {"CD4 Naive": "Thelper",
@@ -294,7 +262,7 @@ def get_cell_bindings(recXaffs: np.ndarray, cells: list, df: pd.DataFrame, secon
 
         secondaryBound = 0.0
         for i in range(recs.shape[1]):
-            secondaryBound += cytBindingModel_bispecOpt(recs[:, i], affs[0:3], dose, valency)
+            secondaryBound += cytBindingModel(recs[:, i], affs[0:3], dose, valency)
 
         data = {'Cell Type': [cell],
             'Secondary Bound': [secondaryBound / numCells][0],

@@ -16,61 +16,7 @@ def getKxStar():
     return 2.24e-12
 
 
-def cytBindingModel(mut, val, doseVec, cellType, x=False, date=False):
-    """Runs binding model for a given mutein, valency, dose, and cell type."""
-    recDF = importReceptors()
-    recCount = np.ravel(
-        [
-            recDF.loc[(recDF.Receptor == "IL2Ra") & (recDF["Cell Type"] == cellType)].Mean.values,
-            recDF.loc[(recDF.Receptor == "IL2Rb") & (recDF["Cell Type"] == cellType)].Mean.values,
-        ]
-    )
-
-    mutAffDF = pd.read_csv("./bicytok/data/WTmutAffData.csv")
-    Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
-    Affs = np.power(np.array([Affs["IL2RaKD"].values, Affs["IL2RBGKD"].values]) / 1e9, -1)
-    Affs = np.reshape(Affs, (1, -1))
-    Affs = np.repeat(Affs, 2, axis=0)
-    np.fill_diagonal(Affs, 1e2)  # Each cytokine can only bind one a and one b
-
-    if doseVec.size == 1:
-        doseVec = np.array([doseVec])
-    output = np.zeros(doseVec.size)
-
-    for i, dose in enumerate(doseVec):
-        if x:
-            output[i] = polyc(dose / 1e9, np.power(10, x[0]), recCount, [[val, val]], Affs)[0]
-        else:
-            output[i] = polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], Affs)[0]  # IL2RB binding only
-    if date:
-        convDict = getBindDict()
-        if cellType[-1] == "$":  # if it is a binned pop, use ave fit
-            output *= convDict.loc[(convDict.Date == date) & (convDict.Cell == cellType[0:-13])].Scale.values
-        else:
-            output *= convDict.loc[(convDict.Date == date) & (convDict.Cell == cellType)].Scale.values
-    return output
-
-
-def cytBindingModel_basicSelec(counts) -> float:
-    """Runs binding model for a given dataframe of epitope abundances"""
-    mut = 'IL2'
-    val = 1
-    dose = 0.1
-
-    recCount = np.ravel(counts)
-    mutAffDF = pd.read_csv("./bicytok/data/WTmutAffData.csv")
-    Affs = mutAffDF.loc[(mutAffDF.Mutein == mut)]
-    Affs = np.power(np.array([Affs["IL2RaKD"].values, Affs["IL2RBGKD"].values]) / 1e9, -1)
-    Affs = np.reshape(Affs, (1, -1))
-    Affs = np.repeat(Affs, 2, axis=0)
-    np.fill_diagonal(Affs, 1e2)  # Each cytokine can only bind one a and one b
-
-    return polyc(dose / 1e9, getKxStar(), recCount, [[val, val]], Affs)[0]  # IL2RB binding only
-
-
-# CITEseq Tetra valent exploration functions below
-
-def cytBindingModel_bispecOpt(recCount: np.ndarray, holder: np.ndarray, dose: float, vals: np.ndarray, x=False):
+def cytBindingModel(recCount: np.ndarray, holder: np.ndarray, dose: float, vals: np.ndarray, x=False):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     # Check that values are in correct placement, can invert
     doseVec = np.array(dose)
