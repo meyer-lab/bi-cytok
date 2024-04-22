@@ -18,9 +18,6 @@ def getSampleAbundances(epitopes: list, cellList: list, numCells=1000, cellCat="
         epitopesDF: dataframe containing single cell abundances of epitopes(rows) for each cell type(columns).
         Each frame contains a list of size corresponding to representative sample of cell type
     """
-    # This dataframe will later be filled with our epitope abundance by cells
-    receptors = {'Epitope': epitopes}
-    epitopesDF = pd.DataFrame(receptors)
 
     # Import CITE data and drop unnecessary epitopes and cell types
     CITE_DF = importCITE()
@@ -42,7 +39,7 @@ def getSampleAbundances(epitopes: list, cellList: list, numCells=1000, cellCat="
     for epitope in epitopes:
         sampleDF[epitope] = sampleDF[epitope].multiply(convFactDict.get(epitope, meanConv))
 
-    return epitopesDF
+    return sampleDF
 
 bispecOpt_Vec = np.vectorize(cytBindingModel, excluded=['recXaffs'])
 
@@ -78,7 +75,7 @@ def minSelecFunc(recXaffs: np.array, signal: str, targets: list, targRecs: np.ar
     return offTargetBound / minSelecFunc.targetBound
 
 
-def optimizeDesign(signal: str, targets: list, targCell: str, offTCells: list, selectedDF: pd.DataFrame, dose: float, valencies: list, prevOptAffs: list):
+def optimizeDesign(signal: str, targets: list, targCell: str, offTCells: list, selectedDF: pd.DataFrame, dose: float, valencies: list, prevOptAffs: list, cellCat="CellType2"):
     """ A general purzse optimizer used to minimize selectivity output by varying affinity parameter.
     Args:
         targCell: string cell type which is target and signaling is desired (basis of selectivity)
@@ -98,7 +95,7 @@ def optimizeDesign(signal: str, targets: list, targCell: str, offTCells: list, s
         maxAffs.append(9.0)
 
     optBnds = Bounds(np.full_like(X0, minAffs), np.full_like(X0, maxAffs))
-    targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, signal, targets)
+    targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, signal, targets, cellCat)
     print('Optimize')
     optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(signal, targets, targRecs, offTRecs, dose, valencies), jac="3-point")
     print('Done')
@@ -173,33 +170,23 @@ def convFactCalc() -> pd.DataFrame:
     return weightDF
 
 
-def get_rec_vecs(df: pd.DataFrame, targCell: str, offTCells: list, signal: str, targets: list) -> tuple[np.ndarray, np.ndarray]:
+def get_rec_vecs(df: pd.DataFrame, targCell: str, offTCells: list, signal: str, targets: list, cellCat: str) -> tuple[np.ndarray, np.ndarray]:
     """Returns vector of target and off target receptors"""
-    dfSignal = df.loc[(df.Epitope == signal)]
-    dfsTargets = pd.DataFrame()
-    signalCountTarg = np.zeros(dfSignal[targCell].item().size)
-    targetsCountTarg = []
-    for i, target in enumerate(targets):
-        dfsTargets = pd.concat([dfsTargets, df.loc[(df.Epitope == target)]])
-        targetsCountTarg.append(np.zeros(dfSignal[targCell].item().size))
-    for i, epCount in enumerate(dfSignal[targCell].item()):
-        signalCountTarg[i] = epCount
-        for j, target in enumerate(targets):
-            targetsCountTarg[j][i] = dfsTargets.loc[(df.Epitope == target)][targCell].item()[i]
-    
-    signalCountOffT = np.array([])
-    targetsCountOffT = []
-    for target in targets:
-        targetCountOffT = np.array([])
-        targetsCountOffT.append(targetCountOffT)
-    for cellT in offTCells:
-        for i, epCount in enumerate(dfSignal[cellT].item()):
-            signalCountOffT = np.append(signalCountOffT, epCount)
-            for j, target in enumerate(targets):
-                targetsCountOffT[j] = np.append(targetsCountOffT[j], dfsTargets.loc[(df.Epitope == target)][cellT].item()[i])
+    dfTargCell = df.loc[df[cellCat] == targCell]
+    countTargSignal = dfTargCell[signal].to_numpy()
 
-    countTarg = np.append([signalCountTarg], targetsCountTarg, axis=0)
-    countOffT = np.append([signalCountOffT], targetsCountOffT, axis=0)
+    dfOffTCell = df.loc[df[cellCat].isin(offTCells)]
+    countOffTSignal = dfOffTCell[signal].to_numpy()
+
+    # NOTE: Should be a better way to do this without for loop - could transpose dfTargCell[targets] then use to_numpy()?
+    countTargTargets = []
+    countOffTTargets = []
+    for target in targets:
+        countTargTargets.append(dfTargCell[target].to_numpy())
+        countOffTTargets.append(dfOffTCell[target].to_numpy())
+
+    countTarg = np.append([countTargSignal], countTargTargets, axis=0)
+    countOffT = np.append([countOffTSignal], countOffTTargets, axis=0)
 
     return countTarg, countOffT
 

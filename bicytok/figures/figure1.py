@@ -17,7 +17,7 @@ def makeFigure():
     ax, f = getSetup((6, 3), (1, 2))
 
     signal = ['CD122', 1]
-    allTargets = [[('CD25', 1)], [('CD25', 4)], [('CD25', 1), ('CD278', 1)], [('CD25', 4), ('CD278', 4)], [('CD25', 1), ('CD27', 1)],
+    allTargets = [[('CD25', 1), ('CD27', 1)], [('CD25', 1)], [('CD25', 4)], [('CD25', 1), ('CD278', 1)], [('CD25', 4), ('CD278', 4)],
         [('CD25', 4), ('CD27', 4)], [('CD25', 1), ('CD278', 1), ('CD27', 1)], [('CD25', 4), ('CD278', 4), ('CD27', 4)]]
 
     cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
