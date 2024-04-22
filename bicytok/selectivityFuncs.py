@@ -22,51 +22,25 @@ def getSampleAbundances(epitopes: list, cellList: list, numCells=1000, cellCat="
     receptors = {'Epitope': epitopes}
     epitopesDF = pd.DataFrame(receptors)
 
-    # Import CITE data
+    # Import CITE data and drop unnecessary epitopes and cell types
     CITE_DF = importCITE()
+    CITE_DF = CITE_DF[epitopes + [cellCat]]
+    CITE_DF = CITE_DF.loc[CITE_DF[cellCat].isin(cellList)]
 
     # Get conv factors, average them to use on epitopes with unlisted conv facts
-    convFact = convFactCalc()
-    meanConv = convFact.Weight.mean()
+    meanConv = convFactCalc().Weight.mean()
+    convFactDict = {
+        'CD25': 77.136987,
+        'CD122': 332.680090,
+        'CD127': 594.379215
+    }
 
-    # Sample sizes generated corresponding to cell list using mean values
-    sampleSizes = []
-    for cellType in cellList:
-        cellSample = []
-        for i in np.arange(10):  # Averaging results of 10
-            sampleDF = CITE_DF.sample(numCells, random_state=42)  # Of 1000 cells in the sample...
-            sampleSize = int(len(sampleDF.loc[sampleDF[cellCat] == cellType]))  # ...How many are this cell type
-            cellSample.append(sampleSize)  # Sample size is equivalent to represented cell count out of 1000 cells
-        meanSize = np.mean(cellSample)
-        sampleSizes.append(int(meanSize))
+    # Sample df generated
+    sampleDF = CITE_DF.sample(numCells, random_state=42)
 
-    # For each  cellType in list
-    for i, cellType in enumerate(cellList):
-        # Generate sample size
-        sampleSize = sampleSizes[i]
-        # Create data frame of this size at random selection
-        cellDF = CITE_DF.loc[CITE_DF[cellCat] == cellType].sample(sampleSize, random_state=42)
-
-        cellType_abdundances = []
-        # For each epitope (being done on per cell basis)
-        for e in epitopesDF.Epitope:
-            # calculate abundance based on converstion factor
-            if e == 'CD25':
-                convFact = 77.136987  # The values are from convFactCalc
-            elif e == 'CD122':
-                convFact = 332.680090
-            elif e == "CD127":
-                convFact = 594.379215
-            else:
-                convFact = meanConv
-
-            # Calculating abundance from cite data
-            citeVal = cellDF[e].to_numpy()  # Getting CITE signals for each cell
-            abundance = citeVal * convFact  # (CITE signal * conversion factor) = abundance
-            cellType_abdundances.append(abundance)  # Append abundances for individual cells into one list
-            # add column with this name to epitopesDF and abundances list
-
-        epitopesDF[cellType] = cellType_abdundances  # This list will be located at Epitope x Cell Type in the DF
+    # NOTE: Probably a better way to do this without a for loop
+    for epitope in epitopes:
+        sampleDF[epitope] = sampleDF[epitope].multiply(convFactDict.get(epitope, meanConv))
 
     return epitopesDF
 
