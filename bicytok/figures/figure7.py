@@ -34,6 +34,7 @@ def makeFigure():
 
     
     # Clustermap for KL
+    # NOTE: Move to a separate figure file or choose through a parameter
     '''
     resultsKL = []
     for receptor in receptors[0:5]:

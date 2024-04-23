@@ -4,7 +4,7 @@ import seaborn as sns
 import numpy as np
 from ..selectivityFuncs import get_cell_bindings, getSampleAbundances, get_rec_vecs, optimizeDesign, minSelecFunc
 
-
+# NOTE: Make into two separate figures: one with bar graph amount bound and one with the optimized vs. live/dead selectivity, target bound, and affinity dose response curves
 def makeFigure():
     """ Figure to generate collection of graphs: simple dose response curves, amount of receptor bound dose response curves,
     affinity dose response curves, and amount of receptor bound bar plots."""

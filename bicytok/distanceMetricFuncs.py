@@ -6,9 +6,11 @@ from sklearn.neighbors import KernelDensity
 from scipy import stats
 import ot
 import ot.plot
-from ..selectivityFuncs import convFactCalc
-from ..selectivityFuncs import getSampleAbundances, optimizeDesign
-from os.path import join
+from .selectivityFuncs import convFactCalc, getSampleAbundances, optimizeDesign
+from os.path import dirname, join
+from .imports import importCITE
+
+path_here = dirname(dirname(__file__))
 
 # NOTE: SEPARATE INTO FIGURE GENERATION IN FIGURE AND CALCULATIONS HERE @MYSELF
 def KL_EMD_1D(ax, targCell, numFactors, RNA=False, offTargState=0) -> pd.DataFrame:
@@ -640,7 +642,7 @@ def bindingmodel_selectivity_pair(dataset, target_cells, signal_receptor, specia
     return selectivity
 
 def correlation(cell_type, relevant_epitopes):
-    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, np.array([cell_type]))
 

@@ -21,8 +21,8 @@ def getSampleAbundances(epitopes: list, cellList: list, numCells=1000, cellCat="
 
     # Import CITE data and drop unnecessary epitopes and cell types
     CITE_DF = importCITE()
-    CITE_DF = CITE_DF[epitopes + [cellCat]]
-    CITE_DF = CITE_DF.loc[CITE_DF[cellCat].isin(cellList)]
+    CITE_DF_new = CITE_DF[epitopes + [cellCat]]
+    CITE_DF_new = CITE_DF_new.loc[CITE_DF_new[cellCat].isin(cellList)]
 
     # Get conv factors, average them to use on epitopes with unlisted conv facts
     meanConv = convFactCalc(CITE_DF).Weight.mean()
@@ -33,7 +33,7 @@ def getSampleAbundances(epitopes: list, cellList: list, numCells=1000, cellCat="
     }
 
     # Sample df generated
-    sampleDF = CITE_DF.sample(numCells, random_state=42)
+    sampleDF = CITE_DF_new.sample(numCells, random_state=42)
 
     # NOTE: Probably a better way to do this without a for loop - vectorize it?
     for epitope in epitopes:

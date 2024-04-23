@@ -14,6 +14,7 @@ from random import sample, seed
 
 path_here = dirname(dirname(__file__))
 
+# NOTE: Make this work still
 def makeFigure():
     """KL divergence, EMD, and anti-correlation correlation with selectivity at a given dose."""
     ax, f = getSetup((9, 3), (1, 3))
