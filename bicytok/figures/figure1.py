@@ -17,7 +17,7 @@ def makeFigure():
     ax, f = getSetup((6, 3), (1, 2))
 
     signal = ['CD122', 1]
-    allTargets = [[('CD25', 1), ('CD27', 1)], [('CD25', 1)], [('CD25', 4)], [('CD25', 1), ('CD278', 1)], [('CD25', 4), ('CD278', 4)],
+    allTargets = [[('CD25', 1)], [('CD25', 4)], [('CD25', 1), ('CD278', 1)], [('CD25', 4), ('CD278', 4)], [('CD25', 1), ('CD27', 1)],
         [('CD25', 4), ('CD27', 4)], [('CD25', 1), ('CD278', 1), ('CD27', 1)], [('CD25', 4), ('CD278', 4), ('CD27', 4)]]
 
     cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating',
@@ -49,12 +49,19 @@ def makeFigure():
             optParams = optimizeDesign(signal[0], targets, targCell, offTCells, epitopesDF, dose, valencies, prevOptAffs)
             prevOptAffs = optParams[1]
 
-            data = {'Dose': [dose],
+            """data = {'Dose': [dose],
                 'Selectivity': 1 / optParams[0],
                 'Target Bound': optParams[2],
                 'Ligand': ' + '.join(naming)
             }
             df_temp = pd.DataFrame(data, columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
+            df = pd.concat([df, df_temp], ignore_index=True)
+            print(optParams[1])"""
+            data = {'Dose': [dose],
+                'Selectivity': 1 / optParams[0],
+                'Ligand': ' + '.join(naming)
+            }
+            df_temp = pd.DataFrame(data, columns=['Dose', 'Selectivity', 'Ligand'])
             df = pd.concat([df, df_temp], ignore_index=True)
             print(optParams[1])
 
@@ -68,8 +75,8 @@ def makeFigure():
     print(df2)
 
     sns.lineplot(data=df, x='Dose', y='Selectivity', hue='Ligand', ax=ax[0])
-    sns.lineplot(data=df, x='Dose', y='Target Bound', hue='Ligand', ax=ax[1])
+    #sns.lineplot(data=df, x='Dose', y='Target Bound', hue='Ligand', ax=ax[1])
     ax[0].set(xscale='log')
-    ax[1].set(xscale='log')
+    #ax[1].set(xscale='log')
 
     return f

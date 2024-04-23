@@ -41,7 +41,7 @@ def getSampleAbundances(epitopes: list, cellList: list, numCells=1000, cellCat="
 
     return sampleDF
 
-bispecOpt_Vec = np.vectorize(cytBindingModel, excluded=['recXaffs'])
+bispecOpt_Vec = np.vectorize(cytBindingModel, excluded=['holder', 'vals'], signature='(n),()->()')
 
 def minSelecFunc(recXaffs: np.array, signal: str, targets: list, targRecs: np.array, offTRecs: np.array, dose: float, vals: list):
     """Serves as the function which will have its return value minimized to get optimal selectivity
@@ -59,20 +59,10 @@ def minSelecFunc(recXaffs: np.array, signal: str, targets: list, targRecs: np.ar
     np.fill_diagonal(holder, affs)
     affs = holder
 
-    targetBoundPerCell = np.array([])
-    offTargetBoundPerCell = np.array([])
-    for i in range(len(targRecs[0])):
-        targetBoundPerCell = np.append(targetBoundPerCell, cytBindingModel(np.ravel(np.rot90(targRecs)[i]), affs, dose, vals))
-    for i in range(len(offTRecs[0])):
-        offTargetBoundPerCell = np.append(offTargetBoundPerCell, cytBindingModel(np.ravel(np.rot90(offTRecs)[i]), affs, dose, vals))
+    targetBound = np.sum(bispecOpt_Vec(recCount=targRecs.to_numpy(), holder=affs, dose=dose, vals=vals))
+    offTargetBound = np.sum(bispecOpt_Vec(recCount=offTRecs.to_numpy(), holder=affs, dose=dose, vals=vals))
 
-    minSelecFunc.targetBound = np.sum(targetBoundPerCell)
-    offTargetBound = np.sum(offTargetBoundPerCell)
-
-    minSelecFunc.targetBound /= targRecs.shape[0]
-    offTargetBound /= offTRecs.shape[0]
-
-    return offTargetBound / minSelecFunc.targetBound
+    return offTargetBound / targetBound
 
 
 def optimizeDesign(signal: str, targets: list, targCell: str, offTCells: list, selectedDF: pd.DataFrame, dose: float, valencies: list, prevOptAffs: list, cellCat="CellType2"):
@@ -100,9 +90,9 @@ def optimizeDesign(signal: str, targets: list, targCell: str, offTCells: list, s
     optimized = minimize(minSelecFunc, X0, bounds=optBnds, args=(signal, targets, targRecs, offTRecs, dose, valencies), jac="3-point")
     print('Done')
     optSelectivity = optimized.fun
-    optParams = optimized.x
+    optAffs = optimized.x
 
-    return optSelectivity, optParams, minSelecFunc.targetBound
+    return optSelectivity, optAffs
 
 
 cellDict = {"CD4 Naive": "Thelper",
@@ -170,23 +160,13 @@ def convFactCalc() -> pd.DataFrame:
     return weightDF
 
 
-def get_rec_vecs(df: pd.DataFrame, targCell: str, offTCells: list, signal: str, targets: list, cellCat: str) -> tuple[np.ndarray, np.ndarray]:
+def get_rec_vecs(df: pd.DataFrame, targCell: str, offTCells: list, signal: str, targets: list, cellCat: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Returns vector of target and off target receptors"""
     dfTargCell = df.loc[df[cellCat] == targCell]
-    countTargSignal = dfTargCell[signal].to_numpy()
+    countTarg = dfTargCell[[signal] + targets]
 
     dfOffTCell = df.loc[df[cellCat].isin(offTCells)]
-    countOffTSignal = dfOffTCell[signal].to_numpy()
-
-    # NOTE: Should be a better way to do this without for loop - could transpose dfTargCell[targets] then use to_numpy()?
-    countTargTargets = []
-    countOffTTargets = []
-    for target in targets:
-        countTargTargets.append(dfTargCell[target].to_numpy())
-        countOffTTargets.append(dfOffTCell[target].to_numpy())
-
-    countTarg = np.append([countTargSignal], countTargTargets, axis=0)
-    countOffT = np.append([countOffTSignal], countOffTTargets, axis=0)
+    countOffT = dfOffTCell[[signal] + targets]
 
     return countTarg, countOffT
 
