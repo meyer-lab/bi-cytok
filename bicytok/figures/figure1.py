@@ -48,22 +48,15 @@ def makeFigure():
         for _, dose in enumerate(doseVec):
             optParams = optimizeDesign(signal[0], targets, targCell, offTCells, epitopesDF, dose, valencies, prevOptAffs)
             prevOptAffs = optParams[1]
+            targBound = get_cell_bindings(epitopesDF, cells, signal[0], targets, prevOptAffs, dose, valencies)
 
-            """data = {'Dose': [dose],
+            data = {'Dose': [dose],
                 'Selectivity': 1 / optParams[0],
-                'Target Bound': optParams[2],
+                'Target Bound': targBound.loc[(targBound.index == targCell)]['Receptor Bound'],
                 'Ligand': ' + '.join(naming)
             }
             df_temp = pd.DataFrame(data, columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
             df = pd.concat([df, df_temp], ignore_index=True)
-            print(optParams[1])"""
-            data = {'Dose': [dose],
-                'Selectivity': 1 / optParams[0],
-                'Ligand': ' + '.join(naming)
-            }
-            df_temp = pd.DataFrame(data, columns=['Dose', 'Selectivity', 'Ligand'])
-            df = pd.concat([df, df_temp], ignore_index=True)
-            print(optParams[1])
 
             data = {'Ligand': ' + '.join(naming),
                 'Dose': dose,
@@ -75,8 +68,8 @@ def makeFigure():
     print(df2)
 
     sns.lineplot(data=df, x='Dose', y='Selectivity', hue='Ligand', ax=ax[0])
-    #sns.lineplot(data=df, x='Dose', y='Target Bound', hue='Ligand', ax=ax[1])
+    sns.lineplot(data=df, x='Dose', y='Target Bound', hue='Ligand', ax=ax[1])
     ax[0].set(xscale='log')
-    #ax[1].set(xscale='log')
+    ax[1].set(xscale='log')
 
     return f

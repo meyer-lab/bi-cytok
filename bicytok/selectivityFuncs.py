@@ -7,7 +7,7 @@ from scipy.optimize import minimize, Bounds
 import pandas as pd
 import numpy as np
 
-
+# NOTE: Changed the sampling here - is this an issue?
 def getSampleAbundances(epitopes: list, cellList: list, numCells=1000, cellCat="CellType2"):
     """Given list of epitopes and cell types, returns a dataframe containing abundance data on a single cell level
     Args:
@@ -25,7 +25,7 @@ def getSampleAbundances(epitopes: list, cellList: list, numCells=1000, cellCat="
     CITE_DF = CITE_DF.loc[CITE_DF[cellCat].isin(cellList)]
 
     # Get conv factors, average them to use on epitopes with unlisted conv facts
-    meanConv = convFactCalc().Weight.mean()
+    meanConv = convFactCalc(CITE_DF).Weight.mean()
     convFactDict = {
         'CD25': 77.136987,
         'CD122': 332.680090,
@@ -35,7 +35,7 @@ def getSampleAbundances(epitopes: list, cellList: list, numCells=1000, cellCat="
     # Sample df generated
     sampleDF = CITE_DF.sample(numCells, random_state=42)
 
-    # NOTE: Probably a better way to do this without a for loop
+    # NOTE: Probably a better way to do this without a for loop - vectorize it?
     for epitope in epitopes:
         sampleDF[epitope] = sampleDF[epitope].multiply(convFactDict.get(epitope, meanConv))
 
@@ -52,6 +52,7 @@ def minSelecFunc(recXaffs: np.array, signal: str, targets: list, targRecs: np.ar
     Return:
         selectivity: value will be minimized, defined as ratio of off target to on target signaling
     """
+    # NOTE: Simplify this to not need the loop? Seen a few times so could be good to do
     affs = pd.DataFrame()
     for i, recXaff in enumerate(recXaffs):
         affs = np.append(affs, np.power(10, recXaff))
@@ -61,6 +62,8 @@ def minSelecFunc(recXaffs: np.array, signal: str, targets: list, targRecs: np.ar
 
     targetBound = np.sum(bispecOpt_Vec(recCount=targRecs.to_numpy(), holder=affs, dose=dose, vals=vals))
     offTargetBound = np.sum(bispecOpt_Vec(recCount=offTRecs.to_numpy(), holder=affs, dose=dose, vals=vals))
+    # NOTE: Currently returning total amount bound, not on a per-cell basis - is this right?
+    # The output is too high, so I think I'll need to divide it
 
     return offTargetBound / targetBound
 
@@ -77,12 +80,8 @@ def optimizeDesign(signal: str, targets: list, targCell: str, offTCells: list, s
         optSelectivity: optimized selectivity value. Can also be modified to return optimized affinity parameter.
      """
     X0 = prevOptAffs
-    minAffs = [7.0]
-    maxAffs = [9.0]
-
-    for target in targets:
-        minAffs.append(7.0)
-        maxAffs.append(9.0)
+    minAffs = [7.0] * (len(targets) + 1)
+    maxAffs = [9.0] * (len(targets) + 1)
 
     optBnds = Bounds(np.full_like(X0, minAffs), np.full_like(X0, maxAffs))
     targRecs, offTRecs = get_rec_vecs(selectedDF, targCell, offTCells, signal, targets, cellCat)
@@ -111,10 +110,9 @@ markDict = {"CD25": "IL2Ra",
             "CD127": "IL7Ra",
             "CD132": "gc"}
 
-
-def convFactCalc() -> pd.DataFrame:
+# NOTE: Ask Brian about this (Peter's code?)
+def convFactCalc(CITE_DF) -> pd.DataFrame:
     """Returns conversion factors by marker for converting CITEseq signal into abundance"""
-    CITE_DF = importCITE()
     cellToI = ["CD4 TCM", "CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL", "CD8 TCM", "Treg", "CD4 TEM"]
     markers = ["CD122", "CD127", "CD25"]
     markerDF = None
@@ -170,48 +168,31 @@ def get_rec_vecs(df: pd.DataFrame, targCell: str, offTCells: list, signal: str, 
 
     return countTarg, countOffT
 
+# NOTE: I'd like this to be able to return amount bound for every target, but polyc only does signal now
+# NOTE: Numbers are weird and don't match previous
+def get_cell_bindings(df: pd.DataFrame, cells: list, signal: str, targets: list, affs: np.ndarray, dose: float, vals: np.ndarray, cellCat="CellType2"):
+    # NOTE: Do this whole function better later
+    affsDF = pd.DataFrame()
+    for i, aff in enumerate(affs):
+        affsDF = np.append(affsDF, np.power(10, aff))
+    holder = np.full((len(affs), len(affs)), 1e2)
+    np.fill_diagonal(holder, affsDF)
+    affsDF = holder
 
-def get_cell_bindings(recXaffs: np.ndarray, cells: list, df: pd.DataFrame, secondary: str, epitope: str, dose: float, valency: np.ndarray):
-    df_return = pd.DataFrame(columns=['Cell Type', 'Secondary Bound', 'Total Secondary'])
-    
-    affs = pd.DataFrame()
-    for i, recXaff in enumerate(recXaffs):
-        affs = np.append(affs, np.power(10, recXaff))
-    holder = np.full((recXaffs.size, recXaffs.size), 1e2)
-    np.fill_diagonal(holder, affs)
-    affs = holder
+    dfBound = df.loc[df[cellCat].isin(cells)][[signal] + targets + [cellCat]]
+    signalBound = bispecOpt_Vec(recCount=dfBound.loc[:, dfBound.columns != cellCat].to_numpy(), holder=affsDF, dose=dose, vals=vals)
+    dfBound.insert(0, 'Receptor Bound', signalBound)
+    dfBound = dfBound[['Receptor Bound', cellCat]]
 
-    cd25DF = df.loc[(df.Epitope == 'CD25')]
-    secondaryDF = df.loc[(df.Epitope == secondary)]
-    if epitope != None:
-        df2 = df.loc[(df.Epitope == epitope)]
-    else:
-        df2 = df.loc[(df.Epitope == 'CD25')]
+    dfNumCells = dfBound[cellCat].value_counts().sort_index().to_frame()
+    dfBound = dfBound.groupby(cellCat).sum().sort_index()
+    dfBound['Receptor Bound'] = dfBound['Receptor Bound'].div(dfNumCells['count'])
 
-    for cell in cells:
-        numCells = df2[cell].item().size
+    dfTotalRec = df.loc[df[cellCat].isin(cells)][[signal] + [cellCat]]
+    dfTotalRec = dfTotalRec.groupby(cellCat).sum().sort_index()
+    dfTotalRec[signal] = dfTotalRec[signal].div(dfNumCells['count'])
 
-        cd25CountTarg = np.zeros(numCells)
-        secondaryCountTarg = np.zeros(numCells)
-        epCountvecTarg = np.zeros(numCells)
-        for i, epCount in enumerate(df2[cell].item()):
-            cd25CountTarg[i] = cd25DF[cell].item()[i]
-            secondaryCountTarg[i] = secondaryDF[cell].item()[i]
-            epCountvecTarg[i] = epCount
-
-        recs = np.array([cd25CountTarg, secondaryCountTarg, epCountvecTarg])
-
-        secondaryBound = 0.0
-        for i in range(recs.shape[1]):
-            secondaryBound += cytBindingModel(recs[:, i], affs[0:3], dose, valency)
-
-        data = {'Cell Type': [cell],
-            'Secondary Bound': [secondaryBound / numCells][0],
-            'Total Secondary': [np.sum(recs[1]) / numCells]
-        }
-
-        df_temp = pd.DataFrame(data, columns=['Cell Type', 'Secondary Bound', 'Total Secondary'])
-        df_return = pd.concat((df_return, df_temp))
+    df_return = pd.concat([dfBound, dfTotalRec], axis=1)
 
     return df_return
 

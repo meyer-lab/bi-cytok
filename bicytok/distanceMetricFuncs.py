@@ -80,7 +80,9 @@ def get_conversion_factor(weightDF, receptor_name):
 
 def EMD_2D(dataset, signal_receptor, target_cells, ax):
     '''returns list of descending EMD values for specified target cell (2 receptors) '''
-    weightDF = convFactCalc()
+    CITE_DF = importCITE()
+
+    weightDF = convFactCalc(CITE_DF)
     # filter those outliers! 
     exclude_columns = ['CellType1', 'CellType2', 'CellType3', 'Cell']
     # Define a threshold multiplier to identify outliers (e.g., 3 times the standard deviation)
@@ -141,8 +143,9 @@ def EMD_2D(dataset, signal_receptor, target_cells, ax):
 
 def EMD_3D(dataset1, target_cells, ax=None):
     '''returns list of descending EMD values for specified target cell (3 receptors)'''
+    CITE_DF = importCITE()
 
-    weightDF = convFactCalc()
+    weightDF = convFactCalc(CITE_DF)
     exclude_columns = ['CellType1', 'CellType2', 'CellType3', 'Cell']
     threshold_multiplier = 5
     # Calculate the mean and standard deviation for each numeric column
@@ -233,7 +236,9 @@ def EMD_3D(dataset1, target_cells, ax=None):
 
 # NOTE: IS THIS NOT JUST A USE-CASE OF EMD_2D?
 def EMD_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
-    weightDF = convFactCalc()
+    CITE_DF = importCITE()
+
+    weightDF = convFactCalc(CITE_DF)
     # target and off-target cells
     IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
     IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
@@ -289,7 +294,9 @@ def EMD_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
 
 # NOTE: IS THIS NOT JUST A USE-CASE OF KL_divergence_2D?
 def KL_divergence_2D_pair(dataset, target_cells, signal_receptor, special_receptor):
-    weightDF = convFactCalc()
+    CITE_DF = importCITE()
+
+    weightDF = convFactCalc(CITE_DF)
     # target and off-target cells
     IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
     IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
@@ -357,7 +364,9 @@ def calculate_kl_divergence_2D(targCellMark, offTargCellMark):
 
 # NOTE: MAYBE REMOVE IF ABOVE DOES THE SAME THING AS ABOVE? SHOULD IT BE A FUNCTION OR A FIGURE?
 def EMD_1D(dataset, target_cells, ax):
-    weightDF = convFactCalc()
+    CITE_DF = importCITE()
+
+    weightDF = convFactCalc(CITE_DF)
     # target and off-target cells
     IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
     IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
@@ -481,7 +490,9 @@ def EMD1Dvs2D_Analysis(receptor_names, target_cells, signal_receptor, dataset, a
     return 
 
 def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
-    weightDF = convFactCalc()
+    CITE_DF = importCITE()
+
+    weightDF = convFactCalc(CITE_DF)
     target_cells_df, off_target_cells_df, non_signal_receptors, conversion_factor_sig = common_code(weightDF, dataset, signal_receptor, target_cells)
     results = []
     for receptor_name in non_signal_receptors:
@@ -523,7 +534,9 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, ax):
 
 # NOTE: SHOULD IT BE A FUNCTION OR A FIGURE?
 def plot_kl_divergence_curves(dataset, signal_receptor, special_receptor, target_cells, ax):
-    weightDF = convFactCalc()
+    CITE_DF = importCITE()
+
+    weightDF = convFactCalc(CITE_DF)
     
     IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
     IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
