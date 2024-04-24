@@ -85,9 +85,7 @@ def optimizeDesign(signal: str, targets: list, targCell: str, offTCells: list, s
     optSelectivity = optimized.fun
     optAffs = optimized.x
 
-    targetBound = get_cell_bindings(selectedDF, signal, targets, optAffs, dose, valencies)
-
-    return optSelectivity, optAffs, targetBound
+    return optSelectivity, optAffs
 
 
 cellDict = {"CD4 Naive": "Thelper",
@@ -154,7 +152,7 @@ def convFactCalc(CITE_DF) -> pd.DataFrame:
     return weightDF
 
 
-def get_rec_vecs(df: pd.DataFrame, targCell: str, offTCells: list, signal: str, targets: list, cellCat: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+def get_rec_vecs(df: pd.DataFrame, targCell: str, offTCells: list, signal: str, targets: list, cellCat="CellType2") -> tuple[pd.DataFrame, pd.DataFrame]:
     """Returns vector of target and off target receptors"""
     dfTargCell = df.loc[df[cellCat] == targCell]
     countTarg = dfTargCell[[signal] + targets + [cellCat]]

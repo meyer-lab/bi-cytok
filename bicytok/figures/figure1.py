@@ -48,10 +48,11 @@ def makeFigure():
         for _, dose in enumerate(doseVec):
             optParams = optimizeDesign(signal[0], targets, targCell, offTCells, epitopesDF, dose, valencies, prevOptAffs)
             prevOptAffs = optParams[1]
+            cellBindings = get_cell_bindings(epitopesDF, signal[0], targets, prevOptAffs, dose, valencies)
 
             data = {'Dose': [dose],
                 'Selectivity': 1 / optParams[0],
-                'Target Bound': optParams[2]['Receptor Bound'].loc['Treg'],
+                'Target Bound': cellBindings['Receptor Bound'].loc['Treg'],
                 'Ligand': ' + '.join(naming)
             }
             df_temp = pd.DataFrame(data, columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
