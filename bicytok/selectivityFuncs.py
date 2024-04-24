@@ -54,10 +54,8 @@ def minSelecFunc(recXaffs: np.array, signal: str, targets: list, targRecs: np.ar
 
     affs = get_affs(recXaffs)
 
-    targetBound = np.sum(bispecOpt_Vec(recCount=targRecs.to_numpy(), recXaffs=affs, dose=dose, vals=vals))
-    offTargetBound = np.sum(bispecOpt_Vec(recCount=offTRecs.to_numpy(), recXaffs=affs, dose=dose, vals=vals))
-    # NOTE: Currently returning total amount bound, not on a per-cell basis - is this right? (Do on a per-cell basis)
-    # The output is too high, so I think I'll need to divide it
+    targetBound = np.sum(bispecOpt_Vec(recCount=targRecs.to_numpy(), recXaffs=affs, dose=dose, vals=vals)) / targRecs.shape[0]
+    offTargetBound = np.sum(bispecOpt_Vec(recCount=offTRecs.to_numpy(), recXaffs=affs, dose=dose, vals=vals)) / offTRecs.shape[0]
 
     return offTargetBound / targetBound
 

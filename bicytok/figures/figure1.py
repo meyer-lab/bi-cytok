@@ -31,7 +31,6 @@ def makeFigure():
 
     doseVec = np.logspace(-2, 2, num=20)
     df = pd.DataFrame(columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
-    df2 = pd.DataFrame(columns=['Ligand', 'Dose', 'Affinities'])
 
     for targetPairs in allTargets:
         print(targetPairs)
@@ -52,20 +51,14 @@ def makeFigure():
 
             data = {'Dose': [dose],
                 'Selectivity': 1 / optParams[0],
-                'Target Bound': cellBindings['Receptor Bound'].loc['Treg'],
-                'Ligand': ' + '.join(naming)
+                'Target Bound': cellBindings['Receptor Bound'].loc[targCell],
+                'Ligand': ' + '.join(naming),
+                'Affinities': optParams[1]
             }
             df_temp = pd.DataFrame(data, columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
             df = pd.concat([df, df_temp], ignore_index=True)
-
-            data = {'Ligand': ' + '.join(naming),
-                'Dose': dose,
-                'Affinities': optParams[1]
-            }
-            df2_temp = pd.DataFrame(data, columns=['Ligand', 'Dose', 'Affinities'])
-            df2 = pd.concat([df2, df2_temp], ignore_index=True)
-
-    print(df2)
+    
+    print(df)
 
     sns.lineplot(data=df, x='Dose', y='Selectivity', hue='Ligand', ax=ax[0])
     sns.lineplot(data=df, x='Dose', y='Target Bound', hue='Ligand', ax=ax[1])
