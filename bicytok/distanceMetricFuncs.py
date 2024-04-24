@@ -12,7 +12,7 @@ from .imports import importCITE
 
 path_here = dirname(dirname(__file__))
 
-# NOTE: SEPARATE INTO FIGURE GENERATION IN FIGURE AND CALCULATIONS HERE @MYSELF
+# NOTE: SEPARATE INTO FIGURE GENERATION IN FIGURE AND CALCULATIONS HERE
 def KL_EMD_1D(ax, targCell, numFactors, RNA=False, offTargState=0) -> pd.DataFrame:
     """Finds markers which have average greatest difference from other cells"""
     CITE_DF = importCITE()

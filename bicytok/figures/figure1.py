@@ -12,6 +12,7 @@ path_here = dirname(dirname(__file__))
 
 plt.rcParams["svg.fonttype"] = "none"
 
+# NOTE: This runs slower than main and I think it's because I've had to recalculate the target bount, meaning it'll likely take 2x the time as main
 def makeFigure():
     """Figure to generate dose response curves for any combination of multivalent and multispecific ligands."""
     ax, f = getSetup((6, 3), (1, 2))
@@ -48,11 +49,10 @@ def makeFigure():
         for _, dose in enumerate(doseVec):
             optParams = optimizeDesign(signal[0], targets, targCell, offTCells, epitopesDF, dose, valencies, prevOptAffs)
             prevOptAffs = optParams[1]
-            targBound = get_cell_bindings(epitopesDF, cells, signal[0], targets, prevOptAffs, dose, valencies)
 
             data = {'Dose': [dose],
                 'Selectivity': 1 / optParams[0],
-                'Target Bound': targBound.loc[(targBound.index == targCell)]['Receptor Bound'],
+                'Target Bound': optParams[2]['Receptor Bound'].loc['Treg'],
                 'Ligand': ' + '.join(naming)
             }
             df_temp = pd.DataFrame(data, columns=['Dose', 'Selectivity', 'Target Bound', 'Ligand'])
