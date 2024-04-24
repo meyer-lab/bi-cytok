@@ -21,13 +21,6 @@ def cytBindingModel(recCount: np.ndarray, recXaffs: np.ndarray, dose: float, val
     # Check that values are in correct placement, can invert
     Kx = getKxStar()
 
-    affs = pd.DataFrame()
-    for i, recXaff in enumerate(recXaffs):
-        affs = np.append(affs, np.power(10, recXaff))
-    holder = np.full((recXaffs.size, recXaffs.size), 1e2)
-    np.fill_diagonal(holder, affs)
-    affs = holder
-
-    output = polyc(dose / (vals[0] * 1e9), Kx, recCount, [vals], affs)[0]
+    output = polyc(dose / (vals[0] * 1e9), Kx, recCount, [vals], recXaffs)[0]
 
     return output

@@ -52,8 +52,10 @@ def minSelecFunc(recXaffs: np.array, signal: str, targets: list, targRecs: np.ar
         selectivity: value will be minimized, defined as ratio of off target to on target signaling
     """
 
-    targetBound = np.sum(bispecOpt_Vec(recCount=targRecs.to_numpy(), recXaffs=recXaffs, dose=dose, vals=vals))
-    offTargetBound = np.sum(bispecOpt_Vec(recCount=offTRecs.to_numpy(), recXaffs=recXaffs, dose=dose, vals=vals))
+    affs = get_affs(recXaffs)
+
+    targetBound = np.sum(bispecOpt_Vec(recCount=targRecs.to_numpy(), recXaffs=affs, dose=dose, vals=vals))
+    offTargetBound = np.sum(bispecOpt_Vec(recCount=offTRecs.to_numpy(), recXaffs=affs, dose=dose, vals=vals))
     # NOTE: Currently returning total amount bound, not on a per-cell basis - is this right? (Do on a per-cell basis)
     # The output is too high, so I think I'll need to divide it
 
@@ -165,11 +167,22 @@ def get_rec_vecs(df: pd.DataFrame, targCell: str, offTCells: list, signal: str, 
 # NOTE: Numbers are weird and don't match previous (print dfBound/dfTotalRec (between here and main, should be similar), play with sampling)
 def get_cell_bindings(df: np.array, signal: str, targets: list, recXaffs: np.ndarray, dose: float, vals: np.ndarray, cellCat="CellType2"):
     targRecs = df[[signal] + targets]
+    affs = get_affs(recXaffs)
 
-    targBound = bispecOpt_Vec(recCount=targRecs.to_numpy(), recXaffs=recXaffs, dose=dose, vals=vals)
+    targBound = bispecOpt_Vec(recCount=targRecs.to_numpy(), recXaffs=affs, dose=dose, vals=vals)
 
     df_return = df[[signal] + [cellCat]]
     df_return.insert(0, 'Receptor Bound', targBound, True)
     df_return = df_return.groupby([cellCat]).mean(0)
 
     return df_return
+
+def get_affs(recXaffs: np.ndarray):
+    affs = pd.DataFrame()
+    for i, recXaff in enumerate(recXaffs):
+        affs = np.append(affs, np.power(10, recXaff))
+    holder = np.full((recXaffs.size, recXaffs.size), 1e2)
+    np.fill_diagonal(holder, affs)
+    affs = holder
+
+    return affs
