@@ -4,7 +4,11 @@ from functools import lru_cache
 from os.path import join
 import numpy as np
 import pandas as pd
+import gzip
+import anndata as an
+from scipy.io import mmread
 from zipfile import ZipFile
+
 
 path_here = os.path.dirname(os.path.dirname(__file__))
 
@@ -80,3 +84,34 @@ def importRNACITE():
     """Downloads all surface markers and cell types"""
     RNAsurfDF = pd.read_csv(ZipFile(join(path_here, "bicytok/data/RNAseqSurface.csv.zip")).open("RNAseqSurface.csv"))
     return RNAsurfDF
+
+
+def makeTregSC():
+    """Constructs .h5ad file for PBMC stimulation experiment"""
+    Treg_h5ad = an.AnnData()
+    for i, stim in enumerate(SC_Stims):
+        stim_an = an.AnnData()
+        barcodes = pd.read_csv(gzip.open("/opt/extra-storage/multi_output/outs/per_sample_outs/" + stim + "/count/sample_filtered_feature_bc_matrix/barcodes.tsv.gz"), sep="\t", header=None)
+        matrix = mmread(gzip.open("/opt/extra-storage/multi_output/outs/per_sample_outs/" + stim + "/count/sample_filtered_feature_bc_matrix/matrix.mtx.gz"))
+        barcodes.columns = ["barcode"]
+        stim_an = an.AnnData(matrix.transpose())
+        stim_an.obs.index = barcodes["barcode"].values
+        stim_an.obs["Stimulation"] = stim
+
+        if i == 0: #First condition - load features for later labeling (all conditions have same genes)
+            Treg_h5ad = stim_an
+            features = pd.read_csv(gzip.open("/opt/extra-storage/multi_output/outs/per_sample_outs/" + stim + "/count/sample_filtered_feature_bc_matrix/features.tsv.gz"), sep="\t", header=None)
+            features.columns = ["ENSEMBLE_ids", "gene_ids", "feature_type"]
+        else:
+            Treg_h5ad = an.concat([Treg_h5ad, stim_an])
+    
+    Treg_h5ad.var["gene_ids"] = features["gene_ids"].values
+    Treg_h5ad.var["ENSEMBLE_ids"] = features["ENSEMBLE_ids"].values
+    Treg_h5ad.var["feature_type"] = features["feature_type"].values
+    
+    Treg_h5ad.write_h5ad("/opt/extra-storage/Treg_h5ads/Treg_raw.h5ad")
+
+    return 
+
+
+SC_Stims = ["control", "IL2_100pM", "IL2_1nM", "IL2_10nM", "IL2_50nM", "IL2_200nM", "IL7_100nM", "IL10_500nM", "IL10_2000nM", "TGFB_10nM", "TGFB_50nM"] # "IL7_500nM is blank"
