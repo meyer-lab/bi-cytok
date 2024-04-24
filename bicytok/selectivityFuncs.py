@@ -164,7 +164,6 @@ def get_rec_vecs(df: pd.DataFrame, targCell: str, offTCells: list, signal: str, 
 
     return countTarg, countOffT
 
-# NOTE: Numbers are weird and don't match previous (print dfBound/dfTotalRec (between here and main, should be similar), play with sampling)
 def get_cell_bindings(df: np.array, signal: str, targets: list, recXaffs: np.ndarray, dose: float, vals: np.ndarray, cellCat="CellType2"):
     targRecs = df[[signal] + targets]
     affs = get_affs(recXaffs)

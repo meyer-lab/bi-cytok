@@ -12,7 +12,6 @@ path_here = dirname(dirname(__file__))
 
 plt.rcParams["svg.fonttype"] = "none"
 
-# NOTE: This runs slower than main and I think it's because I've had to recalculate the target bount, meaning it'll likely take 2x the time as main
 def makeFigure():
     """Figure to generate dose response curves for any combination of multivalent and multispecific ligands."""
     ax, f = getSetup((6, 3), (1, 2))
