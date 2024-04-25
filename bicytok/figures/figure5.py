@@ -35,7 +35,7 @@ def makeFigure():
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells, numCells=1000)
 
-    targetSize = 30 
+    targetSize = 5 #30 
     i = len(allTargets)
     while i < targetSize:
         targs = sample(epitopes, 2)
@@ -52,20 +52,21 @@ def makeFigure():
 
             optParams = optimizeDesign(signal_receptor, targets, targCell, offTCells, epitopesDF, dose, vals, prevOptAffs)
             prevOptAffs = optParams[1]
-
+            select = 1 / optParams[0],
             KLD = KL_divergence_2D(new_df, targets[0], targCell, targets[1], ax = None) 
             EMD = EMD_2D(new_df, targets[0], targCell, targets[1], ax = None)
             corr = correlation(targCell, targets).loc[targets[0], targets[1]]
-
+            print (val)
             data = {'KL Divergence': [KLD],
                 "Earth Mover's Distance": [EMD],
                 'Correlation': [corr],
-                'Selectivity': 1 / optParams[0],
-                'Valency': val
+                'Selectivity': select,
+                'Valency': [val]
+            
             }
             df_temp = pd.DataFrame(data, columns=['KL Divergence', "Earth Mover's Distance", 'Correlation', 'Selectivity', 'Valency'])
             df = pd.concat([df, df_temp], ignore_index=True)
-
+    df['Valency'] = df['Valency'].astype('category', categories=[1, 2, 4])
     sns.lineplot(data=df, x='KL Divergence', y='Selectivity', hue='Valency', ax=ax[0])
     sns.lineplot(data=df, x="Earth Mover's Distance", y='Selectivity', hue='Valency', ax=ax[1])
     sns.lineplot(data=df, x='Correlation', y='Selectivity', hue='Valency', ax=ax[2])

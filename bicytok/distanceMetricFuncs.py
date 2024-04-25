@@ -320,5 +320,4 @@ def correlation(cell_type, relevant_epitopes):
     corr = epitopesDF[relevant_epitopes].corr(method='pearson')
     sorted_corr = corr.stack().sort_values(ascending=False)
     sorted_corr_df = pd.DataFrame({'Correlation': sorted_corr})
-  
     return sorted_corr_df
