@@ -12,7 +12,6 @@ from .imports import importCITE
 
 path_here = dirname(dirname(__file__))
 
-# NOTE: SEPARATE INTO FIGURE GENERATION IN FIGURE AND CALCULATIONS HERE
 def KL_EMD_1D(ax, targCell, numFactors, RNA=False, offTargState=0) -> pd.DataFrame:
     """Finds markers which have average greatest difference from other cells"""
     CITE_DF = importCITE()
@@ -235,6 +234,7 @@ def EMD_3D(dataset1, target_cells, ax=None):
     return sorted_results
 
 def calculate_kl_divergence_2D(targCellMark, offTargCellMark):
+    '''  calculates the Kullback-Leibler (KL) divergence between two probability distributions '''
     kdeTarg = KernelDensity(kernel='gaussian').fit(targCellMark.reshape(-1, 2))
     kdeOffTarg = KernelDensity(kernel='gaussian').fit(offTargCellMark.reshape(-1, 2))
     minVal = np.minimum(targCellMark.min(), offTargCellMark.min()) - 10
@@ -247,6 +247,8 @@ def calculate_kl_divergence_2D(targCellMark, offTargCellMark):
     return KL_div
 
 def KL_divergence_2D(dataset, signal_receptor, target_cells, special_receptor, ax):
+        
+    '''returns list of descending EMD values for specified target cell (2 receptors) '''
     CITE_DF = importCITE()
     weightDF = convFactCalc(CITE_DF)
 
@@ -310,14 +312,13 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, special_receptor, a
     return sorted_results
 
 def correlation(cell_type, relevant_epitopes):
+    '''calculates the Pearson correlation between two celltypes receptor counts'''
     epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, np.array([cell_type]))
-
-    df = pd.DataFrame()
-    for index, row in epitopesDF.iterrows():
-        df[row['Epitope']] = row[cell_type]
-
-    corr = df.corr().loc[:, relevant_epitopes]
-
-    return corr
+    epitopesDF = epitopesDF[epitopesDF['CellType2'] == (cell_type)]
+    corr = epitopesDF[relevant_epitopes].corr(method='pearson')
+    sorted_corr = corr.stack().sort_values(ascending=False)
+    sorted_corr_df = pd.DataFrame({'Correlation': sorted_corr})
+  
+    return sorted_corr_df

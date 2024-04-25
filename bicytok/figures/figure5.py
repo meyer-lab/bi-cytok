@@ -4,7 +4,7 @@ import pandas as pd
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
-from ..distanceMetricFuncs import KL_divergence_2D_pair, EMD_2D, correlation, KL_divergence_2D
+from ..distanceMetricFuncs import EMD_2D, correlation, KL_divergence_2D
 
 
 from scipy.optimize import least_squares
@@ -20,12 +20,12 @@ def makeFigure():
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()
-    new_df = CITE_DF.sample(1000, random_state=42)
+    new_df = CITE_DF.sample(50, random_state=42)
 
     signal_receptor = 'CD122'
     signal_valency = 1
-    valencies = [1, 2, 4]
-    allTargets = [['CD25', 'CD278'], ['CD25', 'CD4-2'], ['CD25', 'CD45RB']]
+    valencies = [1] #, 2, 4]
+    allTargets = [['CD25', 'CD278']] #, ['CD25', 'CD4-2'], ['CD25', 'CD45RB']]
     dose = 10e-2
     cells = np.array(['CD8 Naive', 'NK', 'CD8 TEM', 'CD4 Naive', 'CD4 CTL', 'CD8 TCM', 'CD8 Proliferating','Treg'])
     targCell = 'Treg'
