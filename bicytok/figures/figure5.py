@@ -4,7 +4,7 @@ import pandas as pd
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
-from ..distanceMetricFuncs import KL_divergence_2D_pair, EMD_2D_pair, correlation
+from ..distanceMetricFuncs import KL_divergence_2D_pair, EMD_2D, correlation, KL_divergence_2D
 
 
 from scipy.optimize import least_squares
@@ -53,8 +53,8 @@ def makeFigure():
             optParams = optimizeDesign(signal_receptor, targets, targCell, offTCells, epitopesDF, dose, vals, prevOptAffs)
             prevOptAffs = optParams[1]
 
-            KLD = KL_divergence_2D_pair(new_df, targCell, targets[0], targets[1])
-            EMD = EMD_2D_pair(new_df, targCell, targets[0], targets[1])
+            KLD = KL_divergence_2D(new_df, targets[0], targCell, targets[1], ax = None) 
+            EMD = EMD_2D(new_df, targets[0], targCell, targets[1], ax = None)
             corr = correlation(targCell, targets).loc[targets[0], targets[1]]
 
             data = {'KL Divergence': [KLD],

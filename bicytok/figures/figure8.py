@@ -17,19 +17,18 @@ def makeFigure():
         if column not in ['CellType1', 'CellType2', 'CellType3', 'Cell']:
             receptors.append(column)
     ax, f = getSetup((40, 40), (1,1)) 
-    target_cells = "Treg" 
-   
-    # Clustermap for EMD
-    resultsEMD = []
     receptors = ['CD25', 'CD35']
-    for receptor in receptors:
-        val = EMD_2D(new_df, receptor, target_cells, special_receptor = None, ax = None) 
-        resultsEMD.append(val)
-    flattened_results = [result_tuple for inner_list in resultsEMD for result_tuple in inner_list]
+    target_cells = "Treg" 
+    resultsKL = []
+    for receptor in receptors[0:5]:
+        val = KL_divergence_2D(new_df, receptor, target_cells, special_receptor = None, ax = None) 
+        resultsKL.append(val) 
+    flattened_resultsKL = [result_tuple for inner_list in resultsKL for result_tuple in inner_list]
+
     # Create a DataFrame from the flattened_results
-    df_recep = pd.DataFrame(flattened_results, columns=['Distance', 'Receptor', 'Signal Receptor'])
-    pivot_table = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='Distance')
-    dataset = pivot_table.fillna(0)
-    f =  (sns.clustermap(dataset, cmap='bwr', figsize=(10,10), annot_kws={'fontsize': 16}))
+    df_recep = pd.DataFrame(flattened_resultsKL, columns=['KLD', 'Receptor', 'Signal Receptor'])
+    pivot_tableKL = df_recep.pivot_table(index='Receptor', columns='Signal Receptor', values='KLD')
+    dataset = pivot_tableKL.fillna(0)
+    f = (sns.clustermap(dataset, cmap='bwr', figsize=(10,10), annot_kws={'fontsize': 16}))
     
-    return f     
+    return f   
