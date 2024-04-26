@@ -4,12 +4,9 @@ import pandas as pd
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import least_squares
 from ..imports import importCITE
 from sklearn.neighbors import KernelDensity
-from random import sample, seed
 from scipy import stats
-from ..distanceMetricFuncs import KL_EMD_1D, correlation
 
 path_here = dirname(dirname(__file__))
 

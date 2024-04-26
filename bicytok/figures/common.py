@@ -11,17 +11,7 @@ import numpy as np
 import matplotlib
 from matplotlib.axes import Axes
 from matplotlib import gridspec, pyplot as plt
-import pandas as pd
-from ..imports import importCITE
-from sklearn.neighbors import KernelDensity
-from scipy import stats
-import ot
-import ot.plot
-from ..selectivityFuncs import convFactCalc
-from ..selectivityFuncs import getSampleAbundances, optimizeDesign
-from scipy.stats import norm
-from scipy.cluster import hierarchy
-from os.path import dirname, join
+from os.path import dirname
 
 path_here = dirname(dirname(__file__))
 

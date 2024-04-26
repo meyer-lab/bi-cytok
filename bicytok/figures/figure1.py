@@ -4,7 +4,6 @@ import pandas as pd
 import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import least_squares
 from ..selectivityFuncs import (
     get_cell_bindings,
     getSampleAbundances,
@@ -12,7 +11,6 @@ from ..selectivityFuncs import (
     optimizeDesign,
     minSelecFunc,
 )
-from ..imports import importCITE
 
 path_here = dirname(dirname(__file__))
 

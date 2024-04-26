@@ -7,7 +7,7 @@ from scipy import stats
 import ot
 import ot.plot
 from .selectivityFuncs import convFactCalc, getSampleAbundances, optimizeDesign
-from os.path import dirname, join
+from os.path import dirname
 from .imports import importCITE
 
 path_here = dirname(dirname(__file__))
@@ -1007,7 +1007,7 @@ def plot_2d_density_visualization(dataset, receptor1, receptor2, target_cells, a
 
     ax.set_xlabel(f"Receptor {receptor1}")
     ax.set_ylabel(f"Receptor {receptor2}")
-    ax.set_title(f"2D Receptor Density Visualization")
+    ax.set_title("2D Receptor Density Visualization")
     ax.legend(["Target Cells", "Off Target Cells"])
 
 

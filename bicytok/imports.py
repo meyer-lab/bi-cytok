@@ -3,7 +3,6 @@
 import os
 from functools import lru_cache
 from os.path import join
-import numpy as np
 import pandas as pd
 import gzip
 import anndata as an

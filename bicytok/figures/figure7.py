@@ -1,11 +1,7 @@
 # @Helen fix this later
 from .common import getSetup
 import pandas as pd
-import seaborn as sns
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.optimize import least_squares
-from ..distanceMetricFuncs import EMD_2D, KL_divergence_2D, EMD_KL_clustermap
+from ..distanceMetricFuncs import EMD_2D, EMD_KL_clustermap
 from ..imports import importCITE
 
 
