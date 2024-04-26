@@ -105,7 +105,7 @@ def makeTregSC():
         else:
             Treg_h5ad = an.concat([Treg_h5ad, stim_an])
     
-    Treg_h5ad.var["gene_ids"] = features["gene_ids"].values
+    Treg_h5ad.var.index = features["gene_ids"].values
     Treg_h5ad.var["ENSEMBLE_ids"] = features["ENSEMBLE_ids"].values
     Treg_h5ad.var["feature_type"] = features["feature_type"].values
     
