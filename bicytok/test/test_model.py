@@ -1,8 +1,10 @@
 """
 Unit test file.
 """
+
 import pandas as pd
 from bicytok.selectivityFuncs import getSampleAbundances, optimizeDesign
+
 
 def test_optimize_design():
     targCell = "Treg"
@@ -20,6 +22,6 @@ def test_optimize_design():
         offTCells=offTCells,
         selectedDF=epitopesDF,
         dose=0.1,
-        valencies=[2,2],
-        prevOptAffs=[8.0,8.0],
+        valencies=[2, 2],
+        prevOptAffs=[8.0, 8.0],
     )
