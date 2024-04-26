@@ -96,7 +96,7 @@ def makeTregSC():
         barcodes.columns = ["barcode"]
         stim_an = an.AnnData(matrix.transpose())
         stim_an.obs.index = barcodes["barcode"].values
-        stim_an.obs["Stimulation"] = stim
+        stim_an.obs["Condition"] = stim
 
         if i == 0: #First condition - load features for later labeling (all conditions have same genes)
             Treg_h5ad = stim_an
