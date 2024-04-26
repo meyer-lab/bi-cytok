@@ -16,7 +16,9 @@ def getKxStar():
     return 2.24e-12
 
 
-def cytBindingModel(recCount: np.ndarray, recXaffs: np.ndarray, dose: float, vals: np.ndarray):
+def cytBindingModel(
+    recCount: np.ndarray, recXaffs: np.ndarray, dose: float, vals: np.ndarray
+):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     # Check that values are in correct placement, can invert
     Kx = getKxStar()

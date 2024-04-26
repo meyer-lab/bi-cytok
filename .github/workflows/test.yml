@@ -9,6 +9,12 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install dependencies
       run: poetry install --no-interaction
+    - name: Run mypy check
+      run: make mypy
+    - name: Run ruff check
+      run: poetry run ruff check .
+    - name: Run ruff format check
+      run: poetry run ruff format --check .
     - name: Run tests
       run: make coverage.xml
     - name: Upload coverage to Codecov

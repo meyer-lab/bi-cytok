@@ -9,5 +9,5 @@ def makeFigure():
     KL_EMD_1D(ax[0:2], "Treg Memory", 10)
     KL_EMD_1D(ax[2:4], "Treg Memory", 10, offTargState=1)
     KL_EMD_1D(ax[4:6], "Treg Memory", 10, offTargState=2)
-  
+
     return f

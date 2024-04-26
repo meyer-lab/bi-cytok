@@ -8,7 +8,14 @@ from scipy.optimize import leastsq
 
 
 @njit(parallel=False)
-def Req_func2(Req: np.ndarray, Rtot: np.ndarray, L0: float, KxStar: float, Cplx: np.ndarray, Kav: np.ndarray):
+def Req_func2(
+    Req: np.ndarray,
+    Rtot: np.ndarray,
+    L0: float,
+    KxStar: float,
+    Cplx: np.ndarray,
+    Kav: np.ndarray,
+):
     Psi = Req * Kav * KxStar
     Psirs = Psi.sum(axis=1) + 1
     Psinorm = Psi / Psirs[:, np.newaxis]
@@ -17,7 +24,9 @@ def Req_func2(Req: np.ndarray, Rtot: np.ndarray, L0: float, KxStar: float, Cplx:
     return Req + Rbound - Rtot
 
 
-def polyc(L0: float, KxStar: float, Rtot: np.ndarray, Cplx: np.ndarray, Kav: np.ndarray):
+def polyc(
+    L0: float, KxStar: float, Rtot: np.ndarray, Cplx: np.ndarray, Kav: np.ndarray
+):
     """
     The main function to be called for multivalent binding
     :param L0: concentration of ligand complexes
@@ -39,6 +48,8 @@ def polyc(L0: float, KxStar: float, Rtot: np.ndarray, Cplx: np.ndarray, Kav: np.
 
     # Solve Req
     args = (Rtot, L0, KxStar, Cplx, Kav)
-    Req, _, _, msg, ier = leastsq(Req_func2, np.zeros_like(Rtot), args=args, full_output=True) # type: ignore
+    Req, _, _, msg, ier = leastsq(
+        Req_func2, np.zeros_like(Rtot), args=args, full_output=True
+    )  # type: ignore
     assert ier in (1, 2, 3, 4), "Failure in rootfinding. " + str(msg)
     return Rtot - Req
