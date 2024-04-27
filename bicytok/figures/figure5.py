@@ -3,20 +3,15 @@ from .common import getSetup
 import pandas as pd
 import seaborn as sns
 import numpy as np
-import matplotlib.pyplot as plt
 from ..distanceMetricFuncs import KL_divergence_2D_pair, EMD_2D_pair, correlation
 
 
-from scipy.optimize import least_squares
 from ..selectivityFuncs import (
-    get_cell_bindings,
     getSampleAbundances,
-    get_rec_vecs,
     optimizeDesign,
-    minSelecFunc,
 )
 from ..imports import importCITE
-from random import sample, seed
+from random import sample
 
 path_here = dirname(dirname(__file__))
 
@@ -57,7 +52,7 @@ def makeFigure():
     i = len(allTargets)
     while i < targetSize:
         targs = sample(epitopes, 2)
-        if not targs in allTargets:
+        if targs not in allTargets:
             allTargets.append(targs)
             i += 1
 

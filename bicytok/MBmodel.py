@@ -2,11 +2,8 @@
 Implementation of a simple multivalent binding model.
 """
 
-import os
 import numpy as np
 from .BindingMod import polyc
-
-path_here = os.path.dirname(os.path.dirname(__file__))
 
 
 def getKxStar():

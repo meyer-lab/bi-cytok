@@ -7,9 +7,7 @@ import matplotlib.pyplot as plt
 from ..selectivityFuncs import (
     get_cell_bindings,
     getSampleAbundances,
-    get_rec_vecs,
     optimizeDesign,
-    minSelecFunc,
 )
 
 path_here = dirname(dirname(__file__))

@@ -6,7 +6,7 @@ authors = ["Aaron Meyer <ameyer@ucla.edu>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.12"
+python = ">=3.11,<3.13"
 numpy = "^1.26"
 pandas = "^2.2"
 scipy = "^1.13"

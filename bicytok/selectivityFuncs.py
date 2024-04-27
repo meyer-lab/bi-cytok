@@ -49,11 +49,11 @@ bispecOpt_Vec = np.vectorize(
 
 
 def minSelecFunc(
-    recXaffs: np.array,
+    recXaffs: np.ndarray,
     signal: str,
     targets: list,
-    targRecs: np.array,
-    offTRecs: np.array,
+    targRecs: np.ndarray,
+    offTRecs: np.ndarray,
     dose: float,
     vals: list,
 ):
@@ -266,7 +266,7 @@ def get_rec_vecs(
 
 
 def get_cell_bindings(
-    df: np.array,
+    df: np.ndarray,
     signal: str,
     targets: list,
     recXaffs: np.ndarray,

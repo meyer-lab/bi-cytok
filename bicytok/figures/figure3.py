@@ -5,9 +5,6 @@ import numpy as np
 from ..selectivityFuncs import (
     get_cell_bindings,
     getSampleAbundances,
-    get_rec_vecs,
-    optimizeDesign,
-    minSelecFunc,
 )
 
 
