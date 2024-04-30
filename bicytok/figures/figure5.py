@@ -19,8 +19,7 @@ def makeFigure():
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()
-    # Need a large enough sample size to have rarer epitopes for distance metric calcultions
-    new_df = CITE_DF.sample(10000, random_state=42)
+    new_df = CITE_DF.sample(1000, random_state=42)
 
     signal_receptor = 'CD122'
     signal_valency = 1
@@ -33,16 +32,7 @@ def makeFigure():
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList['Epitope'].unique())
-    # Need a large enough sample size to have rarer epitopes for distance metric calcultions
-    epitopesDF = getSampleAbundances(epitopes, cells, numCells=10000)
-
-    targetSize = 30
-    i = len(allTargets)
-    while i < targetSize:
-        targs = sample(epitopes, 2)
-        if not targs in allTargets:
-            allTargets.append(targs)
-            i += 1
+    epitopesDF = getSampleAbundances(epitopes, cells, numCells=1000)
 
     df = pd.DataFrame(columns=['KL Divergence', "Earth Mover's Distance", 'Correlation', 'Selectivity', 'Valency'])
 
