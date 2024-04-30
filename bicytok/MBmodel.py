@@ -11,12 +11,13 @@ def getKxStar():
 
 
 def cytBindingModel(
-    recCount: np.ndarray, recXaffs: np.ndarray, dose: float, vals: list[np.ndarray]
+    recCount: np.ndarray, recXaffs: np.ndarray, dose: float, vals: np.ndarray
 ):
     """Runs binding model for a given mutein, valency, dose, and cell type."""
     # Check that values are in correct placement, can invert
     Kx = getKxStar()
+    ligandConc = dose / (vals[0] * 1e9)
 
-    output = polyc(dose / (vals[0] * 1e9), Kx, recCount, [vals], recXaffs)[0]
+    output = polyc(ligandConc, Kx, recCount, [vals], recXaffs)[0]
 
     return output
