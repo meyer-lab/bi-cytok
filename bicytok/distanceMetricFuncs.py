@@ -13,9 +13,17 @@ from .imports import importCITE
 path_here = dirname(dirname(__file__))
 
 def KL_EMD_1D(ax, targCell, numFactors, RNA=False, offTargState=0) -> pd.DataFrame:
-    """Finds markers which have average greatest difference from other cells"""
+    """
+    Finds markers which have average greatest difference (EMD and KL) from other cells
+    :param ax: Axes to plot on
+    :param targCell: Target cell type for analysis
+    :param numFactors: Number of top factors to consider
+    :param RNA: Boolean flag indicating RNA data (optional)
+    :param offTargState: State of off-target comparison (0 for all non-memory Tregs, 1 for all non-Tregs, 2 for naive Tregs)
+    :return:
+        corrsDF: DataFrame containing marker information and their Wasserstein Distance and KL Divergence values
+    """
     CITE_DF = importCITE()
-
     markerDF = pd.DataFrame(columns=["Marker", "Cell Type", "Amount"])
     for marker in CITE_DF.loc[:, ((CITE_DF.columns != 'CellType1') & (CITE_DF.columns != 'CellType2') & (CITE_DF.columns != 'CellType3') & (CITE_DF.columns != 'Cell'))].columns:
         markAvg = np.mean(CITE_DF[marker].values)
@@ -54,7 +62,13 @@ def KL_EMD_1D(ax, targCell, numFactors, RNA=False, offTargState=0) -> pd.DataFra
     return corrsDF
 
 def get_conversion_factor(weightDF, receptor_name):
-    '''conversion factors used for citeseq dataset'''
+    '''
+    conversion factors used for citeseq dataset
+    :param weightDF: DataFrame containing weight information for receptors
+    :param receptor_name: Name of the receptor for which the conversion factor is needed
+    :return:
+        conversion_factor: Conversion factor for the specified receptor
+    '''
     IL2Rb_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Rb', 'Weight'].values[0]
     IL7Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL7Ra', 'Weight'].values[0]
     IL2Ra_factor = weightDF.loc[weightDF['Receptor'] == 'IL2Ra', 'Weight'].values[0]
@@ -67,7 +81,16 @@ def get_conversion_factor(weightDF, receptor_name):
     else: return (IL7Ra_factor + IL2Ra_factor + IL2Rb_factor) / 3
 
 def EMD_2D(dataset, signal_receptor, target_cells, special_receptor, ax):
-    '''returns list of descending EMD values for specified target cell (2 receptors) '''
+    '''
+    returns list of descending EMD values for specified target cell (2 receptors)
+    :param dataset: DataFrame containing the dataset
+    :param signal_receptor: Name of the signal receptor
+    :param target_cells: Target cell type for analysis
+    :param special_receptor: Special receptor to consider (optional, used for just calculating distance for 2 receptors)
+    :param ax: Matplotlib Axes object for plotting (optional)
+    :return:
+        List of tuples format: (recep1, recep2, OT value) containing optimal transport distances and receptor information
+    '''
     CITE_DF = importCITE()
     weightDF = convFactCalc(CITE_DF)
     # filter those outliers! 
@@ -141,7 +164,16 @@ def EMD_2D(dataset, signal_receptor, target_cells, special_receptor, ax):
     return sorted_results
 
 def EMD_3D(dataset1, target_cells, ax=None):
-    '''returns list of descending EMD values for specified target cell (3 receptors)'''
+    '''
+    returns list of descending EMD values for specified target cell (3 receptors)
+    returns list of descending EMD values for specified target cell (3 receptors)
+    :param dataset1: DataFrame containing the dataset
+    :param target_cells: Target cell type for analysis
+    :param ax: Matplotlib Axes object for plotting (optional)
+    :return:
+    List of tuples (format: (recep1, recep2, recep 3, OT value) containing optimal transport distances and receptor information for 3D analysis
+    
+    '''
     CITE_DF = importCITE()
 
     weightDF = convFactCalc(CITE_DF)
@@ -234,7 +266,14 @@ def EMD_3D(dataset1, target_cells, ax=None):
     return sorted_results
 
 def calculate_kl_divergence_2D(targCellMark, offTargCellMark):
-    '''  calculates the Kullback-Leibler (KL) divergence between two probability distributions '''
+    '''  
+    calculates the Kullback-Leibler (KL) divergence between two probability distributions
+    *used in combination with 1D or 2D KL functions
+    :param targCellMark: Target cell marker data
+    :param offTargCellMark: Off-target cell marker data
+    :return:
+    KL_div: KL Divergence value
+    '''
     kdeTarg = KernelDensity(kernel='gaussian').fit(targCellMark.reshape(-1, 2))
     kdeOffTarg = KernelDensity(kernel='gaussian').fit(offTargCellMark.reshape(-1, 2))
     minVal = np.minimum(targCellMark.min(), offTargCellMark.min()) - 10
@@ -248,7 +287,16 @@ def calculate_kl_divergence_2D(targCellMark, offTargCellMark):
 
 def KL_divergence_2D(dataset, signal_receptor, target_cells, special_receptor, ax):
         
-    '''returns list of descending EMD values for specified target cell (2 receptors) '''
+    '''
+    returns list of descending EMD values for specified target cell (2 receptors) 
+    :param dataset: DataFrame containing the dataset
+    :param signal_receptor: Name of the signal receptor
+    :param target_cells: Target cell type for analysis
+    :param special_receptor: Special receptor to consider (optional, used for just calculating distance for 2 receptors)
+    :param ax: Matplotlib Axes object for plotting (optional)
+    :return:
+    Sorted list of tuples containing KL Divergence values and receptor information
+    '''
     CITE_DF = importCITE()
     weightDF = convFactCalc(CITE_DF)
 

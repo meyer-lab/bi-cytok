@@ -9,7 +9,7 @@ from ..imports import importCITE
 
 
 def makeFigure():  
-    ''' clustermaps of either EMD values for receptors + specified cell type'''
+    ''' clustermaps of EMD values for receptors + specified cell type'''
     markerDF = importCITE()
     new_df = markerDF.head(1000)
     receptors = []
