@@ -14,9 +14,8 @@ from random import sample, seed
 
 path_here = dirname(dirname(__file__))
 
-# NOTE: Requires changes in distanceMetricFuncs to work
 def makeFigure():
-    """KL divergence, EMD, and anti-correlation correlation with selectivity at a given dose."""
+    """KL divergence, EMD, and anti-correlation with selectivity at a given dose."""
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()
@@ -35,14 +34,6 @@ def makeFigure():
     epitopes = list(epitopesList['Epitope'].unique())
     epitopesDF = getSampleAbundances(epitopes, cells, numCells=1000)
 
-    targetSize = 30 
-    i = len(allTargets)
-    while i < targetSize:
-        targs = sample(epitopes, 2)
-        if not targs in allTargets:
-            allTargets.append(targs)
-            i += 1
-
     df = pd.DataFrame(columns=['KL Divergence', "Earth Mover's Distance", 'Correlation', 'Selectivity', 'Valency'])
 
     for val in valencies:
@@ -55,13 +46,13 @@ def makeFigure():
             select = 1 / optParams[0],
             KLD = KL_divergence_2D(new_df, targets[0], targCell, targets[1], ax = None) 
             EMD = EMD_2D(new_df, targets[0], targCell, targets[1], ax = None)
-            corr = correlation(targCell, targets).loc[targets[0], targets[1]]
+            corr = correlation(targCell, targets).loc[targets[0], targets[1]]['Correlation']
+
             data = {'KL Divergence': [KLD],
                 "Earth Mover's Distance": [EMD],
                 'Correlation': [corr],
                 'Selectivity': select,
                 'Valency': [val]
-            
             }
             df_temp = pd.DataFrame(data, columns=['KL Divergence', "Earth Mover's Distance", 'Correlation', 'Selectivity', 'Valency'])
             df = pd.concat([df, df_temp], ignore_index=True)

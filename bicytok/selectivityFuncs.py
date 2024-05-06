@@ -52,8 +52,8 @@ def minSelecFunc(
     recXaffs: np.ndarray,
     signal: str,
     targets: list,
-    targRecs: np.ndarray,
-    offTRecs: np.ndarray,
+    targRecs: pd.DataFrame,
+    offTRecs: pd.DataFrame,
     dose: float,
     vals: list,
 ):
@@ -156,7 +156,7 @@ markDict = {"CD25": "IL2Ra", "CD122": "IL2Rb", "CD127": "IL7Ra", "CD132": "gc"}
 
 
 # NOTE: Come back to this later
-def convFactCalc(CITE_DF) -> pd.DataFrame:
+def convFactCalc(CITE_DF: pd.DataFrame) -> pd.DataFrame:
     """Returns conversion factors by marker for converting CITEseq signal into abundance"""
     cellToI = [
         "CD4 TCM",
@@ -170,7 +170,7 @@ def convFactCalc(CITE_DF) -> pd.DataFrame:
         "CD4 TEM",
     ]
     markers = ["CD122", "CD127", "CD25"]
-    markerDF = None
+    markerDF = pd.DataFrame()
     for marker in markers:
         for cell in cellToI:
             cellTDF = CITE_DF.loc[CITE_DF["CellType2"] == cell][marker]
@@ -183,13 +183,13 @@ def convFactCalc(CITE_DF) -> pd.DataFrame:
                 }
             )
 
-            if markerDF is None:
+            if markerDF is pd.DataFrame():
                 markerDF = dftemp
             else:
                 markerDF = pd.concat([markerDF, dftemp])
 
     markerDF = markerDF.replace({"Marker": markDict, "Cell Type": cellDict})
-    markerDFw = None
+    markerDFw = pd.DataFrame()
     for marker in markerDF.Marker.unique():
         for cell in markerDF["Cell Type"].unique():
             subDF = markerDF.loc[
@@ -202,7 +202,7 @@ def convFactCalc(CITE_DF) -> pd.DataFrame:
                 {"Marker": [marker], "Cell Type": cell, "Average": wAvg}
             )
 
-            if markerDFw is None:
+            if markerDFw is pd.DataFrame():
                 markerDFw = dftemp
             else:
                 markerDFw = pd.concat([markerDFw, dftemp])
@@ -274,6 +274,9 @@ def get_cell_bindings(
     vals: np.ndarray,
     cellCat="CellType2",
 ):
+    targRecs = pd.DataFrame()
+    df_return = pd.DataFrame()
+
     targRecs = df[[signal] + targets]
     affs = get_affs(recXaffs)
 
