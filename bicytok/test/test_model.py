@@ -23,5 +23,5 @@ def test_optimize_design():
         selectedDF=epitopesDF,
         dose=0.1,
         valencies=[2, 2],
-        prevOptAffs=[8.0, 8.0],
+        prevOptAffs=np.array([[8.0, 8.0]]),
     )

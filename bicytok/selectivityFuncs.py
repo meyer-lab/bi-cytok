@@ -55,7 +55,7 @@ def minSelecFunc(
     targRecs: pd.DataFrame,
     offTRecs: pd.DataFrame,
     dose: float,
-    vals: list,
+    vals: np.ndarray,
 ):
     """Serves as the function which will have its return value minimized to get optimal selectivity
     To be used in conjunction with optimizeDesign()
@@ -95,7 +95,7 @@ def optimizeDesign(
     offTCells: list,
     selectedDF: pd.DataFrame,
     dose: float,
-    valencies: list,
+    valencies: np.ndarray,
     prevOptAffs: list,
     cellCat="CellType2",
 ):

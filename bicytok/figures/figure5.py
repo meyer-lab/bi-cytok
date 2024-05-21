@@ -54,7 +54,7 @@ def makeFigure():
     for val in valencies:
         prevOptAffs = [8.0, 8.0, 8.0]
         for targets in allTargets:
-            vals = [signal_valency, val, val]
+            vals = np.array([[signal_valency, val, val]])
 
             optParams = optimizeDesign(
                 signal_receptor,

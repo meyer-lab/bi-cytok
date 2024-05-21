@@ -54,11 +54,11 @@ def makeFigure():
             if i == j:
                 targetsBoth = [target1]
                 optAffs = [8.0, 8.0]
-                valenciesBoth = [signal[1], valencies[i]]
+                valenciesBoth = np.array([[signal[1], valencies[i]]])
             else:
                 targetsBoth = [target1, target2]
                 optAffs = [8.0, 8.0, 8.0]
-                valenciesBoth = [signal[1], valencies[i], valencies[j]]
+                valenciesBoth = np.array([[signal[1], valencies[i], valencies[j]]])
 
             optParams = optimizeDesign(
                 signal[0],
