@@ -43,7 +43,7 @@ def makeFigure():
         ["CD25", epitope],
         affs,
         0.1,
-        np.ndarray([valency, valency, valency]),
+        np.array([[valency, valency, valency]]),
     )
     bindings["Percent Bound of Signal Receptor"] = (
         bindings["Receptor Bound"] / bindings[secondary]
