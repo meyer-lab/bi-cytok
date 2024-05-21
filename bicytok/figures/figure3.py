@@ -19,7 +19,6 @@ def makeFigure():
 
     affs = np.array([secondaryAff, 8.5, 8.5])
 
-    targCell = "Treg"
     cells = [
         "Treg",
         "CD8 Naive",
@@ -32,7 +31,6 @@ def makeFigure():
         "NK Proliferating",
         "NK_CD56bright",
     ]
-    offTCells = [c for c in cells if c != targCell]
 
     epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())

@@ -1,4 +1,4 @@
-from os.path import dirname, join
+from os.path import dirname
 from .common import getSetup
 import pandas as pd
 import seaborn as sns
@@ -18,11 +18,7 @@ def makeFigure():
     ax, f = getSetup((12, 4), (1, 2))
 
     CITE_DF = importCITE()
-    new_df = CITE_DF.sample(10000, random_state=42)
     cellLevel = "CellType2"
-
-    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
-    epitopes = list(epitopesList["Epitope"].unique())
 
     cells = list(CITE_DF[cellLevel].unique())
     toRemove = [

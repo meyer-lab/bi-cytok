@@ -3,20 +3,9 @@ from .common import getSetup
 import pandas as pd
 import seaborn as sns
 import numpy as np
-import matplotlib.pyplot as plt
 from ..distanceMetricFuncs import EMD_2D, correlation, KL_divergence_2D
-
-
-from scipy.optimize import least_squares
-from ..selectivityFuncs import (
-    get_cell_bindings,
-    getSampleAbundances,
-    get_rec_vecs,
-    optimizeDesign,
-    minSelecFunc,
-)
+from ..selectivityFuncs import getSampleAbundances, optimizeDesign
 from ..imports import importCITE
-from random import sample, seed
 
 path_here = dirname(dirname(__file__))
 
