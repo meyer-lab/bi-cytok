@@ -22,6 +22,6 @@ def test_optimize_design():
         offTCells=offTCells,
         selectedDF=epitopesDF,
         dose=0.1,
-        valencies=[2, 2],
+        vals=[2, 2],
         prevOptAffs=[8.0, 8.0],
     )
