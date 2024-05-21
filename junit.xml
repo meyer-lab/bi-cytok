@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="4.159" timestamp="2024-05-21T01:12:28.597684" hostname="aretha"><testcase classname="bicytok.test.test_model" name="test_optimize_design" time="2.761"><failure message="TypeError: optimizeDesign() got an unexpected keyword argument 'vals'">def test_optimize_design():
+        targCell = "Treg"
+        offTCells = ["CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL"]
+        cells = offTCells + [targCell]
+    
+        epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
+        epitopes = list(epitopesList["Epitope"].unique())
+        epitopesDF = getSampleAbundances(epitopes, cells)
+    
+&gt;       optimizeDesign(
+            signal="CD122",
+            targets=["CD25"],
+            targCell=targCell,
+            offTCells=offTCells,
+            selectedDF=epitopesDF,
+            dose=0.1,
+            vals=[2, 2],
+            prevOptAffs=[8.0, 8.0],
+        )
+E       TypeError: optimizeDesign() got an unexpected keyword argument 'vals'
+
+bicytok/test/test_model.py:18: TypeError</failure></testcase></testsuite></testsuites>
