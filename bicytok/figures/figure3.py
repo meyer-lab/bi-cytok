@@ -38,7 +38,12 @@ def makeFigure():
     epitopesDF = getSampleAbundances(epitopes, cells)
 
     bindings = get_cell_bindings(
-        epitopesDF, secondary, ["CD25", epitope], affs, 0.1, np.ndarray([valency, valency, valency])
+        epitopesDF,
+        secondary,
+        ["CD25", epitope],
+        affs,
+        0.1,
+        np.ndarray([valency, valency, valency]),
     )
     bindings["Percent Bound of Signal Receptor"] = (
         bindings["Receptor Bound"] / bindings[secondary]
