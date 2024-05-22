@@ -25,7 +25,7 @@ def Req_func2(
 
 
 def polyc(
-    L0: float, KxStar: float, Rtot: np.ndarray, Cplx: list[np.ndarray], Kav: np.ndarray
+    L0: float, KxStar: float, Rtot: np.ndarray, Cplx: np.ndarray, Kav: np.ndarray
 ):
     """
     The main function to be called for multivalent binding

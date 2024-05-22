@@ -67,6 +67,7 @@ def makeFigure():
             targets.append(target)
             valencies.append(valency)
             naming.append("{} ({})".format(target, valency))
+        valencies = np.array([valencies])
 
         for _, dose in enumerate(doseVec):
             optParams = optimizeDesign(
