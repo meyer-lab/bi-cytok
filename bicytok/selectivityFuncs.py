@@ -43,6 +43,7 @@ def getSampleAbundances(
 
     return sampleDF
 
+
 # Vectorization function for cytBindingModel
 bispecOpt_Vec = np.vectorize(
     cytBindingModel, excluded=["recXaffs", "vals"], signature="(n),()->()"
@@ -157,13 +158,15 @@ cellDict = {
     "Treg": "Treg",
 }
 
-
 markDict = {"CD25": "IL2Ra", "CD122": "IL2Rb", "CD127": "IL7Ra", "CD132": "gc"}
 
-
-# NOTE: Come back to this later
 def convFactCalc(CITE_DF: pd.DataFrame) -> pd.DataFrame:
-    """Returns conversion factors by marker for converting CITEseq signal into abundance"""
+    """Returns conversion factors by marker for converting CITEseq signal into abundance
+    Args:
+        CITE_DF: dataframe of unprocessed CITE-seq receptor values for each receptor (column) for each single cell (row)
+    Return:
+        weightDF: factor to convert unprocessed CITE-seq receptor values to numeric receptor counts
+    """
     cellToI = [
         "CD4 TCM",
         "CD8 Naive",
