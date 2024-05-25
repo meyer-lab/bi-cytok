@@ -15,7 +15,7 @@ from random import sample, seed
 path_here = dirname(dirname(__file__))
 
 def makeFigure():
-    """KL divergence, EMD, and anti-correlation with selectivity at a given dose."""
+    """Figure file to generate plots of bispecific ligand selectivity for combinations of different KL divergences, EMDs, and anti-correlations."""
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()

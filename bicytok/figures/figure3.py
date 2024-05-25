@@ -9,7 +9,9 @@ from ..selectivityFuncs import (
 
 
 def makeFigure():
-    """Figure to generate bar plots for amount of signal receptor bound bar plots."""
+    """Figure file to generate bar plots for amount of signal receptor bound to each given cell type
+    :secondary: signaling receptor
+    :epitope: additional targeting receptor"""
     ax, f = getSetup((8, 3), (1, 2))
 
     secondary = "CD122"

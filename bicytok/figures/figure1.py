@@ -16,7 +16,13 @@ plt.rcParams["svg.fonttype"] = "none"
 
 
 def makeFigure():
-    """Figure to generate dose response curves for any combination of multivalent and multispecific ligands."""
+    """Figure file to generate dose response curves for any combination of multivalent and multispecific ligands.
+    Outputs dose vs. selectivity for the target cell and amount of target cell bound at indicated signal receptor.
+    :signal: Receptor that the ligand is delivering signal to; selectivity and target bound are with respect to engagement
+    with this receptor
+    :allTargets: List of paired [(target receptor, valency)] combinations for each targeting receptor; to be used for targeting
+    the target cell, not signaling
+    """
     ax, f = getSetup((6, 3), (1, 2))
 
     signal = ["CD122", 1]
