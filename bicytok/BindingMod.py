@@ -33,11 +33,9 @@ def polyc(
     :param KxStar: Kx for detailed balance correction
     :param Rtot: numbers of each receptor on the cell
     :param Cplx: the monomer ligand composition of each complex
-    :param Ctheta: the composition of complexes
     :param Kav: Ka for monomer ligand to receptors
     :return:
-        Lbound: a list of Lbound of each complex
-        Rbound: a list of Rbound of each kind of receptor
+        Rtot - Req: amount of Rbound of each kind of receptor
     """
     # Consistency check
     Cplx = np.array(Cplx, dtype=float)

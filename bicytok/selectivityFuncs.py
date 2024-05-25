@@ -12,14 +12,15 @@ import numpy as np
 def getSampleAbundances(
     epitopes: list, cellList: list, numCells=1000, cellCat="CellType2"
 ):
-    """Given list of epitopes and cell types, returns a dataframe containing abundance data on a single cell level
+    """Given list of epitopes and cell types, returns a dataframe containing receptor abundance data on a single-cell level.
     Args:
         epitopes: list of epitopes for which you want abundance values
         cellList: list of cell types for which you want epitope abundance
-
-    Returns:
-        epitopesDF: dataframe containing single cell abundances of epitopes(rows) for each cell type(columns).
-        Each frame contains a list of size corresponding to representative sample of cell type
+        numCells: number of cells to sample from for abundance calculations, default to sampling from 1000 cells
+        cellCat: cell type categorization level, see cell types/subsets in CITE data
+    Return:
+        sampleDF: dataframe containing single cell abundances of receptors (column) for each individual cell (row),
+        with final column being cell type from the cell type categorization level set by cellCat
     """
 
     # Import CITE data and drop unnecessary epitopes and cell types
@@ -42,7 +43,7 @@ def getSampleAbundances(
 
     return sampleDF
 
-
+# Vectorization function for cytBindingModel
 bispecOpt_Vec = np.vectorize(
     cytBindingModel, excluded=["recXaffs", "vals"], signature="(n),()->()"
 )
@@ -61,7 +62,12 @@ def minSelecFunc(
     To be used in conjunction with optimizeDesign()
     Args:
         recXaff: receptor affinity which is modulated in optimize design
-
+        signal: signaling receptor
+        targets: list of targeted receptors
+        targRecs: dataframe of receptors counts of target cell type
+        offTRecs: dataframe of receptors counts of off-target cell types
+        dose: ligand concentration/dose that is being modeled
+        vals: array of valencies of each ligand epitope
     Return:
         selectivity: value will be minimized, defined as ratio of off target to on target signaling
     """
