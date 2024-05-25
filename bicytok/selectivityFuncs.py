@@ -61,7 +61,7 @@ def minSelecFunc(
     """Serves as the function which will have its return value minimized to get optimal selectivity
     To be used in conjunction with optimizeDesign()
     Args:
-        recXaff: receptor affinity which is modulated in optimize design
+        recXaff: receptor affinities which are modulated in optimize design
         signal: signaling receptor
         targets: list of targeted receptors
         targRecs: dataframe of receptors counts of target cell type
@@ -261,7 +261,18 @@ def get_rec_vecs(
     targets: list,
     cellCat="CellType2",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Returns vector of target and off target receptors"""
+    """Returns vector of target and off target receptors
+    Args:
+        df: dataframe of receptor counts of all cells
+        targCell: target cell type
+        offTCells: list of off-target cell types
+        signal: signaling receptor
+        targets: list of targeting receptors
+        cellCat: cell type categorization level, see cell types/subsets in CITE data
+    Return:
+        countTarg: dataframe of receptor counts of target cell types, no cell type naming column
+        countOffT: dataframe of receptor counts of off-target cell types, no cell type naming column
+    """
     dfTargCell = df.loc[df[cellCat] == targCell]
     countTarg = dfTargCell[[signal] + targets + [cellCat]]
 
@@ -280,6 +291,19 @@ def get_cell_bindings(
     vals: np.ndarray,
     cellCat="CellType2",
 ):
+    """Returns amount of receptor bound on average per cell for each cell type
+    Args:
+        df: dataframe of receptor counts of all cells
+        signal: signaling receptor
+        targets: list of targeting receptors
+        recXaffs: receptor affinities
+        dose: ligand concentration/dose that is being modeled
+        vals: array of valencies of each ligand epitope
+        callCat: cell type categorization level, see cell types/subsets in CITE data
+    Return:
+        df_return: dataframe of average amount of receptor bound per cell (column) for each cell type (row)
+    """
+
     targRecs = pd.DataFrame()
     df_return = pd.DataFrame()
 
@@ -298,6 +322,12 @@ def get_cell_bindings(
 
 
 def get_affs(recXaffs: np.ndarray):
+    """Structures array of receptor affinities to be compatible with the binding model
+    Args:
+        recXaffs: receptor affinities
+    Return:
+        affs: restructured receptor affinities
+    """
     affs = pd.DataFrame()
     for i, recXaff in enumerate(recXaffs):
         affs = np.append(affs, np.power(10, recXaff))
