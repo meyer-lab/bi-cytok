@@ -25,8 +25,8 @@ def cytBindingModel(
     print(recCount)
     print()
     Kx = getKxStar()
-    ligandConc = dose / (vals[0] * 1e9)
+    ligandConc = dose / (vals[0][0] * 1e9)
 
-    output = polyc(ligandConc, Kx, recCount, [vals], recXaffs)[0]
+    output = polyc(ligandConc, Kx, recCount, vals, recXaffs)[0]
 
     return output
