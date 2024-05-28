@@ -13,8 +13,17 @@ def getKxStar():
 def cytBindingModel(
     recCount: np.ndarray, recXaffs: np.ndarray, dose: float, vals: np.ndarray
 ):
-    """Runs binding model for a given mutein, valency, dose, and cell type."""
-    # Check that values are in correct placement, can invert
+    """Runs binding model for a given mutein, valency, dose, and cell type
+    Args:
+        recCount: total count of signaling and targeting receptors
+        recXaffs: Ka for monomer ligand to receptors
+        dose: ligand concentration/dose that is being modeled
+        vals: array of valencies of each ligand epitope
+    Return:
+        output: amount of receptor bound of each kind of receptor
+    """
+    print(recCount)
+    print()
     Kx = getKxStar()
     ligandConc = dose / (vals[0][0] * 1e9)
 

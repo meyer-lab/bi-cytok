@@ -12,14 +12,15 @@ import numpy as np
 def getSampleAbundances(
     epitopes: list, cellList: list, numCells=1000, cellCat="CellType2"
 ):
-    """Given list of epitopes and cell types, returns a dataframe containing abundance data on a single cell level
+    """Given list of epitopes and cell types, returns a dataframe containing receptor abundance data on a single-cell level.
     Args:
         epitopes: list of epitopes for which you want abundance values
         cellList: list of cell types for which you want epitope abundance
-
-    Returns:
-        epitopesDF: dataframe containing single cell abundances of epitopes(rows) for each cell type(columns).
-        Each frame contains a list of size corresponding to representative sample of cell type
+        numCells: number of cells to sample from for abundance calculations, default to sampling from 1000 cells
+        cellCat: cell type categorization level, see cell types/subsets in CITE data
+    Return:
+        sampleDF: dataframe containing single cell abundances of receptors (column) for each individual cell (row),
+        with final column being cell type from the cell type categorization level set by cellCat
     """
 
     # Import CITE data and drop unnecessary epitopes and cell types
@@ -43,6 +44,7 @@ def getSampleAbundances(
     return sampleDF
 
 
+# Vectorization function for cytBindingModel
 bispecOpt_Vec = np.vectorize(
     cytBindingModel, excluded=["recXaffs", "vals"], signature="(n),()->()"
 )
@@ -60,8 +62,13 @@ def minSelecFunc(
     """Serves as the function which will have its return value minimized to get optimal selectivity
     To be used in conjunction with optimizeDesign()
     Args:
-        recXaff: receptor affinity which is modulated in optimize design
-
+        recXaff: receptor affinities which are modulated in optimize design
+        signal: signaling receptor
+        targets: list of targeted receptors
+        targRecs: dataframe of receptors counts of target cell type
+        offTRecs: dataframe of receptors counts of off-target cell types
+        dose: ligand concentration/dose that is being modeled
+        vals: array of valencies of each ligand epitope
     Return:
         selectivity: value will be minimized, defined as ratio of off target to on target signaling
     """
@@ -151,13 +158,16 @@ cellDict = {
     "Treg": "Treg",
 }
 
-
 markDict = {"CD25": "IL2Ra", "CD122": "IL2Rb", "CD127": "IL7Ra", "CD132": "gc"}
 
 
-# NOTE: Come back to this later
 def convFactCalc(CITE_DF: pd.DataFrame) -> pd.DataFrame:
-    """Returns conversion factors by marker for converting CITEseq signal into abundance"""
+    """Returns conversion factors by marker for converting CITEseq signal into abundance
+    Args:
+        CITE_DF: dataframe of unprocessed CITE-seq receptor values for each receptor (column) for each single cell (row)
+    Return:
+        weightDF: factor to convert unprocessed CITE-seq receptor values to numeric receptor counts
+    """
     cellToI = [
         "CD4 TCM",
         "CD8 Naive",
@@ -255,7 +265,18 @@ def get_rec_vecs(
     targets: list,
     cellCat="CellType2",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Returns vector of target and off target receptors"""
+    """Returns vector of target and off target receptors
+    Args:
+        df: dataframe of receptor counts of all cells
+        targCell: target cell type
+        offTCells: list of off-target cell types
+        signal: signaling receptor
+        targets: list of targeting receptors
+        cellCat: cell type categorization level, see cell types/subsets in CITE data
+    Return:
+        countTarg: dataframe of receptor counts of target cell types, no cell type naming column
+        countOffT: dataframe of receptor counts of off-target cell types, no cell type naming column
+    """
     dfTargCell = df.loc[df[cellCat] == targCell]
     countTarg = dfTargCell[[signal] + targets + [cellCat]]
 
@@ -274,6 +295,19 @@ def get_cell_bindings(
     vals: np.ndarray,
     cellCat="CellType2",
 ):
+    """Returns amount of receptor bound on average per cell for each cell type
+    Args:
+        df: dataframe of receptor counts of all cells
+        signal: signaling receptor
+        targets: list of targeting receptors
+        recXaffs: receptor affinities
+        dose: ligand concentration/dose that is being modeled
+        vals: array of valencies of each ligand epitope
+        callCat: cell type categorization level, see cell types/subsets in CITE data
+    Return:
+        df_return: dataframe of average amount of receptor bound per cell (column) for each cell type (row)
+    """
+
     targRecs = pd.DataFrame()
     df_return = pd.DataFrame()
 
@@ -292,6 +326,12 @@ def get_cell_bindings(
 
 
 def get_affs(recXaffs: np.ndarray):
+    """Structures array of receptor affinities to be compatible with the binding model
+    Args:
+        recXaffs: receptor affinities
+    Return:
+        affs: restructured receptor affinities
+    """
     affs = pd.DataFrame()
     for i, recXaff in enumerate(recXaffs):
         affs = np.append(affs, np.power(10, recXaff))

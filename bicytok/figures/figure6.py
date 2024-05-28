@@ -14,7 +14,7 @@ plt.rcParams["svg.fonttype"] = "none"
 
 
 def makeFigure():
-    """Bar plots of KL divergence and EMD of most unique receptor for all cell types."""
+    """Figure file to generate bar plots of 1D KL divergence and EMD values of most unique receptor for each given cell type/subset."""
     ax, f = getSetup((12, 4), (1, 2))
 
     CITE_DF = importCITE()

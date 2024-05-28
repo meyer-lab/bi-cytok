@@ -3,7 +3,7 @@ from ..distanceMetricFuncs import KL_EMD_1D
 
 
 def makeFigure():
-    """1D KL divergence and EMD for given cell type/subset."""
+    """Figure file to generate 1D KL divergence and EMD for given cell type/subset."""
     ax, f = getSetup((8, 8), (3, 2))
 
     KL_EMD_1D(ax[0:2], "Treg Memory", 10)

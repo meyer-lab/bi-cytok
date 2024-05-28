@@ -12,7 +12,7 @@ path_here = dirname(dirname(__file__))
 
 
 def makeFigure():
-    """Bispecific ligand selectivity heatmap."""
+    """Figure file to generate bispecific ligand selectivity heatmap of selectivity for each bispecific pairing."""
     ax, f = getSetup((4, 3), (1, 1))
 
     signal = ["CD122", 1]
