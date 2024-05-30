@@ -1,13 +1,15 @@
-import seaborn as sns
+from os.path import dirname
+
 import numpy as np
-import pandas as pd
-from sklearn.neighbors import KernelDensity
-from scipy import stats
 import ot
 import ot.plot
-from .selectivityFuncs import convFactCalc, getSampleAbundances
-from os.path import dirname
+import pandas as pd
+import seaborn as sns
+from scipy import stats
+from sklearn.neighbors import KernelDensity
+
 from .imports import importCITE
+from .selectivityFuncs import convFactCalc, getSampleAbundances
 
 path_here = dirname(dirname(__file__))
 

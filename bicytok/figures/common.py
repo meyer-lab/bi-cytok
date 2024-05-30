@@ -4,14 +4,16 @@ This file contains functions that are used in multiple figures.
 
 import sys
 import time
-from string import ascii_lowercase
-import matplotlib.figure
-import seaborn as sns
-import numpy as np
-import matplotlib
-from matplotlib.axes import Axes
-from matplotlib import gridspec, pyplot as plt
 from os.path import dirname
+from string import ascii_lowercase
+
+import matplotlib
+import matplotlib.figure
+import numpy as np
+import seaborn as sns
+from matplotlib import gridspec
+from matplotlib import pyplot as plt
+from matplotlib.axes import Axes
 
 path_here = dirname(dirname(__file__))
 

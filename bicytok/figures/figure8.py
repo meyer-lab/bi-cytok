@@ -1,8 +1,9 @@
 import pandas as pd
 import seaborn as sns
-from .common import getSetup
+
 from ..distanceMetricFuncs import KL_divergence_2D
 from ..imports import importCITE
+from .common import getSetup
 
 
 def makeFigure():

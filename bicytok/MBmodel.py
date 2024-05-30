@@ -3,6 +3,7 @@ Implementation of a simple multivalent binding model.
 """
 
 import numpy as np
+
 from .BindingMod import polyc
 
 

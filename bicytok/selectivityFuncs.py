@@ -2,11 +2,12 @@
 Functions used in binding and selectivity analysis
 """
 
+import numpy as np
+import pandas as pd
+from scipy.optimize import Bounds, minimize
+
 from .imports import importCITE, importReceptors
 from .MBmodel import cytBindingModel
-from scipy.optimize import minimize, Bounds
-import pandas as pd
-import numpy as np
 
 
 def getSampleAbundances(

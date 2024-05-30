@@ -1,14 +1,14 @@
 """File that deals with everything about importing and sampling."""
 
+import gzip
 import os
 from functools import lru_cache
 from os.path import join
-import pandas as pd
-import gzip
-import anndata as an
-from scipy.io import mmread
 from zipfile import ZipFile
 
+import anndata as an
+import pandas as pd
+from scipy.io import mmread
 
 path_here = os.path.dirname(os.path.dirname(__file__))
 

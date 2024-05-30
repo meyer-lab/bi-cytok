@@ -1,12 +1,14 @@
 from os.path import dirname, join
-from .common import getSetup
+
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import numpy as np
+
 from ..selectivityFuncs import (
     getSampleAbundances,
     optimizeDesign,
 )
+from .common import getSetup
 
 path_here = dirname(dirname(__file__))
 
