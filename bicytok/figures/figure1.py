@@ -65,7 +65,6 @@ def makeFigure():
     df = pd.DataFrame(columns=["Dose", "Selectivity", "Target Bound", "Ligand"])
 
     for targetPairs in allTargets:
-        print(targetPairs)
         prevOptAffs = [8.0]
         valencies = [signal[1]]
         targets = []
@@ -104,8 +103,6 @@ def makeFigure():
                 data, columns=["Dose", "Selectivity", "Target Bound", "Ligand"]
             )
             df = pd.concat([df, df_temp], ignore_index=True)
-
-    print(df)
 
     sns.lineplot(data=df, x="Dose", y="Selectivity", hue="Ligand", ax=ax[0])
     sns.lineplot(data=df, x="Dose", y="Target Bound", hue="Ligand", ax=ax[1])

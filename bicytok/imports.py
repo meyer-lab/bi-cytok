@@ -13,6 +13,13 @@ from scipy.io import mmread
 path_here = os.path.dirname(os.path.dirname(__file__))
 
 
+# Armaan: don't use lru_cache if function returns mutable value. See my
+# explanation here: https://github.com/meyer-lab/tensordata/pull/26.
+# Will you be calling this function multiple times throughout a single program?
+# I would just recommend calling it once, and then using `deepcopy` to create
+# copies which you can change if you need to. You may consider passing the data
+# as a function argument if this is called in separate spots throughout the
+# codebase.
 @lru_cache(maxsize=None)
 def getBindDict():
     """Gets binding to pSTAT fluorescent conversion dictionary"""
@@ -23,9 +30,25 @@ def getBindDict():
     return bindingDF
 
 
+# Armaan: lru_cache mutable return value
 @lru_cache(maxsize=None)
 def importReceptors():
     """Makes Complete receptor expression Dict"""
+    # Armaan: it is bad practice to hard-code path separators into strings,
+    # because path separators differ by OS. Instead use os.path.join or, even
+    # better, use pathlib.Path. I would highly recommend replacing all uses of
+    # os.path.join with the pathlib.Path equivalent. This is also gradually
+    # becoming standard practice.
+    """
+    # Usage of pathlib.Path:
+
+    from pathlib import Path
+
+    THIS_DIR = Path(__file__).parent
+    recDF = THIS_DIR / "bicytok" / "data" / "RecQuantitation.csv" #  You can use
+    slashes outside of the string, as the pathlib.Path object has overloaded the
+    `/` operator to automatically generate the correct path separator.
+    """
     recDF = pd.read_csv(join(path_here, "bicytok/data/RecQuantitation.csv"))
     recDFbin = pd.read_csv(join(path_here, "bicytok/data/BinnedReceptorData.csv"))
     recDFbin = recDFbin.loc[recDFbin["Bin"].isin([1, 3])]
@@ -35,6 +58,7 @@ def importReceptors():
     return recDF
 
 
+# Armaan: lru_cache mutable return value
 @lru_cache(maxsize=None)
 def makeCITEdf():
     """Makes cite surface epitope csv for given cell type, DON'T USE THIS UNLESS DATA NEEDS RESTRUCTURING"""
@@ -154,6 +178,8 @@ def makeTregSC():
     return
 
 
+# Armaan: Move this to the top of the file (and add a brief comment) or into
+# the function `makeTregSC`.
 SC_Stims = [
     "control",
     "IL2_100pM",

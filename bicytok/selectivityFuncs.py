@@ -125,7 +125,6 @@ def optimizeDesign(
     targRecs, offTRecs = get_rec_vecs(
         selectedDF, targCell, offTCells, signal, targets, cellCat
     )
-    print("Optimize")
     optimized = minimize(
         minSelecFunc,
         X0,
@@ -140,7 +139,6 @@ def optimizeDesign(
         ),
         jac="3-point",
     )
-    print("Done")
     optSelectivity = optimized.fun
     optAffs = optimized.x
 

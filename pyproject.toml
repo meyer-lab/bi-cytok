@@ -43,5 +43,7 @@ select = [
     "SIM",
     # isort
     "I",
+    # Unused arguments
+    "ARG",
 ]
 
