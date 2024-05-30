@@ -7,10 +7,12 @@ are a few small issues outlined in the output.
 4. When possible, use `snake_case` for variable and function naming. Officially,
 the PEP8 convention specifies that variable names should only include lower case
 letters, but it makes sense for us to ignore that part of the convention
-sometimes, particularly when we're implementing mathematical functions which
-were described in a math paper elsewhere, where uppercase variable names were
+sometimes, particularly when we're implementing functions which
+were described in mathematical formulae elsewhere, where uppercase variable names were
 used (e.g. binding model paper uses R_eq).
 5. I believe `bicytok/data/epitopeSelectivityList.csv`,
 `bicytok/data/MonomericMutSingleCellData.csv`,
 `bicytok/data/WTDimericMutSingleCellData.csv`, `bicytok/data/WTmutAffData.csv`
 are unused.
+6. Instead of implementing binding model locally, import it from
+https://github.com/meyer-lab/valentBind.

@@ -10,6 +10,8 @@ from .imports import importCITE, importReceptors
 from .MBmodel import cytBindingModel
 
 
+# Armaan: Could you rename this function to more directly specify what it does?
+# Something about calculating receptor abundance for a given cell type?
 def getSampleAbundances(
     epitopes: list, cellList: list, numCells=1000, cellCat="CellType2"
 ):
@@ -20,7 +22,7 @@ def getSampleAbundances(
         numCells: number of cells to sample from for abundance calculations, default to sampling from 1000 cells
         cellCat: cell type categorization level, see cell types/subsets in CITE data
     Return:
-        sampleDF: dataframe containing single cell abundances of receptors (column) for each individual cell (row),
+        dataframe containing single cell abundances of receptors (column) for each individual cell (row),
         with final column being cell type from the cell type categorization level set by cellCat
     """
 
@@ -60,6 +62,12 @@ def minSelecFunc(
     dose: float,
     vals: np.ndarray,
 ):
+    # Armaan: this function name is misleading, because you're not minimizing
+    # selectivity, you're maximizing it. Additionally, this function has no
+    # minimization logic, so it should really just be named after what it is
+    # calculating, which might be described as the reciprocal of selectivity or
+    # something. Also, ruff check should flag this, but this function has unused
+    # parameters. 
     """Serves as the function which will have its return value minimized to get optimal selectivity
     To be used in conjunction with optimizeDesign()
     Args:
@@ -96,6 +104,9 @@ def minSelecFunc(
     return offTargetBound / targetBound
 
 
+# Armaan: this function could have a more descriptive name. You're just varying
+# the affinity to maximize selectivity, right? So maybe use a function name to
+# directly reflect that.
 def optimizeDesign(
     signal: str,
     targets: list,
@@ -104,10 +115,15 @@ def optimizeDesign(
     selectedDF: pd.DataFrame,
     dose: float,
     valencies: np.ndarray,
-    prevOptAffs: list,
+    prevOptAffs: list, # Armaan: why not call this "init_affinities" or something like that? 
     cellCat="CellType2",
 ):
-    """A general purzse optimizer used to minimize selectivity output by varying affinity parameter.
+    # Armaan: update doc string. Particularly, describe the prevOptAffs
+    # parameter. Is prevOptAffs the best name for this parameter? Also, it is
+    # good to specify the units of parameters and variables (bonus points if you
+    # can include the units in the variable name itself!). So, for example,
+    # these affinities are log10 affinities, right? That should be clearer.
+    """A general-purpose optimizer used to minimize selectivity output by varying affinity parameter.
     Args:
         targCell: string cell type which is target and signaling is desired (basis of selectivity)
         offTCells: list of strings of cell types for which signaling is undesired
@@ -118,6 +134,8 @@ def optimizeDesign(
         optSelectivity: optimized selectivity value. Can also be modified to return optimized affinity parameter.
     """
     X0 = prevOptAffs
+    # Armaan: why are these the bounds on the affinities? If you include literal
+    # numbers like this, it's good to have a comment explaining how chose them.
     minAffs = [7.0] * (len(targets) + 1)
     maxAffs = [9.0] * (len(targets) + 1)
 
@@ -145,6 +163,7 @@ def optimizeDesign(
     return optSelectivity, optAffs
 
 
+# Armaan: either declare this at the top of the file or move it into convFactCalc
 cellDict = {
     "CD4 Naive": "Thelper",
     "CD4 CTL": "Thelper",
@@ -157,6 +176,7 @@ cellDict = {
     "Treg": "Treg",
 }
 
+# Armaan: either declare this at the top of the file or move it into convFactCalc
 markDict = {"CD25": "IL2Ra", "CD122": "IL2Rb", "CD127": "IL7Ra", "CD132": "gc"}
 
 

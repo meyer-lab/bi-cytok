@@ -27,6 +27,9 @@ def makeFigure():
     """
     ax, f = getSetup((6, 3), (1, 2))
 
+    # Armaan: I think it would be better to either have these as constants
+    # declared outside of the function. It's more clear that they are parameters
+    # which should be modified.
     signal = ["CD122", 1]
     allTargets = [
         [("CD25", 1)],
@@ -55,6 +58,8 @@ def makeFigure():
         ]
     )
     targCell = "Treg"
+    # Armaan: this could use a more descriptive name. This could be construed as
+    # "off T cells" but I think you mean "off target cells"
     offTCells = cells[cells != targCell]
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
@@ -65,6 +70,8 @@ def makeFigure():
     df = pd.DataFrame(columns=["Dose", "Selectivity", "Target Bound", "Ligand"])
 
     for targetPairs in allTargets:
+        # Armaan: why 8.0? It might be good to declare this higher up in the
+        # function and include a comment. Also, use a more descriptive name.
         prevOptAffs = [8.0]
         valencies = [signal[1]]
         targets = []
