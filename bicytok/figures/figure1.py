@@ -7,7 +7,7 @@ import seaborn as sns
 
 from ..selectivityFuncs import (
     get_cell_bindings,
-    getSampleAbundances,
+    calcReceptorAbundances,
     optimizeDesign,
 )
 from .common import getSetup
@@ -16,68 +16,65 @@ path_here = dirname(dirname(__file__))
 
 plt.rcParams["svg.fonttype"] = "none"
 
+"""signal: Receptor that the ligand is delivering signal to; selectivity and target bound are with respect to engagement
+with this receptor
+allTargets: List of paired [(target receptor, valency)] combinations for each targeting receptor; to be used for targeting
+the target cell, not signaling
+cells: Array of cells that will be sampled from and used in calculations
+targCell: Target cell whose selectivity will be maximized
+startingAff: Starting affinity to modulate from in order to maximize selectivity for the targCell"""
+signal = ["CD122", 1]
+allTargets = [
+    [("CD25", 1)],
+    [("CD25", 4)],
+    [("CD25", 1), ("CD278", 1)],
+    [("CD25", 4), ("CD278", 4)],
+    [("CD25", 1), ("CD27", 1)],
+    [("CD25", 4), ("CD27", 4)],
+    [("CD25", 1), ("CD278", 1), ("CD27", 1)],
+    [("CD25", 4), ("CD278", 4), ("CD27", 4)],
+]
+
+cells = np.array(
+    [
+        "CD8 Naive",
+        "NK",
+        "CD8 TEM",
+        "CD4 Naive",
+        "CD4 CTL",
+        "CD8 TCM",
+        "CD8 Proliferating",
+        "Treg",
+        "CD4 TEM",
+        "NK Proliferating",
+        "NK_CD56bright",
+    ]
+)
+targCell = "Treg"
+
+startingAff = 8.0
 
 def makeFigure():
     """Figure file to generate dose response curves for any combination of multivalent and multispecific ligands.
-    Outputs dose vs. selectivity for the target cell and amount of target cell bound at indicated signal receptor.
-        signal: Receptor that the ligand is delivering signal to; selectivity and target bound are with respect to engagement
-    with this receptor
-        allTargets: List of paired [(target receptor, valency)] combinations for each targeting receptor; to be used for targeting
-    the target cell, not signaling
-    """
+    Outputs dose vs. selectivity for the target cell and amount of target cell bound at indicated signal receptor."""
     ax, f = getSetup((6, 3), (1, 2))
 
-    # Armaan: I think it would be better to either have these as constants
-    # declared outside of the function. It's more clear that they are parameters
-    # which should be modified.
-    signal = ["CD122", 1]
-    allTargets = [
-        [("CD25", 1)],
-        [("CD25", 4)],
-        [("CD25", 1), ("CD278", 1)],
-        [("CD25", 4), ("CD278", 4)],
-        [("CD25", 1), ("CD27", 1)],
-        [("CD25", 4), ("CD27", 4)],
-        [("CD25", 1), ("CD278", 1), ("CD27", 1)],
-        [("CD25", 4), ("CD278", 4), ("CD27", 4)],
-    ]
-
-    cells = np.array(
-        [
-            "CD8 Naive",
-            "NK",
-            "CD8 TEM",
-            "CD4 Naive",
-            "CD4 CTL",
-            "CD8 TCM",
-            "CD8 Proliferating",
-            "Treg",
-            "CD4 TEM",
-            "NK Proliferating",
-            "NK_CD56bright",
-        ]
-    )
-    targCell = "Treg"
-    # Armaan: this could use a more descriptive name. This could be construed as
-    # "off T cells" but I think you mean "off target cells"
-    offTCells = cells[cells != targCell]
+    offTargCells = cells[cells != targCell]
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = getSampleAbundances(epitopes, cells)
+    epitopesDF = calcReceptorAbundances(epitopes, cells)
 
     doseVec = np.logspace(-2, 2, num=20)
     df = pd.DataFrame(columns=["Dose", "Selectivity", "Target Bound", "Ligand"])
 
     for targetPairs in allTargets:
-        # Armaan: why 8.0? It might be good to declare this higher up in the
-        # function and include a comment. Also, use a more descriptive name.
-        prevOptAffs = [8.0]
+        optimizedAffs = [startingAff]
         valencies = [signal[1]]
         targets = []
         naming = []
         for target, valency in targetPairs:
-            prevOptAffs.append(8.0)
+            optimizedAffs.append(startingAff)
             targets.append(target)
             valencies.append(valency)
             naming.append("{} ({})".format(target, valency))
@@ -88,15 +85,15 @@ def makeFigure():
                 signal[0],
                 targets,
                 targCell,
-                offTCells,
+                offTargCells,
                 epitopesDF,
                 dose,
                 valencies,
-                prevOptAffs,
+                optimizedAffs,
             )
-            prevOptAffs = optParams[1]
+            optimizedAffs = optParams[1]
             cellBindings = get_cell_bindings(
-                epitopesDF, signal[0], targets, prevOptAffs, dose, valencies
+                epitopesDF, signal[0], targets, optimizedAffs, dose, valencies
             )
 
             data = {
