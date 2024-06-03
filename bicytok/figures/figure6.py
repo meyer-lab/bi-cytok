@@ -32,8 +32,10 @@ CELLS_TO_REMOVE = [
 ]
 CELL_LEVEL = "CellType2"
 
+
 def makeFigure():
-    """Figure file to generate bar plots of 1D KL divergence and EMD values of most unique receptor for each given cell type/subset."""
+    """Figure file to generate bar plots of 1D KL divergence and EMD values
+    of most unique receptor for each given cell type/subset."""
     ax, f = getSetup((12, 4), (1, 2))
 
     CITE_DF = importCITE()
@@ -58,10 +60,12 @@ def makeFigure():
             markAvg = np.mean(CITE_DF[marker].values)
             if markAvg > 0.0001:
                 targCellMark = (
-                    CITE_DF.loc[CITE_DF[CELL_LEVEL] == targCell][marker].values / markAvg
+                    CITE_DF.loc[CITE_DF[CELL_LEVEL] == targCell][marker].values
+                    / markAvg
                 )
                 offTargCellMark = (
-                    CITE_DF.loc[CITE_DF[CELL_LEVEL] != targCell][marker].values / markAvg
+                    CITE_DF.loc[CITE_DF[CELL_LEVEL] != targCell][marker].values
+                    / markAvg
                 )
                 if np.mean(targCellMark) > np.mean(offTargCellMark):
                     kdeTarg = KernelDensity(kernel="gaussian").fit(

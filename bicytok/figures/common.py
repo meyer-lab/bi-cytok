@@ -9,7 +9,6 @@ from string import ascii_lowercase
 
 import matplotlib
 import matplotlib.figure
-import numpy as np
 import seaborn as sns
 from matplotlib import gridspec
 from matplotlib import pyplot as plt

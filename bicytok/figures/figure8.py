@@ -8,17 +8,18 @@ from .common import getSetup
 
 TARGET_CELL = "Treg"
 
+
 def makeFigure():
     """clustermaps of KL values for receptors + specified cell type"""
     ax, f = getSetup((40, 40), (1, 1))
-    
+
     markerDF = importCITE()
     new_df = markerDF.head(1000)
     receptors = []
     for column in new_df.columns:
         if column not in ["CellType1", "CellType2", "CellType3", "Cell"]:
             receptors.append(column)
-    
+
     receptors = ["CD25", "CD35"]
     TARGET_CELL = "Treg"
     resultsKL = []

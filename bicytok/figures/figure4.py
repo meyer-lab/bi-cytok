@@ -15,7 +15,7 @@ path_here = dirname(dirname(__file__))
 
 SIGNAL = ["CD122", 1]
 ALL_TARGETS = [("CD25", 1), ("CD278", 1), ("CD45RB", 1), ("CD4-2", 1), ("CD81", 1)]
-DOSE = 10e-2 #TODO: ADD UNITS
+DOSE = 10e-2  # In Molarity
 
 CELLS = np.array(
     [
@@ -34,8 +34,10 @@ CELLS = np.array(
 )
 targCell = "Treg"
 
+
 def makeFigure():
-    """Figure file to generate bispecific ligand selectivity heatmap of selectivity for each bispecific pairing."""
+    """Figure file to generate bispecific ligand selectivity heatmap of
+    selectivity for each bispecific pairing."""
     ax, f = getSetup((4, 3), (1, 1))
 
     offTCells = CELLS[CELLS != targCell]

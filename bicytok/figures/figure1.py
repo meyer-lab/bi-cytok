@@ -17,13 +17,15 @@ path_here = dirname(dirname(__file__))
 plt.rcParams["svg.fonttype"] = "none"
 
 
-"""SIGNAL: Receptor that the ligand is delivering signal to; selectivity and target bound are with respect to engagement
-with this receptor
-ALL_TARGETS: List of paired [(target receptor, valency)] combinations for each targeting receptor; to be used for targeting
+"""SIGNAL: Receptor that the ligand is delivering signal to; selectivity and
+    target bound are with respect to engagement with this receptor
+ALL_TARGETS: List of paired [(target receptor, valency)] combinations for each
+    targeting receptor; to be used for targeting
 the target cell, not signaling
 CELLS: Array of cells that will be sampled from and used in calculations
 TARG_CELL: Target cell whose selectivity will be maximized
-STARTING_AFF: Starting affinity to modulate from in order to maximize selectivity for the targCell"""
+STARTING_AFF: Starting affinity to modulate from in order to
+    maximize selectivity for the targCell, affinities are K_a in L/mol"""
 
 SIGNAL = ["CD122", 1]
 ALL_TARGETS = [
@@ -56,9 +58,12 @@ TARG_CELL = "Treg"
 
 STARTING_AFF = 8.0
 
+
 def makeFigure():
-    """Figure file to generate dose response curves for any combination of multivalent and multispecific ligands.
-    Outputs dose vs. selectivity for the target cell and amount of target cell bound at indicated signal receptor."""
+    """Figure file to generate dose response curves for any combination of
+    multivalent and multispecific ligands.
+    Outputs dose vs. selectivity for the target cell and amount of target cell
+    bound at indicated signal receptor."""
     ax, f = getSetup((6, 3), (1, 2))
 
     offTargCells = CELLS[CELLS != TARG_CELL]

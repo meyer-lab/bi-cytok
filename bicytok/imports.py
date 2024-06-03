@@ -61,9 +61,11 @@ def importReceptors():
 # Armaan: lru_cache mutable return value
 @lru_cache(maxsize=None)
 def makeCITEdf():
-    """Makes cite surface epitope csv for given cell type, DON'T USE THIS UNLESS DATA NEEDS RESTRUCTURING"""
+    """Makes cite surface epitope csv for given cell type,
+    DON'T USE THIS UNLESS DATA NEEDS RESTRUCTURING"""
     """
-    matrixDF = pd.read_csv(join(path_here, "bicytok/data/CITEmatrix.gz"), compression='gzip', header=0, sep=' ', quotechar='"', error_bad_lines=False)
+    matrixDF = pd.read_csv(join(path_here, "bicytok/data/CITEmatrix.gz"),
+        compression='gzip', header=0, sep=' ', quotechar='"', error_bad_lines=False)
     matrixDF = matrixDF.iloc[:, 0:-2]
     matrixDF.columns = ["Marker", "Cell", "Number"]
     matrixDF.to_csv(join(path_here, "bicytok/data/CITEmatrix.csv"), index=False)
@@ -152,9 +154,8 @@ def makeTregSC():
         stim_an.obs.index = barcodes["barcode"].values
         stim_an.obs["Condition"] = stim
 
-        if (
-            i == 0
-        ):  # First condition - load features for later labeling (all conditions have same genes)
+        if i == 0:  # First condition - load features for later labeling
+            # (all conditions have same genes)
             Treg_h5ad = stim_an
             features = pd.read_csv(
                 gzip.open(

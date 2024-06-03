@@ -31,8 +31,10 @@ CELLS = [
     "NK_CD56bright",
 ]
 
+
 def makeFigure():
-    """Figure file to generate bar plots for amount of signal receptor bound to each given cell type"""
+    """Figure file to generate bar plots for amount of signal receptor
+    bound to each given cell type"""
     ax, f = getSetup((8, 3), (1, 2))
 
     affs = np.array([SECONDARY_AFF, 8.5, 8.5])

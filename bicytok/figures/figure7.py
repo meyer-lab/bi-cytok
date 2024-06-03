@@ -8,8 +8,10 @@ from .common import getSetup
 
 TARGET_CELL = "Treg"
 
+
 def makeFigure():
-    """Figure to generate clustermaps of EMD values for receptors + specified cell type"""
+    """Figure to generate clustermaps of EMD values for receptors
+    + specified cell type"""
     ax, f = getSetup((40, 40), (1, 1))
 
     markerDF = importCITE()

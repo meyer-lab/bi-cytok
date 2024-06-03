@@ -18,21 +18,23 @@ VALENCIES = [1, 2, 4]
 ALL_TARGETS = [["CD25", "CD278"], ["CD25", "CD4-2"], ["CD25", "CD45RB"]]
 DOSE = 10e-2
 CELLS = np.array(
-        [
-            "CD8 Naive",
-            "NK",
-            "CD8 TEM",
-            "CD4 Naive",
-            "CD4 CTL",
-            "CD8 TCM",
-            "CD8 Proliferating",
-            "Treg",
-        ]
-    )
+    [
+        "CD8 Naive",
+        "NK",
+        "CD8 TEM",
+        "CD4 Naive",
+        "CD4 CTL",
+        "CD8 TCM",
+        "CD8 Proliferating",
+        "Treg",
+    ]
+)
 TARG_CELL = "Treg"
 
+
 def makeFigure():
-    """Figure file to generate plots of bispecific ligand selectivity for combinations of different KL divergences, EMDs, and anti-correlations."""
+    """Figure file to generate plots of bispecific ligand selectivity for
+    combinations of different KL divergences, EMDs, and anti-correlations."""
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()

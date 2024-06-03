@@ -14,16 +14,17 @@ from .selectivityFuncs import convFactCalc, calcReceptorAbundances
 path_here = dirname(dirname(__file__))
 
 
-def KL_EMD_1D(ax, targCell, numFactors, RNA=False, offTargState=0) -> pd.DataFrame:
+def KL_EMD_1D(ax, targCell, numFactors, offTargState=0) -> pd.DataFrame:
     """
     Finds markers which have average greatest difference (EMD and KL) from other cells
     :param ax: Axes to plot on
     :param targCell: Target cell type for analysis
     :param numFactors: Number of top factors to consider
-    :param RNA: Boolean flag indicating RNA data (optional)
-    :param offTargState: State of off-target comparison (0 for all non-memory Tregs, 1 for all non-Tregs, 2 for naive Tregs)
+    :param offTargState: State of off-target comparison (0 for all non-memory Tregs,
+        1 for all non-Tregs, 2 for naive Tregs)
     :return:
-        corrsDF: DataFrame containing marker information and their Wasserstein Distance and KL Divergence values
+        corrsDF: DataFrame containing marker information and their Wasserstein Distance
+            and KL Divergence values
     """
     CITE_DF = importCITE()
     markerDF = pd.DataFrame(columns=["Marker", "Cell Type", "Amount"])
@@ -132,10 +133,12 @@ def EMD_2D(dataset, signal_receptor, target_cells, special_receptor, ax):
     :param dataset: DataFrame containing the dataset
     :param signal_receptor: Name of the signal receptor
     :param target_cells: Target cell type for analysis
-    :param special_receptor: Special receptor to consider (optional, used for just calculating distance for 2 receptors)
+    :param special_receptor: Special receptor to consider
+        (optional, used for just calculating distance for 2 receptors)
     :param ax: Matplotlib Axes object for plotting (optional)
     :return:
-        List of tuples format: (recep1, recep2, OT value) containing optimal transport distances and receptor information
+        List of tuples format: (recep1, recep2, OT value) containing
+            optimal transport distances and receptor information
     """
     CITE_DF = importCITE()
     weightDF = convFactCalc(CITE_DF)
@@ -269,8 +272,8 @@ def EMD_3D(dataset1, target_cells, ax=None):
     :param target_cells: Target cell type for analysis
     :param ax: Matplotlib Axes object for plotting (optional)
     :return:
-    List of tuples (format: (recep1, recep2, recep 3, OT value) containing optimal transport distances and receptor information for 3D analysis
-
+    List of tuples (format: (recep1, recep2, recep 3, OT value) containing
+        optimal transport distances and receptor information for 3D analysis
     """
     CITE_DF = importCITE()
 
@@ -416,7 +419,8 @@ def EMD_3D(dataset1, target_cells, ax=None):
                             receptor3_off_target_counts.astype(float)
                             / average_receptor_counts_3
                         )
-                        # Calculate the EMD between on-target and off-target counts for both receptors # change this so its two [||]
+                        # Calculate the EMD between on-target and off-target counts for
+                        # both receptors # change this so its two [||]
                         on_target_counts = np.concatenate(
                             (
                                 receptor1_on_target_counts[:, np.newaxis],
@@ -495,7 +499,8 @@ def EMD_3D(dataset1, target_cells, ax=None):
 
 def calculate_kl_divergence_2D(targCellMark, offTargCellMark):
     """
-    calculates the Kullback-Leibler (KL) divergence between two probability distributions
+    calculates the Kullback-Leibler (KL) divergence between two
+        probability distributions
     *used in combination with 1D or 2D KL functions
     :param targCellMark: Target cell marker data
     :param offTargCellMark: Off-target cell marker data
@@ -525,7 +530,8 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, special_receptor, a
     :param dataset: DataFrame containing the dataset
     :param signal_receptor: Name of the signal receptor
     :param target_cells: Target cell type for analysis
-    :param special_receptor: Special receptor to consider (optional, used for just calculating distance for 2 receptors)
+    :param special_receptor: Special receptor to consider
+        (optional, used for just calculating distance for 2 receptors)
     :param ax: Matplotlib Axes object for plotting (optional)
     :return:
     Sorted list of tuples containing KL Divergence values and receptor information
