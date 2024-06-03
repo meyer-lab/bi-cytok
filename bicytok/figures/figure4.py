@@ -5,49 +5,50 @@ import pandas as pd
 import seaborn as sns
 
 from ..selectivityFuncs import (
-    getSampleAbundances,
-    optimizeDesign,
+    calcReceptorAbundances,
+    optimizeSelectivityAffs,
 )
 from .common import getSetup
 
 path_here = dirname(dirname(__file__))
 
 
+SIGNAL = ["CD122", 1]
+ALL_TARGETS = [("CD25", 1), ("CD278", 1), ("CD45RB", 1), ("CD4-2", 1), ("CD81", 1)]
+DOSE = 10e-2 #TODO: ADD UNITS
+
+CELLS = np.array(
+    [
+        "CD8 Naive",
+        "NK",
+        "CD8 TEM",
+        "CD4 Naive",
+        "CD4 CTL",
+        "CD8 TCM",
+        "CD8 Proliferating",
+        "Treg",
+        "CD4 TEM",
+        "NK Proliferating",
+        "NK_CD56bright",
+    ]
+)
+targCell = "Treg"
+
 def makeFigure():
     """Figure file to generate bispecific ligand selectivity heatmap of selectivity for each bispecific pairing."""
     ax, f = getSetup((4, 3), (1, 1))
 
-    signal = ["CD122", 1]
-    allTargets = [("CD25", 1), ("CD278", 1), ("CD45RB", 1), ("CD4-2", 1), ("CD81", 1)]
-    dose = 10e-2
-
-    cells = np.array(
-        [
-            "CD8 Naive",
-            "NK",
-            "CD8 TEM",
-            "CD4 Naive",
-            "CD4 CTL",
-            "CD8 TCM",
-            "CD8 Proliferating",
-            "Treg",
-            "CD4 TEM",
-            "NK Proliferating",
-            "NK_CD56bright",
-        ]
-    )
-    targCell = "Treg"
-    offTCells = cells[cells != targCell]
+    offTCells = CELLS[CELLS != targCell]
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = getSampleAbundances(epitopes, cells)
+    epitopesDF = calcReceptorAbundances(epitopes, CELLS)
 
     df = pd.DataFrame(columns=["Target 1", "Target 2", "Selectivity"])
 
     valencies = []
     targets = []
-    for target, valency in allTargets:
+    for target, valency in ALL_TARGETS:
         targets.append(target)
         valencies.append(valency)
 
@@ -56,19 +57,19 @@ def makeFigure():
             if i == j:
                 targetsBoth = [target1]
                 optAffs = [8.0, 8.0]
-                valenciesBoth = np.array([[signal[1], valencies[i]]])
+                valenciesBoth = np.array([[SIGNAL[1], valencies[i]]])
             else:
                 targetsBoth = [target1, target2]
                 optAffs = [8.0, 8.0, 8.0]
-                valenciesBoth = np.array([[signal[1], valencies[i], valencies[j]]])
+                valenciesBoth = np.array([[SIGNAL[1], valencies[i], valencies[j]]])
 
-            optParams = optimizeDesign(
-                signal[0],
+            optParams = optimizeSelectivityAffs(
+                SIGNAL[0],
                 targetsBoth,
                 targCell,
                 offTCells,
                 epitopesDF,
-                dose,
+                DOSE,
                 valenciesBoth,
                 optAffs,
             )

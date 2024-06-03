@@ -9,7 +9,7 @@ from scipy import stats
 from sklearn.neighbors import KernelDensity
 
 from .imports import importCITE
-from .selectivityFuncs import convFactCalc, getSampleAbundances
+from .selectivityFuncs import convFactCalc, calcReceptorAbundances
 
 path_here = dirname(dirname(__file__))
 
@@ -635,7 +635,7 @@ def correlation(cell_type, relevant_epitopes):
     """Calculates the Pearson correlation between two celltypes receptor counts"""
     epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = getSampleAbundances(epitopes, np.array([cell_type]))
+    epitopesDF = calcReceptorAbundances(epitopes, np.array([cell_type]))
     epitopesDF = epitopesDF[epitopesDF["CellType2"] == (cell_type)]
     corr = epitopesDF[relevant_epitopes].corr(method="pearson")
     sorted_corr = corr.stack().sort_values(ascending=False)

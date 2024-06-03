@@ -4,52 +4,54 @@ import seaborn as sns
 
 from ..selectivityFuncs import (
     get_cell_bindings,
-    getSampleAbundances,
+    calcReceptorAbundances,
 )
 from .common import getSetup
 
 
+"""SECONDARY: signaling receptor
+EPITOPE: additional targeting receptor
+SECONDARY_AFF: starting affinity of ligand and secondary receptor"""
+
+SECONDARY = "CD122"
+EPITOPE = "CD278"
+SECONDARY_AFF = 6.0
+VALENCY = 4
+
+CELLS = [
+    "Treg",
+    "CD8 Naive",
+    "NK",
+    "CD8 TEM",
+    "CD4 Naive",
+    "CD4 CTL",
+    "CD8 TCM",
+    "CD4 TEM",
+    "NK Proliferating",
+    "NK_CD56bright",
+]
+
 def makeFigure():
-    """Figure file to generate bar plots for amount of signal receptor bound to each given cell type
-    secondary: signaling receptor
-    epitope: additional targeting receptor"""
+    """Figure file to generate bar plots for amount of signal receptor bound to each given cell type"""
     ax, f = getSetup((8, 3), (1, 2))
 
-    secondary = "CD122"
-    epitope = "CD278"
-    secondaryAff = 6.0
-    valency = 4
-
-    affs = np.array([secondaryAff, 8.5, 8.5])
-
-    cells = [
-        "Treg",
-        "CD8 Naive",
-        "NK",
-        "CD8 TEM",
-        "CD4 Naive",
-        "CD4 CTL",
-        "CD8 TCM",
-        "CD4 TEM",
-        "NK Proliferating",
-        "NK_CD56bright",
-    ]
+    affs = np.array([SECONDARY_AFF, 8.5, 8.5])
 
     epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
 
-    epitopesDF = getSampleAbundances(epitopes, cells)
+    epitopesDF = calcReceptorAbundances(epitopes, CELLS)
 
     bindings = get_cell_bindings(
         epitopesDF,
-        secondary,
-        ["CD25", epitope],
+        SECONDARY,
+        ["CD25", EPITOPE],
         affs,
         0.1,
-        np.array([[valency, valency, valency]]),
+        np.array([[VALENCY, VALENCY, VALENCY]]),
     )
     bindings["Percent Bound of Signal Receptor"] = (
-        bindings["Receptor Bound"] / bindings[secondary]
+        bindings["Receptor Bound"] / bindings[SECONDARY]
     ) * 10
 
     palette = sns.color_palette("husl", 10)

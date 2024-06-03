@@ -31,27 +31,6 @@ matplotlib.rcParams["legend.markerscale"] = 0.7
 matplotlib.rcParams["legend.borderpad"] = 0.35
 
 
-# Armaan: When declaring constants at the top of a file, it is good practice to
-# choose a descriptive name, use ALL CAPS (e.g. DOSE_MAT), and possibly add a
-# brief comment. Also, this particular variable isn't used anywhere.
-dosemat = np.array(
-    [
-        84,
-        28,
-        9.333333,
-        3.111,
-        1.037037,
-        0.345679,
-        0.115226,
-        0.038409,
-        0.012803,
-        0.004268,
-        0.001423,
-        0.000474,
-    ]
-)
-
-
 def getSetup(
     figsize: tuple[float, float], gridd: tuple[int, int], multz=None
 ) -> tuple[list[Axes], matplotlib.figure.Figure]:
@@ -94,19 +73,11 @@ def genFigure():
     exec("from bicytok.figures." + nameOut + " import makeFigure", globals())
     ff = makeFigure()  # noqa: F821
 
-    # Armaan: add function argument here to toggle the commented code if it's
-    # needed else delete the comment.
-
-    # for non cluster maps:
-    # ff.savefig(fdir + nameOut + ".svg", dpi=ff.dpi, bbox_inches="tight", pad_inches=0)
-    # for cluster maps:
     ff.savefig(fdir + nameOut + ".svg", bbox_inches="tight", pad_inches=0)
 
     print(f"Figure {sys.argv[1]} is done after {time.time() - start} seconds.\n")
 
 
-# Armaan: resolve this (delete the function or the comment)
-# NOTE: CHECK IF WE NEED THIS
 def subplotLabel(axs: list[Axes]):
     """Place subplot labels on figure."""
     for ii, ax in enumerate(axs):
@@ -119,55 +90,3 @@ def subplotLabel(axs: list[Axes]):
             fontweight="bold",
             va="top",
         )
-
-
-cellSTATlimDict = {
-    "Treg": (47000, 54000),
-    "Thelper": (20000, 25000),
-    "CD8": (6200, 7500),
-    "NK": (4000, 5000),
-}
-# Armaan: Unused variable
-ratioSTATlimDict = {"Treg/NK": (0, 4000), "Treg/CD8": (0, 1500)}
-
-
-# Armaan: resolve this
-# NOTE: CHECK IF WE NEED THIS
-def plotBispecific(ax: Axes, df, cellType: str, val=False):
-    """Plots all experimental vs. Predicted Values"""
-
-    data_low = df.loc[(df.Cell == cellType) & (df.Affinity == "Low")]
-    data_med = df.loc[(df.Cell == cellType) & (df.Affinity == "Medium")]
-    data_high = df.loc[(df.Cell == cellType) & (df.Affinity == "High")]
-
-    sns.lineplot(
-        x="Abundance",
-        y="Predicted",
-        data=data_low,
-        label="Low(1e6)",
-        ax=ax,
-        legend="brief",
-    )
-    sns.lineplot(
-        x="Abundance",
-        y="Predicted",
-        data=data_med,
-        label="Med(1e8)",
-        ax=ax,
-        legend="brief",
-    )
-    sns.lineplot(
-        x="Abundance",
-        y="Predicted",
-        data=data_high,
-        label="High(1e10)",
-        ax=ax,
-        legend="brief",
-    )
-    ax.set(
-        title=cellType + " - Dosed at 1nM",
-        xlabel=r"Epitope X Abundance",
-        ylabel="pSTAT",
-        xscale="log",
-        ylim=cellSTATlimDict[cellType],
-    )

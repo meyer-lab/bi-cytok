@@ -5,7 +5,7 @@ Unit test file.
 import numpy as np
 import pandas as pd
 
-from bicytok.selectivityFuncs import getSampleAbundances, optimizeDesign
+from bicytok.selectivityFuncs import calcReceptorAbundances, optimizeSelectivityAffs
 
 
 def test_optimize_design():
@@ -15,9 +15,9 @@ def test_optimize_design():
 
     epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = getSampleAbundances(epitopes, cells)
+    epitopesDF = calcReceptorAbundances(epitopes, cells)
 
-    optimizeDesign(
+    optimizeSelectivityAffs(
         signal="CD122",
         targets=["CD25"],
         targCell=targCell,

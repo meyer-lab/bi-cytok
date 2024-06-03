@@ -14,29 +14,32 @@ path_here = dirname(dirname(__file__))
 
 plt.rcParams["svg.fonttype"] = "none"
 
+"""CELLS_TO_REMOVE: cell types to remove from calculations and figure generation
+CELL_LEVEL: cell type categorization level, see cell types/subsets in CITE data"""
+
+CELLS_TO_REMOVE = [
+    "Eryth",
+    "MAIT",
+    "ASDC",
+    "Platelet",
+    "gdT",
+    "dnT",
+    "B intermediate",
+    "CD4 CTL",
+    "NK Proliferating",
+    "CD8 Proliferating",
+    "CD4 Proliferating",
+]
+CELL_LEVEL = "CellType2"
 
 def makeFigure():
     """Figure file to generate bar plots of 1D KL divergence and EMD values of most unique receptor for each given cell type/subset."""
     ax, f = getSetup((12, 4), (1, 2))
 
     CITE_DF = importCITE()
-    cellLevel = "CellType2"
+    cells = list(CITE_DF[CELL_LEVEL].unique())
 
-    cells = list(CITE_DF[cellLevel].unique())
-    toRemove = [
-        "Eryth",
-        "MAIT",
-        "ASDC",
-        "Platelet",
-        "gdT",
-        "dnT",
-        "B intermediate",
-        "CD4 CTL",
-        "NK Proliferating",
-        "CD8 Proliferating",
-        "CD4 Proliferating",
-    ]
-    for removed in toRemove:
+    for removed in CELLS_TO_REMOVE:
         cells.remove(removed)
 
     df = pd.DataFrame(columns=["Cell", "KL Divergence", "Earth Mover's Distance"])
@@ -55,10 +58,10 @@ def makeFigure():
             markAvg = np.mean(CITE_DF[marker].values)
             if markAvg > 0.0001:
                 targCellMark = (
-                    CITE_DF.loc[CITE_DF[cellLevel] == targCell][marker].values / markAvg
+                    CITE_DF.loc[CITE_DF[CELL_LEVEL] == targCell][marker].values / markAvg
                 )
                 offTargCellMark = (
-                    CITE_DF.loc[CITE_DF[cellLevel] != targCell][marker].values / markAvg
+                    CITE_DF.loc[CITE_DF[CELL_LEVEL] != targCell][marker].values / markAvg
                 )
                 if np.mean(targCellMark) > np.mean(offTargCellMark):
                     kdeTarg = KernelDensity(kernel="gaussian").fit(

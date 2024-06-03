@@ -10,9 +10,7 @@ from .imports import importCITE, importReceptors
 from .MBmodel import cytBindingModel
 
 
-# Armaan: Could you rename this function to more directly specify what it does?
-# Something about calculating receptor abundance for a given cell type?
-def getSampleAbundances(
+def calcReceptorAbundances(
     epitopes: list, cellList: list, numCells=1000, cellCat="CellType2"
 ):
     """Given list of epitopes and cell types, returns a dataframe containing receptor abundance data on a single-cell level.
@@ -53,23 +51,15 @@ bispecOpt_Vec = np.vectorize(
 )
 
 
-def minSelecFunc(
+def minOffTargSelec(
     recXaffs: np.ndarray,
-    signal: str,
-    targets: list,
     targRecs: pd.DataFrame,
     offTRecs: pd.DataFrame,
     dose: float,
     vals: np.ndarray,
 ):
-    # Armaan: this function name is misleading, because you're not minimizing
-    # selectivity, you're maximizing it. Additionally, this function has no
-    # minimization logic, so it should really just be named after what it is
-    # calculating, which might be described as the reciprocal of selectivity or
-    # something. Also, ruff check should flag this, but this function has unused
-    # parameters. 
     """Serves as the function which will have its return value minimized to get optimal selectivity
-    To be used in conjunction with optimizeDesign()
+    To be used in conjunction with optimizeSelectivityAffs()
     Args:
         recXaff: receptor affinities which are modulated in optimize design
         signal: signaling receptor
@@ -80,6 +70,7 @@ def minSelecFunc(
         vals: array of valencies of each ligand epitope
     Return:
         selectivity: value will be minimized, defined as ratio of off target to on target signaling
+            This is selectivity for the off target cells and is minimized to maximize selectivity for the target cell
     """
 
     affs = get_affs(recXaffs)
@@ -103,11 +94,7 @@ def minSelecFunc(
 
     return offTargetBound / targetBound
 
-
-# Armaan: this function could have a more descriptive name. You're just varying
-# the affinity to maximize selectivity, right? So maybe use a function name to
-# directly reflect that.
-def optimizeDesign(
+def optimizeSelectivityAffs(
     signal: str,
     targets: list,
     targCell: str,
@@ -115,27 +102,27 @@ def optimizeDesign(
     selectedDF: pd.DataFrame,
     dose: float,
     valencies: np.ndarray,
-    prevOptAffs: list, # Armaan: why not call this "init_affinities" or something like that? 
+    init_affinities: list,
     cellCat="CellType2",
 ):
-    # Armaan: update doc string. Particularly, describe the prevOptAffs
-    # parameter. Is prevOptAffs the best name for this parameter? Also, it is
-    # good to specify the units of parameters and variables (bonus points if you
-    # can include the units in the variable name itself!). So, for example,
-    # these affinities are log10 affinities, right? That should be clearer.
+    # TODO: ADD UNITS
     """A general-purpose optimizer used to minimize selectivity output by varying affinity parameter.
     Args:
-        targCell: string cell type which is target and signaling is desired (basis of selectivity)
-        offTCells: list of strings of cell types for which signaling is undesired
-        selectedDf: contains epitope abundance information by cell type
-        epitope: additional epitope to be targeted
-
+        signal: signaling receptor
+        targets: list of targeting receptors
+        targCell: target cell type
+        offTCells: list of off-target cell types
+        selectedDF: dataframe of receptor counts of all cells
+        dose: ligand concentration/dose that is being modeled
+        valencies: array of valencies of each ligand epitope
+        init_affinities: initial receptor affinities to ultimately optimize for maximum target cell selectivity,
+            affinities
+        cellCat: cell type categorization level, see cell types/subsets in CITE data
     Return:
         optSelectivity: optimized selectivity value. Can also be modified to return optimized affinity parameter.
     """
-    X0 = prevOptAffs
-    # Armaan: why are these the bounds on the affinities? If you include literal
-    # numbers like this, it's good to have a comment explaining how chose them.
+    X0 = init_affinities
+    # minAffs and maxAffs chosen based on biologically realistic affinities for engineered ligands
     minAffs = [7.0] * (len(targets) + 1)
     maxAffs = [9.0] * (len(targets) + 1)
 
@@ -144,12 +131,10 @@ def optimizeDesign(
         selectedDF, targCell, offTCells, signal, targets, cellCat
     )
     optimized = minimize(
-        minSelecFunc,
+        minOffTargSelec,
         X0,
         bounds=optBnds,
         args=(
-            signal,
-            targets,
             targRecs.drop([cellCat], axis=1),
             offTRecs.drop([cellCat], axis=1),
             dose,
@@ -161,23 +146,6 @@ def optimizeDesign(
     optAffs = optimized.x
 
     return optSelectivity, optAffs
-
-
-# Armaan: either declare this at the top of the file or move it into convFactCalc
-cellDict = {
-    "CD4 Naive": "Thelper",
-    "CD4 CTL": "Thelper",
-    "CD4 TCM": "Thelper",
-    "CD4 TEM": "Thelper",
-    "NK": "NK",
-    "CD8 Naive": "CD8",
-    "CD8 TCM": "CD8",
-    "CD8 TEM": "CD8",
-    "Treg": "Treg",
-}
-
-# Armaan: either declare this at the top of the file or move it into convFactCalc
-markDict = {"CD25": "IL2Ra", "CD122": "IL2Rb", "CD127": "IL7Ra", "CD132": "gc"}
 
 
 def convFactCalc(CITE_DF: pd.DataFrame) -> pd.DataFrame:
@@ -198,6 +166,21 @@ def convFactCalc(CITE_DF: pd.DataFrame) -> pd.DataFrame:
         "Treg",
         "CD4 TEM",
     ]
+    
+    cellDict = {
+        "CD4 Naive": "Thelper",
+        "CD4 CTL": "Thelper",
+        "CD4 TCM": "Thelper",
+        "CD4 TEM": "Thelper",
+        "NK": "NK",
+        "CD8 Naive": "CD8",
+        "CD8 TCM": "CD8",
+        "CD8 TEM": "CD8",
+        "Treg": "Treg",
+    }
+
+    markDict = {"CD25": "IL2Ra", "CD122": "IL2Rb", "CD127": "IL7Ra", "CD132": "gc"}
+
     markers = ["CD122", "CD127", "CD25"]
     markerDF = pd.DataFrame()
     for marker in markers:
