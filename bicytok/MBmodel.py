@@ -3,8 +3,7 @@ Implementation of a simple multivalent binding model.
 """
 
 import numpy as np
-
-from .BindingMod import polyc
+from valentbind import polyc
 
 
 def getKxStar():
@@ -14,6 +13,7 @@ def getKxStar():
 def cytBindingModel(
     recCount: np.ndarray, recXaffs: np.ndarray, dose: float, vals: np.ndarray
 ):
+    # Armaan: update this docstring, particularly the Return section
     """Runs binding model for a given mutein, valency, dose, and cell type
     Args:
         recCount: total count of signaling and targeting receptors
@@ -26,6 +26,13 @@ def cytBindingModel(
     Kx = getKxStar()
     ligandConc = dose / (vals[0][0] * 1e9)
 
-    output = polyc(ligandConc, Kx, recCount, vals, recXaffs)[0]
+    output = polyc(
+        ligandConc,
+        Kx,
+        recCount,
+        vals,
+        np.array([1]),
+        recXaffs,
+    )[1][0, 0]
 
     return output
