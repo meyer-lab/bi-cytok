@@ -9,7 +9,7 @@ from scipy import stats
 from sklearn.neighbors import KernelDensity
 
 from .imports import importCITE
-from .selectivityFuncs import convFactCalc, calcReceptorAbundances
+from .selectivityFuncs import calcReceptorAbundances, convFactCalc
 
 path_here = dirname(dirname(__file__))
 

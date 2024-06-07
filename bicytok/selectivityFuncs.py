@@ -31,9 +31,17 @@ def calcReceptorAbundances(
     CITE_DF = importCITE()
     CITE_DF_new = CITE_DF[epitopes + [cellCat]]
     CITE_DF_new = CITE_DF_new.loc[CITE_DF_new[cellCat].isin(cellList)]
+    # Armaan: Could you immediately rename the cellCat column (e.g. "Cell
+    # Type")? That way, I think you could avoid passing cellCat to other
+    # functions (e.g. optimizeSelectivityAffs, get_rec_vecs). But if you've used
+    # varying values of cellCat in other places before and envision it being
+    # used in the future, then of course feel free to keep it.
 
     # Get conv factors, average them to use on epitopes with unlisted conv facts
     meanConv = convFactCalc(CITE_DF).Weight.mean()
+    # Armaan: I think it would make more sense to move this confFactDict into
+    # confFactCalc, as it better falls under the responsibility of that
+    # function.
     # convFactDict values calculated by convFactCalc
     convFactDict = {"CD25": 77.136987, "CD122": 332.680090, "CD127": 594.379215}
 
@@ -49,6 +57,7 @@ def calcReceptorAbundances(
 
 
 # Vectorization function for cytBindingModel
+# Armaan: What does this function name mean? Could you improve it?
 bispecOpt_Vec = np.vectorize(
     cytBindingModel, excluded=["recXaffs", "vals"], signature="(n),()->()"
 )
@@ -57,8 +66,11 @@ bispecOpt_Vec = np.vectorize(
 def minOffTargSelec(
     recXaffs: np.ndarray,
     targRecs: pd.DataFrame,
+    # Armaan: Could you rename all occurrences of the use of "T" to refer to
+    # target to either "targ" or "target"?
     offTRecs: pd.DataFrame,
     dose: float,
+    # Armaan: rename to valencies
     vals: np.ndarray,
 ):
     """Serves as the function which will have its return value minimized to get
@@ -82,11 +94,23 @@ def minOffTargSelec(
     affs = get_affs(recXaffs)
 
     targetBound = (
+        # Armaan: I don't think you need to sum here, as bispecOpt_Vec should
+        # just return the number of bound signaling receptor for the signal
+        # targeting cell. You may need a flatten() or reshape() though, which I
+        # think is the only purpose of the sum here.
         np.sum(
             bispecOpt_Vec(
                 recCount=targRecs.to_numpy(), recXaffs=affs, dose=dose, vals=vals
             )
         )
+        # Armaan: I believe that you can delete this denominator, as targRecs should
+        # always have one row consisting of the one target cell. Alternatively
+        # (this also pertains to my previous comment), if you want to make this
+        # code work for cases where there are multiple target cells (which I
+        # assume was once the case), then you could keep this here. However,
+        # there would need to be several other changes to the codebase to
+        # reflect this generality (e.g. in get_rec_vecs). I would recommend just
+        # keeping it specific and changing these lines for now.
         / targRecs.shape[0]
     )
     offTargetBound = (
@@ -158,6 +182,7 @@ def optimizeSelectivityAffs(
     return optSelectivity, optAffs
 
 
+# Armaan: Rename to calc_CITE_conv_factors or something?
 def convFactCalc(CITE_DF: pd.DataFrame) -> pd.DataFrame:
     """Returns conversion factors by marker for converting CITEseq signal into abundance
     Args:
@@ -167,6 +192,8 @@ def convFactCalc(CITE_DF: pd.DataFrame) -> pd.DataFrame:
         weightDF: factor to convert unprocessed CITE-seq receptor values to
             numeric receptor counts
     """
+    # Armaan: Could you rename cellToI to something more relevant? The "To"
+    # implies a mapping, but this is just a list.
     cellToI = [
         "CD4 TCM",
         "CD8 Naive",
@@ -191,7 +218,6 @@ def convFactCalc(CITE_DF: pd.DataFrame) -> pd.DataFrame:
         "Treg": "Treg",
     }
 
-    markDict = {"CD25": "IL2Ra", "CD122": "IL2Rb", "CD127": "IL7Ra", "CD132": "gc"}
 
     markers = ["CD122", "CD127", "CD25"]
     markerDF = pd.DataFrame()
@@ -206,14 +232,23 @@ def convFactCalc(CITE_DF: pd.DataFrame) -> pd.DataFrame:
                     "Number": cellTDF.size,
                 }
             )
+            markerDF = (
+                dftemp
+                if isinstance(markerDF, pd.DataFrame)
+                else pd.concat([markerDF, dftemp])
+            )
 
-            if markerDF is pd.DataFrame():
-                markerDF = dftemp
-            else:
-                markerDF = pd.concat([markerDF, dftemp])
-
+    markDict = {"CD25": "IL2Ra", "CD122": "IL2Rb", "CD127": "IL7Ra", "CD132": "gc"}
     markerDF = markerDF.replace({"Marker": markDict, "Cell Type": cellDict})
     markerDFw = pd.DataFrame()
+    # Armaan: You might need to step through the code to confirm this, but I
+    # believe that this loop can be simplified to a loop over the rows in
+    # markerDF, because there shouldn't be more than one row with the same cell
+    # type and marker, this wouldn't even make sense (correct me if I'm wrong
+    # though). This would allow you to avoid the use of unique(), the boolean &
+    # indexing, and the use of wAvg. 
+    # Wait, actually, if my above statement is correct, then you can just delete
+    # this whole double for loop and calculate the average in the loop above.
     for marker in markerDF.Marker.unique():
         for cell in markerDF["Cell Type"].unique():
             subDF = markerDF.loc[
@@ -234,6 +269,8 @@ def convFactCalc(CITE_DF: pd.DataFrame) -> pd.DataFrame:
     recDF = importReceptors()
     weightDF = None
 
+    # Armaan: If my comment above is correct, you can also move this logic into
+    # the initial loop over markerDF and delete this loop.
     for rec in markerDFw.Marker.unique():
         CITEval = np.array([])
         Quantval = np.array([])
@@ -263,15 +300,14 @@ def convFactCalc(CITE_DF: pd.DataFrame) -> pd.DataFrame:
             }
         )
 
-        if weightDF is None:
-            weightDF = dftemp
-        else:
-            weightDF = pd.concat([weightDF, dftemp])
+        weightDF = dftemp if weightDF is None else pd.concat([weightDF, dftemp])
 
     return weightDF
 
 
 def get_rec_vecs(
+    # Armaan: Could you make this parameter name a bit more descriptive? The
+    # docstring is good, but would help to have the name be descriptive too.
     df: pd.DataFrame,
     targCell: str,
     offTCells: list,
@@ -293,6 +329,8 @@ def get_rec_vecs(
         countOffT: dataframe of receptor counts of off-target cell types,
             no cell type naming column
     """
+    # Armaan: put column indexing first, then separate by rows into target and
+    # off target, so you don't need to repeat the column indexing.
     dfTargCell = df.loc[df[cellCat] == targCell]
     countTarg = dfTargCell[[signal] + targets + [cellCat]]
 
@@ -302,6 +340,11 @@ def get_rec_vecs(
     return countTarg, countOffT
 
 
+# Armaan: Can you refactor this and minOffTargSelec to use the same logic for
+# infering the number of bound signaling receptors? These two function share a
+# lot of the same functionality. One reason to avoid this is if this function is
+# a lot slower, and you don't want to call it during optimization, but it
+# doesn't seem obvious that it would be.
 def get_cell_bindings(
     df: np.ndarray,
     signal: str,

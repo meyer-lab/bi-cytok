@@ -6,8 +6,8 @@ import pandas as pd
 import seaborn as sns
 
 from ..selectivityFuncs import (
-    get_cell_bindings,
     calcReceptorAbundances,
+    get_cell_bindings,
     optimizeSelectivityAffs,
 )
 from .common import getSetup
