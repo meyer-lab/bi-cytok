@@ -34,7 +34,8 @@ TARG_CELL = "Treg"
 
 def makeFigure():
     """Figure file to generate plots of bispecific ligand selectivity for
-    combinations of different KL divergences, EMDs, and anti-correlations."""
+    combinations of different KL divergences, EMDs, and anti-correlations.
+    """
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()
@@ -42,6 +43,7 @@ def makeFigure():
 
     offTCells = CELLS[CELLS != TARG_CELL]
 
+    # Armaan: use path.join for the second segment too.
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList["Epitope"].unique())
     epitopesDF = calcReceptorAbundances(epitopes, CELLS, numCells=1000)

@@ -341,7 +341,7 @@ def get_rec_vecs(
 
 
 # Armaan: Can you refactor this and minOffTargSelec to use the same logic for
-# infering the number of bound signaling receptors? These two function share a
+# inferring the number of bound signaling receptors? These two functions share a
 # lot of the same functionality. One reason to avoid this is if this function is
 # a lot slower, and you don't want to call it during optimization, but it
 # doesn't seem obvious that it would be.

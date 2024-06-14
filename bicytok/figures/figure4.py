@@ -42,6 +42,8 @@ def makeFigure():
 
     offTCells = CELLS[CELLS != targCell]
 
+    # Armaan: use join on the second segment of this path too instead of the /
+    # in the string
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList["Epitope"].unique())
     epitopesDF = calcReceptorAbundances(epitopes, CELLS)
@@ -57,6 +59,9 @@ def makeFigure():
     for i, target1 in enumerate(targets):
         for j, target2 in enumerate(targets):
             if i == j:
+                # Armaan: shouldn't the molecule in this case include 1 subunit
+                # targeting SIGNAL and 2 subunits corresponding to target1?
+                # Right now it's just 1 subunit for target1.
                 targetsBoth = [target1]
                 optAffs = [8.0, 8.0]
                 valenciesBoth = np.array([[SIGNAL[1], valencies[i]]])

@@ -48,6 +48,8 @@ def makeFigure():
 
     for targCell in cells:
         markerDF = pd.DataFrame(columns=["Marker", "KL", "EMD"])
+        # Armaan: you do this in multiple places, maybe create a function which gets
+        # columns that are not cell types?
         for marker in CITE_DF.loc[
             :,
             (

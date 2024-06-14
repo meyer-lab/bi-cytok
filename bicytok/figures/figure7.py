@@ -5,7 +5,6 @@ from ..distanceMetricFuncs import EMD_2D
 from ..imports import importCITE
 from .common import getSetup
 
-
 TARGET_CELL = "Treg"
 
 
@@ -16,6 +15,7 @@ def makeFigure():
 
     markerDF = importCITE()
     new_df = markerDF.head(1000)
+    # Armaan: you are creating a list of receptors and then overwriting it right after.
     receptors = []
     for column in new_df.columns:
         if column not in ["CellType1", "CellType2", "CellType3", "Cell"]:
