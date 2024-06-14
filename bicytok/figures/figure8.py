@@ -1,25 +1,31 @@
 import pandas as pd
 import seaborn as sns
-from .common import getSetup
+
 from ..distanceMetricFuncs import KL_divergence_2D
 from ..imports import importCITE
+from .common import getSetup
+
+TARGET_CELL = "Treg"
 
 
 def makeFigure():
     """clustermaps of KL values for receptors + specified cell type"""
+    ax, f = getSetup((40, 40), (1, 1))
+
     markerDF = importCITE()
     new_df = markerDF.head(1000)
+    # Armaan: you are creating a list of receptors and then overwriting it right after.
     receptors = []
     for column in new_df.columns:
         if column not in ["CellType1", "CellType2", "CellType3", "Cell"]:
             receptors.append(column)
-    ax, f = getSetup((40, 40), (1, 1))
+
     receptors = ["CD25", "CD35"]
-    target_cells = "Treg"
+    TARGET_CELL = "Treg"
     resultsKL = []
     for receptor in receptors[0:5]:
         val = KL_divergence_2D(
-            new_df, receptor, target_cells, special_receptor=None, ax=None
+            new_df, receptor, TARGET_CELL, special_receptor=None, ax=None
         )
         resultsKL.append(val)
     flattened_resultsKL = [
