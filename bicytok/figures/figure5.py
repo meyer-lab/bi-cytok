@@ -1,11 +1,13 @@
 from os.path import dirname, join
-from .common import getSetup
+
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import numpy as np
-from ..distanceMetricFuncs import EMD_2D, correlation, KL_divergence_2D
-from ..selectivityFuncs import getSampleAbundances, optimizeDesign
+
+from ..distanceMetricFuncs import EMD_2D, KL_divergence_2D, correlation
 from ..imports import importCITE
+from ..selectivityFuncs import getSampleAbundances, optimizeDesign
+from .common import getSetup
 
 path_here = dirname(dirname(__file__))
 
