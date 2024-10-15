@@ -22,8 +22,6 @@ def cytBindingModel(
     Return:
         output: amount of receptor bound of each kind of receptor
     """
-    print(recCount)
-    print()
     Kx = getKxStar()
     ligandConc = dose / (vals[0][0] * 1e9)
 

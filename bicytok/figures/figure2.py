@@ -1,5 +1,5 @@
-from .common import getSetup
 from ..distanceMetricFuncs import KL_EMD_1D
+from .common import getSetup
 
 
 def makeFigure():

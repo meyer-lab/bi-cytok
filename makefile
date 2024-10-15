@@ -2,26 +2,29 @@ SHELL := /bin/bash
 
 flist = $(wildcard bicytok/figures/figure*.py)
 
-.PHONY: clean test all testprofile testcover spell
+.PHONY: clean test all testprofile pyright
 
 all: $(patsubst bicytok/figures/figure%.py, output/figure%.svg, $(flist))
 
 output/figure%.svg: bicytok/figures/figure%.py
 	@ mkdir -p ./output
-	poetry run fbuild $*
+	rye run fbuild $*
 
 clean:
 	rm -r output
 
-test:
-	poetry run pytest -s -v -x
+test: .venv
+	rye run pytest -s -v -x
+
+.venv: pyproject.toml
+	rye sync
 
 testprofile:
 	poetry run python3 -m cProfile -o profile -m pytest -s -v -x
 	gprof2dot -f pstats --node-thres=5.0 profile | dot -Tsvg -o profile.svg
 
-coverage.xml:
-	poetry run pytest --junitxml=junit.xml --cov=bicytok --cov-report xml:coverage.xml
+coverage.xml: .venv
+	rye run pytest --junitxml=junit.xml --cov=bicytok --cov-report xml:coverage.xml
 
-mypy:
-	poetry run mypy --install-types --non-interactive --ignore-missing-imports bicytok
+pyright: .venv
+	rye run pyright bicytok

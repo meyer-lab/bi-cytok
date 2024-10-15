@@ -1,11 +1,12 @@
-from .common import getSetup
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import numpy as np
+
 from ..selectivityFuncs import (
     get_cell_bindings,
     getSampleAbundances,
 )
+from .common import getSetup
 
 
 def makeFigure():

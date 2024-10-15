@@ -1,12 +1,14 @@
 from os.path import dirname
-from .common import getSetup
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import numpy as np
-import matplotlib.pyplot as plt
-from ..imports import importCITE
-from sklearn.neighbors import KernelDensity
 from scipy import stats
+from sklearn.neighbors import KernelDensity
+
+from ..imports import importCITE
+from .common import getSetup
 
 path_here = dirname(dirname(__file__))
 
