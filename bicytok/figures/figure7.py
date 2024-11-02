@@ -1,6 +1,6 @@
 import pandas as pd
 import seaborn as sns
-
+import matplotlib.pyplot as plt
 from ..distanceMetricFuncs import EMD_2D
 from ..imports import importCITE
 from .common import getSetup
@@ -8,34 +8,47 @@ from .common import getSetup
 
 def makeFigure():
     """clustermaps of EMD values for receptors + specified cell type"""
-    markerDF = importCITE()
-    new_df = markerDF.head(1000)
-    receptors = []
-    for column in new_df.columns:
-        if column not in ["CellType1", "CellType2", "CellType3", "Cell"]:
-            receptors.append(column)
+    CITE_DF = importCITE()
+    CITE_DF = CITE_DF.head(1000)
+    
     ax, f = getSetup((40, 40), (1, 1))
-    target_cells = "Treg"
+    
+    targCell = "Treg"
+    offTargState = 0
 
-    # Clustermap for EMD
-    resultsEMD = []
-    receptors = ["CD25", "CD35"]
-    for receptor in receptors:
-        val = EMD_2D(new_df, receptor, target_cells, special_receptor=None, ax=None)
-        resultsEMD.append(val)
-    flattened_results = [
-        result_tuple for inner_list in resultsEMD for result_tuple in inner_list
-    ]
-    # Create a DataFrame from the flattened_results
-    df_recep = pd.DataFrame(
-        flattened_results, columns=["Distance", "Receptor", "Signal Receptor"]
-    )
-    pivot_table = df_recep.pivot_table(
-        index="Receptor", columns="Signal Receptor", values="Distance"
-    )
-    dataset = pivot_table.fillna(0)
-    f = sns.clustermap(
-        dataset, cmap="bwr", figsize=(10, 10), annot_kws={"fontsize": 16}
-    )
+    # Define non-marker columns
+    non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
+    marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
+    markerDF = CITE_DF.loc[:, marker_columns]
+
+    # Further filter to include only columns related to CD25 and CD35
+    receptors_of_interest = ["CD25", "CD35"]
+    filtered_markerDF = markerDF.loc[:, markerDF.columns.str.contains('|'.join(receptors_of_interest), case=False)]
+
+    # Binary arrays for on-target and off-target cell types
+    on_target = (CITE_DF["CellType3"] == targCell).astype(int)
+
+    # Define off-target conditions using a dictionary
+    off_target_conditions = {
+        0: (CITE_DF["CellType3"] != targCell),     # All non-memory Tregs
+        1: (CITE_DF["CellType2"] != "Treg"),       # All non-Tregs
+        2: (CITE_DF["CellType3"] == "Treg Naive")  # Naive Tregs
+    }
+
+    # Set off_target based on offTargState
+    if offTargState in off_target_conditions:
+        off_target = off_target_conditions[offTargState].astype(int)
+    else:
+        raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
+    
+    EMD_matrix = EMD_2D(filtered_markerDF, on_target, off_target)
+    
+    df_recep = pd.DataFrame(EMD_matrix, index=receptors_of_interest, columns=receptors_of_interest)
+
+    # Visualize with a clustermap
+    sns.heatmap(df_recep, cmap="bwr", annot=True, ax=ax, cbar=True, annot_kws={"fontsize": 16})
+
+    ax.set_title("EMD between:", receptors_of_interest)
+    plt.show()
 
     return f
