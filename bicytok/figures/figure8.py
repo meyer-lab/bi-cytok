@@ -48,7 +48,7 @@ def makeFigure():
     # Visualize with a clustermap
     sns.heatmap(df_recep, cmap="bwr", annot=True, ax=ax, cbar=True, annot_kws={"fontsize": 16})
 
-    ax.set_title("KL Divergence between:", receptors_of_interest)
+    ax.set_title("KL Divergence between: CD25 and CD35")
     plt.show()
         
     
