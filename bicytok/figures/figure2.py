@@ -17,22 +17,23 @@ def makeFigure():
     CITE_DF = importCITE()  
     
     # Filter out non-marker columns
-    marker_columns = CITE_DF.columns[
-        (CITE_DF.columns != "CellType1") &
-        (CITE_DF.columns != "CellType2") &
-        (CITE_DF.columns != "CellType3") &
-        (CITE_DF.columns != "Cell")
-    ]
+    non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
+    marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
     markerDF = CITE_DF.loc[:, marker_columns]
 
-    # binary arrays for on-target and off-target 
+    # Binary arrays for on-target and off-target cell types
     on_target = (CITE_DF["CellType3"] == targCell).astype(int)
-    if offTargState == 0:  # All non-memory Tregs
-        off_target = (CITE_DF["CellType3"] != targCell).astype(int)
-    elif offTargState == 1:  # All non-Tregs
-        off_target = (CITE_DF["CellType2"] != "Treg").astype(int)
-    elif offTargState == 2:  # Naive Tregs
-        off_target = (CITE_DF["CellType3"] == "Treg Naive").astype(int)
+
+    # Define off-target conditions using a dictionary
+    off_target_conditions = {
+        0: (CITE_DF["CellType3"] != targCell),     # All non-memory Tregs
+        1: (CITE_DF["CellType2"] != "Treg"),       # All non-Tregs
+        2: (CITE_DF["CellType3"] == "Treg Naive")  # Naive Tregs
+    }
+
+    # Set off_target based on offTargState
+    if offTargState in off_target_conditions:
+        off_target = off_target_conditions[offTargState].astype(int)
     else:
         raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
     
