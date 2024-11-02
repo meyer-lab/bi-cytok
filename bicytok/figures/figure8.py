@@ -3,6 +3,7 @@ import seaborn as sns
 from .common import getSetup
 from ..distanceMetricFuncs import KL_divergence_2D
 from ..imports import importCITE
+import matplotlib.pyplot as plt
 
 
 def makeFigure():
@@ -45,7 +46,10 @@ def makeFigure():
     df_recep = pd.DataFrame(kl_matrix, index=receptors_of_interest, columns=receptors_of_interest)
 
     # Visualize with a clustermap
-    f = sns.clustermap(df_recep, cmap="bwr", figsize=(10, 10), annot=True, annot_kws={"fontsize": 16})
+    sns.heatmap(df_recep, cmap="bwr", annot=True, ax=ax, cbar=True, annot_kws={"fontsize": 16})
+
+    ax.set_title("KL Divergence between:", receptors_of_interest)
+    plt.show()
         
     
 
