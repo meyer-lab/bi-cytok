@@ -9,6 +9,7 @@ from .selectivityFuncs import convFactCalc, getSampleAbundances
 from os.path import dirname
 from .imports import importCITE
 
+
 def normalize(recAbun, targ, offTarg):
     """
     Normalizes the target and off-target abundance values within one receptor
@@ -21,14 +22,13 @@ def normalize(recAbun, targ, offTarg):
     """
 
     recAvg = np.mean(recAbun)
-        
-    assert(recAvg != 0)
+
+    assert recAvg != 0
 
     targAbun = recAbun[targ] / recAvg
     offTargAbun = recAbun[offTarg] / recAvg
 
     return targAbun, offTargAbun
-
 
 
 def calculateKLDiv(targAbun, offTargAbun, dims):
@@ -44,23 +44,15 @@ def calculateKLDiv(targAbun, offTargAbun, dims):
     """
 
     if dims == 1:
-        targKDE = KernelDensity(kernel="gaussian").fit(
-            targAbun.reshape(-1, 1)
-        )
-        offTargKDE = KernelDensity(kernel="gaussian").fit(
-            offTargAbun.reshape(-1, 1)
-        )
+        targKDE = KernelDensity(kernel="gaussian").fit(targAbun.reshape(-1, 1))
+        offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbun.reshape(-1, 1))
         minAbun = np.minimum(targAbun.min(), offTargAbun.min()) - 10
         maxAbun = np.maximum(targAbun.max(), offTargAbun.max()) + 10
         outcomes = np.arange(minAbun, maxAbun + 1).reshape(-1, 1)
 
-    elif dims == 2: #LOOK FOR WAY TO GENERALIZE FOR ALL DIMS
-        targKDE = KernelDensity(kernel="gaussian").fit(
-            targAbun.reshape(-1, 2)
-        )
-        offTargKDE = KernelDensity(kernel="gaussian").fit(
-            offTargAbun.reshape(-1, 2)
-        )
+    elif dims == 2:  # LOOK FOR WAY TO GENERALIZE FOR ALL DIMS
+        targKDE = KernelDensity(kernel="gaussian").fit(targAbun.reshape(-1, 2))
+        offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbun.reshape(-1, 2))
         minAbun = np.minimum(targAbun.min(), offTargAbun.min()) - 10
         maxAbun = np.maximum(targAbun.max(), offTargAbun.max()) + 10
         X, Y = np.mgrid[
@@ -68,7 +60,7 @@ def calculateKLDiv(targAbun, offTargAbun, dims):
             minAbun : maxAbun : ((maxAbun - minAbun) / 100),
         ]
         outcomes = np.concatenate((X.reshape(-1, 1), Y.reshape(-1, 1)), axis=1)
-    
+
     targDist = np.exp(targKDE.score_samples(outcomes))
     offTargDist = np.exp(offTargKDE.score_samples(outcomes))
     KL_div_val = stats.entropy(
@@ -76,7 +68,6 @@ def calculateKLDiv(targAbun, offTargAbun, dims):
     )
 
     return KL_div_val
-
 
 
 def KL_EMD_1D(recAbundances, targ, offTarg):
@@ -94,17 +85,18 @@ def KL_EMD_1D(recAbundances, targ, offTarg):
     EMD_vals = np.empty(recAbundances.shape[1])
 
     for rec in range(recAbundances.shape[1]):
-        targAbun, offTargAbun = normalize(recAbundances[:,rec], targ, offTarg)
+        targAbun, offTargAbun = normalize(recAbundances[:, rec], targ, offTarg)
 
         if np.mean(targAbun) > np.mean(offTargAbun):
             KL_div_vals[rec] = calculateKLDiv(targAbun, offTargAbun, dims=1)
-            EMD_vals[rec] = stats.wasserstein_distance(targAbun, offTargAbun) #Consider switching/comparing to ot.emd2_1d
+            EMD_vals[rec] = stats.wasserstein_distance(
+                targAbun, offTargAbun
+            )  # Consider switching/comparing to ot.emd2_1d
         else:
             KL_div_vals[rec] = np.nan
             EMD_vals[rec] = np.nan
-        
-    return KL_div_vals, EMD_vals
 
+    return KL_div_vals, EMD_vals
 
 
 def KL_EMD_2D(recAbundances, targ, offTarg):
@@ -130,12 +122,12 @@ def KL_EMD_2D(recAbundances, targ, offTarg):
     EMD_vals[:] = np.nan
 
     for rec1 in range(recAbundances.shape[1]):
-        targAbun1, offTargAbun1 = normalize(recAbundances[:,rec1], targ, offTarg)
+        targAbun1, offTargAbun1 = normalize(recAbundances[:, rec1], targ, offTarg)
 
         # for rec2 in range(recAbundances.shape[1]): #Make square matrix outputs (symmetrical across diagonal)
-        for rec2 in range(rec1+1): #Make triangular matrix outputs
-            targAbun2, offTargAbun2 = normalize(recAbundances[:,rec2], targ, offTarg)
-            
+        for rec2 in range(rec1 + 1):  # Make triangular matrix outputs
+            targAbun2, offTargAbun2 = normalize(recAbundances[:, rec2], targ, offTarg)
+
             # How to interpret case when rec1==rec2?
             # -Could result in 1D distances
             # -If so, can avoid running those cases for speed.
@@ -144,35 +136,32 @@ def KL_EMD_2D(recAbundances, targ, offTarg):
             #     KL_div_vals[rec2, rec1] = 0
 
             if (
-                np.mean(recAbundances[:,rec1]) > 5 and
-                np.mean(recAbundances[:,rec2]) > 5 and
-                np.mean(targAbun1) > np.mean(offTargAbun1) and
-                np.mean(targAbun2) > np.mean(offTargAbun2)
+                np.mean(recAbundances[:, rec1]) > 5
+                and np.mean(recAbundances[:, rec2]) > 5
+                and np.mean(targAbun1) > np.mean(offTargAbun1)
+                and np.mean(targAbun2) > np.mean(offTargAbun2)
             ):
                 targAbunAll = np.vstack((targAbun1, targAbun2)).transpose()
                 offTargAbunAll = np.vstack((offTargAbun1, offTargAbun2)).transpose()
-                
-                assert(targAbunAll.shape == (np.sum(targ),2))
-                
-                KL_div_vals[rec2, rec1] = calculateKLDiv(targAbunAll, offTargAbunAll, dims=2)
+
+                assert targAbunAll.shape == (np.sum(targ), 2)
+
+                KL_div_vals[rec2, rec1] = calculateKLDiv(
+                    targAbunAll, offTargAbunAll, dims=2
+                )
 
                 M = ot.dist(targAbunAll, offTargAbunAll)
-                a = (
-                    np.ones((targAbunAll.shape[0],))
-                    / targAbunAll.shape[0]
-                )
-                b = (
-                    np.ones((offTargAbunAll.shape[0],))
-                    / offTargAbunAll.shape[0]
-                )
-                EMD_vals[rec2, rec1] = ot.emd2(a, b, M, numItermax=1) #Check numIterMax
-                
+                a = np.ones((targAbunAll.shape[0],)) / targAbunAll.shape[0]
+                b = np.ones((offTargAbunAll.shape[0],)) / offTargAbunAll.shape[0]
+                EMD_vals[rec2, rec1] = ot.emd2(
+                    a, b, M, numItermax=1
+                )  # Check numIterMax
+
             else:
                 KL_div_vals[rec2, rec1] = None
                 EMD_vals[rec2, rec1] = None
-            
-    return KL_div_vals, EMD_vals
 
+    return KL_div_vals, EMD_vals
 
 
 def KL_EMD_3D(recAbundances, targ, offTarg):
@@ -182,20 +171,22 @@ def KL_EMD_3D(recAbundances, targ, offTarg):
     """
 
     x = recAbundances
-    
+
     KL_div_vals = np.empty([x.shape[1], x.shape[1], x.shape[1]])
     KL_div_vals[:] = np.nan
     EMD_vals = np.empty([x.shape[1], x.shape[1], x.shape[1]])
     EMD_vals[:] = np.nan
 
     for rec1 in range(x.shape[1]):
-        targAbun1, offTargAbun1 = normalize(x[:,rec1], targ, offTarg)
+        targAbun1, offTargAbun1 = normalize(x[:, rec1], targ, offTarg)
 
-        for rec2 in range(rec1+1):
-            targAbun2, offTargAbun2 = normalize(x[:,rec2], targ, offTarg)
+        for rec2 in range(rec1 + 1):
+            targAbun2, offTargAbun2 = normalize(x[:, rec2], targ, offTarg)
 
-            for rec3 in range(rec2+1): #Check that this correctly makes "pyramidal" output matrix
-                targAbun3, offTargAbun3 = normalize(x[:,rec3], targ, offTarg)
+            for rec3 in range(
+                rec2 + 1
+            ):  # Check that this correctly makes "pyramidal" output matrix
+                targAbun3, offTargAbun3 = normalize(x[:, rec3], targ, offTarg)
 
                 # if rec1 == rec2 and rec1 == rec3 and rec2 == rec3: #Once again, avoid calculating 1D distances?
                 #     EMD_vals[rec3, rec2, rec1] = 0
@@ -203,31 +194,33 @@ def KL_EMD_3D(recAbundances, targ, offTarg):
                 # Could avoid 2D distances with from rec1 == rec2 and rec1, rec2 != rec3?
 
                 if (
-                    np.mean(x[:,rec1]) > 5 and
-                    np.mean(x[:,rec2]) > 5 and
-                    np.mean(x[:,rec3]) > 5 and
-                    np.mean(targAbun1) > np.mean(offTargAbun1) and
-                    np.mean(targAbun2) > np.mean(offTargAbun2) and
-                    np.mean(targAbun3) > np.mean(offTargAbun3)
+                    np.mean(x[:, rec1]) > 5
+                    and np.mean(x[:, rec2]) > 5
+                    and np.mean(x[:, rec3]) > 5
+                    and np.mean(targAbun1) > np.mean(offTargAbun1)
+                    and np.mean(targAbun2) > np.mean(offTargAbun2)
+                    and np.mean(targAbun3) > np.mean(offTargAbun3)
                 ):
-                    targAbunAll = np.vstack((targAbun1, targAbun2, targAbun3)).transpose()
-                    offTargAbunAll = np.vstack((offTargAbun1, offTargAbun2, offTargAbun3)).tranpose() #check that this is the same as original concat
-                    
-                    assert(targAbunAll.shape == (np.sum(targ),3))
+                    targAbunAll = np.vstack(
+                        (targAbun1, targAbun2, targAbun3)
+                    ).transpose()
+                    offTargAbunAll = np.vstack(
+                        (offTargAbun1, offTargAbun2, offTargAbun3)
+                    ).tranpose()  # check that this is the same as original concat
 
-                    KL_div_vals[rec3, rec2, rec1] = calculateKLDiv(targAbunAll, offTargAbunAll, dims=3)
-                    
+                    assert targAbunAll.shape == (np.sum(targ), 3)
+
+                    KL_div_vals[rec3, rec2, rec1] = calculateKLDiv(
+                        targAbunAll, offTargAbunAll, dims=3
+                    )
+
                     M = ot.dist(targAbunAll, offTargAbunAll)
-                    a = (
-                        np.ones((targAbunAll.shape[0],))
-                        / targAbunAll.shape[0]
-                    )
-                    b = (
-                        np.ones((offTargAbunAll.shape[0],))
-                        / offTargAbunAll.shape[0]
-                    )
-                    EMD_vals[rec3, rec2, rec1] = ot.emd2(a, b, M, numItermax=100) #Check numIterMax
-                
+                    a = np.ones((targAbunAll.shape[0],)) / targAbunAll.shape[0]
+                    b = np.ones((offTargAbunAll.shape[0],)) / offTargAbunAll.shape[0]
+                    EMD_vals[rec3, rec2, rec1] = ot.emd2(
+                        a, b, M, numItermax=100
+                    )  # Check numIterMax
+
                 else:
                     KL_div_vals[rec3, rec2, rec1] = None
                     EMD_vals[rec3, rec2, rec1] = None
