@@ -1,13 +1,8 @@
-import seaborn as sns
 import numpy as np
-import pandas as pd
-from sklearn.neighbors import KernelDensity
-from scipy import stats
 import ot
 import ot.plot
-from .selectivityFuncs import convFactCalc, getSampleAbundances
-from os.path import dirname
-from .imports import importCITE
+from scipy import stats
+from sklearn.neighbors import KernelDensity
 
 
 def normalize(recAbun, targ, offTarg):
