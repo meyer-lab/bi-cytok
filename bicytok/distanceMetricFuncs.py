@@ -1,6 +1,5 @@
 import numpy as np
 import ot
-import ot.plot
 from scipy import stats
 from sklearn.neighbors import KernelDensity
 
@@ -65,7 +64,9 @@ def calculateKLDiv(targAbun, offTargAbun, dims):
     return KL_div_val
 
 
-def KL_EMD_1D(recAbundances, targ, offTarg):
+def KL_EMD_1D(
+    recAbundances: np.ndarray, targ: np.ndarray, offTarg: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 1D EMD and KL Divergence between target and off-target populations within multiple receptors
     :param recAbundances: an array of receptor abundances across cells (rows) and receptors (columns)
@@ -76,8 +77,8 @@ def KL_EMD_1D(recAbundances, targ, offTarg):
         EMD_vals: a vector of EMDs where each entry is the value for one receptor
     """
 
-    KL_div_vals = np.empty(recAbundances.shape[1])
-    EMD_vals = np.empty(recAbundances.shape[1])
+    KL_div_vals = np.full(recAbundances.shape[1], np.nan)
+    EMD_vals = np.full(recAbundances.shape[1], np.nan)
 
     for rec in range(recAbundances.shape[1]):
         targAbun, offTargAbun = normalize(recAbundances[:, rec], targ, offTarg)
@@ -87,9 +88,6 @@ def KL_EMD_1D(recAbundances, targ, offTarg):
             EMD_vals[rec] = stats.wasserstein_distance(
                 targAbun, offTargAbun
             )  # Consider switching/comparing to ot.emd2_1d
-        else:
-            KL_div_vals[rec] = np.nan
-            EMD_vals[rec] = np.nan
 
     return KL_div_vals, EMD_vals
 
