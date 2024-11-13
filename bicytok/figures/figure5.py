@@ -13,7 +13,41 @@ path_here = dirname(dirname(__file__))
 
 
 def makeFigure():
-    """Figure file to generate plots of bispecific ligand selectivity for combinations of different KL divergences, EMDs, and anti-correlations."""
+    """
+    Data Import and Setup:
+    - Loads the CITE-seq dataframe (`importCITE`) and sets up plotting (`getSetup`).
+    - Defines experimental parameters, including signal receptor (`CD122`), valencies, target receptor combinations, 
+     target and off-target cell types, and dosage.
+    - Reads epitope information from a CSV file and samples their abundances across target cells using `getSampleAbundances`.
+    
+    Data Collection:
+    - Iterates over specified valencies (`[1, 2, 4]`) and target receptor combinations (e.g., `["CD25", "CD278"]`).
+    - For each valency and target receptor combination:
+    - Optimizes ligand-receptor affinities using `optimizeDesign`.
+    - Filters the CITE-seq dataframe for relevant marker columns corresponding to the target receptors.
+
+    Target and Off-Target Cell Definition*: 
+     Defines binary arrays indicating on-target cells (`Tregs`) and off-target cells based on the `offTargState` parameter:
+     - `offTargState = 0`: All non-memory Tregs.
+     - `offTargState = 1`: All non-Tregs.
+     - `offTargState = 2`: Naive Tregs only.
+    
+    Metric Calculation:
+        - Computes the following metrics for each marker subset:
+     - **KL Divergence** (`KL_divergence_2D`): Measures the divergence between on-target and off-target marker distributions.
+     - **Earth Mover's Distance** (`EMD_2D`): Quantifies the minimal "effort" to transform one distribution into another.
+     - **Correlation** (`correlation`): Anti-correlation between selected target receptors (measured using CITE-seq data).
+
+    Visualization:
+    - Creates line plots for each metric against selectivity:
+     - **KL Divergence vs. Selectivity**: Plotted on a logarithmic scale to capture variations in divergence.
+     - **EMD vs. Selectivity**: Plotted on a logarithmic scale to highlight differences in distribution shifts.
+     - **Correlation vs. Selectivity**: Shows the impact of receptor anti-correlation on ligand selectivity.
+    - Uses different hues to indicate valency levels, providing a visual comparison across varying ligand valencies.
+
+    
+    
+    """
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()

@@ -9,14 +9,17 @@ def makeFigure():
     Data Import and Setup:
    - Imports the CITE-seq dataframe (`importCITE`) and the plotting setup (`getSetup`).
    - Defines a target cell type (default: "Treg") and an off-target state (`offTargState`), specifying which cells are considered "off-target".
+    
     Off-Target State Definitions:
    - Allows the selection of different off-target conditions using `offTargState`:
      - `offTargState = 0`: All non-memory Tregs.
      - `offTargState = 1`: All non-Tregs.
      - `offTargState = 2`: Only naive Tregs.
+     
      KL Divergence and EMD Calculation**:
    - Computes the 1D KL divergence and EMD for each marker between the target and off-target cell distributions using `KL_EMD_1D`.
    - Returns two arrays: one with KL divergence values and one with EMD values.
+   
    Identifies the top 5 markers with the highest KL divergence and the top 5 markers with the highest EMD.
    - Plots horizontal bar charts for these top markers:
      - **KL Divergence Plot**: Top 5 markers sorted by KL divergence.
