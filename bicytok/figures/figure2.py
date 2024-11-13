@@ -6,7 +6,9 @@ from .common import getSetup
 
 def makeFigure():
     '''
-    Data Import and Setup:
+    Generates horizontal bar charts to visualize the top 5 markers with the highest KL Divergence and Earth Mover's Distance (EMD) values, comparing target and off-target cell distributions using CITE-seq data.
+
+    Data Import:
    - Imports the CITE-seq dataframe (`importCITE`) and the plotting setup (`getSetup`).
    - Defines a target cell type (default: "Treg") and an off-target state (`offTargState`), specifying which cells are considered "off-target".
     

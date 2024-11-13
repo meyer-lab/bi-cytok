@@ -14,7 +14,9 @@ path_here = dirname(dirname(__file__))
 
 def makeFigure():
     """
-    Data Import and Setup:
+    Generates line plots to visualize the relationship between KL Divergence, Earth Mover's Distance, and Correlation versus Selectivity across varying ligand valencies for target and off-target cell types using CITE-seq data.
+
+    Data Import:
     - Loads the CITE-seq dataframe (`importCITE`) and sets up plotting (`getSetup`).
     - Defines experimental parameters, including signal receptor (`CD122`), valencies, target receptor combinations, 
      target and off-target cell types, and dosage.
@@ -33,7 +35,7 @@ def makeFigure():
      - `offTargState = 2`: Naive Tregs only.
     
     Metric Calculation:
-        - Computes the following metrics for each marker subset:
+    - Computes the following metrics for each marker subset:
      - **KL Divergence** (`KL_divergence_2D`): Measures the divergence between on-target and off-target marker distributions.
      - **Earth Mover's Distance** (`EMD_2D`): Quantifies the minimal "effort" to transform one distribution into another.
      - **Correlation** (`correlation`): Anti-correlation between selected target receptors (measured using CITE-seq data).
