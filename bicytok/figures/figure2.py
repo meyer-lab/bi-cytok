@@ -46,7 +46,6 @@ def makeFigure():
     # Binary arrays for on-target and off-target cell types
     on_target = (CITE_DF["CellType3"] == targCell).astype(int)
 
-    # Define off-target conditions using a dictionary
     off_target_conditions = {
         0: (CITE_DF["CellType3"] != targCell),  # All non-memory Tregs
         1: (CITE_DF["CellType2"] != "Treg"),  # All non-Tregs

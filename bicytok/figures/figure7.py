@@ -70,11 +70,9 @@ def makeFigure():
     else:
         raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
 
-    # Filter the receptor data by on-target and off-target conditions
     on_target_values = filtered_markerDF[on_target.astype(bool)].values
     off_target_values = filtered_markerDF[off_target_mask].values
 
-    # Compute the EMD matrix
     EMD_matrix = EMD_2D(on_target_values, off_target_values)
 
     df_recep = pd.DataFrame(
