@@ -53,7 +53,6 @@ def makeFigure():
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()
-    new_df = CITE_DF.sample(1000, random_state=42)
 
     signal_receptor = "CD122"
     signal_valency = 1
@@ -137,12 +136,14 @@ def makeFigure():
             else:
                 raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
 
-            # Calculate KL divergence and EMD with filtered data and binary arrays
-            KLD = KL_divergence_2D(filtered_markerDF, on_target, off_target)
-            EMD = EMD_2D(filtered_markerDF, on_target, off_target)
-            corr = correlation(targCell, targets).loc[targets[0], targets[1]][
-                "Correlation"
-            ]
+         
+            KLD_matrix = KL_divergence_2D(filtered_markerDF, on_target, off_target)  #
+            EMD_matrix = EMD_2D(filtered_markerDF, on_target, off_target)  
+
+            KLD = KLD_matrix[1, 2]  
+            EMD = EMD_matrix[1, 2]  
+
+            corr = correlation(targCell, targets).loc[targets[0], targets[1]]["Correlation"]
 
             data = {
                 "KL Divergence": [KLD],

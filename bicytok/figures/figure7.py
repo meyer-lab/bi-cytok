@@ -65,13 +65,17 @@ def makeFigure():
         2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
     }
 
-    # Set off_target based on offTargState
     if offTargState in off_target_conditions:
-        off_target = off_target_conditions[offTargState].astype(int)
+        off_target_mask = off_target_conditions[offTargState]
     else:
         raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
 
-    EMD_matrix = EMD_2D(filtered_markerDF, on_target, off_target)
+    # Filter the receptor data by on-target and off-target conditions
+    on_target_values = filtered_markerDF[on_target.astype(bool)].values
+    off_target_values = filtered_markerDF[off_target_mask].values
+
+    # Compute the EMD matrix
+    EMD_matrix = EMD_2D(on_target_values, off_target_values)
 
     df_recep = pd.DataFrame(
         EMD_matrix, index=receptors_of_interest, columns=receptors_of_interest

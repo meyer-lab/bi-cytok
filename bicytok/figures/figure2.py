@@ -1,6 +1,6 @@
 from ..distanceMetricFuncs import KL_EMD_1D
 import numpy as np
-from imports import importCITE
+from ..imports import importCITE
 from ..distanceMetricFuncs import KL_EMD_1D
 from .common import getSetup
 
