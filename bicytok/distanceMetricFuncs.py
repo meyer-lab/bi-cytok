@@ -1,52 +1,10 @@
 import numpy as np
+import pandas as pd
 import ot
 from scipy import stats
 from sklearn.neighbors import KernelDensity
 from itertools import combinations_with_replacement
-
-
-def calculateKLDiv(
-    targAbun: np.ndarray, offTargAbun: np.ndarray, dims: np.ndarray
-) -> float:
-    """
-    Calculates KL Divergence between target and off-target abundance distributions
-    :param targAbun: in 1D - a vector of target abundance values for one receptor
-        in 2D - an nx2 array where each column are the target abundance values for one receptor
-    :param offTargAbun: in 1D - a vector of off-target abundance values for one receptor
-        in 2D - an nx2 array where each column are the off-target abundance values for one receptor
-    :param dims: the number of receptors being compared across
-    :return:
-        KL_div_val: the KL Divergence between target and off-target abundances
-    """
-
-    if dims == 1:
-        targKDE = KernelDensity(kernel="gaussian").fit(targAbun.reshape(-1, 1))
-        offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbun.reshape(-1, 1))
-        minAbun = np.minimum(targAbun.min(), offTargAbun.min()) - 10
-        maxAbun = np.maximum(targAbun.max(), offTargAbun.max()) + 10
-        outcomes = np.arange(minAbun, maxAbun + 1).reshape(-1, 1)
-
-    elif dims == 2:  # LOOK FOR WAY TO GENERALIZE FOR ALL DIMS
-        targKDE = KernelDensity(kernel="gaussian").fit(targAbun.reshape(-1, 2))
-        offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbun.reshape(-1, 2))
-        minAbun = np.minimum(targAbun.min(), offTargAbun.min()) - 10
-        maxAbun = np.maximum(targAbun.max(), offTargAbun.max()) + 10
-        X, Y = np.mgrid[
-            minAbun : maxAbun : ((maxAbun - minAbun) / 100),
-            minAbun : maxAbun : ((maxAbun - minAbun) / 100),
-        ]
-        outcomes = np.concatenate((X.reshape(-1, 1), Y.reshape(-1, 1)), axis=1)
-
-    elif dims == 3:
-        raise NotImplementedError("3D KL Divergence not yet implemented")
-
-    targDist = np.exp(targKDE.score_samples(outcomes))
-    offTargDist = np.exp(offTargKDE.score_samples(outcomes))
-    KL_div_val = stats.entropy(
-        offTargDist.flatten() + 1e-200, targDist.flatten() + 1e-200, base=2
-    )
-
-    return KL_div_val
+from bicytok.selectivityFuncs import getSampleAbundances
 
 
 def KL_EMD_1D(
@@ -54,19 +12,25 @@ def KL_EMD_1D(
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 1D EMD and KL Divergence between target and off-target populations within multiple receptors
-    :param recAbundances: an array of receptor abundances across cells (rows) and receptors (columns)
-    :param targ: a binary/boolian vector indicating indices of target cells
-    :param offTarg: a binary/boolian vector indicating indices of off-target cells
+    :param recAbundances: a numpy array of receptor abundances across cells (rows) and receptors (columns)
+    :param targ: a numpy vector with boolean values indicating indices of target cells
+    :param offTarg: a numpy vector with boolean values indicating indices of off-target cells
     :return:
         KL_div_vals: a vector of KL Divergences where each entry is the value for one receptor
         EMD_vals: a vector of EMDs where each entry is the value for one receptor
     """
 
+    assert all(isinstance(i, np.bool) for i in np.append(targ,offTarg)) # Check that targ and offTarg are only boolean
+    assert sum(targ) != 0 and sum(offTarg) != 0 # Check that there are target and off-target cells
+
     KL_div_vals = np.full(recAbundances.shape[1], np.nan)
     EMD_vals = np.full(recAbundances.shape[1], np.nan)
 
-    targNorms = recAbundances[targ, :] / np.mean(recAbundances[targ, :], axis=0)
-    offTargNorms = recAbundances[offTarg, :] / np.mean(recAbundances[offTarg, :], axis=0)
+    targNorms = recAbundances[targ, :] / np.mean(recAbundances, axis=0)
+    offTargNorms = recAbundances[offTarg, :] / np.mean(recAbundances, axis=0)
+
+    assert targNorms.shape[0] == sum(targ) # Check that only cells of target cell type are kept
+    assert targNorms.shape[0] != recAbundances.shape[0] # Check that not all cells are target cells
 
     for rec in range(recAbundances.shape[1]):
         if (  # Check these with pre-normalization values
@@ -76,9 +40,19 @@ def KL_EMD_1D(
             targAbun = targNorms[:, rec]
             offTargAbun = offTargNorms[:, rec]
 
-            assert targAbun == recAbundances[targ, rec] / np.mean(recAbundances[targ, rec])
+            assert all(targAbun == recAbundances[targ, rec] / np.mean(recAbundances[:, rec]))
 
-            KL_div_vals[rec] = calculateKLDiv(targAbun, offTargAbun, dims=1)
+            targKDE = KernelDensity(kernel="gaussian").fit(targAbun.reshape(-1, 1))
+            offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbun.reshape(-1, 1))
+            minAbun = np.minimum(targAbun.min(), offTargAbun.min()) - 10
+            maxAbun = np.maximum(targAbun.max(), offTargAbun.max()) + 10
+            outcomes = np.arange(minAbun, maxAbun + 1).reshape(-1, 1)
+            targDist = np.exp(targKDE.score_samples(outcomes))
+            offTargDist = np.exp(offTargKDE.score_samples(outcomes))
+            KL_div_vals[rec] = stats.entropy(
+                offTargDist.flatten() + 1e-200, targDist.flatten() + 1e-200, base=2
+            )
+
             EMD_vals[rec] = stats.wasserstein_distance(
                 targAbun, offTargAbun
             )  # Consider switching/comparing to ot.emd2_1d
@@ -91,9 +65,9 @@ def KL_EMD_2D(
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 2D EMD and KL Divergence between the target and off-target populations of two receptors, across multiple receptors
-    :param recAbundances: an array of receptor abundances across cells (rows) and receptors (columns)
-    :param targ: a binary/boolian vector indicating indices of target cells
-    :param offTarg: a binary/boolian vector indicating indices of off-target cells
+    :param recAbundances: a numpy array of receptor abundances across cells (rows) and receptors (columns)
+    :param targ: a numpy vector with boolean values indicating indices of target cells
+    :param offTarg: a numpy vector with boolean values indicating indices of off-target cells
     :return:
         KL_div_vals: an array of KL Divergences between the on- and off-target abundances of multiple receptors
             for each entry the value is calculated for two receptors, so every entry is for a different receptor pair
@@ -102,11 +76,17 @@ def KL_EMD_2D(
         EMD_vals: similar to KL_div_vals but with EMDs
     """
 
+    assert all(isinstance(i, np.bool) for i in np.append(targ,offTarg))
+    assert sum(targ) != 0 and sum(offTarg) != 0
+
     KL_div_vals = np.full((recAbundances.shape[1], recAbundances.shape[1]), np.nan)
     EMD_vals = np.full((recAbundances.shape[1], recAbundances.shape[1]), np.nan)
 
-    targNorms = recAbundances[targ, :] / np.mean(recAbundances[targ, :], axis=0)
-    offTargNorms = recAbundances[offTarg, :] / np.mean(recAbundances[offTarg, :], axis=0)
+    targNorms = recAbundances[targ, :] / np.mean(recAbundances, axis=0)
+    offTargNorms = recAbundances[offTarg, :] / np.mean(recAbundances, axis=0)
+
+    assert targNorms.shape[0] == sum(targ)
+    assert targNorms.shape[0] != recAbundances.shape[0]
 
     row, col = np.tril_indices(recAbundances.shape[1])  # Triangle indices, includes diagonal (k=0 by default)
     for rec1, rec2 in zip(row, col):
@@ -119,15 +99,26 @@ def KL_EMD_2D(
             targAbun1, targAbun2 = targNorms[:, rec1], targNorms[:, rec2]
             offTargAbun1, offTargAbun2 = offTargNorms[:, rec1], offTargNorms[:, rec2]
 
-            assert targAbun1 == recAbundances[targ, rec1] / np.mean(recAbundances[targ, rec1])
+            assert all(targAbun1 == recAbundances[targ, rec1] / np.mean(recAbundances[:, rec1]))
 
             targAbunAll = np.vstack((targAbun1, targAbun2)).transpose()
             offTargAbunAll = np.vstack((offTargAbun1, offTargAbun2)).transpose()
 
             assert targAbunAll.shape == (np.sum(targ), 2)
 
-            KL_div_vals[rec1, rec2] = calculateKLDiv(
-                targAbunAll, offTargAbunAll, dims=2
+            targKDE = KernelDensity(kernel="gaussian").fit(targAbunAll.reshape(-1, 2))
+            offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbunAll.reshape(-1, 2))
+            minAbun = np.minimum(targAbunAll.min(), offTargAbunAll.min()) - 10
+            maxAbun = np.maximum(targAbunAll.max(), offTargAbunAll.max()) + 10
+            X, Y = np.mgrid[
+                minAbun : maxAbun : ((maxAbun - minAbun) / 100),
+                minAbun : maxAbun : ((maxAbun - minAbun) / 100),
+            ]
+            outcomes = np.concatenate((X.reshape(-1, 1), Y.reshape(-1, 1)), axis=1)
+            targDist = np.exp(targKDE.score_samples(outcomes))
+            offTargDist = np.exp(offTargKDE.score_samples(outcomes))
+            KL_div_vals[rec1, rec2] = stats.entropy(
+                offTargDist.flatten() + 1e-200, targDist.flatten() + 1e-200, base=2
             )
 
             M = ot.dist(targAbunAll, offTargAbunAll)
@@ -148,11 +139,19 @@ def KL_EMD_3D(
     NOT YET IMPLEMENTED
     """
 
+    raise NotImplementedError("3D KL Divergence and EMD not yet implemented")
+
+    assert all(isinstance(i, np.bool) for i in np.append(targ,offTarg))
+    assert sum(targ) != 0 and sum(offTarg) != 0
+
     KL_div_vals = np.full((recAbundances.shape[1], recAbundances.shape[1], recAbundances.shape[1]), np.nan)
     EMD_vals = np.full((recAbundances.shape[1], recAbundances.shape[1], recAbundances.shape[1]), np.nan)
 
-    targNorms = recAbundances[targ, :] / np.mean(recAbundances[targ, :], axis=0)
-    offTargNorms = recAbundances[offTarg, :] / np.mean(recAbundances[offTarg, :], axis=0)
+    targNorms = recAbundances[targ, :] / np.mean(recAbundances, axis=0)
+    offTargNorms = recAbundances[offTarg, :] / np.mean(recAbundances, axis=0)
+
+    assert targNorms.shape[0] == sum(targ)
+    assert targNorms.shape[0] != recAbundances.shape[0]
 
     for rec1, rec2, rec3 in combinations_with_replacement(range(recAbundances.shape[1]), 3):  # 3D triangle (pyramidal?) indices, with replacement includes diagonals
         if (
@@ -166,7 +165,7 @@ def KL_EMD_3D(
             targAbun1, targAbun2, targAbun3 = targNorms[:, rec1], targNorms[:, rec2], targNorms[:, rec3]
             offTargAbun1, offTargAbun2, offTargAbun3 = offTargNorms[:, rec1], offTargNorms[:, rec2], offTargNorms[:, rec3]
 
-            assert targAbun1 == recAbundances[targ, rec1] / np.mean(recAbundances[targ, rec1])
+            assert all(targAbun1 == recAbundances[targ, rec1] / np.mean(recAbundances[:, rec1]))
 
             targAbunAll = np.vstack(
                 (targAbun1, targAbun2, targAbun3)
@@ -177,9 +176,7 @@ def KL_EMD_3D(
 
             assert targAbunAll.shape == (np.sum(targ), 3)
 
-            KL_div_vals[rec1, rec2, rec3] = calculateKLDiv(
-                targAbunAll, offTargAbunAll, dims=3
-            )
+            KL_div_vals[rec1, rec2, rec3] = 0 # Placeholder unimplemented
 
             M = ot.dist(targAbunAll, offTargAbunAll)
             a = np.ones((targAbunAll.shape[0],)) / targAbunAll.shape[0]
