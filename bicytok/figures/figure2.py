@@ -57,7 +57,6 @@ def makeFigure():
         raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
 
 
-    # Call KL_EMD_1D with the full receptor abundance array
     recAbundances = markerDF.to_numpy()
     
     KL_values, EMD_values = KL_EMD_1D(recAbundances, on_target, off_target_mask)

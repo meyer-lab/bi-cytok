@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from ..distanceMetricFuncs import KL_EMD_2D, correlation
+from ..distanceMetricFuncs import KL_EMD_2D
 from ..imports import importCITE
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign
 from .common import getSetup
@@ -137,16 +137,24 @@ def makeFigure():
             rec_abundances = filtered_markerDF.to_numpy()
             KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target)
 
-            # Select specific KL and EMD values (diagonal, or pair indices)
-            KLD = KL_div_vals[1]  # Adjust according to how you want to extract the values
-            EMD = EMD_vals[1]  # Adjust according to how you want to extract the values
+            # Calculate Pearson correlation inline (no separate function)
+            epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
+            epitopes = list(epitopesList["Epitope"].unique())
+            epitopesDF = getSampleAbundances(epitopes, np.array([targCell]))
+            epitopesDF = epitopesDF[epitopesDF["CellType2"] == (targCell)]
 
-            corr = correlation(targCell, targets).loc[targets[0], targets[1]]["Correlation"]
+            corr = epitopesDF[receptors_of_interest].corr(method="pearson")
+            sorted_corr = corr.stack().sort_values(ascending=False)
+            sorted_corr_df = pd.DataFrame({"Correlation": sorted_corr})
+
+            # Extract correlation value for the relevant receptors (CD25, CD35)
+            corr = sorted_corr_df.loc[receptors_of_interest[0], receptors_of_interest[1]]["Correlation"]
+
 
 
             data = {
-                "KL Divergence": [KLD],
-                "Earth Mover's Distance": [EMD],
+                "KL Divergence": [KL_div_vals],
+                "Earth Mover's Distance": [EMD_vals],
                 "Correlation": [corr],
                 "Selectivity": select,
                 "Valency": [val],

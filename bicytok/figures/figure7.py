@@ -69,16 +69,12 @@ def makeFigure():
         raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
 
 
-    # Call KL_EMD_1D with the full receptor abundance array
     rec_abundances = filtered_markerDF.to_numpy()
 
-    # Calculate KL Divergence and EMD using KL_EMD_2D
     KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target_mask)
 
-    # Since the KL and EMD arrays are symmetric, we'll store only the upper triangle of the matrix
     EMD_matrix = np.triu(EMD_vals, k=1) + np.triu(EMD_vals.T, k=1)
 
-    # Create DataFrames for KL and EMD matrices
     df_EMD = pd.DataFrame(EMD_matrix, index=receptors_of_interest, columns=receptors_of_interest)
 
     # Visualize the EMD matrix with a heatmap
