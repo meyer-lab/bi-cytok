@@ -76,7 +76,6 @@ def makeFigure():
     KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target_mask)
 
     # Since the KL and EMD arrays are symmetric, we'll store only the upper triangle of the matrix
-    KL_div_matrix = np.triu(KL_div_vals, k=1) + np.triu(KL_div_vals.T, k=1)
     EMD_matrix = np.triu(EMD_vals, k=1) + np.triu(EMD_vals.T, k=1)
 
     # Create DataFrames for KL and EMD matrices
