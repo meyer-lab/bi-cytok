@@ -121,7 +121,7 @@ def makeFigure():
             ]
 
             # Create binary arrays for on-target and off-target cell types
-            on_target = (CITE_DF["CellType3"] == targCell).astype(int)
+            on_target = (CITE_DF["CellType3"] == targCell).to_numpy() 
 
             # Define off-target conditions using a dictionary
             off_target_conditions = {
@@ -132,7 +132,7 @@ def makeFigure():
 
             # Set off_target based on offTargState
             if offTargState in off_target_conditions:
-                off_target = off_target_conditions[offTargState].astype(int)
+                off_target = off_target_conditions[offTargState].to_numpy()  
             else:
                 raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
 
