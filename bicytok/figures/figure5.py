@@ -136,7 +136,7 @@ def makeFigure():
             else:
                 raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
 
-         
+            
             KLD_matrix = KL_divergence_2D(filtered_markerDF, on_target, off_target)  #
             EMD_matrix = EMD_2D(filtered_markerDF, on_target, off_target)  
 

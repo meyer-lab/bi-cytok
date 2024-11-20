@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-
-from ..distanceMetricFuncs import EMD_2D
+import numpy as np
+from ..distanceMetricFuncs import KL_EMD_2D
 from ..imports import importCITE
 from .common import getSetup
 
@@ -55,10 +55,8 @@ def makeFigure():
         :, markerDF.columns.str.contains("|".join(receptors_of_interest), case=False)
     ]
 
-    # Binary arrays for on-target and off-target cell types
-    on_target = (CITE_DF["CellType3"] == targCell).astype(int)
+    on_target = (CITE_DF["CellType3"] == targCell).to_numpy()
 
-    # Define off-target conditions using a dictionary
     off_target_conditions = {
         0: (CITE_DF["CellType3"] != targCell),  # All non-memory Tregs
         1: (CITE_DF["CellType2"] != "Treg"),  # All non-Tregs
@@ -66,22 +64,27 @@ def makeFigure():
     }
 
     if offTargState in off_target_conditions:
-        off_target_mask = off_target_conditions[offTargState]
+        off_target_mask = off_target_conditions[offTargState].to_numpy()  
     else:
         raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
 
-    on_target_values = filtered_markerDF[on_target.astype(bool)].values
-    off_target_values = filtered_markerDF[off_target_mask].values
 
-    EMD_matrix = EMD_2D(on_target_values, off_target_values)
+    # Call KL_EMD_1D with the full receptor abundance array
+    rec_abundances = filtered_markerDF.to_numpy()
 
-    df_recep = pd.DataFrame(
-        EMD_matrix, index=receptors_of_interest, columns=receptors_of_interest
-    )
+    # Calculate KL Divergence and EMD using KL_EMD_2D
+    KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target_mask)
 
-    # Visualize with a clustermap
+    # Since the KL and EMD arrays are symmetric, we'll store only the upper triangle of the matrix
+    KL_div_matrix = np.triu(KL_div_vals, k=1) + np.triu(KL_div_vals.T, k=1)
+    EMD_matrix = np.triu(EMD_vals, k=1) + np.triu(EMD_vals.T, k=1)
+
+    # Create DataFrames for KL and EMD matrices
+    df_EMD = pd.DataFrame(EMD_matrix, index=receptors_of_interest, columns=receptors_of_interest)
+
+    # Visualize the EMD matrix with a heatmap
     sns.heatmap(
-        df_recep, cmap="bwr", annot=True, ax=ax, cbar=True, annot_kws={"fontsize": 16}
+        df_EMD, cmap="bwr", annot=True, ax=ax, cbar=True, annot_kws={"fontsize": 16}
     )
 
     ax.set_title("EMD between: CD25 and CD35")

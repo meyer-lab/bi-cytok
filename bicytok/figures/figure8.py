@@ -53,7 +53,7 @@ def makeFigure():
     ]
 
     # Binary arrays for on-target and off-target cell types
-    on_target = (CITE_DF["CellType3"] == targCell).astype(int)
+    on_target = (CITE_DF["CellType3"] == targCell).to_numpy()
 
     # Define off-target conditions using a dictionary
     off_target_conditions = {
