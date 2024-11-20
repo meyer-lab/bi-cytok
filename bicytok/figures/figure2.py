@@ -43,8 +43,7 @@ def makeFigure():
     marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
     markerDF = CITE_DF.loc[:, marker_columns]
 
-    # Binary arrays for on-target and off-target cell types
-    on_target = (CITE_DF["CellType3"] == targCell).astype(int)
+    on_target = (CITE_DF["CellType3"] == targCell).to_numpy()
 
     off_target_conditions = {
         0: (CITE_DF["CellType3"] != targCell),  # All non-memory Tregs
@@ -53,14 +52,16 @@ def makeFigure():
     }
 
     if offTargState in off_target_conditions:
-        off_target_mask = off_target_conditions[offTargState]
+        off_target_mask = off_target_conditions[offTargState].to_numpy()  
     else:
         raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
 
-    on_target_values = markerDF[on_target.astype(bool)].values
-    off_target_values = markerDF[off_target_mask].values
 
-    KL_values, EMD_values = KL_EMD_1D(on_target_values, off_target_values)
+    # Call KL_EMD_1D with the full receptor abundance array
+    recAbundances = markerDF.to_numpy()
+    
+    KL_values, EMD_values = KL_EMD_1D(recAbundances, on_target, off_target_mask)
+
 
     top_5_KL_indices = np.argsort(np.nan_to_num(KL_values))[-5:]
     top_5_EMD_indices = np.argsort(np.nan_to_num(EMD_values))[-5:]
