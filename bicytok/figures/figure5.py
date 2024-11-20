@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from ..distanceMetricFuncs import EMD_2D, KL_divergence_2D, correlation
+from ..distanceMetricFuncs import KL_EMD_2D, correlation
 from ..imports import importCITE
 from ..selectivityFuncs import getSampleAbundances, optimizeDesign
 from .common import getSetup
@@ -123,27 +123,26 @@ def makeFigure():
             # Create binary arrays for on-target and off-target cell types
             on_target = (CITE_DF["CellType3"] == targCell).to_numpy() 
 
-            # Define off-target conditions using a dictionary
             off_target_conditions = {
                 0: (CITE_DF["CellType3"] != targCell),  # All non-memory Tregs
                 1: (CITE_DF["CellType2"] != "Treg"),  # All non-Tregs
                 2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
             }
 
-            # Set off_target based on offTargState
             if offTargState in off_target_conditions:
                 off_target = off_target_conditions[offTargState].to_numpy()  
             else:
                 raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
 
-            
-            KLD_matrix = KL_divergence_2D(filtered_markerDF, on_target, off_target)  #
-            EMD_matrix = EMD_2D(filtered_markerDF, on_target, off_target)  
+            rec_abundances = filtered_markerDF.to_numpy()
+            KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target)
 
-            KLD = KLD_matrix[1, 2]  
-            EMD = EMD_matrix[1, 2]  
+            # Select specific KL and EMD values (diagonal, or pair indices)
+            KLD = KL_div_vals[1]  # Adjust according to how you want to extract the values
+            EMD = EMD_vals[1]  # Adjust according to how you want to extract the values
 
             corr = correlation(targCell, targets).loc[targets[0], targets[1]]["Correlation"]
+
 
             data = {
                 "KL Divergence": [KLD],
