@@ -1,12 +1,12 @@
 import numpy as np
-import pandas as pd
+from numba import njit
 import ot
 from scipy import stats
 from sklearn.neighbors import KernelDensity
 from itertools import combinations_with_replacement
-from bicytok.selectivityFuncs import getSampleAbundances
 
 
+@njit(parallel=False)
 def KL_EMD_1D(
     recAbundances: np.ndarray, targ: np.ndarray, offTarg: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -60,6 +60,7 @@ def KL_EMD_1D(
     return KL_div_vals, EMD_vals
 
 
+@njit(parallel=False)
 def KL_EMD_2D(
     recAbundances: np.ndarray, targ: np.ndarray, offTarg: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -131,6 +132,7 @@ def KL_EMD_2D(
     return KL_div_vals, EMD_vals
 
 
+@njit(parallel=False)
 def KL_EMD_3D(
     recAbundances: np.ndarray, targ: np.ndarray, offTarg: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
