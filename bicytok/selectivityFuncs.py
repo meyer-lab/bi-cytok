@@ -19,9 +19,11 @@ def get_affs(recXaffs: np.ndarray) -> np.ndarray:
     Return:
         affs: restructured receptor affinities
     """
+
     affs = pd.DataFrame()
     for i, recXaff in enumerate(recXaffs):
         affs = np.append(affs, np.power(10, recXaff))
+    
     holder = np.full((recXaffs.size, recXaffs.size), 1e2)
     np.fill_diagonal(holder, affs)
     affs = holder
@@ -79,7 +81,7 @@ def minSelecFunc( #convert to an inner function of optimizeDesign???
     )
     offTargetBound = (
         np.sum(
-            bispecOpt_Vec(
+            cytBindingModel_vec(
                 recCount=offTargRecs.to_numpy(), recXaffs=affs, dose=dose, valencies=valencies
             )
         )
@@ -122,6 +124,7 @@ def optimizeDesign( #rename to optimizeSelectivityAffs
         optSelectivity: optimized selectivity value
             Can also be modified to return optimized affinity parameter
     """
+
     X0 = prevOptAffs
     minAffs = [7.0] * (len(targets) + 1) # minAffs and maxAffs chosen based on biologically realistic affinities for engineered ligands
     maxAffs = [9.0] * (len(targets) + 1)
@@ -163,7 +166,7 @@ def convFactCalc(CITE_DF: pd.DataFrame) -> pd.DataFrame:
             numeric receptor counts
     """
     
-    cellToI = [ #rename cellToI to something more relevant
+    cellTypes = [
         "CD4 TCM",
         "CD8 Naive",
         "NK",
@@ -172,13 +175,17 @@ def convFactCalc(CITE_DF: pd.DataFrame) -> pd.DataFrame:
         "CD4 CTL",
         "CD8 TCM",
         "Treg",
-        "CD4 TEM",
+        "CD4 TEM"
     ]
-    markers = ["CD122", "CD127", "CD25"]
+    markers = [
+        "CD122", 
+        "CD127", 
+        "CD25"
+    ]
     markerDF = pd.DataFrame()
 
     for marker in markers:
-        for cell in cellToI:
+        for cell in cellTypes:
             cellTDF = CITE_DF.loc[CITE_DF["CellType2"] == cell][marker]
             dftemp = pd.DataFrame(
                 {
@@ -206,7 +213,12 @@ def convFactCalc(CITE_DF: pd.DataFrame) -> pd.DataFrame:
         "CD8 TEM": "CD8",
         "Treg": "Treg",
     }
-    markDict = {"CD25": "IL2Ra", "CD122": "IL2Rb", "CD127": "IL7Ra", "CD132": "gc"}
+    markDict = {
+        "CD25": "IL2Ra", 
+        "CD122": "IL2Rb", 
+        "CD127": "IL7Ra", 
+        "CD132": "gc"
+    }
     markerDF = markerDF.replace({"Marker": markDict, "Cell Type": cellDict})
     markerDFw = pd.DataFrame()
 

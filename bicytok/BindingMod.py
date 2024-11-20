@@ -15,7 +15,7 @@ def Req_func2(
     KxStar: float,
     Cplx: np.ndarray,
     Kav: np.ndarray,
-):
+) -> np.ndarray:
     Psi = Req * Kav * KxStar
     Psirs = Psi.sum(axis=1) + 1
     Psinorm = Psi / Psirs[:, np.newaxis]
