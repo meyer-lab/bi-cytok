@@ -627,15 +627,3 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, special_receptor, a
         ax.set_xticklabels(receptor_names, rotation="vertical")
 
     return sorted_results
-
-
-def correlation(cell_type, relevant_epitopes):
-    """Calculates the Pearson correlation between two celltypes receptor counts"""
-    epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
-    epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = getSampleAbundances(epitopes, np.array([cell_type]))
-    epitopesDF = epitopesDF[epitopesDF["CellType2"] == (cell_type)]
-    corr = epitopesDF[relevant_epitopes].corr(method="pearson")
-    sorted_corr = corr.stack().sort_values(ascending=False)
-    sorted_corr_df = pd.DataFrame({"Correlation": sorted_corr})
-    return sorted_corr_df
