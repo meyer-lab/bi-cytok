@@ -1,27 +1,28 @@
+from itertools import combinations_with_replacement
+
 import numpy as np
-from numba import njit
 import ot
 from scipy import stats
 from sklearn.neighbors import KernelDensity
-from itertools import combinations_with_replacement
 
 
-@njit(parallel=False)
 def KL_EMD_1D(
     recAbundances: np.ndarray, targ: np.ndarray, offTarg: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Calculates 1D EMD and KL Divergence between target and off-target populations within multiple receptors
-    :param recAbundances: a numpy array of receptor abundances across cells (rows) and receptors (columns)
+    Calculates 1D EMD and KL Divergence between target and off-target populations within
+    multiple receptors
+
+    :param recAbundances: abundances across cells (rows) and receptors (columns)
     :param targ: a numpy vector with boolean values indicating indices of target cells
-    :param offTarg: a numpy vector with boolean values indicating indices of off-target cells
+    :param offTarg: vector with boolean values indicating indices of off-target cells
     :return:
-        KL_div_vals: a vector of KL Divergences where each entry is the value for one receptor
-        EMD_vals: a vector of EMDs where each entry is the value for one receptor
+        KL_div_vals: vector of KL Divergences per receptor
+        EMD_vals: a vector of EMDs per receptor
     """
 
     assert all(
-        isinstance(i, np.bool) for i in np.append(targ, offTarg)
+        isinstance(i, bool) for i in np.append(targ, offTarg)
     )  # Check that targ and offTarg are only boolean
     assert (
         sum(targ) != 0 and sum(offTarg) != 0
@@ -72,24 +73,26 @@ def KL_EMD_1D(
     return KL_div_vals, EMD_vals
 
 
-@njit(parallel=False)
 def KL_EMD_2D(
     recAbundances: np.ndarray, targ: np.ndarray, offTarg: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Calculates 2D EMD and KL Divergence between the target and off-target populations of two receptors, across multiple receptors
-    :param recAbundances: a numpy array of receptor abundances across cells (rows) and receptors (columns)
+    Calculates 2D EMD and KL Divergence between the target and off-target populations
+    of two receptors, across multiple receptors
+
+    :param recAbundances: abundances across cells (rows) and receptors (columns)
     :param targ: a numpy vector with boolean values indicating indices of target cells
-    :param offTarg: a numpy vector with boolean values indicating indices of off-target cells
+    :param offTarg: vector with boolean values indicating indices of off-target cells
     :return:
-        KL_div_vals: an array of KL Divergences between the on- and off-target abundances of multiple receptors
-            for each entry the value is calculated for two receptors, so every entry is for a different receptor pair
-            the array is triangular because it is symmetric across the diagonal
-            the diagonal values are the 1D distances
+        KL_div_vals: an array of KL Divergences between the on- and off-target
+            abundances of multiple receptors for each entry the value is calculated
+            for two receptors, so every entry is for a different receptor pair the array
+            is triangular because it is symmetric across the diagonal the diagonal
+            values are the 1D distances
         EMD_vals: similar to KL_div_vals but with EMDs
     """
 
-    assert all(isinstance(i, np.bool) for i in np.append(targ, offTarg))
+    assert all(isinstance(i, bool) for i in np.append(targ, offTarg))
     assert sum(targ) != 0 and sum(offTarg) != 0
 
     KL_div_vals = np.full((recAbundances.shape[1], recAbundances.shape[1]), np.nan)
@@ -104,7 +107,7 @@ def KL_EMD_2D(
     row, col = np.tril_indices(
         recAbundances.shape[1]
     )  # Triangle indices, includes diagonal (k=0 by default)
-    for rec1, rec2 in zip(row, col):
+    for rec1, rec2 in zip(row, col, strict=False):
         if (
             np.mean(recAbundances[:, rec1]) > 5
             and np.mean(recAbundances[:, rec2]) > 5
@@ -155,7 +158,6 @@ def KL_EMD_2D(
     return KL_div_vals, EMD_vals
 
 
-@njit(parallel=False)
 def KL_EMD_3D(
     recAbundances: np.ndarray, targ: np.ndarray, offTarg: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
