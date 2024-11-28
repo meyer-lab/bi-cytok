@@ -10,100 +10,32 @@
 #   universal: false
 
 -e file:.
-aniso8601==9.0.1
-    # via flask-restful
 anndata==0.10.9
     # via bi-cytok
-    # via cellxgene
 array-api-compat==1.9
     # via anndata
-blinker==1.8.2
-    # via flask
-boto3==1.35.37
-    # via cellxgene
-botocore==1.35.37
-    # via boto3
-    # via s3fs
-    # via s3transfer
-brotli==1.1.0
-    # via flask-compress
-cellxgene==1.3.0
-    # via bi-cytok
-certifi==2024.8.30
-    # via requests
-charset-normalizer==3.4.0
-    # via requests
-click==8.1.7
-    # via cellxgene
-    # via flask
 contourpy==1.3.0
     # via matplotlib
 cycler==0.12.1
     # via matplotlib
-flask==3.0.3
-    # via cellxgene
-    # via flask-compress
-    # via flask-cors
-    # via flask-restful
-    # via flask-server-timing
-flask-compress==1.15
-    # via cellxgene
-flask-cors==5.0.0
-    # via cellxgene
-flask-restful==0.3.10
-    # via cellxgene
-flask-server-timing==0.1.2
-    # via cellxgene
-flask-talisman==1.1.0
-    # via cellxgene
-flatbuffers==2.0.7
-    # via cellxgene
-flatten-dict==0.4.2
-    # via cellxgene
 fonttools==4.54.1
     # via matplotlib
-fsspec==2024.9.0
-    # via cellxgene
-    # via s3fs
-gunicorn==23.0.0
-    # via cellxgene
 h5py==3.12.1
     # via anndata
-    # via cellxgene
-idna==3.10
-    # via requests
-itsdangerous==2.2.0
-    # via flask
-jinja2==3.1.4
-    # via flask
-jmespath==1.0.1
-    # via boto3
-    # via botocore
 joblib==1.4.2
     # via scikit-learn
 kiwisolver==1.4.7
     # via matplotlib
-llvmlite==0.43.0
-    # via numba
-markupsafe==3.0.1
-    # via jinja2
-    # via werkzeug
 matplotlib==3.9.2
     # via bi-cytok
     # via seaborn
 natsort==8.4.0
     # via anndata
-nodeenv==1.9.1
-    # via pyright
-numba==0.60.0
-    # via cellxgene
 numpy==2.0.1
     # via anndata
-    # via cellxgene
     # via contourpy
     # via h5py
     # via matplotlib
-    # via numba
     # via pandas
     # via pot
     # via scikit-learn
@@ -111,12 +43,9 @@ numpy==2.0.1
     # via seaborn
 packaging==24.1
     # via anndata
-    # via cellxgene
-    # via gunicorn
     # via matplotlib
 pandas==2.2.3
     # via anndata
-    # via cellxgene
     # via seaborn
 pillow==10.4.0
     # via matplotlib
@@ -124,49 +53,23 @@ pot==0.9.4
     # via bi-cytok
 pyparsing==3.1.4
     # via matplotlib
-pyright==1.1.384
-    # via bi-cytok
 python-dateutil==2.9.0.post0
-    # via botocore
     # via matplotlib
     # via pandas
 pytz==2024.2
-    # via flask-restful
     # via pandas
-pyyaml==6.0.2
-    # via cellxgene
-requests==2.32.3
-    # via cellxgene
-s3fs==0.4.2
-    # via cellxgene
-s3transfer==0.10.3
-    # via boto3
 scikit-learn==1.5.2
     # via bi-cytok
 scipy==1.14.1
     # via anndata
     # via bi-cytok
-    # via cellxgene
     # via pot
     # via scikit-learn
 seaborn==0.13.2
     # via bi-cytok
-setuptools==75.1.0
-    # via cellxgene
 six==1.16.0
-    # via flask-restful
-    # via flatten-dict
     # via python-dateutil
 threadpoolctl==3.5.0
     # via scikit-learn
-typing-extensions==4.12.2
-    # via pyright
 tzdata==2024.2
     # via pandas
-urllib3==2.2.3
-    # via botocore
-    # via requests
-werkzeug==3.0.4
-    # via flask
-zstandard==0.23.0
-    # via flask-compress
