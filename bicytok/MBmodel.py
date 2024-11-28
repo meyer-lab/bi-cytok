@@ -8,10 +8,7 @@ from .BindingMod import polyc
 
 
 def cytBindingModel(
-    recCount: np.ndarray, 
-    recXaffs: np.ndarray, 
-    dose: float, 
-    valencies: np.ndarray
+    recCount: np.ndarray, recXaffs: np.ndarray, dose: float, valencies: np.ndarray
 ) -> np.ndarray:
     """
     Runs binding model for a given mutein, valency, dose, and cell type
@@ -27,8 +24,6 @@ def cytBindingModel(
     Kx = 2.24e-12
     ligandConc = dose / (valencies[0][0] * 1e9)
 
-    output = polyc(
-        ligandConc, Kx, recCount, valencies, recXaffs
-    )[0]
+    output = polyc(ligandConc, Kx, recCount, valencies, recXaffs)[0]
 
     return output
