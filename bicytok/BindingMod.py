@@ -3,11 +3,9 @@ Implementation of a simple multivalent binding model.
 """
 
 import numpy as np
-from numba import njit
 from scipy.optimize import leastsq
 
 
-@njit(parallel=False)
 def Req_func2(
     Req: np.ndarray,
     Rtot: np.ndarray,
