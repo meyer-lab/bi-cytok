@@ -1,12 +1,14 @@
 from os.path import dirname, join
-from .common import getSetup
+
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import numpy as np
+
 from ..selectivityFuncs import (
     getSampleAbundances,
     optimizeDesign,
 )
+from .common import getSetup
 
 path_here = dirname(dirname(__file__))
 
@@ -72,8 +74,8 @@ def makeFigure():
             )
 
             data = {
-                "Target 1": "{} ({})".format(target1, valencies[i]),
-                "Target 2": "{} ({})".format(target2, valencies[j]),
+                "Target 1": f"{target1} ({valencies[i]})",
+                "Target 2": f"{target2} ({valencies[j]})",
                 "Selectivity": 1 / optParams[0],
             }
             df_temp = pd.DataFrame(

@@ -1,19 +1,19 @@
 """File that deals with everything about importing and sampling."""
 
-import os
-from functools import lru_cache
-from os.path import join
-import pandas as pd
 import gzip
-import anndata as an
-from scipy.io import mmread
+import os
+from functools import cache
+from os.path import join
 from zipfile import ZipFile
 
+import anndata as an
+import pandas as pd
+from scipy.io import mmread
 
 path_here = os.path.dirname(os.path.dirname(__file__))
 
 
-@lru_cache(maxsize=None)
+@cache
 def getBindDict():
     """Gets binding to pSTAT fluorescent conversion dictionary"""
     path = os.path.dirname(os.path.dirname(__file__))
@@ -23,7 +23,7 @@ def getBindDict():
     return bindingDF
 
 
-@lru_cache(maxsize=None)
+@cache
 def importReceptors():
     """Makes Complete receptor expression Dict"""
     recDF = pd.read_csv(join(path_here, "bicytok/data/RecQuantitation.csv"))
@@ -35,7 +35,7 @@ def importReceptors():
     return recDF
 
 
-@lru_cache(maxsize=None)
+@cache
 def makeCITEdf():
     """Makes cite surface epitope csv for given cell type, DON'T USE THIS UNLESS DATA NEEDS RESTRUCTURING"""
     """

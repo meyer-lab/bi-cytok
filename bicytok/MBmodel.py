@@ -3,7 +3,9 @@ Implementation of a simple multivalent binding model.
 """
 
 import numpy as np
+
 from .BindingMod import polyc
+
 # from valentBind import polyc # Look into differences between valentBind and BindingMod versions of polyc
 
 
