@@ -13,7 +13,7 @@ def Req_func2(
     KxStar: float,
     Cplx: np.ndarray,
     Kav: np.ndarray,
-):
+) -> np.ndarray:
     Psi = Req * Kav * KxStar
     Psirs = Psi.sum(axis=1) + 1
     Psinorm = Psi / Psirs[:, np.newaxis]
@@ -24,7 +24,7 @@ def Req_func2(
 
 def polyc(
     L0: float, KxStar: float, Rtot: np.ndarray, Cplx: np.ndarray, Kav: np.ndarray
-):
+) -> np.ndarray:
     """
     The main function to be called for multivalent binding
     :param L0: concentration of ligand complexes
