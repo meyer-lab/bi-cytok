@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import numpy as np
+
 from ..distanceMetricFuncs import KL_EMD_2D
 from ..imports import importCITE
 from .common import getSetup
@@ -9,28 +10,28 @@ from .common import getSetup
 
 def makeFigure():
     """
-    Generates a heatmap of KL divergence values for selected receptors (CD25, CD35) across a specified cell type.
+     Generates a heatmap of KL divergence values for selected receptors (CD25, CD35) across a specified cell type.
 
-    Data Import: Loads and filters CITE-seq data for the first 1000 rows.
+     Data Import: Loads and filters CITE-seq data for the first 1000 rows.
 
-    Receptor Selection:
-   - Filters the marker dataframe to include only columns related to the receptors of interest, specifically 
-     `"CD25"` and `"CD35"`, for further analysis.
+     Receptor Selection:
+    - Filters the marker dataframe to include only columns related to the receptors of interest, specifically
+      `"CD25"` and `"CD35"`, for further analysis.
 
-    Defines binary arrays for on-target cells (`Tregs`) and off-target cells based on the `offTargState` parameter:
-     - `offTargState = 0`: All non-Tregs (including non-memory Tregs).
-     - `offTargState = 1`: All non-Treg cells (excluding any type of Treg).
-     - `offTargState = 2`: Naive Tregs only.
-    
-    Divergence Calculation:
-   - Computes a KL divergence matrix using `KL_divergence_2D` to measure the dissimilarity between on-target 
-     ("Treg") and off-target cell distributions for the selected receptors (CD25 and CD35).
-   - Constructs a DataFrame (`df_recep`) to store the computed KL divergence values, indexed and labeled by the receptors of interest.
+     Defines binary arrays for on-target cells (`Tregs`) and off-target cells based on the `offTargState` parameter:
+      - `offTargState = 0`: All non-Tregs (including non-memory Tregs).
+      - `offTargState = 1`: All non-Treg cells (excluding any type of Treg).
+      - `offTargState = 2`: Naive Tregs only.
 
-    Visualization:
-   - Generates a heatmap of the KL divergence matrix using Seaborn's `heatmap` function.
-   - The heatmap uses a "bwr" color map to visually represent the divergence values, with annotations to display specific values.
-   - Sets the title of the heatmap to indicate that it shows KL divergence between CD25 and CD35.
+     Divergence Calculation:
+    - Computes a KL divergence matrix using `KL_divergence_2D` to measure the dissimilarity between on-target
+      ("Treg") and off-target cell distributions for the selected receptors (CD25 and CD35).
+    - Constructs a DataFrame (`df_recep`) to store the computed KL divergence values, indexed and labeled by the receptors of interest.
+
+     Visualization:
+    - Generates a heatmap of the KL divergence matrix using Seaborn's `heatmap` function.
+    - The heatmap uses a "bwr" color map to visually represent the divergence values, with annotations to display specific values.
+    - Sets the title of the heatmap to indicate that it shows KL divergence between CD25 and CD35.
 
     """
     CITE_DF = importCITE()
@@ -74,8 +75,12 @@ def makeFigure():
     KL_div_matrix = np.triu(KL_div_vals, k=1) + np.triu(KL_div_vals.T, k=1)
     EMD_matrix = np.triu(EMD_vals, k=1) + np.triu(EMD_vals.T, k=1)
 
-    df_KL = pd.DataFrame(KL_div_matrix, index=receptors_of_interest, columns=receptors_of_interest)
-    df_EMD = pd.DataFrame(EMD_matrix, index=receptors_of_interest, columns=receptors_of_interest)
+    df_KL = pd.DataFrame(
+        KL_div_matrix, index=receptors_of_interest, columns=receptors_of_interest
+    )
+    df_EMD = pd.DataFrame(
+        EMD_matrix, index=receptors_of_interest, columns=receptors_of_interest
+    )
 
     # Visualize the EMD matrix with a heatmap
     sns.heatmap(

@@ -627,6 +627,3 @@ def KL_divergence_2D(dataset, signal_receptor, target_cells, special_receptor, a
         ax.set_xticklabels(receptor_names, rotation="vertical")
 
     return sorted_results
-
-
-

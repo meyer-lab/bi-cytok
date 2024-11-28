@@ -1,41 +1,42 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import numpy as np
+
 from ..distanceMetricFuncs import KL_EMD_2D
 from ..imports import importCITE
 from .common import getSetup
 
 
 def makeFigure():
-    '''
-    Generates a heatmap visualizing the Earth Mover's Distance (EMD) between selected receptors (CD25 and CD35) for a target cell type ("Treg") compared to off-target populations
-    
-    Data Import:
-   - Loads the CITE-seq dataset using `importCITE` and samples the first 1000 rows for analysis.
-   - Identifies non-marker columns (`CellType1`, `CellType2`, `CellType3`, `Cell`) and filters out these columns 
-     to retain only the marker (receptor) columns for analysis.
+    """
+     Generates a heatmap visualizing the Earth Mover's Distance (EMD) between selected receptors (CD25 and CD35) for a target cell type ("Treg") compared to off-target populations
 
-    Receptor Selection:
-   - Filters the marker dataframe to include only columns related to the receptors of interest, specifically `"CD25"` and `"CD35"`, 
-     focusing on these markers for the calculation of EMD.
+     Data Import:
+    - Loads the CITE-seq dataset using `importCITE` and samples the first 1000 rows for analysis.
+    - Identifies non-marker columns (`CellType1`, `CellType2`, `CellType3`, `Cell`) and filters out these columns
+      to retain only the marker (receptor) columns for analysis.
 
-    Target and Off-Target Cell Definition:
-   - Creates a binary array for on-target cells based on the specified target cell type (`"Treg"`).
-   - Defines off-target cell populations using the `offTargState` parameter:
-     - `offTargState = 0`: All non-memory Tregs.
-     - `offTargState = 1`: All non-Tregs.
-     - `offTargState = 2`: Only naive Tregs.
+     Receptor Selection:
+    - Filters the marker dataframe to include only columns related to the receptors of interest, specifically `"CD25"` and `"CD35"`,
+      focusing on these markers for the calculation of EMD.
 
-    EMD Calculation:
-   - Computes an Earth Mover's Distance (EMD) matrix using the `EMD_2D` function to measure the dissimilarity 
-     between on-target ("Treg") and off-target cell distributions for the selected receptors (CD25 and CD35).
-   - Constructs a DataFrame (`df_recep`) to store the computed EMD values, with rows and columns labeled by the receptors of interest.
+     Target and Off-Target Cell Definition:
+    - Creates a binary array for on-target cells based on the specified target cell type (`"Treg"`).
+    - Defines off-target cell populations using the `offTargState` parameter:
+      - `offTargState = 0`: All non-memory Tregs.
+      - `offTargState = 1`: All non-Tregs.
+      - `offTargState = 2`: Only naive Tregs.
 
-    Visualization:
-   - Generates a heatmap of the EMD matrix using Seaborn's `heatmap` function.
-   - The heatmap uses a "bwr" color map to visually represent the EMD values, with annotations to display specific values.
-    '''
+     EMD Calculation:
+    - Computes an Earth Mover's Distance (EMD) matrix using the `EMD_2D` function to measure the dissimilarity
+      between on-target ("Treg") and off-target cell distributions for the selected receptors (CD25 and CD35).
+    - Constructs a DataFrame (`df_recep`) to store the computed EMD values, with rows and columns labeled by the receptors of interest.
+
+     Visualization:
+    - Generates a heatmap of the EMD matrix using Seaborn's `heatmap` function.
+    - The heatmap uses a "bwr" color map to visually represent the EMD values, with annotations to display specific values.
+    """
     CITE_DF = importCITE()
     CITE_DF = CITE_DF.head(1000)
 
@@ -64,10 +65,9 @@ def makeFigure():
     }
 
     if offTargState in off_target_conditions:
-        off_target_mask = off_target_conditions[offTargState].to_numpy()  
+        off_target_mask = off_target_conditions[offTargState].to_numpy()
     else:
         raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
-
 
     rec_abundances = filtered_markerDF.to_numpy()
 
@@ -75,7 +75,9 @@ def makeFigure():
 
     EMD_matrix = np.triu(EMD_vals, k=1) + np.triu(EMD_vals.T, k=1)
 
-    df_EMD = pd.DataFrame(EMD_matrix, index=receptors_of_interest, columns=receptors_of_interest)
+    df_EMD = pd.DataFrame(
+        EMD_matrix, index=receptors_of_interest, columns=receptors_of_interest
+    )
 
     # Visualize the EMD matrix with a heatmap
     sns.heatmap(
