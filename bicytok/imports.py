@@ -2,7 +2,7 @@
 
 import gzip
 import os
-from functools import lru_cache
+from functools import cache
 from os.path import join
 from zipfile import ZipFile
 
@@ -20,7 +20,7 @@ path_here = os.path.dirname(os.path.dirname(__file__))
 # copies which you can change if you need to. You may consider passing the data
 # as a function argument if this is called in separate spots throughout the
 # codebase.
-@lru_cache(maxsize=None)
+@cache
 def getBindDict():
     """Gets binding to pSTAT fluorescent conversion dictionary"""
     path = os.path.dirname(os.path.dirname(__file__))
@@ -30,8 +30,7 @@ def getBindDict():
     return bindingDF
 
 
-# Armaan: lru_cache mutable return value
-@lru_cache(maxsize=None)
+@cache
 def importReceptors():
     """Makes Complete receptor expression Dict"""
     # Armaan: it is bad practice to hard-code path separators into strings,
@@ -58,8 +57,7 @@ def importReceptors():
     return recDF
 
 
-# Armaan: lru_cache mutable return value
-@lru_cache(maxsize=None)
+@cache
 def makeCITEdf():
     """Makes cite surface epitope csv for given cell type,
     DON'T USE THIS UNLESS DATA NEEDS RESTRUCTURING"""

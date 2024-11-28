@@ -7,6 +7,7 @@ from ..selectivityFuncs import (
     get_cell_bindings,
 )
 from .common import getSetup
+<<<<<<< HEAD
 
 """SECONDARY: signaling receptor
 EPITOPE: additional targeting receptor
@@ -35,6 +36,8 @@ CELLS = [
     "NK Proliferating",
     "NK_CD56bright",
 ]
+=======
+>>>>>>> main
 
 
 def makeFigure():

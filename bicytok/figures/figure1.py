@@ -84,7 +84,7 @@ def makeFigure():
             optimizedAffs.append(STARTING_AFF)
             targets.append(target)
             valencies.append(valency)
-            naming.append("{} ({})".format(target, valency))
+            naming.append(f"{target} ({valency})")
         valencies = np.array([valencies])
 
         for _, dose in enumerate(doseVec):

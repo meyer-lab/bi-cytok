@@ -11,6 +11,7 @@ from bicytok.selectivityFuncs import (
     get_affs,
     optimizeSelectivityAffs,
 )
+from bicytok.selectivityFuncs import getSampleAbundances, optimizeDesign
 
 
 def test_optimize_design():

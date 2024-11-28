@@ -82,8 +82,8 @@ def makeFigure():
             )
 
             data = {
-                "Target 1": "{} ({})".format(target1, valencies[i]),
-                "Target 2": "{} ({})".format(target2, valencies[j]),
+                "Target 1": f"{target1} ({valencies[i]})",
+                "Target 2": f"{target2} ({valencies[j]})",
                 "Selectivity": 1 / optParams[0],
             }
             df_temp = pd.DataFrame(
