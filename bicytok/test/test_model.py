@@ -7,7 +7,7 @@ import pandas as pd
 from bicytok.selectivityFuncs import getSampleAbundances, optimizeDesign
 from bicytok.distanceMetricFuncs import KL_EMD_1D, KL_EMD_2D, KL_EMD_3D
 
-'''
+
 def test_optimize_design():
     targCell = "Treg"
     offTCells = ["CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL"]
@@ -27,7 +27,7 @@ def test_optimize_design():
         valencies=np.array([[2, 2]]),
         prevOptAffs=[8.0, 8.0],
     )
-'''
+
 def sample_data():
     np.random.seed(0)
     recAbundances = np.random.rand(100, 10) * 10
