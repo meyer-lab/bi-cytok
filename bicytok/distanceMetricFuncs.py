@@ -161,8 +161,8 @@ def KL_EMD_3D(
 
     raise NotImplementedError("3D KL Divergence and EMD not yet implemented")
 
-    assert all(isinstance(i, np.bool) for i in np.append(targ, offTarg))
-    assert sum(targ) != 0 and sum(offTarg) != 0
+    assert all(isinstance(i, (bool, np.bool_)) for i in np.append(targ, offTarg)), "targ and offTarg must contain only boolean values."
+    assert (sum(targ) != 0 and sum(offTarg) != 0)
 
     KL_div_vals = np.full(
         (recAbundances.shape[1], recAbundances.shape[1], recAbundances.shape[1]), np.nan
