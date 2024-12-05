@@ -22,9 +22,9 @@ def KL_EMD_1D(
     """
     assert all(
     isinstance(i, (bool, np.bool_)) for i in np.append(targ, offTarg)), "targ and offTarg must contain only boolean values."
-    #assert (
+    assert (
      #   sum(targ) != 0 and sum(offTarg) != 0
-    #) 
+    ) 
     
     KL_div_vals = np.full(recAbundances.shape[1], np.nan)
     EMD_vals = np.full(recAbundances.shape[1], np.nan)
