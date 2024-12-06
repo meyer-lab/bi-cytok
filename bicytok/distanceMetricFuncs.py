@@ -117,12 +117,13 @@ def KL_EMD_2D(
     )  # Triangle indices, includes diagonal (k=0 by default)
     for rec1, rec2 in zip(row, col, strict=False):
         if (
-            np.mean(recAbundances[:, rec1]) > 5
-            and np.mean(recAbundances[:, rec2]) > 5
-            and np.mean(recAbundances[targ, rec1])
-            > np.mean(recAbundances[offTarg, rec1])
-            and np.mean(recAbundances[targ, rec2])
-            > np.mean(recAbundances[offTarg, rec2])
+            # np.mean(recAbundances[:, rec1]) > 5
+            # and np.mean(recAbundances[:, rec2]) > 5
+            # and np.mean(recAbundances[targ, rec1])
+            # > np.mean(recAbundances[offTarg, rec1])
+            # and np.mean(recAbundances[targ, rec2])
+            # > np.mean(recAbundances[offTarg, rec2])
+            1==1
         ):
             targAbun1, targAbun2 = targNorms[:, rec1], targNorms[:, rec2]
             offTargAbun1, offTargAbun2 = offTargNorms[:, rec1], offTargNorms[:, rec2]
@@ -160,7 +161,7 @@ def KL_EMD_2D(
                 a,
                 b,
                 M,
-                numItermax=100,  # Check numIterMax
+                numItermax=10000,  # Check numIterMax
             )
 
     return KL_div_vals, EMD_vals
