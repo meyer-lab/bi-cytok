@@ -21,12 +21,8 @@ def KL_EMD_1D(
         EMD_vals: a vector of EMDs per receptor
     """
     assert all(
-<<<<<<< HEAD
-    isinstance(i, (bool, np.bool_)) for i in np.append(targ, offTarg)), "targ and offTarg must contain only boolean values."
-=======
         isinstance(i, np.bool) for i in np.append(targ, offTarg)
     )  # Check that targ and offTarg are only boolean
->>>>>>> 6682647dd04fe41a2f75311a7e7dff9c3157d406
     assert (
        sum(targ) != 0 and sum(offTarg) != 0
     ) 
@@ -92,11 +88,6 @@ def KL_EMD_2D(
             values are the 1D distances
         EMD_vals: similar to KL_div_vals but with EMDs
     """
-<<<<<<< HEAD
-    assert all(
-    isinstance(i, (bool, np.bool_)) for i in np.append(targ, offTarg)), "targ and offTarg must contain only boolean values."
-    assert (sum(targ) != 0 and sum(offTarg) != 0)
-=======
 
     assert all(
         isinstance(i, np.bool) for i in np.append(targ, offTarg)
@@ -104,7 +95,6 @@ def KL_EMD_2D(
     assert (
         sum(targ) != 0 and sum(offTarg) != 0
     )
->>>>>>> 6682647dd04fe41a2f75311a7e7dff9c3157d406
 
     KL_div_vals = np.full((recAbundances.shape[1], recAbundances.shape[1]), np.nan)
     EMD_vals = np.full((recAbundances.shape[1], recAbundances.shape[1]), np.nan)
@@ -183,17 +173,12 @@ def KL_EMD_3D(
 
     raise NotImplementedError("3D KL Divergence and EMD not yet implemented")
 
-<<<<<<< HEAD
-    assert all(isinstance(i, (bool, np.bool_)) for i in np.append(targ, offTarg)), "targ and offTarg must contain only boolean values."
-    assert (sum(targ) != 0 and sum(offTarg) != 0)
-=======
     assert all(
         isinstance(i, np.bool) for i in np.append(targ, offTarg)
     )
     assert (
         sum(targ) != 0 and sum(offTarg) != 0
     )
->>>>>>> 6682647dd04fe41a2f75311a7e7dff9c3157d406
 
     KL_div_vals = np.full(
         (recAbundances.shape[1], recAbundances.shape[1], recAbundances.shape[1]), np.nan
