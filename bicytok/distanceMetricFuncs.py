@@ -21,7 +21,12 @@ def KL_EMD_1D(
         EMD_vals: a vector of EMDs per receptor
     """
     assert all(
+<<<<<<< HEAD
     isinstance(i, (bool, np.bool_)) for i in np.append(targ, offTarg)), "targ and offTarg must contain only boolean values."
+=======
+        isinstance(i, np.bool) for i in np.append(targ, offTarg)
+    )  # Check that targ and offTarg are only boolean
+>>>>>>> 6682647dd04fe41a2f75311a7e7dff9c3157d406
     assert (
        sum(targ) != 0 and sum(offTarg) != 0
     ) 
@@ -87,9 +92,19 @@ def KL_EMD_2D(
             values are the 1D distances
         EMD_vals: similar to KL_div_vals but with EMDs
     """
+<<<<<<< HEAD
     assert all(
     isinstance(i, (bool, np.bool_)) for i in np.append(targ, offTarg)), "targ and offTarg must contain only boolean values."
     assert (sum(targ) != 0 and sum(offTarg) != 0)
+=======
+
+    assert all(
+        isinstance(i, np.bool) for i in np.append(targ, offTarg)
+    )
+    assert (
+        sum(targ) != 0 and sum(offTarg) != 0
+    )
+>>>>>>> 6682647dd04fe41a2f75311a7e7dff9c3157d406
 
     KL_div_vals = np.full((recAbundances.shape[1], recAbundances.shape[1]), np.nan)
     EMD_vals = np.full((recAbundances.shape[1], recAbundances.shape[1]), np.nan)
@@ -97,20 +112,25 @@ def KL_EMD_2D(
     targNorms = recAbundances[targ, :] / np.mean(recAbundances, axis=0)
     offTargNorms = recAbundances[offTarg, :] / np.mean(recAbundances, axis=0)
 
-    assert targNorms.shape[0] == sum(targ)
-    assert targNorms.shape[0] != recAbundances.shape[0]
+    assert (
+        targNorms.shape[0] == sum(targ)
+    )
+    assert (
+        targNorms.shape[0] != recAbundances.shape[0]
+    )
 
     row, col = np.tril_indices(
         recAbundances.shape[1]
     )  # Triangle indices, includes diagonal (k=0 by default)
     for rec1, rec2 in zip(row, col, strict=False):
         if (
-            np.mean(recAbundances[:, rec1]) > 5
-            and np.mean(recAbundances[:, rec2]) > 5
-            and np.mean(recAbundances[targ, rec1])
-            > np.mean(recAbundances[offTarg, rec1])
-            and np.mean(recAbundances[targ, rec2])
-            > np.mean(recAbundances[offTarg, rec2])
+            # np.mean(recAbundances[:, rec1]) > 5
+            # and np.mean(recAbundances[:, rec2]) > 5
+            # and np.mean(recAbundances[targ, rec1])
+            # > np.mean(recAbundances[offTarg, rec1])
+            # and np.mean(recAbundances[targ, rec2])
+            # > np.mean(recAbundances[offTarg, rec2])
+            1==1
         ):
             targAbun1, targAbun2 = targNorms[:, rec1], targNorms[:, rec2]
             offTargAbun1, offTargAbun2 = offTargNorms[:, rec1], offTargNorms[:, rec2]
@@ -147,7 +167,7 @@ def KL_EMD_2D(
                 a,
                 b,
                 M,
-                numItermax=100,  # Check numIterMax
+                numItermax=10000,  # Check numIterMax
             )
 
     return KL_div_vals, EMD_vals
@@ -163,8 +183,17 @@ def KL_EMD_3D(
 
     raise NotImplementedError("3D KL Divergence and EMD not yet implemented")
 
+<<<<<<< HEAD
     assert all(isinstance(i, (bool, np.bool_)) for i in np.append(targ, offTarg)), "targ and offTarg must contain only boolean values."
     assert (sum(targ) != 0 and sum(offTarg) != 0)
+=======
+    assert all(
+        isinstance(i, np.bool) for i in np.append(targ, offTarg)
+    )
+    assert (
+        sum(targ) != 0 and sum(offTarg) != 0
+    )
+>>>>>>> 6682647dd04fe41a2f75311a7e7dff9c3157d406
 
     KL_div_vals = np.full(
         (recAbundances.shape[1], recAbundances.shape[1], recAbundances.shape[1]), np.nan
@@ -176,8 +205,12 @@ def KL_EMD_3D(
     targNorms = recAbundances[targ, :] / np.mean(recAbundances, axis=0)
     offTargNorms = recAbundances[offTarg, :] / np.mean(recAbundances, axis=0)
 
-    assert targNorms.shape[0] == sum(targ)
-    assert targNorms.shape[0] != recAbundances.shape[0]
+    assert (
+        targNorms.shape[0] == sum(targ)
+    )
+    assert (
+        targNorms.shape[0] != recAbundances.shape[0]
+    )
 
     for rec1, rec2, rec3 in combinations_with_replacement(
         range(recAbundances.shape[1]), 3

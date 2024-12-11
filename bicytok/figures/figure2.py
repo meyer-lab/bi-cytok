@@ -32,7 +32,7 @@ def makeFigure():
     """
     ax, f = getSetup((8, 8), (1, 2))
 
-    targCell = "Treg"
+    targCell = "Treg Memory"
     offTargState = 0
 
     CITE_DF = importCITE()
