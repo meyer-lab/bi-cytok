@@ -23,10 +23,8 @@ def KL_EMD_1D(
     assert all(
         isinstance(i, np.bool) for i in np.append(targ, offTarg)
     )  # Check that targ and offTarg are only boolean
-    assert (
-       sum(targ) != 0 and sum(offTarg) != 0
-    ) 
-    
+    assert sum(targ) != 0 and sum(offTarg) != 0
+
     KL_div_vals = np.full(recAbundances.shape[1], np.nan)
     EMD_vals = np.full(recAbundances.shape[1], np.nan)
 
@@ -47,8 +45,10 @@ def KL_EMD_1D(
         ):
             targAbun = targNorms[:, rec]
             offTargAbun = offTargNorms[:, rec]
-            
-            assert np.allclose(targAbun, recAbundances[targ, rec] / np.mean(recAbundances[:, rec]))
+
+            assert np.allclose(
+                targAbun, recAbundances[targ, rec] / np.mean(recAbundances[:, rec])
+            )
 
             targKDE = KernelDensity(kernel="gaussian").fit(targAbun.reshape(-1, 1))
             offTargKDE = KernelDensity(kernel="gaussian").fit(
@@ -89,12 +89,8 @@ def KL_EMD_2D(
         EMD_vals: similar to KL_div_vals but with EMDs
     """
 
-    assert all(
-        isinstance(i, np.bool) for i in np.append(targ, offTarg)
-    )
-    assert (
-        sum(targ) != 0 and sum(offTarg) != 0
-    )
+    assert all(isinstance(i, np.bool) for i in np.append(targ, offTarg))
+    assert sum(targ) != 0 and sum(offTarg) != 0
 
     KL_div_vals = np.full((recAbundances.shape[1], recAbundances.shape[1]), np.nan)
     EMD_vals = np.full((recAbundances.shape[1], recAbundances.shape[1]), np.nan)
@@ -102,12 +98,8 @@ def KL_EMD_2D(
     targNorms = recAbundances[targ, :] / np.mean(recAbundances, axis=0)
     offTargNorms = recAbundances[offTarg, :] / np.mean(recAbundances, axis=0)
 
-    assert (
-        targNorms.shape[0] == sum(targ)
-    )
-    assert (
-        targNorms.shape[0] != recAbundances.shape[0]
-    )
+    assert targNorms.shape[0] == sum(targ)
+    assert targNorms.shape[0] != recAbundances.shape[0]
 
     row, col = np.tril_indices(
         recAbundances.shape[1]
@@ -120,13 +112,14 @@ def KL_EMD_2D(
             # > np.mean(recAbundances[offTarg, rec1])
             # and np.mean(recAbundances[targ, rec2])
             # > np.mean(recAbundances[offTarg, rec2])
-            1==1
+            1 == 1
         ):
             targAbun1, targAbun2 = targNorms[:, rec1], targNorms[:, rec2]
             offTargAbun1, offTargAbun2 = offTargNorms[:, rec1], offTargNorms[:, rec2]
 
-            assert np.allclose(targAbun1, recAbundances[targ, rec1] / np.mean(recAbundances[:, rec1]))
-
+            assert np.allclose(
+                targAbun1, recAbundances[targ, rec1] / np.mean(recAbundances[:, rec1])
+            )
 
             targAbunAll = np.vstack((targAbun1, targAbun2)).transpose()
             offTargAbunAll = np.vstack((offTargAbun1, offTargAbun2)).transpose()
@@ -173,12 +166,8 @@ def KL_EMD_3D(
 
     raise NotImplementedError("3D KL Divergence and EMD not yet implemented")
 
-    assert all(
-        isinstance(i, np.bool) for i in np.append(targ, offTarg)
-    )
-    assert (
-        sum(targ) != 0 and sum(offTarg) != 0
-    )
+    assert all(isinstance(i, np.bool) for i in np.append(targ, offTarg))
+    assert sum(targ) != 0 and sum(offTarg) != 0
 
     KL_div_vals = np.full(
         (recAbundances.shape[1], recAbundances.shape[1], recAbundances.shape[1]), np.nan
@@ -190,12 +179,8 @@ def KL_EMD_3D(
     targNorms = recAbundances[targ, :] / np.mean(recAbundances, axis=0)
     offTargNorms = recAbundances[offTarg, :] / np.mean(recAbundances, axis=0)
 
-    assert (
-        targNorms.shape[0] == sum(targ)
-    )
-    assert (
-        targNorms.shape[0] != recAbundances.shape[0]
-    )
+    assert targNorms.shape[0] == sum(targ)
+    assert targNorms.shape[0] != recAbundances.shape[0]
 
     for rec1, rec2, rec3 in combinations_with_replacement(
         range(recAbundances.shape[1]), 3

@@ -35,15 +35,9 @@ def makeFigure():
     targCell = "Treg Memory"
     offTargState = 0
 
-    assert (
-        type(offTargState) == int
-    )
-    assert any(
-        np.array([0, 1, 2]) == offTargState
-    )
-    assert not(
-        targCell == "Treg Naive" and offTargState == 2
-    )
+    assert type(offTargState) == int
+    assert any(np.array([0, 1, 2]) == offTargState)
+    assert not (targCell == "Treg Naive" and offTargState == 2)
 
     CITE_DF = importCITE()
 
@@ -56,7 +50,9 @@ def makeFigure():
 
     off_target_conditions = {
         0: (CITE_DF["CellType3"] != targCell),  # All non-target cells
-        1: (CITE_DF["CellType2"] != "Treg" and CITE_DF["CellType2"] != targCell),  # All non-Tregs and non-target cells
+        1: (
+            CITE_DF["CellType2"] != "Treg" and CITE_DF["CellType2"] != targCell
+        ),  # All non-Tregs and non-target cells
         2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
     }
 

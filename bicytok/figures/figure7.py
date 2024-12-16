@@ -72,7 +72,7 @@ def makeFigure():
     rec_abundances = filtered_markerDF.to_numpy()
 
     KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target_mask)
-    
+
     EMD_matrix = np.tril(EMD_vals, k=0)
     EMD_matrix = EMD_matrix + EMD_matrix.T - np.diag(np.diag(EMD_matrix))
     KL_matrix = np.tril(KL_div_vals, k=0)
