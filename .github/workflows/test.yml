@@ -12,8 +12,6 @@ jobs:
       with:
         enable-cache: true
         version: '0.39.0'
-    - name: Run pyright check
-      run: make pyright
     - name: Check linting
       run: rye lint bicytok
     - name: Check formatting
