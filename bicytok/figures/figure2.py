@@ -14,8 +14,8 @@ def makeFigure():
     - Defines a target cell type (default: "Treg") and an off-target state (`offTargState`), specifying which cells are considered "off-target".
 
      Off-Target State Definitions:
-    - Allows the selection of different off-target conditions using `offTargState`:
-      - `offTargState = 0`: All non-memory Tregs.
+    - Allows the selection of different off-target cells using `offTargState`:
+      - `offTargState = 0`: All non-target cells.
       - `offTargState = 1`: All non-Tregs.
       - `offTargState = 2`: Only naive Tregs.
 
@@ -35,6 +35,16 @@ def makeFigure():
     targCell = "Treg Memory"
     offTargState = 0
 
+    assert (
+        type(offTargState) == int
+    )
+    assert any(
+        np.array([0, 1, 2]) == offTargState
+    )
+    assert not(
+        targCell == "Treg Naive" and offTargState == 2
+    )
+
     CITE_DF = importCITE()
 
     # Filter out non-marker columns
@@ -45,8 +55,8 @@ def makeFigure():
     on_target = (CITE_DF["CellType3"] == targCell).to_numpy()
 
     off_target_conditions = {
-        0: (CITE_DF["CellType3"] != targCell),  # All non-memory Tregs
-        1: (CITE_DF["CellType2"] != "Treg"),  # All non-Tregs
+        0: (CITE_DF["CellType3"] != targCell),  # All non-target cells
+        1: (CITE_DF["CellType2"] != "Treg" and CITE_DF["CellType2"] != targCell),  # All non-Tregs and non-target cells
         2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
     }
 
