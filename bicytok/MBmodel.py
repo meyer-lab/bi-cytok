@@ -23,6 +23,6 @@ def cytBindingModel(
     Kx = 2.24e-12
     ligandConc = dose / (valencies[0][0] * 1e9)
 
-    output = polyc(ligandConc, Kx, recCount, valencies, recXaffs)[0]
+    output = polyc(ligandConc, Kx, recCount, valencies, 1, recXaffs)[0]
 
     return output

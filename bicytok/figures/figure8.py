@@ -39,7 +39,7 @@ def makeFigure():
 
     ax, f = getSetup((40, 40), (1, 1))
 
-    targCell = "Treg"
+    targCell = "Treg Memory"
     offTargState = 0
 
     # Define non-marker columns
@@ -50,8 +50,8 @@ def makeFigure():
     # Further filter to include only columns related to CD25 and CD35
     receptors_of_interest = ["CD25", "CD35"]
     filtered_markerDF = markerDF.loc[
-        :, markerDF.columns.str.contains("|".join(receptors_of_interest), case=False)
-    ]
+    :, markerDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False)
+]
 
     # Binary arrays for on-target and off-target cell types
     on_target = (CITE_DF["CellType3"] == targCell).to_numpy()
@@ -84,10 +84,10 @@ def makeFigure():
 
     # Visualize the EMD matrix with a heatmap
     sns.heatmap(
-        df_EMD, cmap="bwr", annot=True, ax=ax, cbar=True, annot_kws={"fontsize": 16}
+        df_EMD, cmap="bwr", annot=True, ax=ax[0], cbar=True, annot_kws={"fontsize": 16}
     )
 
-    ax.set_title("KL Divergence between: CD25 and CD35")
+    ax[0].set_title("KL Divergence between: CD25 and CD35")
     plt.show()
 
     return f
