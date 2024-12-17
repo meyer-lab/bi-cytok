@@ -11,42 +11,41 @@ from bicytok.MBmodel import cytBindingModel
 
 
 # Called in minOffTargSelec and get_cell_bindings
-def get_affs(recXaffs: np.ndarray) -> np.ndarray:
+def restructureAffs(affs: np.ndarray) -> np.ndarray:
     """
     Structures array of receptor affinities to be compatible with the binding model
     Args:
-        recXaffs: receptor affinities
+        affs: receptor affinities
     Return:
-        affs: restructured receptor affinities
+        restructuredAffs: restructured receptor affinities
     """
 
-    affs = pd.DataFrame()
-    for recXaff in recXaffs:
-        affs = np.append(affs, np.power(10, recXaff))
+    restructuredAffs = pd.DataFrame()
+    for aff in affs:
+        restructuredAffs = np.append(restructuredAffs, np.power(10, aff))
 
-    holder = np.full((recXaffs.size, recXaffs.size), 1e2)
-    np.fill_diagonal(holder, affs)
-    affs = holder
+    holder = np.full((affs.size, affs.size), 1e2)
+    np.fill_diagonal(holder, restructuredAffs)
+    restructuredAffs = holder
 
-    return affs
+    return restructuredAffs
 
 
 # Called in optimizeDesign
 def minOffTargSelec(
-    recXaffs: np.ndarray,
+    monomerAffs: np.ndarray,
     targRecs: pd.DataFrame,
     offTargRecs: pd.DataFrame,
     dose: float,
     valencies: np.ndarray,
 ) -> float:
     """
-    Serves as the function which will have its return value minimized to get
-        optimal selectivity
-        To be used in conjunction with optimizeDesign()
+    Serves as the function which will have its return value minimized to get optimal selectivity
+        Used in conjunction with optimizeSelectivityAffs()
     Args:
-        recXaffs: receptor affinities which are modulated in optimize design
+        monomerAffs: monomer ligand-receptor affinities 
+            Modulated in optimization
         signal: signaling receptor
-        targets: list of targeted receptors
         targRecs: dataframe of receptors counts of target cell type
         offTargRecs: dataframe of receptors counts of off-target cell types
         dose: ligand concentration/dose that is being modeled
@@ -58,62 +57,42 @@ def minOffTargSelec(
             maximize selectivity for the target cell
     """
 
-    affs = get_affs(recXaffs)
+    modelAffs = restructureAffs(monomerAffs)
 
     cytBindingModel_vec = np.vectorize(  # Vectorization function for cytBindingModel
-        cytBindingModel, excluded=["recXaffs", "valencies"], signature="(n),()->()"
+        cytBindingModel, excluded=["monomerAffs", "valencies"], signature="(n),()->()"
     )
     
-    targetBound = (
-        # Armaan: I don't think you need to sum here, as bispecOpt_Vec should
-        # just return the number of bound signaling receptor for the signal
-        # targeting cell. You may need a flatten() or reshape() though, which I
-        # think is the only purpose of the sum here.
-        np.sum(
-            cytBindingModel_vec(
-                recCount=targRecs.to_numpy(), 
-                recXaffs=affs, 
-                dose=dose, 
-                valencies=valencies
-            )
-        )
-        # Armaan: I believe that you can delete this denominator, as targRecs should
-        # always have one row consisting of the one target cell. Alternatively
-        # (this also pertains to my previous comment), if you want to make this
-        # code work for cases where there are multiple target cells (which I
-        # assume was once the case), then you could keep this here. However,
-        # there would need to be several other changes to the codebase to
-        # reflect this generality (e.g. in get_rec_vecs). I would recommend just
-        # keeping it specific and changing these lines for now.
-        / targRecs.shape[0]
+    # Calculate counts of all receptors bound for target and off-target cell types
+    targRbound = cytBindingModel_vec(
+        dose=dose,
+        recCounts=targRecs,
+        valencies=valencies,
+        monomerAffs=modelAffs
     )
-    offTargetBound = (
-        np.sum(
-            cytBindingModel_vec(
-                recCount=offTargRecs.to_numpy(),
-                recXaffs=affs,
-                dose=dose,
-                valencies=valencies,
-            )
-        )
-        / offTargRecs.shape[0]
+    offTargRbound = cytBindingModel_vec(
+        dose=dose,
+        recCounts=offTargRecs,
+        valencies=valencies,
+        monomerAffs=modelAffs
     )
 
+    # Calculate total bound receptors for target and off-target cell types, normalized by number of cells
+    targetBound = np.sum(targRbound[:, 0]) / targRbound.shape[0]
+    offTargetBound = np.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
+
+    # Calculate selectivity ratio
     return offTargetBound / targetBound
 
 
 # Called in Figure1, Figure4, and Figure5
 def optimizeSelectivityAffs(
-    signal: str,
-    targets: list,
-    targCell: str,
-    offTargCells: list,
-    selectedDF: pd.DataFrame,
+    targRecs: np.ndarray,
+    offTargRecs: np.ndarray,
     dose: float,
     valencies: np.ndarray,
-    initialAffs: list,
-    cellCat="CellType2",
-) -> tuple[float, float]:
+    initialAffs: list
+) -> tuple[float, list]:
     """
     A general optimizer used to minimize selectivity output
         by varying affinity parameter.
@@ -125,47 +104,36 @@ def optimizeSelectivityAffs(
         selectedDf: dataframe of receptor counts of all cells
         dose: ligand concentration/dose that is being modeled
         valencies: array of valencies of each ligand epitope
-        prevOptAffs: initial receptor affinities to ultimately optimize for
-            aximum target cell selectivity,
+        initialAffs: initial receptor affinities to optimize for
+            maximum target cell selectivity.
             affinities are K_a in L/mol
-        epitope: additional epitope to be targeted
-        cellCat: cell type categorization level, see cell types/subsets in CITE data
     Return:
-        optSelectivity: optimized selectivity value
-            Can also be modified to return optimized affinity parameter
+        optSelec: optimized selectivity value
+        optAffs: optimized affinity values
     """
 
     X0 = initialAffs
-    minAffs = (
-        [7.0] * (len(targets) + 1)
-    )  # minAffs and maxAffs chosen based on biologically realistic affinities for engineered ligands
-    maxAffs = [9.0] * (len(targets) + 1)
-
+    # minAffs and maxAffs chosen based on biologically realistic affinities for engineered ligands
+    minAffs = [7.0] * (targRecs.shape[1])
+    maxAffs = [9.0] * (targRecs.shape[1])
     optBnds = Bounds(np.full_like(X0, minAffs), np.full_like(X0, maxAffs))
 
-    dfTargCell = selectedDF.loc[
-        selectedDF[cellCat] == targCell
-    ]
-    targRecs = dfTargCell[[signal] + targets + [cellCat]]
-    dfOffTargCell = selectedDF.loc[selectedDF[cellCat].isin(offTargCells)]
-    offTargRecs = dfOffTargCell[[signal] + targets + [cellCat]]
-
-    optimized = minimize(
+    optimizer = minimize(
         minOffTargSelec,
         X0,
         bounds=optBnds,
         args=(
-            targRecs.drop([cellCat], axis=1),
-            offTargRecs.drop([cellCat], axis=1),
+            targRecs,
+            offTargRecs,
             dose,
             valencies,
         ),
         jac="3-point",
     )
-    optSelectivity = optimized.fun
-    optAffs = optimized.x
+    optSelect = optimizer.fun
+    optAffs = optimizer.x
 
-    return optSelectivity, optAffs
+    return optSelect, optAffs
 
 
 # Called in calcReceptorAbundances
@@ -192,17 +160,6 @@ def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:
         "Treg",
         "CD4 TEM",
     ]
-    cellDict = {
-        "CD4 Naive": "Thelper",
-        "CD4 CTL": "Thelper",
-        "CD4 TCM": "Thelper",
-        "CD4 TEM": "Thelper",
-        "NK": "NK",
-        "CD8 Naive": "CD8",
-        "CD8 TCM": "CD8",
-        "CD8 TEM": "CD8",
-        "Treg": "Treg",
-    }
     markers = ["CD122", "CD127", "CD25"]
     markerDF = pd.DataFrame()
 
@@ -223,7 +180,23 @@ def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:
                 else pd.concat([markerDF, dftemp])
             )
 
-    markDict = {"CD25": "IL2Ra", "CD122": "IL2Rb", "CD127": "IL7Ra", "CD132": "gc"}
+    markDict = {
+        "CD25": "IL2Ra", 
+        "CD122": "IL2Rb", 
+        "CD127": "IL7Ra", 
+        "CD132": "gc"
+    }
+    cellDict = {
+        "CD4 Naive": "Thelper",
+        "CD4 CTL": "Thelper",
+        "CD4 TCM": "Thelper",
+        "CD4 TEM": "Thelper",
+        "NK": "NK",
+        "CD8 Naive": "CD8",
+        "CD8 TCM": "CD8",
+        "CD8 TEM": "CD8",
+        "Treg": "Treg",
+    }
     markerDF = markerDF.replace({"Marker": markDict, "Cell Type": cellDict})
     markerDFw = pd.DataFrame()
 
@@ -293,7 +266,10 @@ def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:
 
 # Called in Figure1, Figure3, Figure4, and Figure5
 def calcReceptorAbundances(
-    epitopes: list, cellList: list, numCells=1000, cellCat="CellType2"
+    epitopes: list, 
+    cellList: list, 
+    numCells=1000, 
+    cellCat="CellType2"
 ) -> pd.DataFrame:
     """
     Given list of epitopes and cell types, returns a dataframe
@@ -301,41 +277,32 @@ def calcReceptorAbundances(
     Args:
         epitopes: list of epitopes for which you want abundance values
         cellList: list of cell types for which you want epitope abundance
-        numCells: number of cells to sample from for abundance calculations,
-            default to sampling from 1000 cells
+        numCells: number of cells to sample from for abundance calculations
         cellCat: cell type categorization level, see cell types/subsets in CITE data
     Return:
         sampleDF: dataframe containing single cell abundances of
-        receptors (column) for each individual cell (row),
-        with final column being cell type from the cell type categorization level set by cellCat
+            receptors (column) for each individual cell (row),
+            with final column being cell type from the cell type categorization level set by cellCat
     """
 
     # Import CITE data and drop unnecessary epitopes and cell types
-    CITE_DF = (
-        importCITE()
-    ) 
+    CITE_DF = (importCITE()) 
     CITE_DF_new = CITE_DF[epitopes + [cellCat]]
     CITE_DF_new = CITE_DF_new.loc[CITE_DF_new[cellCat].isin(cellList)]
-        # Armaan: Could you immediately rename the cellCat column (e.g. "Cell
-    # Type")? That way, I think you could avoid passing cellCat to other
-    # functions (e.g. optimizeSelectivityAffs, get_rec_vecs). But if you've used
-    # varying values of cellCat in other places before and envision it being
-    # used in the future, then of course feel free to keep it.
-
+    CITE_DF_new = CITE_DF_new.rename(columns={cellCat: "Cell Type"})
 
     meanConv = (
         calcCITEConvFacts(CITE_DF).Weight.mean()
-    )  # Get conv factors, average them to use on epitopes with unlisted conv facts
+    )  # Get conversion factors, average them to use on epitopes with unlisted conv facts
     # convFactDict values calculated by calcCITEConvFacts
     convFactDict = {
         "CD25": 77.136987,
         "CD122": 332.680090,
         "CD127": 594.379215,
-    }  # move to calcCITEConvFacts?
+    } 
     # Armaan: I think it would make more sense to move this confFactDict into
     # confFactCalc, as it better falls under the responsibility of that
     # function.
-    # convFactDict values calculated by calcCITEConvFacts
 
     sampleDF = CITE_DF_new.sample(numCells, random_state=42)  # Sample df generated
 
@@ -347,20 +314,12 @@ def calcReceptorAbundances(
     return sampleDF
 
 
-# Armaan: Can you refactor this and minOffTargSelec to use the same logic for
-# inferring the number of bound signaling receptors? These two functions share a
-# lot of the same functionality. One reason to avoid this is if this function is
-# a lot slower, and you don't want to call it during optimization, but it
-# doesn't seem obvious that it would be.
 # Called in Figure1 and Figure3
 def get_cell_bindings(
-    df: np.ndarray,
-    signal: str,
-    targets: list,
-    recXaffs: np.ndarray,
+    recCounts: np.ndarray,
+    monomerAffs: np.ndarray,
     dose: float,
-    valencies: np.ndarray,
-    cellCat="CellType2",
+    valencies: np.ndarray
 ) -> pd.DataFrame:
     """
     Returns amount of receptor bound on average per cell for each cell type
@@ -368,31 +327,25 @@ def get_cell_bindings(
         df: dataframe of receptor counts of all cells
         signal: signaling receptor
         targets: list of targeting receptors
-        recXaffs: receptor affinities
+        monomerAffs: monomer ligand-receptor affinities
         dose: ligand concentration/dose that is being modeled
         valencies: array of valencies of each ligand epitope
-        callCat: cell type categorization level, see cell types/subsets in CITE data
     Return:
         df_return: dataframe of average amount of receptor bound per cell (column) for
             each cell type (row)
     """
 
-    targRecs = pd.DataFrame()
-    df_return = pd.DataFrame()
+    modelAffs = restructureAffs(monomerAffs)
 
-    targRecs = df[[signal] + targets]
-    affs = get_affs(recXaffs)
-
-    cytBindingModel_vec = np.vectorize(  # Vectorization function for cytBindingModel
-        cytBindingModel, excluded=["recXaffs", "valencies"], signature="(n),()->()"
+    cytBindingModel_vec = np.vectorize(
+        cytBindingModel, excluded=["monomerAffs", "valencies"], signature="(n),()->()"
     )
 
-    targBound = cytBindingModel_vec(
-        recCount=targRecs.to_numpy(), recXaffs=affs, dose=dose, valencies=valencies
+    Rbound = cytBindingModel_vec(
+        dose=dose, 
+        recCounts=recCounts,
+        valencies=valencies, 
+        monomerAffs=modelAffs
     )
 
-    df_return = df[[signal] + [cellCat]]
-    df_return.insert(0, "Receptor Bound", targBound, True)
-    df_return = df_return.groupby([cellCat]).mean(0)
-
-    return df_return
+    return Rbound

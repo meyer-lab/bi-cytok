@@ -35,6 +35,7 @@ def makeFigure():
     startingAff: Starting affinity to modulate from in order to
         maximize selectivity for the targCell, affinities are K_a in L/mol
     """
+
     ax, f = getSetup((6, 3), (1, 2))
 
     signal = ["CD122", 1]
@@ -65,12 +66,21 @@ def makeFigure():
         ]
     )
     targCell = "Treg"
-    offTCells = cells[cells != targCell]
+    offTargCells = cells[cells != targCell]
     startingAff = 8.0
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList["Epitope"].unique())
     epitopesDF = calcReceptorAbundances(epitopes, cells)
+
+    dfTargCell = epitopesDF.loc[
+        epitopesDF["Cell Type"] == targCell
+    ]
+    targRecs = dfTargCell[[signal] + targets]
+    dfOffTargCell = epitopesDF.loc[
+        epitopesDF["Cell Type"].isin(offTargCells)
+    ]
+    offTargRecs = dfOffTargCell[[signal] + targets]
 
     doseVec = np.logspace(-2, 2, num=20)
     df = pd.DataFrame(columns=["Dose", "Selectivity", "Target Bound", "Ligand"])
@@ -88,26 +98,31 @@ def makeFigure():
             naming.append(f"{target} ({valency})")
         valencies = np.array([valencies])
 
-        for _, dose in enumerate(doseVec):
-            optParams = optimizeSelectivityAffs(
-                signal[0],
-                targets,
-                targCell,
-                offTCells,
+        for dose in doseVec:
+            optSelec, optParams = optimizeSelectivityAffs(
+                targRecs.to_numpy(),
+                offTargRecs.to_numpy(),
                 epitopesDF,
                 dose,
                 valencies,
                 prevOptAffs,
             )
-            prevOptAffs = optParams[1]
-            cellBindings = get_cell_bindings(
-                epitopesDF, signal[0], targets, prevOptAffs, dose, valencies
+            
+            Rbound = get_cell_bindings(
+                epitopesDF[[signal] + targets].to_numpy(),
+                optParams, 
+                dose, 
+                valencies
             )
+
+            cellBindDF = epitopesDF[[signal] + ["Cell Type"]]
+            cellBindDF.insert(0, "Receptor Bound", Rbound[:, 0], True)
+            cellBindDF = cellBindDF.groupby(["Cell Type"]).mean(0)
 
             data = {
                 "Dose": [dose],
                 "Selectivity": 1 / optParams[0],
-                "Target Bound": cellBindings["Receptor Bound"].loc[targCell],
+                "Target Bound": cellBindDF["Receptor Bound"].loc[targCell],
                 "Ligand": " + ".join(naming),
                 "Affinities": optParams[1],
             }

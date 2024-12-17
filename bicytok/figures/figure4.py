@@ -39,9 +39,7 @@ def makeFigure():
     targCell = "Treg"
     offTCells = cells[cells != targCell]
 
-    # Armaan: use join on the second segment of this path too instead of the /
-    # in the string
-    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopesList = pd.read_csv(join(path_here, "data", "epitopeList.csv"))
     epitopes = list(epitopesList["Epitope"].unique())
     epitopesDF = calcReceptorAbundances(epitopes, cells)
 

@@ -4,6 +4,7 @@ Unit test file.
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from bicytok.MBmodel import cytBindingModel
 from bicytok.selectivityFuncs import (
@@ -11,7 +12,6 @@ from bicytok.selectivityFuncs import (
     get_affs,
     optimizeSelectivityAffs,
 )
-from bicytok.selectivityFuncs import getSampleAbundances, optimizeDesign
 
 
 def test_optimize_design():

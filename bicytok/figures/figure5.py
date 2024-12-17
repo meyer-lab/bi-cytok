@@ -76,8 +76,7 @@ def makeFigure():
     targCell = "Treg Memory"
     offTCells = cells[cells != targCell]
 
-    # Armaan: use path.join for the second segment too.
-    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopesList = pd.read_csv(join(path_here, "data", "epitopeList.csv"))
     epitopes = list(epitopesList["Epitope"].unique())
     epitopesDF = calcReceptorAbundances(epitopes, cells, numCells=1000)
 

@@ -49,17 +49,12 @@ def makeFigure():
 
     for targCell in cells:
         markerDF = pd.DataFrame(columns=["Marker", "KL", "EMD"])
-        # Armaan: you do this in multiple places, maybe create a function which gets
-        # columns that are not cell types?
-        for marker in CITE_DF.loc[
-            :,
-            (
-                (CITE_DF.columns != "CellType1")
-                & (CITE_DF.columns != "CellType2")
-                & (CITE_DF.columns != "CellType3")
-                & (CITE_DF.columns != "Cell")
-            ),
-        ].columns:
+        
+        non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
+        marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
+        markerDF = CITE_DF.loc[:, marker_columns]
+        
+        for marker in CITE_DF.columns:
             markAvg = np.mean(CITE_DF[marker].values)
             if markAvg > 0.0001:
                 targCellMark = (
