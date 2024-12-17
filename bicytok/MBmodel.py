@@ -40,42 +40,22 @@ def cytBindingModel(
         Armaan: this argument's name could be more relevant.
         recXaffs: Ka for monomer ligand to receptors 
         dose: ligand concentration/dose that is being modeled
-<<<<<<< HEAD
-        
-        Armaan: change this variable name to valencies. `vals` is often used as
-        an abbreviation for `values`.
-        vals: array of valencies of each ligand epitope
-=======
         valencies: array of valencies of each ligand epitope
->>>>>>> main
     Return:
-        Armaan: This output description is outdated. Only the amount of the
-        first receptor bound is returned.
+        # Armaan: This output description is outdated. Only the amount of the
+        # first receptor bound is returned.
         output: amount of receptor bound of each kind of receptor
     """
-<<<<<<< HEAD
-    Kx = getKxStar()
     # Armaan: Why 1e9? Again, it should be clear why literals are chosen.
-    # Additionally, are you using this value elsewhere? If so, define it in a
-    # separate file as a constant, and then import it.
-    ligandConc = dose / (vals[0][0] * 1e9)
-
-    output = polyc(
-        ligandConc,
-        Kx,
-        recCount,
-        vals,
-        # Only one complex, so its ratio to the overall number of complexes is
-        # 1.
-        np.array([1]),
-        recXaffs,
-    )[1][0, 0]
-=======
 
     Kx = 2.24e-12
     ligandConc = dose / (valencies[0][0] * 1e9)
 
-    output = polyc(ligandConc, Kx, recCount, valencies, recXaffs)[0]
->>>>>>> main
+    output = polyc(
+        ligandConc, 
+        Kx, recCount, 
+        valencies, 1, 
+        recXaffs
+    )[0] #[1][0, 0]
 
     return output

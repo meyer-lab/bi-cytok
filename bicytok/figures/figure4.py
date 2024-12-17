@@ -13,46 +13,43 @@ from .common import getSetup
 path_here = dirname(dirname(__file__))
 
 
-SIGNAL = ["CD122", 1]
-ALL_TARGETS = [("CD25", 1), ("CD278", 1), ("CD45RB", 1), ("CD4-2", 1), ("CD81", 1)]
-DOSE = 10e-2  # In Molarity
-
-CELLS = np.array(
-    [
-        "CD8 Naive",
-        "NK",
-        "CD8 TEM",
-        "CD4 Naive",
-        "CD4 CTL",
-        "CD8 TCM",
-        "CD8 Proliferating",
-        "Treg",
-        "CD4 TEM",
-        "NK Proliferating",
-        "NK_CD56bright",
-    ]
-)
-targCell = "Treg"
-
-
 def makeFigure():
-    """Figure file to generate bispecific ligand selectivity heatmap of
-    selectivity for each bispecific pairing."""
+    """Figure file to generate bispecific ligand selectivity heatmap of selectivity for each bispecific pairing."""
     ax, f = getSetup((4, 3), (1, 1))
 
-    offTCells = CELLS[CELLS != targCell]
+    signal = ["CD122", 1]
+    allTargets = [("CD25", 1), ("CD278", 1), ("CD45RB", 1), ("CD4-2", 1), ("CD81", 1)]
+    dose = 10e-2
+
+    cells = np.array(
+        [
+            "CD8 Naive",
+            "NK",
+            "CD8 TEM",
+            "CD4 Naive",
+            "CD4 CTL",
+            "CD8 TCM",
+            "CD8 Proliferating",
+            "Treg",
+            "CD4 TEM",
+            "NK Proliferating",
+            "NK_CD56bright",
+        ]
+    )
+    targCell = "Treg"
+    offTCells = cells[cells != targCell]
 
     # Armaan: use join on the second segment of this path too instead of the /
     # in the string
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = calcReceptorAbundances(epitopes, CELLS)
+    epitopesDF = calcReceptorAbundances(epitopes, cells)
 
     df = pd.DataFrame(columns=["Target 1", "Target 2", "Selectivity"])
 
     valencies = []
     targets = []
-    for target, valency in ALL_TARGETS:
+    for target, valency in allTargets:
         targets.append(target)
         valencies.append(valency)
 
@@ -64,19 +61,19 @@ def makeFigure():
                 # Right now it's just 1 subunit for target1.
                 targetsBoth = [target1]
                 optAffs = [8.0, 8.0]
-                valenciesBoth = np.array([[SIGNAL[1], valencies[i]]])
+                valenciesBoth = np.array([[signal[1], valencies[i]]])
             else:
                 targetsBoth = [target1, target2]
                 optAffs = [8.0, 8.0, 8.0]
-                valenciesBoth = np.array([[SIGNAL[1], valencies[i], valencies[j]]])
+                valenciesBoth = np.array([[signal[1], valencies[i], valencies[j]]])
 
             optParams = optimizeSelectivityAffs(
-                SIGNAL[0],
+                signal[0],
                 targetsBoth,
                 targCell,
                 offTCells,
                 epitopesDF,
-                DOSE,
+                dose,
                 valenciesBoth,
                 optAffs,
             )

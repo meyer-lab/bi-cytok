@@ -40,9 +40,9 @@ def makeFigure():
     CITE_DF = importCITE()
     CITE_DF = CITE_DF.head(1000)
 
-    ax, f = getSetup((40, 40), (1, 1))
+    ax, f = getSetup((10, 5), (1, 2))
 
-    targCell = "Treg"
+    targCell = "Treg Memory"
     offTargState = 0
 
     # Define non-marker columns
@@ -53,7 +53,7 @@ def makeFigure():
     # Further filter to include only columns related to CD25 and CD35
     receptors_of_interest = ["CD25", "CD35"]
     filtered_markerDF = markerDF.loc[
-        :, markerDF.columns.str.contains("|".join(receptors_of_interest), case=False)
+        :, markerDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False)
     ]
 
     on_target = (CITE_DF["CellType3"] == targCell).to_numpy()
@@ -73,18 +73,28 @@ def makeFigure():
 
     KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target_mask)
 
-    EMD_matrix = np.triu(EMD_vals, k=1) + np.triu(EMD_vals.T, k=1)
+    EMD_matrix = np.tril(EMD_vals, k=0)
+    EMD_matrix = EMD_matrix + EMD_matrix.T - np.diag(np.diag(EMD_matrix))
+    KL_matrix = np.tril(KL_div_vals, k=0)
+    KL_matrix = KL_matrix + KL_matrix.T - np.diag(np.diag(KL_matrix))
 
     df_EMD = pd.DataFrame(
         EMD_matrix, index=receptors_of_interest, columns=receptors_of_interest
     )
+    df_KL = pd.DataFrame(
+        KL_matrix, index=receptors_of_interest, columns=receptors_of_interest
+    )
 
     # Visualize the EMD matrix with a heatmap
     sns.heatmap(
-        df_EMD, cmap="bwr", annot=True, ax=ax, cbar=True, annot_kws={"fontsize": 16}
+        df_EMD, cmap="bwr", annot=True, ax=ax[0], cbar=True, annot_kws={"fontsize": 16}
+    )
+    sns.heatmap(
+        df_KL, cmap="bwr", annot=True, ax=ax[1], cbar=True, annot_kws={"fontsize": 16}
     )
 
-    ax.set_title("EMD between: CD25 and CD35")
+    ax[0].set_title("EMD between: CD25 and CD35")
+    ax[1].set_title("KL Divergence between: CD25 and CD35")
     plt.show()
 
     return f

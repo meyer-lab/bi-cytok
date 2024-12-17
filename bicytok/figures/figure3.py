@@ -7,69 +7,63 @@ from ..selectivityFuncs import (
     get_cell_bindings,
 )
 from .common import getSetup
-<<<<<<< HEAD
-
-"""SECONDARY: signaling receptor
-EPITOPE: additional targeting receptor
-Armaan: why call it 'starting' affinity? I don't think you're fitting any
-affinities in this figure, so maybe state this explicitly and just call them
-affinities. Also, are you sure you shouldn't be optimizing the affinities here?
-This seems to be the case for the other figures.
-SECONDARY_AFF: starting affinity of ligand and secondary receptor"""
-
-# Armaan: Why call it secondary? Can we use a better name?
-SECONDARY = "CD122"
-EPITOPE = "CD278"
-# Armaan: how did we pick this affinity?
-SECONDARY_AFF = 6.0
-VALENCY = 4
-
-CELLS = [
-    "Treg",
-    "CD8 Naive",
-    "NK",
-    "CD8 TEM",
-    "CD4 Naive",
-    "CD4 CTL",
-    "CD8 TCM",
-    "CD4 TEM",
-    "NK Proliferating",
-    "NK_CD56bright",
-]
-=======
->>>>>>> main
 
 
 def makeFigure():
-    # Armaan: I think you should move all of the figure descriptions to the top
-    # of the file, before you declare the constants, so that the reader has
-    # context for the constants.
-    """Figure file to generate bar plots for amount of signal receptor
-    bound to each given cell type"""
+    """
+    Figure file to generate bar plots for amount of signal receptor bound to each given cell type
+    secondary: signaling receptor
+    epitope: additional targeting receptor
+    Armaan: why call it 'starting' affinity? I don't think you're fitting any
+    affinities in this figure, so maybe state this explicitly and just call them
+    affinities. Also, are you sure you shouldn't be optimizing the affinities here?
+    This seems to be the case for the other figures.
+    secondaryAff: starting affinity of ligand and secondary receptor
+    """
     ax, f = getSetup((8, 3), (1, 2))
+
+    # Armaan: Why call it secondary? Can we use a better name?
+    secondary = "CD122"
+    epitope = "CD278"
+    # Armaan: how did we pick this affinity?
+    secondaryAff = 6.0
+    valency = 4
 
     # Armaan: how are the 8.5s chosen here? I think it would be best to declare
     # a lot of these literals at the top of the file.
-    affs = np.array([SECONDARY_AFF, 8.5, 8.5])
+    affs = np.array([secondaryAff, 8.5, 8.5])
 
+    cells = [
+        "Treg",
+        "CD8 Naive",
+        "NK",
+        "CD8 TEM",
+        "CD4 Naive",
+        "CD4 CTL",
+        "CD8 TCM",
+        "CD4 TEM",
+        "NK Proliferating",
+        "NK_CD56bright",
+    ]
+    
     # Armaan: use os.path.join or pathlib.Path here
     epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
 
-    epitopesDF = calcReceptorAbundances(epitopes, CELLS)
+    epitopesDF = calcReceptorAbundances(epitopes, cells)
 
+    # Armaan: Why is CD25 declared down here while EPITOPE is declared at
+    # the top of the file?
     bindings = get_cell_bindings(
         epitopesDF,
-        SECONDARY,
-        # Armaan: Why is CD25 declared down here while EPITOPE is declared at
-        # the top of the file?
-        ["CD25", EPITOPE],
+        secondary,
+        ["CD25", epitope],
         affs,
         0.1,
-        np.array([[VALENCY, VALENCY, VALENCY]]),
+        np.array([[valency, valency, valency]]),
     )
     bindings["Percent Bound of Signal Receptor"] = (
-        bindings["Receptor Bound"] / bindings[SECONDARY]
+        bindings["Receptor Bound"] / bindings[secondary]
     ) * 10
 
     palette = sns.color_palette("husl", 10)

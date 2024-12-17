@@ -4,45 +4,18 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-<<<<<<< HEAD
-from ..distanceMetricFuncs import EMD_2D, KL_divergence_2D, correlation
 from ..imports import importCITE
-from ..selectivityFuncs import calcReceptorAbundances, optimizeSelectivityAffs
-=======
+from ..selectivityFuncs import (
+    calcReceptorAbundances, 
+    optimizeSelectivityAffs
+)
 from ..distanceMetricFuncs import KL_EMD_2D
-from ..imports import importCITE
-from ..selectivityFuncs import getSampleAbundances, optimizeDesign
->>>>>>> main
 from .common import getSetup
 
 path_here = dirname(dirname(__file__))
 
 
-SIGNAL_RECEPTOR = "CD122"
-SIGNAL_VALENCY = 1
-VALENCIES = [1, 2, 4]
-ALL_TARGETS = [["CD25", "CD278"], ["CD25", "CD4-2"], ["CD25", "CD45RB"]]
-DOSE = 10e-2
-CELLS = np.array(
-    [
-        "CD8 Naive",
-        "NK",
-        "CD8 TEM",
-        "CD4 Naive",
-        "CD4 CTL",
-        "CD8 TCM",
-        "CD8 Proliferating",
-        "Treg",
-    ]
-)
-TARG_CELL = "Treg"
-
-
 def makeFigure():
-<<<<<<< HEAD
-    """Figure file to generate plots of bispecific ligand selectivity for
-    combinations of different KL divergences, EMDs, and anti-correlations.
-=======
     """
     Generates line plots to visualize the relationship between KL Divergence, Earth Mover's Distance, and Correlation versus Selectivity across varying ligand valencies for target and off-target cell types using CITE-seq data.
 
@@ -76,18 +49,12 @@ def makeFigure():
      - **EMD vs. Selectivity**: Plotted on a logarithmic scale to highlight differences in distribution shifts.
      - **Correlation vs. Selectivity**: Shows the impact of receptor anti-correlation on ligand selectivity.
     - Uses different hues to indicate valency levels, providing a visual comparison across varying ligand valencies.
-
-
-
->>>>>>> main
     """
+    
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()
 
-<<<<<<< HEAD
-    offTCells = CELLS[CELLS != TARG_CELL]
-=======
     signal_receptor = "CD122"
     signal_valency = 1
     valencies = [1, 2, 4]
@@ -106,14 +73,13 @@ def makeFigure():
             "Treg",
         ]
     )
-    targCell = "Treg"
+    targCell = "Treg Memory"
     offTCells = cells[cells != targCell]
->>>>>>> main
 
     # Armaan: use path.join for the second segment too.
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
     epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = calcReceptorAbundances(epitopes, CELLS, numCells=1000)
+    epitopesDF = calcReceptorAbundances(epitopes, cells, numCells=1000)
 
     df = pd.DataFrame(
         columns=[
@@ -125,29 +91,23 @@ def makeFigure():
         ]
     )
 
-    for val in VALENCIES:
+    for val in valencies:
         prevOptAffs = [8.0, 8.0, 8.0]
-        for targets in ALL_TARGETS:
-            vals = np.array([[SIGNAL_VALENCY, val, val]])
+        for targets in allTargets:
+            vals = np.array([[signal_valency, val, val]])
 
             optParams = optimizeSelectivityAffs(
-                SIGNAL_RECEPTOR,
+                signal_receptor,
                 targets,
-                TARG_CELL,
+                targCell,
                 offTCells,
                 epitopesDF,
-                DOSE,
+                dose,
                 vals,
                 prevOptAffs,
             )
             prevOptAffs = optParams[1]
             select = (1 / optParams[0],)
-<<<<<<< HEAD
-            KLD = KL_divergence_2D(new_df, targets[0], TARG_CELL, targets[1], ax=None)
-            EMD = EMD_2D(new_df, targets[0], TARG_CELL, targets[1], ax=None)
-            corr = correlation(TARG_CELL, targets).loc[targets[0], targets[1]][
-                "Correlation"
-=======
 
             non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
             marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
@@ -160,7 +120,6 @@ def makeFigure():
                 markerDF.columns.str.contains(
                     "|".join(receptors_of_interest), case=False
                 ),
->>>>>>> main
             ]
 
             # Create binary arrays for on-target and off-target cell types
@@ -183,7 +142,7 @@ def makeFigure():
             # Calculate Pearson correlation inline (no separate function)
             epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
             epitopes = list(epitopesList["Epitope"].unique())
-            epitopesDF = getSampleAbundances(epitopes, np.array([targCell]))
+            epitopesDF = calcReceptorAbundances(epitopes, np.array([targCell]))
             epitopesDF = epitopesDF[epitopesDF["CellType2"] == (targCell)]
 
             corr = epitopesDF[receptors_of_interest].corr(method="pearson")
