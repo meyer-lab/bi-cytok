@@ -4,20 +4,22 @@ Unit test file.
 
 import numpy as np
 import pandas as pd
-from bicytok.selectivityFuncs import getSampleAbundances, optimizeDesign
+import pytest
+
+from bicytok.selectivityFuncs import calcReceptorAbundances, optimizeSelectivityAffs
 from bicytok.distanceMetricFuncs import KL_EMD_1D, KL_EMD_2D, KL_EMD_3D
 
 """
-def test_optimize_design():
+def test_optimizeSelectivityAffs():
     targCell = "Treg"
     offTCells = ["CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL"]
     cells = offTCells + [targCell]
 
     epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = getSampleAbundances(epitopes, cells)
+    epitopesDF = getReceptorAbundances(epitopes, cells)
 
-    optimizeDesign(
+    optimizeSelectivityAffs(
         signal="CD122",
         targets=["CD25"],
         targCell=targCell,
@@ -47,7 +49,7 @@ def test_KL_EMD_1D():
 
     assert len(KL_div_vals) == recAbundances.shape[1]
     assert len(EMD_vals) == recAbundances.shape[1]
-    print([type(i) for i in np.append(targ, offTarg)])
+    assert all([isinstance(i, np.bool) for i in np.append(targ, offTarg)])
 
 
 def test_KL_EMD_2D():
@@ -68,36 +70,24 @@ def test_invalid_inputs():
     offTarg = ~targ
 
     # Test invalid inputs for KL_EMD_1D
-    try:
-        KL_EMD_1D(recAbundances, np.arange(100), offTarg)
-    except AssertionError:
-        print("Caught expected error for non-boolean targ/offTarg in KL_EMD_1D.")
+    with pytest.raises(AssertionError):
+        KL_EMD_1D(recAbundances, np.arange(100), offTarg) # non-boolean targ/offTarg
 
-    try:
-        KL_EMD_1D(recAbundances, np.zeros(100, dtype=bool), offTarg)
-    except AssertionError:
-        print("Caught expected error for no target cells in KL_EMD_1D.")
+    with pytest.raises(AssertionError):
+        KL_EMD_1D(recAbundances, np.zeros(100, dtype=bool), offTarg) # no target cells
 
-    try:
-        KL_EMD_1D(recAbundances, targ, np.zeros(100, dtype=bool))
-    except AssertionError:
-        print("Caught expected error for no off-target cells in KL_EMD_1D.")
+    with pytest.raises(AssertionError):
+        KL_EMD_1D(recAbundances, targ, np.zeros(100, dtype=bool)) # no off-target cells
 
     # Test invalid inputs for KL_EMD_2D
-    try:
-        KL_EMD_2D(recAbundances, np.arange(100), offTarg)
-    except AssertionError:
-        print("Caught expected error for non-boolean targ/offTarg in KL_EMD_2D.")
+    with pytest.raises(AssertionError):
+        KL_EMD_2D(recAbundances, np.arange(100), offTarg) # non-boolean targ/offTarg
 
-    try:
-        KL_EMD_2D(recAbundances, np.zeros(100, dtype=bool), offTarg)
-    except AssertionError:
-        print("Caught expected error for no target cells in KL_EMD_2D.")
+    with pytest.raises(AssertionError):
+        KL_EMD_2D(recAbundances, np.zeros(100, dtype=bool), offTarg) # no target cells
 
-    try:
-        KL_EMD_2D(recAbundances, targ, np.zeros(100, dtype=bool))
-    except AssertionError:
-        print("Caught expected error for no off-target cells in KL_EMD_2D.")
+    with pytest.raises(AssertionError):
+        KL_EMD_2D(recAbundances, targ, np.zeros(100, dtype=bool)) # no off-target cells
 
 
 if __name__ == "__main__":
