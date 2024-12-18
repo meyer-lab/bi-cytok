@@ -1,17 +1,29 @@
 """File that deals with everything about importing and sampling."""
+from pathlib import Path
 
 import gzip
-import os
 from functools import cache
-from os.path import join
 from zipfile import ZipFile
 
 import anndata as an
 import pandas as pd
 from scipy.io import mmread
 
-path_here = os.path.dirname(os.path.dirname(__file__))
+path_here = Path(__file__).parent.parent
 
+SC_Stims = [
+    "control",
+    "IL2_100pM",
+    "IL2_1nM",
+    "IL2_10nM",
+    "IL2_50nM",
+    "IL2_200nM",
+    "IL7_100nM",
+    "IL10_500nM",
+    "IL10_2000nM",
+    "TGFB_10nM",
+    "TGFB_50nM",
+]  # "IL7_500nM is blank"
 
 # Armaan: don't use lru_cache if function returns mutable value. See my
 # explanation here: https://github.com/meyer-lab/tensordata/pull/26.
@@ -23,9 +35,9 @@ path_here = os.path.dirname(os.path.dirname(__file__))
 @cache
 def getBindDict():
     """Gets binding to pSTAT fluorescent conversion dictionary"""
-    path = os.path.dirname(os.path.dirname(__file__))
     bindingDF = pd.read_csv(
-        join(path, "bicytok/data/BindingConvDict.csv"), encoding="latin1"
+        path_here / "bicytok" / "data" / "BindingConvDict.csv", 
+        encoding="latin1"
     )
     return bindingDF
 
@@ -33,23 +45,12 @@ def getBindDict():
 @cache
 def importReceptors():
     """Makes Complete receptor expression Dict"""
-    # Armaan: it is bad practice to hard-code path separators into strings,
-    # because path separators differ by OS. Instead use os.path.join or, even
-    # better, use pathlib.Path. I would highly recommend replacing all uses of
-    # os.path.join with the pathlib.Path equivalent. This is also gradually
-    # becoming standard practice.
-    """
-    # Usage of pathlib.Path:
-
-    from pathlib import Path
-
-    THIS_DIR = Path(__file__).parent
-    recDF = THIS_DIR / "bicytok" / "data" / "RecQuantitation.csv" #  You can use
-    slashes outside of the string, as the pathlib.Path object has overloaded the
-    `/` operator to automatically generate the correct path separator.
-    """
-    recDF = pd.read_csv(join(path_here, "bicytok/data/RecQuantitation.csv"))
-    recDFbin = pd.read_csv(join(path_here, "bicytok/data/BinnedReceptorData.csv"))
+    recDF = pd.read_csv(
+        path_here / "bicytok" / "data" / "RecQuantitation.csv"
+    )
+    recDFbin = pd.read_csv(
+        path_here / "bicytok" / "data" / "BinnedReceptorData.csv"
+    )
     recDFbin = recDFbin.loc[recDFbin["Bin"].isin([1, 3])]
     recDFbin.loc[recDFbin["Bin"] == 1, "Cell Type"] += r" $IL2Ra^{lo}$"
     recDFbin.loc[recDFbin["Bin"] == 3, "Cell Type"] += r" $IL2Ra^{hi}$"
@@ -68,9 +69,15 @@ def makeCITEdf():
     matrixDF.columns = ["Marker", "Cell", "Number"]
     matrixDF.to_csv(join(path_here, "bicytok/data/CITEmatrix.csv"), index=False)
     """
-    featureDF = pd.read_csv(join(path_here, "bicytok/data/CITEfeatures.csv"))
-    matrixDF = pd.read_csv(join(path_here, "bicytok/data/CITEmatrix.csv")).iloc[1::, :]
-    metaDF = pd.read_csv(join(path_here, "bicytok/data/metaData3P.csv"))
+    featureDF = pd.read_csv(
+        path_here / "bicytok" / "data" / "CITEfeatures.csv"
+    )
+    matrixDF = pd.read_csv(
+        path_here / "bicytok" / "data" / "CITEmatrix.csv"
+    ).iloc[1::, :]
+    metaDF = pd.read_csv(
+        path_here / "bicytok" / "data" / "metaData3P.csv"
+    )
 
     metaDF["cellNumber"] = metaDF.index + 1
     cellNums = metaDF.cellNumber.values
@@ -106,45 +113,56 @@ def makeCITEdf():
     matrixDF["CellType3"] = pd.Categorical(
         matrixDF["Cell"].replace(cellTDict3), categories=categories3
     )
-    matrixDF.to_csv(join(path_here, "bicytok/data/CITEdata.csv"), index=False)
+    matrixDF.to_csv(
+        path_here / "bicytok" / "data" / "CITEdata.csv", 
+        index=False
+        )
     return matrixDF  # , featureDF, metaDF
 
 
 def importCITE():
     """Downloads all surface markers and cell types"""
-    CITEmarkerDF = pd.read_csv(join(path_here, "bicytok/data/CITEdata_SurfMarkers.zip"))
+    CITEmarkerDF = pd.read_csv(
+        path_here / "bicytok" / "data" / "CITEdata_SurfMarkers.zip"
+    )
     return CITEmarkerDF
 
 
 def importRNACITE():
     """Downloads all surface markers and cell types"""
     RNAsurfDF = pd.read_csv(
-        ZipFile(join(path_here, "bicytok/data/RNAseqSurface.csv.zip")).open(
-            "RNAseqSurface.csv"
-        )
+        ZipFile(
+            path_here / "bicytok" / "data" / "RNAseqSurface.csv.zip"
+        ).open("RNAseqSurface.csv")
     )
     return RNAsurfDF
 
 
-def makeTregSC():
+# Armaan: add a breif comment or two to this function
+# Sam: need to test that pathlib path replacements work correctly
+def makeTregSC(): 
     """Constructs .h5ad file for PBMC stimulation experiment"""
     Treg_h5ad = an.AnnData()
     for i, stim in enumerate(SC_Stims):
         stim_an = an.AnnData()
         barcodes = pd.read_csv(
             gzip.open(
-                "/opt/extra-storage/multi_output/outs/per_sample_outs/"
-                + stim
-                + "/count/sample_filtered_feature_bc_matrix/barcodes.tsv.gz"
+                # "/opt/extra-storage/multi_output/outs/per_sample_outs/"
+                # + stim
+                # + "/count/sample_filtered_feature_bc_matrix/barcodes.tsv.gz"
+                (path_here / "multi_output" / "outs" / "per_sample_outs" / stim / 
+                    "count" / "sample_filtered_feature_bc_matrix" / "barcodes.tsv.gz")
             ),
             sep="\t",
             header=None,
         )
         matrix = mmread(
             gzip.open(
-                "/opt/extra-storage/multi_output/outs/per_sample_outs/"
-                + stim
-                + "/count/sample_filtered_feature_bc_matrix/matrix.mtx.gz"
+                # "/opt/extra-storage/multi_output/outs/per_sample_outs/"
+                # + stim
+                # + "/count/sample_filtered_feature_bc_matrix/matrix.mtx.gz"
+                (path_here / "multi_output" / "outs" / "per_sample_outs" / stim /
+                    "count" / "sample_filtered_feature_bc_matrix" / "matrix.mtx.gz")
             )
         )
         barcodes.columns = ["barcode"]
@@ -157,9 +175,11 @@ def makeTregSC():
             Treg_h5ad = stim_an
             features = pd.read_csv(
                 gzip.open(
-                    "/opt/extra-storage/multi_output/outs/per_sample_outs/"
-                    + stim
-                    + "/count/sample_filtered_feature_bc_matrix/features.tsv.gz"
+                    # "/opt/extra-storage/multi_output/outs/per_sample_outs/"
+                    # + stim
+                    # + "/count/sample_filtered_feature_bc_matrix/features.tsv.gz"
+                    (path_here / "multi_output" / "outs" / "per_sample_outs" / stim /
+                        "count" / "sample_filtered_feature_bc_matrix" / "features.tsv.gz")
                 ),
                 sep="\t",
                 header=None,
@@ -172,23 +192,9 @@ def makeTregSC():
     Treg_h5ad.var["ENSEMBLE_ids"] = features["ENSEMBLE_ids"].values
     Treg_h5ad.var["feature_type"] = features["feature_type"].values
 
-    Treg_h5ad.write_h5ad("/opt/extra-storage/Treg_h5ads/Treg_raw.h5ad")
+    Treg_h5ad.write_h5ad(
+        # "/opt/extra-storage/Treg_h5ads/Treg_raw.h5ad"
+        path_here / "Treg_h5ads" / "Treg_raw.h5ad"
+        )
 
     return
-
-
-# Armaan: Move this to the top of the file (and add a brief comment) or into
-# the function `makeTregSC`.
-SC_Stims = [
-    "control",
-    "IL2_100pM",
-    "IL2_1nM",
-    "IL2_10nM",
-    "IL2_50nM",
-    "IL2_200nM",
-    "IL7_100nM",
-    "IL10_500nM",
-    "IL10_2000nM",
-    "TGFB_10nM",
-    "TGFB_50nM",
-]  # "IL7_500nM is blank"

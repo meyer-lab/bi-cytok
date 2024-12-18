@@ -20,13 +20,15 @@ def restructureAffs(affs: np.ndarray) -> np.ndarray:
         restructuredAffs: restructured receptor affinities
     """
 
-    restructuredAffs = pd.DataFrame()
+    exponentialAffs = pd.DataFrame()
+    # Convert affinities to 10th order values
+    # Sam: why not just input the affinities in the correct format...
     for aff in affs:
-        restructuredAffs = np.append(restructuredAffs, np.power(10, aff))
+        exponentialAffs = np.append(exponentialAffs, np.power(10, aff))
 
-    holder = np.full((affs.size, affs.size), 1e2)
-    np.fill_diagonal(holder, restructuredAffs)
-    restructuredAffs = holder
+    # Sam: what is the meaning of the off-diagonal values?
+    restructuredAffs = np.full((affs.size, affs.size), 1e2)
+    np.fill_diagonal(restructuredAffs, exponentialAffs)
 
     return restructuredAffs
 
@@ -56,27 +58,17 @@ def minOffTargSelec(
             maximize selectivity for the target cell
     """
 
+    # Reformat input affinities to 10^aff and diagonalize
     modelAffs = restructureAffs(monomerAffs)
 
-    cytBindingModel_vec = np.vectorize(  # Vectorization function for cytBindingModel
-        cytBindingModel, excluded=["monomerAffs", "valencies"], signature="(n),()->()"
-    )
-    
-    # Calculate counts of all receptors bound for target and off-target cell types
-    print(dose)
-    print(targRecs)
-    print(targRecs.ndim)
-    print(valencies)
-    print(modelAffs)
-    test = cytBindingModel(dose, targRecs, valencies, modelAffs)
-    print(test)
-    targRbound = cytBindingModel_vec(
+    # Use the binding model to calculate bound receptors for target and off-target cell types
+    targRbound = cytBindingModel(
         dose=dose,
         recCounts=targRecs,
         valencies=valencies,
         monomerAffs=modelAffs
     )
-    offTargRbound = cytBindingModel_vec(
+    offTargRbound = cytBindingModel(
         dose=dose,
         recCounts=offTargRecs,
         valencies=valencies,
@@ -87,7 +79,7 @@ def minOffTargSelec(
     targetBound = np.sum(targRbound[:, 0]) / targRbound.shape[0]
     offTargetBound = np.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
 
-    # Calculate selectivity ratio
+    # Return selectivity ratio
     return offTargetBound / targetBound
 
 
@@ -115,12 +107,18 @@ def optimizeSelectivityAffs(
         optAffs: optimized affinity values
     """
 
+    # Relabel initial affinities to a variable that will be altered during optimization
     X0 = initialAffs
+
+    # Set bounds for optimization
     # minAffs and maxAffs chosen based on biologically realistic affinities for engineered ligands
+    # Sam: affinities are maxing and bottoming out before optimization is complete...
+    #       for fig1, target 1, final affinities are 1e7 and ~1e9 (9.997e8)
     minAffs = [7.0] * (targRecs.shape[1])
     maxAffs = [9.0] * (targRecs.shape[1])
     optBnds = Bounds(np.full_like(X0, minAffs), np.full_like(X0, maxAffs))
 
+    # Run optimization to minimize off-target selectivity by changing affinities
     optimizer = minimize(
         minOffTargSelec,
         X0,
@@ -140,7 +138,6 @@ def optimizeSelectivityAffs(
 
 
 # Called in calcReceptorAbundances
-# Should be used in all figure files?
 def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:
     """
     Returns conversion factors by marker for converting CITEseq signal into abundance
@@ -166,23 +163,34 @@ def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:
     markers = ["CD122", "CD127", "CD25"]
     markerDF = pd.DataFrame()
 
+    # Iterate through all markers and cell types
+    # These loops serve to calculate the average receptor counts and total cell counts 
+    #   for each cell type/marker pair
     for marker in markers:
-        for cell in cellTypes:
-            cellTypeDF = CITE_DF.loc[CITE_DF["CellType2"] == cell][marker]
+        for cellType in cellTypes:
+            # Slice only the rows with cells of the current type 
+            #   and the column of the current marker
+            cellTypeDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType][marker]
+
+            # Create a new row for the markerDF dataframe
             dftemp = pd.DataFrame(
                 {
                     "Marker": [marker],
-                    "Cell Type": cell,
-                    "Amount": cellTypeDF.mean(),
-                    "Number": cellTypeDF.size,
+                    "Cell Type": cellType,
+                    "Amount": cellTypeDF.mean(), # Amount is the mean of the receptor counts for that cell type
+                    "Number": cellTypeDF.size, # Number is the number of cells of that cell type
                 }
             )
+
+            # Concatenate the new row (dftemp) to the markerDF dataframe 
+            #   or set it as the markerDF if it is empty
             markerDF = (
                 dftemp
                 if isinstance(markerDF, pd.DataFrame)
                 else pd.concat([markerDF, dftemp])
             )
 
+    # Replace marker and cell type names with common names
     markDict = {
         "CD25": "IL2Ra", 
         "CD122": "IL2Rb", 
@@ -203,6 +211,9 @@ def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:
     markerDF = markerDF.replace({"Marker": markDict, "Cell Type": cellDict})
     markerDFw = pd.DataFrame()
 
+    # Iterate through all markers and cell types
+    # These loops serve to calculate the weighted average of receptor counts
+    #  for each cell type/marker pair
     # Armaan: You might need to step through the code to confirm this, but I
     # believe that this loop can be simplified to a loop over the rows in
     # markerDF, because there shouldn't be more than one row with the same cell
@@ -213,30 +224,40 @@ def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:
     # this whole double for loop and calculate the average in the loop above.
     for marker in markerDF.Marker.unique():
         for cell in markerDF["Cell Type"].unique():
+            # Slice current rows by cell type and columns by marker
             subDF = markerDF.loc[
                 (markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)
             ]
-            wAvg = np.sum(subDF.Amount.values * subDF.Number.values) / np.sum(
-                subDF.Number.values
+
+            # Calculate weighted average of receptor counts
+            wAvg = (
+                np.sum(subDF.Amount.values * subDF.Number.values) / 
+                np.sum(subDF.Number.values)
             )
+
+            # Create a new row for the markerDFw dataframe and append it
             dftemp = pd.DataFrame(
                 {"Marker": [marker], "Cell Type": cell, "Average": wAvg}
             )
+            markerDFw = (
+                dftemp
+                if isinstance(markerDFw, pd.DataFrame)
+                else pd.concat([markerDFw, dftemp])
+            )
 
-            if markerDFw is pd.DataFrame():
-                markerDFw = dftemp
-            else:
-                markerDFw = pd.concat([markerDFw, dftemp])
-
+    # Import receptor data
     recDF = importReceptors()
     weightDF = None
 
+    # Iterate through all markers and cell types
+    # The purpose of this loop is to calculate the conversion factors for each receptor
     # Armaan: If my comment above is correct, you can also move this logic into
     # the initial loop over markerDF and delete this loop.
     for rec in markerDFw.Marker.unique():
         CITEval = np.array([])
         Quantval = np.array([])
         for cell in markerDF["Cell Type"].unique():
+            # Append the average receptor counts and mean receptor counts to the placeholder dataframes
             CITEval = np.concatenate(
                 (
                     CITEval,
@@ -253,6 +274,8 @@ def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:
                     ].Mean.values,
                 )
             )
+
+        # Create a new row for the weightDF dataframe and append it
         dftemp = pd.DataFrame(
             {
                 "Receptor": [rec],
@@ -261,8 +284,11 @@ def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:
                 )[0],
             }
         )
-
-        weightDF = dftemp if weightDF is None else pd.concat([weightDF, dftemp])
+        weightDF = (
+            dftemp 
+            if weightDF is None 
+            else pd.concat([weightDF, dftemp])
+        )
 
     return weightDF
 
@@ -288,27 +314,31 @@ def calcReceptorAbundances(
             with final column being cell type from the cell type categorization level set by cellCat
     """
 
-    # Import CITE data and drop unnecessary epitopes and cell types
+    # Import CITE data and drop unused epitopes and cell types
     CITE_DF = (importCITE()) 
     CITE_DF_new = CITE_DF[epitopes + [cellCat]]
     CITE_DF_new = CITE_DF_new.loc[CITE_DF_new[cellCat].isin(cellList)]
     CITE_DF_new = CITE_DF_new.rename(columns={cellCat: "Cell Type"})
 
+    # Get conversion factors, average them to use on epitopes with unlisted conv facts
     meanConv = (
         calcCITEConvFacts(CITE_DF).Weight.mean()
-    )  # Get conversion factors, average them to use on epitopes with unlisted conv facts
+    )  
+
     # convFactDict values calculated by calcCITEConvFacts
+    # Armaan: I think it would make more sense to move this confFactDict into
+    # confFactCalc, as it better falls under the responsibility of that
+    # function.
     convFactDict = {
         "CD25": 77.136987,
         "CD122": 332.680090,
         "CD127": 594.379215,
     } 
-    # Armaan: I think it would make more sense to move this confFactDict into
-    # confFactCalc, as it better falls under the responsibility of that
-    # function.
-
+    
+    # Sample a subset of cells
     sampleDF = CITE_DF_new.sample(numCells, random_state=42)  # Sample df generated
 
+    # Multiply the receptor counts of epitope by the conversion factor for that epitope
     for epitope in epitopes:
         sampleDF[epitope] = sampleDF[epitope].multiply(
             convFactDict.get(epitope, meanConv)
@@ -325,7 +355,7 @@ def get_cell_bindings(
     valencies: np.ndarray
 ) -> pd.DataFrame:
     """
-    Returns amount of receptor bound on average per cell for each cell type
+    Returns amount of receptor bound to each cell
     Args:
         recCounts: counts of each receptor on all single cells
         monomerAffs: monomer ligand-receptor affinities
@@ -336,13 +366,11 @@ def get_cell_bindings(
             each cell type (row)
     """
 
+    # Reformat input affinities to 10^aff and diagonalize
     modelAffs = restructureAffs(monomerAffs)
 
-    cytBindingModel_vec = np.vectorize(
-        cytBindingModel, excluded=["monomerAffs", "valencies"], signature="(n),()->()"
-    )
-
-    Rbound = cytBindingModel_vec(
+    # Use the binding model to calculate bound receptors for each cell
+    Rbound = cytBindingModel(
         dose=dose, 
         recCounts=recCounts,
         valencies=valencies, 

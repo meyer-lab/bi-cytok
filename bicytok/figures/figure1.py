@@ -105,7 +105,7 @@ def makeFigure():
             )
             
             Rbound = get_cell_bindings(
-                recCounts = epitopesDF[[signal] + targets].to_numpy(),
+                recCounts = epitopesDF[[signal[0]] + targets].to_numpy(),
                 monomerAffs = optParams, 
                 dose = dose, 
                 valencies = valencies

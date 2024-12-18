@@ -27,13 +27,19 @@ def cytBindingModel(
     # Sam: valencies not always in nested vector form (see Fig1). What happens if valencies is a 1D vector?
     ligandConc = dose / (valencies[0][0] * 1e9)
 
-    Lbound, Rbound = polyc(
-        L0 = ligandConc, 
-        KxStar = 2.24e-12, 
-        Rtot = recCounts, 
-        Cplx = valencies, 
-        Ctheta = [1], 
-        Kav = monomerAffs
-    )
+    output = np.zeros_like(recCounts)
+    for i in range(recCounts.shape[0]):
+        Rtot = recCounts[i, :]
+        Lbound, Rbound, Lfbnd = polyc(
+            L0 = ligandConc, 
+            KxStar = 2.24e-12, 
+            Rtot = Rtot, 
+            Cplx = valencies, 
+            Ctheta = [1], 
+            Kav = monomerAffs
+        )
+        output[i, :] = Rbound
 
-    return Rbound
+    print(output)
+
+    return output
