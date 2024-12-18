@@ -6,8 +6,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import Bounds, minimize
 
-from bicytok.imports import importCITE, importReceptors
-from bicytok.MBmodel import cytBindingModel
+from .MBmodel import cytBindingModel
 
 
 # Called in minOffTargSelec and get_cell_bindings
@@ -105,10 +104,7 @@ def optimizeSelectivityAffs(
     Return:
         optSelec: optimized selectivity value
         optAffs: optimized affinity values
-    """
-
-    # Relabel initial affinities to a variable that will be altered during optimization
-    
+    """    
 
     # Choose initial affinities and set bounds for optimization
     # minAffs and maxAffs chosen based on biologically realistic affinities for engineered ligands
@@ -124,13 +120,11 @@ def optimizeSelectivityAffs(
         np.full_like(initAffs, minAffs), 
         np.full_like(initAffs, maxAffs)
     )
-    print(initAffs)
-    print(optBnds)
 
     # Run optimization to minimize off-target selectivity by changing affinities
     optimizer = minimize(
-        minOffTargSelec,
-        initAffs,
+        fun=minOffTargSelec,
+        x0=initAffs,
         bounds=optBnds,
         args=(
             targRecs,
@@ -194,30 +188,21 @@ def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:
 
 # Called in Figure1, Figure3, Figure4, and Figure5
 def sampleReceptorAbundances(
+    CITE_DF: pd.DataFrame,
     epitopes: list, 
-    cellList: list, 
     numCells=1000, 
-    cellCat="CellType2"
 ) -> pd.DataFrame:
     """
-    Given list of epitopes and cell types, returns a dataframe
-        containing receptor abundance data on a single-cell level.
+    Samples a subset of cells and converts unprocessed CITE-seq receptor values to abundance values
     Args:
+        CITE_DF: dataframe of unprocessed CITE-seq receptor values for each
         epitopes: list of epitopes for which you want abundance values
-        cellList: list of cell types for which you want epitope abundance
         numCells: number of cells to sample from for abundance calculations
-        cellCat: cell type categorization level, see cell types/subsets in CITE data
     Return:
         sampleDF: dataframe containing single cell abundances of
             receptors (column) for each individual cell (row),
             with final column being cell type from the cell type categorization level set by cellCat
     """
-
-    # Import CITE data and drop unused epitopes and cell types
-    CITE_DF = (importCITE()) 
-    CITE_DF_new = CITE_DF[epitopes + [cellCat]]
-    CITE_DF_new = CITE_DF_new.loc[CITE_DF_new[cellCat].isin(cellList)]
-    CITE_DF_new = CITE_DF_new.rename(columns={cellCat: "Cell Type"})
 
     # convFactDict values calculated by calcCITEConvFacts
     # Sam: calculation of conversion factors was unclear, should be revised
@@ -228,12 +213,12 @@ def sampleReceptorAbundances(
     } 
     
     # Sample a subset of cells
-    sampleDF = CITE_DF_new.sample(numCells, random_state=42)  # Sample df generated
+    sampleDF = CITE_DF.sample(numCells, random_state=42)
 
     # Multiply the receptor counts of epitope by the conversion factor for that epitope
     for epitope in epitopes:
         sampleDF[epitope] = sampleDF[epitope].multiply(
-            convFactDict.get(epitope, value=300) # If epitope not in dict, multiply by 300
+            convFactDict.get(epitope, 300.0) # If epitope not in dict, multiply by 300
         )
 
     return sampleDF

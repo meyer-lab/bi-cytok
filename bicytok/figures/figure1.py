@@ -11,6 +11,7 @@ from ..selectivityFuncs import (
     optimizeSelectivityAffs,
 )
 from .common import getSetup
+from ..imports import importCITE
 
 path_here = Path(__file__).parent.parent
 
@@ -46,7 +47,7 @@ def makeFigure():
         [("CD25", 4), ("CD278", 4), ("CD27", 4)],
     ]
 
-    cells = np.array(
+    cellTypes = np.array(
         [
             "CD8 Naive",
             "NK",
@@ -62,13 +63,23 @@ def makeFigure():
         ]
     )
     targCell = "Treg"
-    offTargCells = cells[cells != targCell]
+    offTargCells = cellTypes[cellTypes != targCell]
 
     epitopesList = pd.read_csv(
-        path_here / "bicytok" / "data" / "epitopeList.csv"
+        path_here / "data" / "epitopeList.csv"
     )
     epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = sampleReceptorAbundances(epitopes, cells)
+
+    CITE_DF = importCITE()
+    epitopesDF = CITE_DF[epitopes + ["CellType2"]]
+    epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
+    epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
+
+    sampleDF = sampleReceptorAbundances(
+        CITE_DF = epitopesDF,
+        epitopes = epitopes,
+        numCells = 1000
+    )
 
     doseVec = np.logspace(-2, 2, num=20)
     df = pd.DataFrame(columns=["Dose", "Selectivity", "Target Bound", "Ligand"])
@@ -85,12 +96,12 @@ def makeFigure():
 
         valencies = np.array([valencies])
 
-        dfTargCell = epitopesDF.loc[
-            epitopesDF["Cell Type"] == targCell
+        dfTargCell = sampleDF.loc[
+            sampleDF["Cell Type"] == targCell
         ]
         targRecs = dfTargCell[[signal[0]] + targets]
-        dfOffTargCell = epitopesDF.loc[
-            epitopesDF["Cell Type"].isin(offTargCells)
+        dfOffTargCell = sampleDF.loc[
+            sampleDF["Cell Type"].isin(offTargCells)
         ]
         offTargRecs = dfOffTargCell[[signal[0]] + targets]
 
@@ -103,13 +114,13 @@ def makeFigure():
             )
             
             Rbound = get_cell_bindings(
-                recCounts = epitopesDF[[signal[0]] + targets].to_numpy(),
+                recCounts = sampleDF[[signal[0]] + targets].to_numpy(),
                 monomerAffs = optParams, 
                 dose = dose, 
                 valencies = valencies
             )
 
-            cellBindDF = epitopesDF[[signal] + ["Cell Type"]]
+            cellBindDF = sampleDF[[signal] + ["Cell Type"]]
             cellBindDF.insert(0, "Receptor Bound", Rbound[:, 0], True)
             cellBindDF = cellBindDF.groupby(["Cell Type"]).mean(0)
 

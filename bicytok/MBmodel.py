@@ -26,7 +26,7 @@ def cytBindingModel(
     # Armaan: Why 1e9? Again, it should be clear why literals are chosen.
     # Sam: valencies not always in nested vector form (see Fig1). What happens if valencies is a 1D vector?
     ligandConc = dose / (valencies[0][0] * 1e9)
-
+    
     output = np.zeros_like(recCounts)
     for i in range(recCounts.shape[0]):
         Rtot = recCounts[i, :]
@@ -39,7 +39,5 @@ def cytBindingModel(
             Kav = monomerAffs
         )
         output[i, :] = Rbound
-
-    print(output)
 
     return output

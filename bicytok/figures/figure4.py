@@ -9,6 +9,7 @@ from ..selectivityFuncs import (
     optimizeSelectivityAffs,
 )
 from .common import getSetup
+from ..imports import importCITE
 
 path_here = Path(__file__).parent.parent
 
@@ -21,7 +22,7 @@ def makeFigure():
     allTargets = [("CD25", 1), ("CD278", 1), ("CD45RB", 1), ("CD4-2", 1), ("CD81", 1)]
     dose = 10e-2
 
-    cells = np.array(
+    cellTypes = np.array(
         [
             "CD8 Naive",
             "NK",
@@ -37,13 +38,24 @@ def makeFigure():
         ]
     )
     targCell = "Treg"
-    offTargCells = cells[cells != targCell]
+    offTargCells = cellTypes[cellTypes != targCell]
 
     epitopesList = pd.read_csv(
-        path_here / "bicytok" / "data" / "epitopeList.csv"
+        path_here / "data" / "epitopeList.csv"
     )
     epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = sampleReceptorAbundances(epitopes, cells)
+
+    CITE_DF = importCITE()
+    epitopesDF = CITE_DF[epitopes + ["CellType2"]]
+    epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
+    epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
+
+
+    sampleDF = sampleReceptorAbundances(
+        CITE_DF = epitopesDF,
+        epitopes = epitopes,
+        numCells = 1000
+    )
 
     df = pd.DataFrame(columns=["Target 1", "Target 2", "Selectivity"])
 
@@ -65,12 +77,12 @@ def makeFigure():
                 targetsBoth = [target1, target2]
                 valenciesBoth = np.array([[signal[1], valencies[i], valencies[j]]])
 
-            dfTargCell = epitopesDF.loc[
-                epitopesDF["Cell Type"] == targCell
+            dfTargCell = sampleDF.loc[
+                sampleDF["Cell Type"] == targCell
             ]
             targRecs = dfTargCell[[signal[0]] + targetsBoth]
-            dfOffTargCell = epitopesDF.loc[
-                epitopesDF["Cell Type"].isin(offTargCells)
+            dfOffTargCell = sampleDF.loc[
+                sampleDF["Cell Type"].isin(offTargCells)
             ]
             offTargRecs = dfOffTargCell[[signal[0]] + targetsBoth]
 

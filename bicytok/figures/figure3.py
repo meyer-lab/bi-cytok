@@ -9,6 +9,7 @@ from ..selectivityFuncs import (
     get_cell_bindings,
 )
 from .common import getSetup
+from ..imports import importCITE
 
 path_here = Path(__file__).parent.parent
 
@@ -36,7 +37,7 @@ def makeFigure():
     affs = np.array([signalAff] + targetAffs)
     valencies = np.array([[valency, valency, valency]])
 
-    cells = [
+    cellTypes = [
         "Treg",
         "CD8 Naive",
         "NK",
@@ -50,20 +51,29 @@ def makeFigure():
     ]
     
     epitopesList = pd.read_csv(
-        path_here / "bicytok" / "data" / "epitopeList.csv"
+        path_here / "data" / "epitopeList.csv"
     )
     epitopes = list(epitopesList["Epitope"].unique())
 
-    epitopesDF = sampleReceptorAbundances(epitopes, cells)
+    CITE_DF = importCITE()
+    epitopesDF = CITE_DF[epitopes + ["CellType2"]]
+    epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
+    epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
+
+    sampleDF = sampleReceptorAbundances(
+        CITE_DF=epitopesDF,
+        epitopes=epitopes,
+        numCells=1000
+    )
     
     Rbound = get_cell_bindings(
-        recCounts = epitopesDF[signal + targets].to_numpy(),
+        recCounts = sampleDF[signal + targets].to_numpy(),
         monomerAffs = affs,
         dose = dose,
         valencies = valencies,
     )
 
-    cellBindDF = epitopesDF[[signal] + ["Cell Type"]]
+    cellBindDF = sampleDF[signal + ["Cell Type"]]
     cellBindDF.insert(0, "Receptor Bound", Rbound[:, 0], True)
     cellBindDF = cellBindDF.groupby(["Cell Type"]).mean(0)
     cellBindDF["Percent Bound of Signal Receptor"] = (

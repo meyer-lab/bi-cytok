@@ -61,7 +61,7 @@ def makeFigure():
     allTargets = [["CD25", "CD278"], ["CD25", "CD4-2"], ["CD25", "CD45RB"]]
     dose = 10e-2
     offTargState = 0  # Adjust as needed
-    cells = np.array(
+    cellTypes = np.array(
         [
             "CD8 Naive",
             "NK",
@@ -73,14 +73,24 @@ def makeFigure():
             "Treg",
         ]
     )
-    targCell = "Treg Memory"
-    offTargCells = cells[cells != targCell]
+    targCell = "Treg"
+    offTargCells = cellTypes[cellTypes != targCell]
 
     epitopesList = pd.read_csv(
-        path_here / "bicytok" / "data" / "epitopeList.csv"
+        path_here / "data" / "epitopeList.csv"
     )
     epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = sampleReceptorAbundances(epitopes, cells, numCells=1000)
+
+    CITE_DF = importCITE()
+    epitopesDF = CITE_DF[epitopes + ["CellType2"]]
+    epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
+    epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
+
+    sampleDF = sampleReceptorAbundances(
+        CITE_DF=epitopesDF,
+        epitopes=epitopes,
+        numCells=1000
+    )
 
     df = pd.DataFrame(
         columns=[
@@ -96,18 +106,18 @@ def makeFigure():
         for targets in allTargets:
             modelValencies = np.array([[signal_valency, valency, valency]])
             
-            dfTargCell = epitopesDF.loc[
-                epitopesDF["Cell Type"] == targCell
+            dfTargCell = sampleDF.loc[
+                sampleDF["Cell Type"] == targCell
             ]
             targRecs = dfTargCell[[signal_receptor] + targets]
-            dfOffTargCell = epitopesDF.loc[
-                epitopesDF["Cell Type"].isin(offTargCells)
+            dfOffTargCell = sampleDF.loc[
+                sampleDF["Cell Type"].isin(offTargCells)
             ]
             offTargRecs = dfOffTargCell[[signal_receptor] + targets]
 
             optSelec, optParams = optimizeSelectivityAffs(
-                targRecs = targRecs,
-                offTargRecs = offTargRecs,
+                targRecs = targRecs.to_numpy(),
+                offTargRecs = offTargRecs.to_numpy(),
                 dose = dose,
                 valencies = modelValencies
             )
@@ -144,12 +154,7 @@ def makeFigure():
             KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target)
 
             # Calculate Pearson correlation inline (no separate function)
-            epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
-            epitopes = list(epitopesList["Epitope"].unique())
-            epitopesDF = sampleReceptorAbundances(epitopes, np.array([targCell]))
-            epitopesDF = epitopesDF[epitopesDF["CellType2"] == (targCell)]
-
-            corr = epitopesDF[receptors_of_interest].corr(method="pearson")
+            corr = sampleDF[receptors_of_interest].corr(method="pearson")
             sorted_corr = corr.stack().sort_values(ascending=False)
             sorted_corr_df = pd.DataFrame({"Correlation": sorted_corr})
 
