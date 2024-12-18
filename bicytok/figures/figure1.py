@@ -63,7 +63,6 @@ def makeFigure():
     )
     targCell = "Treg"
     offTargCells = cells[cells != targCell]
-    startingAff = 8.0
 
     epitopesList = pd.read_csv(
         path_here / "bicytok" / "data" / "epitopeList.csv"
@@ -76,12 +75,10 @@ def makeFigure():
 
     for targetPairs in allTargets:
         print(targetPairs)
-        prevOptAffs = [startingAff]
         valencies = [signal[1]]
         targets = []
         naming = []
         for target, valency in targetPairs:
-            prevOptAffs.append(8.0)
             targets.append(target)
             valencies.append(valency)
             naming.append(f"{target} ({valency})")
@@ -99,7 +96,6 @@ def makeFigure():
 
         for dose in doseVec:
             optSelec, optParams = optimizeSelectivityAffs(
-                initialAffs = prevOptAffs,
                 targRecs = targRecs.to_numpy(),
                 offTargRecs = offTargRecs.to_numpy(),
                 dose = dose,

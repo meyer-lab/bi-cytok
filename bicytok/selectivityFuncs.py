@@ -59,6 +59,7 @@ def minOffTargSelec(
     """
 
     # Reformat input affinities to 10^aff and diagonalize
+    # Sam: shouldn't this be done before the optimization?
     modelAffs = restructureAffs(monomerAffs)
 
     # Use the binding model to calculate bound receptors for target and off-target cell types
@@ -85,7 +86,6 @@ def minOffTargSelec(
 
 # Called in Figure1, Figure4, and Figure5
 def optimizeSelectivityAffs(
-    initialAffs: list,
     targRecs: np.ndarray,
     offTargRecs: np.ndarray,
     dose: float,
@@ -108,20 +108,29 @@ def optimizeSelectivityAffs(
     """
 
     # Relabel initial affinities to a variable that will be altered during optimization
-    X0 = initialAffs
+    
 
-    # Set bounds for optimization
+    # Choose initial affinities and set bounds for optimization
     # minAffs and maxAffs chosen based on biologically realistic affinities for engineered ligands
     # Sam: affinities are maxing and bottoming out before optimization is complete...
-    #       for fig1, target 1, final affinities are 1e7 and ~1e9 (9.997e8)
+    #       for fig1, target 1, final affinities are 1e7 and ~1e9 (9.997e8) (with bounds 7 and 9)
     minAffs = [7.0] * (targRecs.shape[1])
     maxAffs = [9.0] * (targRecs.shape[1])
-    optBnds = Bounds(np.full_like(X0, minAffs), np.full_like(X0, maxAffs))
+    initAffs = np.full_like(
+        valencies[0], # Correct this if sizes of initial affinities and valencies are not always the same
+        minAffs[0] + (maxAffs[0] - minAffs[0]) / 2 # Start at midpoint between min and max bounds
+    )
+    optBnds = Bounds(
+        np.full_like(initAffs, minAffs), 
+        np.full_like(initAffs, maxAffs)
+    )
+    print(initAffs)
+    print(optBnds)
 
     # Run optimization to minimize off-target selectivity by changing affinities
     optimizer = minimize(
         minOffTargSelec,
-        X0,
+        initAffs,
         bounds=optBnds,
         args=(
             targRecs,
@@ -137,7 +146,6 @@ def optimizeSelectivityAffs(
     return optSelect, optAffs
 
 
-# Called in sampleReceptorAbundances
 # Sam: reimplement this function when we have a clearer idea 
 #   of how to calculate conversion factors
 def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:

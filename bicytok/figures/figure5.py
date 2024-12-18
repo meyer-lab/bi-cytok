@@ -93,7 +93,6 @@ def makeFigure():
     )
 
     for valency in valencies:
-        prevOptAffs = [8.0, 8.0, 8.0]
         for targets in allTargets:
             modelValencies = np.array([[signal_valency, valency, valency]])
             
@@ -107,13 +106,11 @@ def makeFigure():
             offTargRecs = dfOffTargCell[[signal_receptor] + targets]
 
             optSelec, optParams = optimizeSelectivityAffs(
-                initialAffs = prevOptAffs,
                 targRecs = targRecs,
                 offTargRecs = offTargRecs,
                 dose = dose,
                 valencies = modelValencies
             )
-            prevOptAffs = optParams
             select = (1 / optSelec,)
 
             non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]

@@ -60,11 +60,9 @@ def makeFigure():
                 # targeting SIGNAL and 2 subunits corresponding to target1?
                 # Right now it's just 1 subunit for target1.
                 targetsBoth = [target1]
-                optAffs = [8.0, 8.0]
                 valenciesBoth = np.array([[signal[1], valencies[i]]])
             else:
                 targetsBoth = [target1, target2]
-                optAffs = [8.0, 8.0, 8.0]
                 valenciesBoth = np.array([[signal[1], valencies[i], valencies[j]]])
 
             dfTargCell = epitopesDF.loc[
@@ -77,7 +75,6 @@ def makeFigure():
             offTargRecs = dfOffTargCell[[signal[0]] + targetsBoth]
 
             optSelec, optParams = optimizeSelectivityAffs(
-                initialAffs = optAffs,
                 targRecs = targRecs.to_numpy(),
                 offTargRecs = offTargRecs.to_numpy(),
                 dose = dose,
