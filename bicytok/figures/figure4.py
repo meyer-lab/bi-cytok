@@ -37,7 +37,7 @@ def makeFigure():
         ]
     )
     targCell = "Treg"
-    offTCells = cells[cells != targCell]
+    offTargCells = cells[cells != targCell]
 
     epitopesList = pd.read_csv(join(path_here, "data", "epitopeList.csv"))
     epitopes = list(epitopesList["Epitope"].unique())
@@ -65,21 +65,27 @@ def makeFigure():
                 optAffs = [8.0, 8.0, 8.0]
                 valenciesBoth = np.array([[signal[1], valencies[i], valencies[j]]])
 
-            optParams = optimizeSelectivityAffs(
-                signal[0],
-                targetsBoth,
-                targCell,
-                offTCells,
-                epitopesDF,
-                dose,
-                valenciesBoth,
-                optAffs,
+            dfTargCell = epitopesDF.loc[
+                epitopesDF["Cell Type"] == targCell
+            ]
+            targRecs = dfTargCell[[signal[0]] + targetsBoth]
+            dfOffTargCell = epitopesDF.loc[
+                epitopesDF["Cell Type"].isin(offTargCells)
+            ]
+            offTargRecs = dfOffTargCell[[signal[0]] + targetsBoth]
+
+            optSelec, optParams = optimizeSelectivityAffs(
+                initialAffs = optAffs,
+                targRecs = targRecs.to_numpy(),
+                offTargRecs = offTargRecs.to_numpy(),
+                dose = dose,
+                valencies = valenciesBoth
             )
 
             data = {
                 "Target 1": f"{target1} ({valencies[i]})",
                 "Target 2": f"{target2} ({valencies[j]})",
-                "Selectivity": 1 / optParams[0],
+                "Selectivity": 1 / optSelec,
             }
             df_temp = pd.DataFrame(
                 data, columns=["Target 1", "Target 2", "Selectivity"], index=[0]

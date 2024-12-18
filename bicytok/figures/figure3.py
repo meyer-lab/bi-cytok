@@ -3,7 +3,6 @@ from os.path import dirname, join
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import os
 
 from ..selectivityFuncs import (
     calcReceptorAbundances,
@@ -20,12 +19,9 @@ def makeFigure():
     Figure file to generate bar plots for amount of signal receptor bound to each given cell type
     signal: signaling receptor
     target: additional targeting receptor
-    Armaan: why call it 'starting' affinity? I don't think you're fitting any
-    affinities in this figure, so maybe state this explicitly and just call them
-    affinities. Also, are you sure you shouldn't be optimizing the affinities here?
-    This seems to be the case for the other figures.
     signalAff: starting affinity of ligand and signal receptor
     """
+
     ax, f = getSetup((8, 3), (1, 2))
 
     signal = ["CD122"]
@@ -36,6 +32,7 @@ def makeFigure():
     # Armaan: how are the 8.5s chosen here?
     targetAffs = [8.5, 8.5]
     valency = 4
+    dose = 0.1
 
     affs = np.array([signalAff] + targetAffs)
     valencies = np.array([[valency, valency, valency]])
@@ -59,13 +56,17 @@ def makeFigure():
     epitopesDF = calcReceptorAbundances(epitopes, cells)
     
     Rbound = get_cell_bindings(
-        epitopesDF[signal + targets].to_numpy(),
-        affs,
-        0.1,
-        valencies,
+        recCounts = epitopesDF[signal + targets].to_numpy(),
+        monomerAffs = affs,
+        dose = dose,
+        valencies = valencies,
     )
-    Rbound["Percent Bound of Signal Receptor"] = (
-        Rbound["Receptor Bound"] / Rbound[signal]
+
+    cellBindDF = epitopesDF[[signal] + ["Cell Type"]]
+    cellBindDF.insert(0, "Receptor Bound", Rbound[:, 0], True)
+    cellBindDF = cellBindDF.groupby(["Cell Type"]).mean(0)
+    cellBindDF["Percent Bound of Signal Receptor"] = (
+        cellBindDF["Receptor Bound"] / cellBindDF[signal]
     ) * 10
 
     palette = sns.color_palette("husl", 10)

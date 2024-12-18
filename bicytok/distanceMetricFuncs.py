@@ -22,7 +22,7 @@ def KL_EMD_1D(
     """
 
     assert all(
-        isinstance(i, bool) for i in np.append(targ, offTarg)
+        isinstance(i, np.bool) for i in np.append(targ, offTarg)
     )  # Check that targ and offTarg are only boolean
     assert (
         sum(targ) != 0 and sum(offTarg) != 0

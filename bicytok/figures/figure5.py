@@ -74,7 +74,7 @@ def makeFigure():
         ]
     )
     targCell = "Treg Memory"
-    offTCells = cells[cells != targCell]
+    offTargCells = cells[cells != targCell]
 
     epitopesList = pd.read_csv(join(path_here, "data", "epitopeList.csv"))
     epitopes = list(epitopesList["Epitope"].unique())
@@ -90,23 +90,29 @@ def makeFigure():
         ]
     )
 
-    for val in valencies:
+    for valency in valencies:
         prevOptAffs = [8.0, 8.0, 8.0]
         for targets in allTargets:
-            vals = np.array([[signal_valency, val, val]])
+            modelValencies = np.array([[signal_valency, valency, valency]])
+            
+            dfTargCell = epitopesDF.loc[
+                epitopesDF["Cell Type"] == targCell
+            ]
+            targRecs = dfTargCell[[signal_receptor] + targets]
+            dfOffTargCell = epitopesDF.loc[
+                epitopesDF["Cell Type"].isin(offTargCells)
+            ]
+            offTargRecs = dfOffTargCell[[signal_receptor] + targets]
 
-            optParams = optimizeSelectivityAffs(
-                signal_receptor,
-                targets,
-                targCell,
-                offTCells,
-                epitopesDF,
-                dose,
-                vals,
-                prevOptAffs,
+            optSelec, optParams = optimizeSelectivityAffs(
+                initialAffs = prevOptAffs,
+                targRecs = targRecs,
+                offTargRecs = offTargRecs,
+                dose = dose,
+                valencies = modelValencies
             )
-            prevOptAffs = optParams[1]
-            select = (1 / optParams[0],)
+            prevOptAffs = optParams
+            select = (1 / optSelec,)
 
             non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
             marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
@@ -158,7 +164,7 @@ def makeFigure():
                 "Earth Mover's Distance": [EMD_vals],
                 "Correlation": [corr],
                 "Selectivity": select,
-                "Valency": [val],
+                "Valency": [valency],
             }
             df_temp = pd.DataFrame(
                 data,

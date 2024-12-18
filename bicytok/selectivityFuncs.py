@@ -34,8 +34,8 @@ def restructureAffs(affs: np.ndarray) -> np.ndarray:
 # Called in optimizeDesign
 def minOffTargSelec(
     monomerAffs: np.ndarray,
-    targRecs: pd.DataFrame,
-    offTargRecs: pd.DataFrame,
+    targRecs: np.ndarray,
+    offTargRecs: np.ndarray,
     dose: float,
     valencies: np.ndarray,
 ) -> float:
@@ -45,7 +45,6 @@ def minOffTargSelec(
     Args:
         monomerAffs: monomer ligand-receptor affinities 
             Modulated in optimization
-        signal: signaling receptor
         targRecs: dataframe of receptors counts of target cell type
         offTargRecs: dataframe of receptors counts of off-target cell types
         dose: ligand concentration/dose that is being modeled
@@ -64,6 +63,13 @@ def minOffTargSelec(
     )
     
     # Calculate counts of all receptors bound for target and off-target cell types
+    print(dose)
+    print(targRecs)
+    print(targRecs.ndim)
+    print(valencies)
+    print(modelAffs)
+    test = cytBindingModel(dose, targRecs, valencies, modelAffs)
+    print(test)
     targRbound = cytBindingModel_vec(
         dose=dose,
         recCounts=targRecs,
@@ -87,26 +93,23 @@ def minOffTargSelec(
 
 # Called in Figure1, Figure4, and Figure5
 def optimizeSelectivityAffs(
+    initialAffs: list,
     targRecs: np.ndarray,
     offTargRecs: np.ndarray,
     dose: float,
-    valencies: np.ndarray,
-    initialAffs: list
+    valencies: np.ndarray
 ) -> tuple[float, list]:
     """
     A general optimizer used to minimize selectivity output
         by varying affinity parameter.
     Args:
-        signal: signaling receptor
-        targets: list of targeting receptors
-        targCell: target cell type
-        offTargCells: list of off target cell types
-        selectedDf: dataframe of receptor counts of all cells
-        dose: ligand concentration/dose that is being modeled
-        valencies: array of valencies of each ligand epitope
         initialAffs: initial receptor affinities to optimize for
             maximum target cell selectivity.
             affinities are K_a in L/mol
+        targRecs: all receptor counts of target cell type
+        offTargRecs: all receptor counts of off-target cell types
+        dose: ligand concentration/dose that is being modeled
+        valencies: array of valencies of each ligand epitope
     Return:
         optSelec: optimized selectivity value
         optAffs: optimized affinity values
@@ -324,9 +327,7 @@ def get_cell_bindings(
     """
     Returns amount of receptor bound on average per cell for each cell type
     Args:
-        df: dataframe of receptor counts of all cells
-        signal: signaling receptor
-        targets: list of targeting receptors
+        recCounts: counts of each receptor on all single cells
         monomerAffs: monomer ligand-receptor affinities
         dose: ligand concentration/dose that is being modeled
         valencies: array of valencies of each ligand epitope

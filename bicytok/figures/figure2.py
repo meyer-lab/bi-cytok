@@ -28,8 +28,8 @@ def makeFigure():
       - **KL Divergence Plot**: Top 5 markers sorted by KL divergence.
       - **EMD Plot**: Top 5 markers sorted by EMD.
     - Each plot is labeled with marker names on the y-axis and their respective values (KL or EMD) on the x-axis.
-
     """
+    
     ax, f = getSetup((8, 8), (1, 2))
 
     targCell = "Treg"
