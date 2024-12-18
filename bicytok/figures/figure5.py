@@ -6,7 +6,7 @@ import seaborn as sns
 
 from ..imports import importCITE
 from ..selectivityFuncs import (
-    calcReceptorAbundances, 
+    sampleReceptorAbundances, 
     optimizeSelectivityAffs
 )
 from ..distanceMetricFuncs import KL_EMD_2D
@@ -80,7 +80,7 @@ def makeFigure():
         path_here / "bicytok" / "data" / "epitopeList.csv"
     )
     epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = calcReceptorAbundances(epitopes, cells, numCells=1000)
+    epitopesDF = sampleReceptorAbundances(epitopes, cells, numCells=1000)
 
     df = pd.DataFrame(
         columns=[
@@ -149,7 +149,7 @@ def makeFigure():
             # Calculate Pearson correlation inline (no separate function)
             epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
             epitopes = list(epitopesList["Epitope"].unique())
-            epitopesDF = calcReceptorAbundances(epitopes, np.array([targCell]))
+            epitopesDF = sampleReceptorAbundances(epitopes, np.array([targCell]))
             epitopesDF = epitopesDF[epitopesDF["CellType2"] == (targCell)]
 
             corr = epitopesDF[receptors_of_interest].corr(method="pearson")

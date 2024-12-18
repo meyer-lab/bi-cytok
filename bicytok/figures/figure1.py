@@ -6,7 +6,7 @@ import pandas as pd
 import seaborn as sns
 
 from ..selectivityFuncs import (
-    calcReceptorAbundances,
+    sampleReceptorAbundances,
     get_cell_bindings,
     optimizeSelectivityAffs,
 )
@@ -69,7 +69,7 @@ def makeFigure():
         path_here / "bicytok" / "data" / "epitopeList.csv"
     )
     epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = calcReceptorAbundances(epitopes, cells)
+    epitopesDF = sampleReceptorAbundances(epitopes, cells)
 
     doseVec = np.logspace(-2, 2, num=20)
     df = pd.DataFrame(columns=["Dose", "Selectivity", "Target Bound", "Ligand"])

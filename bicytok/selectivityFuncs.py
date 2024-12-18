@@ -137,7 +137,9 @@ def optimizeSelectivityAffs(
     return optSelect, optAffs
 
 
-# Called in calcReceptorAbundances
+# Called in sampleReceptorAbundances
+# Sam: reimplement this function when we have a clearer idea 
+#   of how to calculate conversion factors
 def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:
     """
     Returns conversion factors by marker for converting CITEseq signal into abundance
@@ -161,36 +163,6 @@ def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:
         "CD4 TEM",
     ]
     markers = ["CD122", "CD127", "CD25"]
-    markerDF = pd.DataFrame()
-
-    # Iterate through all markers and cell types
-    # These loops serve to calculate the average receptor counts and total cell counts 
-    #   for each cell type/marker pair
-    for marker in markers:
-        for cellType in cellTypes:
-            # Slice only the rows with cells of the current type 
-            #   and the column of the current marker
-            cellTypeDF = CITE_DF.loc[CITE_DF["CellType2"] == cellType][marker]
-
-            # Create a new row for the markerDF dataframe
-            dftemp = pd.DataFrame(
-                {
-                    "Marker": [marker],
-                    "Cell Type": cellType,
-                    "Amount": cellTypeDF.mean(), # Amount is the mean of the receptor counts for that cell type
-                    "Number": cellTypeDF.size, # Number is the number of cells of that cell type
-                }
-            )
-
-            # Concatenate the new row (dftemp) to the markerDF dataframe 
-            #   or set it as the markerDF if it is empty
-            markerDF = (
-                dftemp
-                if isinstance(markerDF, pd.DataFrame)
-                else pd.concat([markerDF, dftemp])
-            )
-
-    # Replace marker and cell type names with common names
     markDict = {
         "CD25": "IL2Ra", 
         "CD122": "IL2Rb", 
@@ -208,93 +180,12 @@ def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:
         "CD8 TEM": "CD8",
         "Treg": "Treg",
     }
-    markerDF = markerDF.replace({"Marker": markDict, "Cell Type": cellDict})
-    markerDFw = pd.DataFrame()
-
-    # Iterate through all markers and cell types
-    # These loops serve to calculate the weighted average of receptor counts
-    #  for each cell type/marker pair
-    # Armaan: You might need to step through the code to confirm this, but I
-    # believe that this loop can be simplified to a loop over the rows in
-    # markerDF, because there shouldn't be more than one row with the same cell
-    # type and marker, this wouldn't even make sense (correct me if I'm wrong
-    # though). This would allow you to avoid the use of unique(), the boolean &
-    # indexing, and the use of wAvg. 
-    # Wait, actually, if my above statement is correct, then you can just delete
-    # this whole double for loop and calculate the average in the loop above.
-    for marker in markerDF.Marker.unique():
-        for cell in markerDF["Cell Type"].unique():
-            # Slice current rows by cell type and columns by marker
-            subDF = markerDF.loc[
-                (markerDF["Cell Type"] == cell) & (markerDF["Marker"] == marker)
-            ]
-
-            # Calculate weighted average of receptor counts
-            wAvg = (
-                np.sum(subDF.Amount.values * subDF.Number.values) / 
-                np.sum(subDF.Number.values)
-            )
-
-            # Create a new row for the markerDFw dataframe and append it
-            dftemp = pd.DataFrame(
-                {"Marker": [marker], "Cell Type": cell, "Average": wAvg}
-            )
-            markerDFw = (
-                dftemp
-                if isinstance(markerDFw, pd.DataFrame)
-                else pd.concat([markerDFw, dftemp])
-            )
-
-    # Import receptor data
-    recDF = importReceptors()
-    weightDF = None
-
-    # Iterate through all markers and cell types
-    # The purpose of this loop is to calculate the conversion factors for each receptor
-    # Armaan: If my comment above is correct, you can also move this logic into
-    # the initial loop over markerDF and delete this loop.
-    for rec in markerDFw.Marker.unique():
-        CITEval = np.array([])
-        Quantval = np.array([])
-        for cell in markerDF["Cell Type"].unique():
-            # Append the average receptor counts and mean receptor counts to the placeholder dataframes
-            CITEval = np.concatenate(
-                (
-                    CITEval,
-                    markerDFw.loc[
-                        (markerDFw["Cell Type"] == cell) & (markerDFw["Marker"] == rec)
-                    ].Average.values,
-                )
-            )
-            Quantval = np.concatenate(
-                (
-                    Quantval,
-                    recDF.loc[
-                        (recDF["Cell Type"] == cell) & (recDF["Receptor"] == rec)
-                    ].Mean.values,
-                )
-            )
-
-        # Create a new row for the weightDF dataframe and append it
-        dftemp = pd.DataFrame(
-            {
-                "Receptor": [rec],
-                "Weight": np.linalg.lstsq(
-                    np.reshape(CITEval, (-1, 1)).astype(float), Quantval, rcond=None
-                )[0],
-            }
-        )
-        weightDF = (
-            dftemp 
-            if weightDF is None 
-            else pd.concat([weightDF, dftemp])
-        )
-
-    return weightDF
+    
+    return None
 
 
 # Called in Figure1, Figure3, Figure4, and Figure5
-def calcReceptorAbundances(
+def sampleReceptorAbundances(
     epitopes: list, 
     cellList: list, 
     numCells=1000, 
@@ -320,15 +211,8 @@ def calcReceptorAbundances(
     CITE_DF_new = CITE_DF_new.loc[CITE_DF_new[cellCat].isin(cellList)]
     CITE_DF_new = CITE_DF_new.rename(columns={cellCat: "Cell Type"})
 
-    # Get conversion factors, average them to use on epitopes with unlisted conv facts
-    meanConv = (
-        calcCITEConvFacts(CITE_DF).Weight.mean()
-    )  
-
     # convFactDict values calculated by calcCITEConvFacts
-    # Armaan: I think it would make more sense to move this confFactDict into
-    # confFactCalc, as it better falls under the responsibility of that
-    # function.
+    # Sam: calculation of conversion factors was unclear, should be revised
     convFactDict = {
         "CD25": 77.136987,
         "CD122": 332.680090,
@@ -341,7 +225,7 @@ def calcReceptorAbundances(
     # Multiply the receptor counts of epitope by the conversion factor for that epitope
     for epitope in epitopes:
         sampleDF[epitope] = sampleDF[epitope].multiply(
-            convFactDict.get(epitope, meanConv)
+            convFactDict.get(epitope, value=300) # If epitope not in dict, multiply by 300
         )
 
     return sampleDF

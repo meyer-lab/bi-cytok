@@ -5,7 +5,7 @@ import pandas as pd
 import seaborn as sns
 
 from ..selectivityFuncs import (
-    calcReceptorAbundances,
+    sampleReceptorAbundances,
     get_cell_bindings,
 )
 from .common import getSetup
@@ -54,7 +54,7 @@ def makeFigure():
     )
     epitopes = list(epitopesList["Epitope"].unique())
 
-    epitopesDF = calcReceptorAbundances(epitopes, cells)
+    epitopesDF = sampleReceptorAbundances(epitopes, cells)
     
     Rbound = get_cell_bindings(
         recCounts = epitopesDF[signal + targets].to_numpy(),
