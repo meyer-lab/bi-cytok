@@ -1,4 +1,4 @@
-from os.path import dirname, join
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -12,7 +12,7 @@ from ..selectivityFuncs import (
 from ..distanceMetricFuncs import KL_EMD_2D
 from .common import getSetup
 
-path_here = dirname(dirname(__file__))
+path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
@@ -76,7 +76,9 @@ def makeFigure():
     targCell = "Treg Memory"
     offTargCells = cells[cells != targCell]
 
-    epitopesList = pd.read_csv(join(path_here, "data", "epitopeList.csv"))
+    epitopesList = pd.read_csv(
+        path_here / "bicytok" / "data" / "epitopeList.csv"
+    )
     epitopes = list(epitopesList["Epitope"].unique())
     epitopesDF = calcReceptorAbundances(epitopes, cells, numCells=1000)
 

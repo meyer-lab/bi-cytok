@@ -1,10 +1,8 @@
 """
 This file contains functions that are used in multiple figures.
 """
-
 import sys
 import time
-from os.path import dirname
 from string import ascii_lowercase
 
 import matplotlib
@@ -13,8 +11,6 @@ import seaborn as sns
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
-
-path_here = dirname(dirname(__file__))
 
 
 matplotlib.rcParams["legend.labelspacing"] = 0.2

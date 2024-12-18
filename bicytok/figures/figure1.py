@@ -1,4 +1,4 @@
-from os.path import dirname, join
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,7 +12,7 @@ from ..selectivityFuncs import (
 )
 from .common import getSetup
 
-path_here = dirname(dirname(__file__))
+path_here = Path(__file__).parent.parent
 
 plt.rcParams["svg.fonttype"] = "none"
 
@@ -65,7 +65,9 @@ def makeFigure():
     offTargCells = cells[cells != targCell]
     startingAff = 8.0
 
-    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopesList = pd.read_csv(
+        path_here / "bicytok" / "data" / "epitopeList.csv"
+    )
     epitopes = list(epitopesList["Epitope"].unique())
     epitopesDF = calcReceptorAbundances(epitopes, cells)
 

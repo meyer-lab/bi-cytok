@@ -1,4 +1,4 @@
-from os.path import dirname
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,7 +10,7 @@ from sklearn.neighbors import KernelDensity
 from ..imports import importCITE
 from .common import getSetup
 
-path_here = dirname(dirname(__file__))
+path_here = Path(__file__).parent.parent
 
 plt.rcParams["svg.fonttype"] = "none"
 
