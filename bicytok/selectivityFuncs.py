@@ -19,6 +19,9 @@ def restructureAffs(affs: np.ndarray) -> np.ndarray:
         restructuredAffs: restructured receptor affinities
     """
 
+    assert len(affs.shape) == 1
+    assert affs.size > 0
+
     exponentialAffs = pd.DataFrame()
     # Convert affinities to 10th order values
     # Sam: why not just input the affinities in the correct format...
@@ -56,6 +59,8 @@ def minOffTargSelec(
             this is selectivity for the off target cells and is minimized to
             maximize selectivity for the target cell
     """
+
+    assert targRecs.shape[1] == offTargRecs.shape[1]
 
     # Reformat input affinities to 10^aff and diagonalize
     # Sam: shouldn't this be done before the optimization?
@@ -110,6 +115,7 @@ def optimizeSelectivityAffs(
     # minAffs and maxAffs chosen based on biologically realistic affinities for engineered ligands
     # Sam: affinities are maxing and bottoming out before optimization is complete...
     #       for fig1, target 1, final affinities are 1e7 and ~1e9 (9.997e8) (with bounds 7 and 9)
+    # Sam: need to test this for more than two epitopes
     minAffs = [7.0] * (targRecs.shape[1])
     maxAffs = [9.0] * (targRecs.shape[1])
     initAffs = np.full_like(
@@ -203,6 +209,9 @@ def sampleReceptorAbundances(
             receptors (column) for each individual cell (row),
             with final column being cell type from the cell type categorization level set by cellCat
     """
+
+    assert numCells <= CITE_DF.shape[0]
+    assert any(epitope in CITE_DF.columns for epitope in epitopes)
 
     # convFactDict values calculated by calcCITEConvFacts
     # Sam: calculation of conversion factors was unclear, should be revised
