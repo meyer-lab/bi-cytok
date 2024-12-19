@@ -1,4 +1,4 @@
-from os.path import dirname
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,13 +10,19 @@ from sklearn.neighbors import KernelDensity
 from ..imports import importCITE
 from .common import getSetup
 
-path_here = dirname(dirname(__file__))
+path_here = Path(__file__).parent.parent
 
 plt.rcParams["svg.fonttype"] = "none"
 
 
 def makeFigure():
-    """Figure file to generate bar plots of 1D KL divergence and EMD values of most unique receptor for each given cell type/subset."""
+    """
+    Figure file to generate bar plots of 1D KL divergence and EMD values of 
+    most unique receptor for each given cell type/subset.
+    toRemove: cell types to remove from calculations and figure generation
+    cellLevel: cell type categorization level, see cell types/subsets in CITE data
+    """
+
     ax, f = getSetup((12, 4), (1, 2))
 
     CITE_DF = importCITE()
@@ -43,15 +49,12 @@ def makeFigure():
 
     for targCell in cells:
         markerDF = pd.DataFrame(columns=["Marker", "KL", "EMD"])
-        for marker in CITE_DF.loc[
-            :,
-            (
-                (CITE_DF.columns != "CellType1")
-                & (CITE_DF.columns != "CellType2")
-                & (CITE_DF.columns != "CellType3")
-                & (CITE_DF.columns != "Cell")
-            ),
-        ].columns:
+        
+        non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
+        marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
+        markerDF = CITE_DF.loc[:, marker_columns]
+        
+        for marker in CITE_DF.columns:
             markAvg = np.mean(CITE_DF[marker].values)
             if markAvg > 0.0001:
                 targCellMark = (

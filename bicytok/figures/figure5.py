@@ -1,15 +1,18 @@
-from os.path import dirname, join
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from ..distanceMetricFuncs import KL_EMD_2D
 from ..imports import importCITE
-from ..selectivityFuncs import getSampleAbundances, optimizeDesign
+from ..selectivityFuncs import (
+    sampleReceptorAbundances, 
+    optimizeSelectivityAffs
+)
+from ..distanceMetricFuncs import KL_EMD_2D
 from .common import getSetup
 
-path_here = dirname(dirname(__file__))
+path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
@@ -46,10 +49,8 @@ def makeFigure():
      - **EMD vs. Selectivity**: Plotted on a logarithmic scale to highlight differences in distribution shifts.
      - **Correlation vs. Selectivity**: Shows the impact of receptor anti-correlation on ligand selectivity.
     - Uses different hues to indicate valency levels, providing a visual comparison across varying ligand valencies.
-
-
-
     """
+    
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()
@@ -60,7 +61,7 @@ def makeFigure():
     allTargets = [["CD25", "CD278"], ["CD25", "CD4-2"], ["CD25", "CD45RB"]]
     dose = 10e-2
     offTargState = 0  # Adjust as needed
-    cells = np.array(
+    cellTypes = np.array(
         [
             "CD8 Naive",
             "NK",
@@ -73,11 +74,23 @@ def makeFigure():
         ]
     )
     targCell = "Treg"
-    offTCells = cells[cells != targCell]
+    offTargCells = cellTypes[cellTypes != targCell]
 
-    epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
+    epitopesList = pd.read_csv(
+        path_here / "data" / "epitopeList.csv"
+    )
     epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = getSampleAbundances(epitopes, cells, numCells=1000)
+
+    CITE_DF = importCITE()
+    epitopesDF = CITE_DF[epitopes + ["CellType2"]]
+    epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
+    epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
+
+    sampleDF = sampleReceptorAbundances(
+        CITE_DF=epitopesDF,
+        epitopes=epitopes,
+        numCells=1000
+    )
 
     df = pd.DataFrame(
         columns=[
@@ -89,23 +102,26 @@ def makeFigure():
         ]
     )
 
-    for val in valencies:
-        prevOptAffs = [8.0, 8.0, 8.0]
+    for valency in valencies:
         for targets in allTargets:
-            vals = np.array([[signal_valency, val, val]])
+            modelValencies = np.array([[signal_valency, valency, valency]])
+            
+            dfTargCell = sampleDF.loc[
+                sampleDF["Cell Type"] == targCell
+            ]
+            targRecs = dfTargCell[[signal_receptor] + targets]
+            dfOffTargCell = sampleDF.loc[
+                sampleDF["Cell Type"].isin(offTargCells)
+            ]
+            offTargRecs = dfOffTargCell[[signal_receptor] + targets]
 
-            optParams = optimizeDesign(
-                signal_receptor,
-                targets,
-                targCell,
-                offTCells,
-                epitopesDF,
-                dose,
-                vals,
-                prevOptAffs,
+            optSelec, optParams = optimizeSelectivityAffs(
+                targRecs = targRecs.to_numpy(),
+                offTargRecs = offTargRecs.to_numpy(),
+                dose = dose,
+                valencies = modelValencies
             )
-            prevOptAffs = optParams[1]
-            select = (1 / optParams[0],)
+            select = (1 / optSelec,)
 
             non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
             marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
@@ -138,12 +154,7 @@ def makeFigure():
             KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target)
 
             # Calculate Pearson correlation inline (no separate function)
-            epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
-            epitopes = list(epitopesList["Epitope"].unique())
-            epitopesDF = getSampleAbundances(epitopes, np.array([targCell]))
-            epitopesDF = epitopesDF[epitopesDF["CellType2"] == (targCell)]
-
-            corr = epitopesDF[receptors_of_interest].corr(method="pearson")
+            corr = sampleDF[receptors_of_interest].corr(method="pearson")
             sorted_corr = corr.stack().sort_values(ascending=False)
             sorted_corr_df = pd.DataFrame({"Correlation": sorted_corr})
 
@@ -157,7 +168,7 @@ def makeFigure():
                 "Earth Mover's Distance": [EMD_vals],
                 "Correlation": [corr],
                 "Selectivity": select,
-                "Valency": [val],
+                "Valency": [valency],
             }
             df_temp = pd.DataFrame(
                 data,
