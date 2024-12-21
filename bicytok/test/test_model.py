@@ -141,15 +141,14 @@ def test_invalid_model_function_inputs():
         "CD122": np.random.rand(100),
         "CD25": np.random.rand(100),
     })
-    epitopes = ["CD122", "CD25"]
     numCells = 50
 
     # Test invalid inputs for sampleReceptorAbundances
     with pytest.raises(AssertionError):
-        sampleReceptorAbundances(df, ["a", "b"], numCells) # no matching epitopes
+        sampleReceptorAbundances(df, 200) # requested sample size greater than available cells
 
     with pytest.raises(AssertionError):
-        sampleReceptorAbundances(df, epitopes, 200) # requested sample size greater than available cells
+        sampleReceptorAbundances(df.drop(columns="Cell Type"), numCells) # lack of cell type column
 
 
 if __name__ == "__main__":

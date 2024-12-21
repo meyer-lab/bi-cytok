@@ -10,25 +10,23 @@ from .MBmodel import cytBindingModel
 
 
 # Called in minOffTargSelec and get_cell_bindings
+# Sam: why not just input the affinities in the correct format...
 def restructureAffs(affs: np.ndarray) -> np.ndarray:
     """
     Structures array of receptor affinities to be compatible with the binding model
     Args:
-        affs: receptor affinities
+        affs: receptor affinities in ? units
     Return:
-        restructuredAffs: restructured receptor affinities
+        restructuredAffs: restructured receptor affinities in L/mol (1/M)
     """
 
     assert len(affs.shape) == 1
     assert affs.size > 0
 
-    exponentialAffs = pd.DataFrame()
     # Convert affinities to 10th order values
-    # Sam: why not just input the affinities in the correct format...
-    for aff in affs:
-        exponentialAffs = np.append(exponentialAffs, np.power(10, aff))
+    exponentialAffs = np.power(10, affs)
 
-    # Sam: what is the meaning of the off-diagonal values?
+    # Set off-diagonals to values that won't affect optimization
     restructuredAffs = np.full((affs.size, affs.size), 1e2)
     np.fill_diagonal(restructuredAffs, exponentialAffs)
 
@@ -93,22 +91,25 @@ def optimizeSelectivityAffs(
     targRecs: np.ndarray,
     offTargRecs: np.ndarray,
     dose: float,
-    valencies: np.ndarray
+    valencies: np.ndarray,
+    bounds: tuple[float, float] = (7.0, 9.0)
 ) -> tuple[float, list]:
     """
-    A general optimizer used to minimize selectivity output
-        by varying affinity parameter.
+    An optimizer used to minimize selectivity output
+        by varying the affinity parameters.
+        Selectivity is defined as the ratio of binding of
+        off-target cells to target cells.
     Args:
-        initialAffs: initial receptor affinities to optimize for
-            maximum target cell selectivity.
-            affinities are K_a in L/mol
-        targRecs: all receptor counts of target cell type
-        offTargRecs: all receptor counts of off-target cell types
+        targRecs: receptor counts of each receptor (columns) on 
+            different cells (rows) of target cell type
+        offTargRecs: receptor counts of each receptor on
+            different cells of off-target cell types
         dose: ligand concentration/dose that is being modeled
         valencies: array of valencies of each ligand epitope
+        bounds: minimum and maximum optimization bounds for affinity values
     Return:
         optSelec: optimized selectivity value
-        optAffs: optimized affinity values
+        optAffs: optimized affinity values that yield the optimized selectivity
     """    
 
     # Choose initial affinities and set bounds for optimization
@@ -116,8 +117,8 @@ def optimizeSelectivityAffs(
     # Sam: affinities are maxing and bottoming out before optimization is complete...
     #       for fig1, target 1, final affinities are 1e7 and ~1e9 (9.997e8) (with bounds 7 and 9)
     # Sam: need to test this for more than two epitopes
-    minAffs = [7.0] * (targRecs.shape[1])
-    maxAffs = [9.0] * (targRecs.shape[1])
+    minAffs = [bounds[0]] * (targRecs.shape[1])
+    maxAffs = [bounds[1]] * (targRecs.shape[1])
     initAffs = np.full_like(
         valencies[0], # Correct this if sizes of initial affinities and valencies are not always the same
         minAffs[0] + (maxAffs[0] - minAffs[0]) / 2 # Start at midpoint between min and max bounds
@@ -148,88 +149,90 @@ def optimizeSelectivityAffs(
 
 # Sam: reimplement this function when we have a clearer idea 
 #   of how to calculate conversion factors
-def calcCITEConvFacts(CITE_DF: pd.DataFrame) -> pd.DataFrame:
+def calcCITEConvFacts() -> tuple[dict, float]:
     """
     Returns conversion factors by marker for converting CITEseq signal into abundance
-    Args:
-        CITE_DF: dataframe of unprocessed CITE-seq receptor values for each
-            receptor (column) for each single cell (row)
-    Return:
-        weightDF: factor to convert unprocessed CITE-seq receptor values to
-            numeric receptor counts
     """
 
-    cellTypes = [
-        "CD4 TCM",
-        "CD8 Naive",
-        "NK",
-        "CD8 TEM",
-        "CD4 Naive",
-        "CD4 CTL",
-        "CD8 TCM",
-        "Treg",
-        "CD4 TEM",
-    ]
-    markers = ["CD122", "CD127", "CD25"]
-    markDict = {
-        "CD25": "IL2Ra", 
-        "CD122": "IL2Rb", 
-        "CD127": "IL7Ra", 
-        "CD132": "gc"
-    }
-    cellDict = {
-        "CD4 Naive": "Thelper",
-        "CD4 CTL": "Thelper",
-        "CD4 TCM": "Thelper",
-        "CD4 TEM": "Thelper",
-        "NK": "NK",
-        "CD8 Naive": "CD8",
-        "CD8 TCM": "CD8",
-        "CD8 TEM": "CD8",
-        "Treg": "Treg",
-    }
-    
-    return None
+    # cellTypes = [
+    #     "CD4 TCM",
+    #     "CD8 Naive",
+    #     "NK",
+    #     "CD8 TEM",
+    #     "CD4 Naive",
+    #     "CD4 CTL",
+    #     "CD8 TCM",
+    #     "Treg",
+    #     "CD4 TEM",
+    # ]
+    # markers = ["CD122", "CD127", "CD25"]
+    # markDict = {
+    #     "CD25": "IL2Ra", 
+    #     "CD122": "IL2Rb", 
+    #     "CD127": "IL7Ra", 
+    #     "CD132": "gc"
+    # }
+    # cellDict = {
+    #     "CD4 Naive": "Thelper",
+    #     "CD4 CTL": "Thelper",
+    #     "CD4 TCM": "Thelper",
+    #     "CD4 TEM": "Thelper",
+    #     "NK": "NK",
+    #     "CD8 Naive": "CD8",
+    #     "CD8 TCM": "CD8",
+    #     "CD8 TEM": "CD8",
+    #     "Treg": "Treg",
+    # }
+
+    # Sam: calculation of these conversion factors was unclear, should be revised
+    origConvFactDict = {
+        "CD25": 77.136987,
+        "CD122": 332.680090,
+        "CD127": 594.379215,
+    } 
+    convFactDict = origConvFactDict.copy()
+    defaultConvFact = np.mean(list(origConvFactDict.values()))
+
+    return convFactDict, defaultConvFact
 
 
 # Called in Figure1, Figure3, Figure4, and Figure5
 def sampleReceptorAbundances(
     CITE_DF: pd.DataFrame,
-    epitopes: list, 
     numCells=1000, 
 ) -> pd.DataFrame:
     """
-    Samples a subset of cells and converts unprocessed CITE-seq receptor values to abundance values
+    Samples a subset of cells and converts unprocessed CITE-seq receptor values 
+        into abundance values.
     Args:
-        CITE_DF: dataframe of unprocessed CITE-seq receptor values for each
-        epitopes: list of epitopes for which you want abundance values
-        numCells: number of cells to sample from for abundance calculations
+        CITE_DF: dataframe of unprocessed CITE-seq receptor counts 
+            of different receptors/epitopes (columns) on single cells (row).
+            Epitopes are filtered outside of this function.
+            The final column should be the cell types of each cell.
+        numCells: number of cells to sample
     Return:
         sampleDF: dataframe containing single cell abundances of
-            receptors (column) for each individual cell (row),
-            with final column being cell type from the cell type categorization level set by cellCat
+            receptors (column) for each individual cell (row).
+            The final column is the cell type of each cell.
     """
 
     assert numCells <= CITE_DF.shape[0]
-    assert any(epitope in CITE_DF.columns for epitope in epitopes)
-
-    # convFactDict values calculated by calcCITEConvFacts
-    # Sam: calculation of conversion factors was unclear, should be revised
-    convFactDict = {
-        "CD25": 77.136987,
-        "CD122": 332.680090,
-        "CD127": 594.379215,
-    } 
+    assert "Cell Type" in CITE_DF.columns
     
     # Sample a subset of cells
     sampleDF = CITE_DF.sample(numCells, random_state=42)
 
-    # Multiply the receptor counts of epitope by the conversion factor for that epitope
-    for epitope in epitopes:
-        sampleDF[epitope] = sampleDF[epitope].multiply(
-            convFactDict.get(epitope, 300.0) # If epitope not in dict, multiply by 300
-        )
+    # Calculate conversion factors for each epitope
+    convFactDict, defaultConvFact = calcCITEConvFacts()
 
+    # Multiply the receptor counts of epitope by the conversion factor for that epitope
+    epitopes = CITE_DF.columns[CITE_DF.columns != "Cell Type"]
+    convFacts = [convFactDict.get(epitope, defaultConvFact) 
+                 for epitope 
+                 in epitopes]
+
+    sampleDF[epitopes] = sampleDF[epitopes] * convFacts
+    
     return sampleDF
 
 
@@ -239,17 +242,16 @@ def get_cell_bindings(
     monomerAffs: np.ndarray,
     dose: float,
     valencies: np.ndarray
-) -> pd.DataFrame:
+) -> np.ndarray:
     """
     Returns amount of receptor bound to each cell
     Args:
-        recCounts: counts of each receptor on all single cells
+        recCounts: single cell abundances of receptors
         monomerAffs: monomer ligand-receptor affinities
         dose: ligand concentration/dose that is being modeled
         valencies: array of valencies of each ligand epitope
     Return:
-        df_return: dataframe of average amount of receptor bound per cell (column) for
-            each cell type (row)
+        Rbound: number of bound receptors for each cell
     """
 
     # Reformat input affinities to 10^aff and diagonalize

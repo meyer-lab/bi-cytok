@@ -53,7 +53,6 @@ def makeFigure():
 
     sampleDF = sampleReceptorAbundances(
         CITE_DF = epitopesDF,
-        epitopes = epitopes,
         numCells = 1000
     )
 
