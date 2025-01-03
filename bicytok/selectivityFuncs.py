@@ -112,6 +112,9 @@ def optimizeSelectivityAffs(
         optAffs: optimized affinity values that yield the optimized selectivity
     """    
 
+    assert targRecs.size > 0
+    assert offTargRecs.size > 0
+
     # Choose initial affinities and set bounds for optimization
     # minAffs and maxAffs chosen based on biologically realistic affinities for engineered ligands
     # Sam: affinities are maxing and bottoming out before optimization is complete...

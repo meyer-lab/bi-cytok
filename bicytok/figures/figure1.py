@@ -74,7 +74,7 @@ def makeFigure():
     epitopesDF = CITE_DF[epitopes + ["CellType2"]]
     epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
-
+    
     sampleDF = sampleReceptorAbundances(
         CITE_DF = epitopesDF,
         numCells = 1000

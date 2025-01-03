@@ -13,7 +13,8 @@ def cytBindingModel(
     monomerAffs: np.ndarray # Kav
 ) -> np.ndarray:
     """
-    Runs binding model for a given mutein, valency, dose, and cell type
+    Runs binding model to calculate bound receptors 
+    for multiple receptor types on multiple single cells.
     Args:
         dose: ligand concentration/dose that is being modeled
         recCounts: counts of each receptor on all single cells
@@ -25,6 +26,10 @@ def cytBindingModel(
 
     assert len(recCounts.shape) == 1 or len(recCounts.shape) == 2
     assert valencies.shape[0] == monomerAffs.shape[0]
+    if len(recCounts.shape) == 1:
+        assert recCounts.shape[0] == monomerAffs.shape[1]
+    else:
+        assert recCounts.shape[1] == monomerAffs.shape[1]
 
     # Armaan: Why 1e9? Again, it should be clear why literals are chosen.
     # Sam: valencies not always in nested vector form (see Fig1). What happens if valencies is a 1D vector?
@@ -32,9 +37,6 @@ def cytBindingModel(
     
     # Calculate result for a single cell input (1D receptor counts)
     if len(recCounts.shape) == 1:
-
-        assert recCounts.shape[0] == monomerAffs.shape[1]
-
         Rtot = recCounts
         Lbound, Rbound, Lfbnd = polyc(
             L0 = ligandConc, 
@@ -48,9 +50,6 @@ def cytBindingModel(
 
     # Calculate result for a multi-cell input (2D receptor counts)
     else:
-
-        assert recCounts.shape[1] == monomerAffs.shape[1]
-
         output = np.zeros_like(recCounts)
         for i in range(recCounts.shape[0]):
             Rtot = recCounts[i, :]

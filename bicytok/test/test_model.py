@@ -14,31 +14,10 @@ from ..distanceMetricFuncs import (
 from ..selectivityFuncs import (
     sampleReceptorAbundances, 
     restructureAffs,
-    minOffTargSelec
+    minOffTargSelec,
+    optimizeSelectivityAffs
 )
 from ..MBmodel import cytBindingModel
-
-"""
-def test_optimizeSelectivityAffs():
-    targCell = "Treg"
-    offTCells = ["CD8 Naive", "NK", "CD8 TEM", "CD4 Naive", "CD4 CTL"]
-    cells = offTCells + [targCell]
-
-    epitopesList = pd.read_csv("./bicytok/data/epitopeList.csv")
-    epitopes = list(epitopesList["Epitope"].unique())
-    epitopesDF = getReceptorAbundances(epitopes, cells)
-
-    optimizeSelectivityAffs(
-        signal="CD122",
-        targets=["CD25"],
-        targCell=targCell,
-        offTCells=offTCells,
-        selectedDF=epitopesDF,
-        dose=0.1,
-        valencies=np.array([[2, 2]]),
-        prevOptAffs=[8.0, 8.0],
-    )
-"""
 
 
 def sample_data():
@@ -65,6 +44,7 @@ def test_KL_EMD_2D():
     recAbundances, targ, offTarg = sample_data()
     targ = np.array(targ, dtype=bool)
     offTarg = np.array(offTarg, dtype=bool)
+
     KL_div_vals, EMD_vals = KL_EMD_2D(recAbundances, targ, offTarg)
 
     assert KL_div_vals.shape == (recAbundances.shape[1], recAbundances.shape[1])
@@ -74,29 +54,48 @@ def test_KL_EMD_2D():
 
 
 def test_invalid_distance_function_inputs():
-    recAbundances = np.random.rand(100, 10)
-    targ = np.random.choice([True, False], size=100, p=[0.3, 0.7])
-    offTarg = ~targ
+    recAbundances, targ, offTarg = sample_data()
 
     # Test invalid inputs for KL_EMD_1D
     with pytest.raises(AssertionError):
         KL_EMD_1D(recAbundances, np.arange(100), offTarg) # non-boolean targ/offTarg
 
     with pytest.raises(AssertionError):
-        KL_EMD_1D(recAbundances, np.zeros(100, dtype=bool), offTarg) # no target cells
+        KL_EMD_1D(recAbundances, np.full(False), offTarg) # no target cells
 
     with pytest.raises(AssertionError):
-        KL_EMD_1D(recAbundances, targ, np.zeros(100, dtype=bool)) # no off-target cells
+        KL_EMD_1D(recAbundances, targ, np.full(False)) # no off-target cells
 
     # Test invalid inputs for KL_EMD_2D
     with pytest.raises(AssertionError):
         KL_EMD_2D(recAbundances, np.arange(100), offTarg) # non-boolean targ/offTarg
 
     with pytest.raises(AssertionError):
-        KL_EMD_2D(recAbundances, np.zeros(100, dtype=bool), offTarg) # no target cells
+        KL_EMD_2D(recAbundances, np.full(False), offTarg) # no target cells
 
     with pytest.raises(AssertionError):
-        KL_EMD_2D(recAbundances, targ, np.zeros(100, dtype=bool)) # no off-target cells
+        KL_EMD_2D(recAbundances, targ, np.full(False)) # no off-target cells
+
+
+def test_optimizeSelectivityAffs():
+    recAbundances, targ, offTarg = sample_data()
+    recAbundances = recAbundances[:, :2]
+    targRecs = recAbundances[targ]
+    offTargRecs = recAbundances[offTarg]
+    dose = 0.1
+    valencies = np.array([[1, 1, 1]])
+
+    optSelec, optParams = optimizeSelectivityAffs(
+        targRecs=targRecs,
+        offTargRecs=offTargRecs,
+        dose=dose,
+        valencies=valencies
+    )
+
+    assert isinstance(optSelec, float)
+    assert optSelec >= 0
+    assert optParams.shape == valencies.shape
+    assert all(optParams >= 0)
 
 
 def test_invalid_model_function_inputs():
@@ -107,10 +106,11 @@ def test_invalid_model_function_inputs():
     with pytest.raises(AssertionError):
         restructureAffs(np.array([])) # empty array
 
+
     # Assign default values for cytBindingModel and minOffTargSelec
     dose = 0.1
-    recCounts1D = np.random.rand(3) # for testing one cell
-    recCounts2D = np.random.rand(100, 3) # for testing multiple cells
+    recCounts1D = np.random.rand(3) # for testing one cell, three receptors
+    recCounts2D = np.random.rand(100, 3) # for testing multiple cells, three receptors
     valencies = np.array([[1, 1, 1]])
     monomerAffs = np.array([8.0, 8.0, 8.0])
     modelAffs = restructureAffs(monomerAffs)
@@ -120,20 +120,25 @@ def test_invalid_model_function_inputs():
         cytBindingModel(dose, np.random.rand(100, 3, 3), valencies, modelAffs) # 3D receptor counts
 
     with pytest.raises(AssertionError):
-        cytBindingModel(dose, recCounts2D, np.array([[1, 1, 1, 1]]), modelAffs) # wrong number of valenciess
+        cytBindingModel(dose, recCounts2D, np.array([[1, 1, 1, 1]]), modelAffs) # wrong number of valencies
 
     with pytest.raises(AssertionError):
         cytBindingModel(dose, recCounts2D, valencies, restructureAffs(np.array([8.0, 8.0, 8.0, 8.0]))) # wrong number of complexes
 
     with pytest.raises(AssertionError):
-        cytBindingModel(dose, recCounts1D, np.array([[1, 1]]), restructureAffs(np.array([8.0, 8.0]))) # 1D mismatched number of types of receptors
+        cytBindingModel(dose, recCounts1D, np.array([[1, 1]]), restructureAffs(np.array([8.0, 8.0]))) # 1D mismatched number of receptors
 
     with pytest.raises(AssertionError):
-        cytBindingModel(dose, recCounts2D, np.array([[1, 1]]), restructureAffs(np.array([8.0, 8.0]))) # 2D mismatched number of types of receptors
+        cytBindingModel(dose, recCounts2D, np.array([[1, 1]]), restructureAffs(np.array([8.0, 8.0]))) # 2D mismatched number of receptors
 
     # Test invalid inputs for minOffTargSelec
     with pytest.raises(AssertionError):
-        minOffTargSelec(modelAffs, recCounts2D, np.random.rand(100, 4), dose, valencies) # mismatched number of types of receptors
+        minOffTargSelec(modelAffs, recCounts2D, np.random.rand(100, 4), dose, valencies) # mismatched number of receptors
+
+    # Test invalid inputs for optimizeSelectivityAffs
+    with pytest.raises(AssertionError):
+        optimizeSelectivityAffs(np.empty(100, 3), recCounts2D, dose, valencies) # empty target receptors
+
 
     # Assign default values for sampleReceptorAbundances
     df = pd.DataFrame({
@@ -155,4 +160,5 @@ if __name__ == "__main__":
     test_KL_EMD_1D()
     test_KL_EMD_2D()
     test_invalid_distance_function_inputs()
+    test_optimizeSelectivityAffs()
     test_invalid_model_function_inputs()
