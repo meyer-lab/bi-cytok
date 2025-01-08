@@ -25,7 +25,7 @@ def cytBindingModel(
     """
 
     assert len(recCounts.shape) == 1 or len(recCounts.shape) == 2
-    assert valencies.shape[0] == monomerAffs.shape[0]
+    assert valencies[0].shape[0] == monomerAffs.shape[0] # Assumes valencies is nested vector
     if len(recCounts.shape) == 1:
         assert recCounts.shape[0] == monomerAffs.shape[1]
     else:
@@ -43,7 +43,7 @@ def cytBindingModel(
             KxStar = 2.24e-12, 
             Rtot = Rtot, 
             Cplx = valencies, 
-            Ctheta = np.full(1/len(valencies), len(valencies)),
+            Ctheta = np.full(len(valencies), 1/len(valencies)),
             Kav = monomerAffs
         )
         output = Rbound[0]

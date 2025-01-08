@@ -79,9 +79,11 @@ def test_invalid_distance_function_inputs():
 
 def test_optimizeSelectivityAffs():
     recAbundances, targ, offTarg = sample_data()
-    recAbundances = recAbundances[:, :2]
+    recAbundances = recAbundances[:, 0:3]
     targRecs = recAbundances[targ]
+    targRecs = targRecs[0:4, :]
     offTargRecs = recAbundances[offTarg]
+    offTargRecs = offTargRecs[0:4, :]
     dose = 0.1
     valencies = np.array([[1, 1, 1]])
 
@@ -94,8 +96,38 @@ def test_optimizeSelectivityAffs():
 
     assert isinstance(optSelec, float)
     assert optSelec >= 0
-    assert optParams.shape == valencies.shape
+    assert optParams.shape == valencies[0].shape
     assert all(optParams >= 0)
+
+
+# def test_binding_model():
+#     assert np.isclose(
+#         cytBindingModel(
+#             dose=0.1,
+#             recCounts=np.array([4000., 3400.]), 
+#             valencies=np.array([[1, 1]]),
+#             monomerAffs=restructureAffs(np.array([8., 8.]))
+#         )[0],
+#         4.070165414304938e-5
+#     )
+#     assert np.isclose(
+#         cytBindingModel(
+#             dose=1., 
+#             recCounts=np.array([6000., 2100.]),         
+#             valencies=np.array([[4, 4]]),
+#             monomerAffs=restructureAffs(np.array([7.6, 8.2]))
+#         )[0],
+#         0.0009870173680610606
+#     )
+#     assert np.isclose(
+#         cytBindingModel(
+#             dose=0.1,
+#             recCounts=np.array([4000., 3400., 5700., 33800.]),
+#             valencies=np.array([[1, 4, 4, 4]]),
+#             monomerAffs=restructureAffs(np.array([8.9, 7.0, 8.0, 8.0]))
+#         ),
+#         0.017104443169046135
+#     )
 
 
 def test_invalid_model_function_inputs():
@@ -137,7 +169,7 @@ def test_invalid_model_function_inputs():
 
     # Test invalid inputs for optimizeSelectivityAffs
     with pytest.raises(AssertionError):
-        optimizeSelectivityAffs(np.empty(100, 3), recCounts2D, dose, valencies) # empty target receptors
+        optimizeSelectivityAffs(np.array([]), recCounts2D, dose, valencies) # empty target receptors
 
 
     # Assign default values for sampleReceptorAbundances
@@ -161,4 +193,5 @@ if __name__ == "__main__":
     test_KL_EMD_2D()
     test_invalid_distance_function_inputs()
     test_optimizeSelectivityAffs()
+    test_binding_model()
     test_invalid_model_function_inputs()
