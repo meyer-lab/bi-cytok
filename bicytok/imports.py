@@ -2,7 +2,6 @@
 from pathlib import Path
 
 import gzip
-from functools import cache
 from zipfile import ZipFile
 
 import anndata as an
@@ -25,14 +24,8 @@ SC_Stims = [
     "TGFB_50nM",
 ]  # "IL7_500nM is blank"
 
-# Armaan: don't use lru_cache if function returns mutable value. See my
-# explanation here: https://github.com/meyer-lab/tensordata/pull/26.
-# Will you be calling this function multiple times throughout a single program?
-# I would just recommend calling it once, and then using `deepcopy` to create
-# copies which you can change if you need to. You may consider passing the data
-# as a function argument if this is called in separate spots throughout the
-# codebase.
-@cache
+
+# Originally called in selectivityFuncs.getConvFactDict
 def getBindDict():
     """Gets binding to pSTAT fluorescent conversion dictionary"""
     bindingDF = pd.read_csv(
@@ -42,7 +35,7 @@ def getBindDict():
     return bindingDF
 
 
-@cache
+# Sam: Not called anywhere, not sure what original use was
 def importReceptors():
     """Makes Complete receptor expression Dict"""
     recDF = pd.read_csv(
@@ -58,7 +51,7 @@ def importReceptors():
     return recDF
 
 
-@cache
+# Not called anywhere
 def makeCITEdf():
     """Makes cite surface epitope csv for given cell type,
     DON'T USE THIS UNLESS DATA NEEDS RESTRUCTURING"""
@@ -138,8 +131,7 @@ def importRNACITE():
     return RNAsurfDF
 
 
-# Armaan: add a breif comment or two to this function
-# Sam: need to test that pathlib path replacements work correctly
+# Sam: function not called anywhere, purpose unclear
 def makeTregSC(): 
     """Constructs .h5ad file for PBMC stimulation experiment"""
     Treg_h5ad = an.AnnData()
@@ -147,9 +139,6 @@ def makeTregSC():
         stim_an = an.AnnData()
         barcodes = pd.read_csv(
             gzip.open(
-                # "/opt/extra-storage/multi_output/outs/per_sample_outs/"
-                # + stim
-                # + "/count/sample_filtered_feature_bc_matrix/barcodes.tsv.gz"
                 (path_here / "multi_output" / "outs" / "per_sample_outs" / stim / 
                     "count" / "sample_filtered_feature_bc_matrix" / "barcodes.tsv.gz")
             ),
@@ -158,9 +147,6 @@ def makeTregSC():
         )
         matrix = mmread(
             gzip.open(
-                # "/opt/extra-storage/multi_output/outs/per_sample_outs/"
-                # + stim
-                # + "/count/sample_filtered_feature_bc_matrix/matrix.mtx.gz"
                 (path_here / "multi_output" / "outs" / "per_sample_outs" / stim /
                     "count" / "sample_filtered_feature_bc_matrix" / "matrix.mtx.gz")
             )
@@ -175,9 +161,6 @@ def makeTregSC():
             Treg_h5ad = stim_an
             features = pd.read_csv(
                 gzip.open(
-                    # "/opt/extra-storage/multi_output/outs/per_sample_outs/"
-                    # + stim
-                    # + "/count/sample_filtered_feature_bc_matrix/features.tsv.gz"
                     (path_here / "multi_output" / "outs" / "per_sample_outs" / stim /
                         "count" / "sample_filtered_feature_bc_matrix" / "features.tsv.gz")
                 ),
@@ -193,8 +176,7 @@ def makeTregSC():
     Treg_h5ad.var["feature_type"] = features["feature_type"].values
 
     Treg_h5ad.write_h5ad(
-        # "/opt/extra-storage/Treg_h5ads/Treg_raw.h5ad"
         path_here / "Treg_h5ads" / "Treg_raw.h5ad"
-        )
+    )
 
     return
