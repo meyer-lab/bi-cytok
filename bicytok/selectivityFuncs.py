@@ -129,7 +129,8 @@ def optimizeSelectivityAffs(
     maxAffs = [bounds[1]] * (targRecs.shape[1])
 
     # Start at midpoint between min and max bounds
-    # Sam: Correct this if sizes of initial affinities and valencies are not always the same
+    # Sam: Correct this if sizes of initial affinities and valencies 
+    #   are not always the same
     initAffs = np.full_like(
         valencies[0], 
         minAffs[0] + (maxAffs[0] - minAffs[0]) / 2

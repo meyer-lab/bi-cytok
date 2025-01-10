@@ -7,12 +7,10 @@ from string import ascii_lowercase
 
 import matplotlib
 import matplotlib.figure
+import matplotlib.pyplot as plt
 import seaborn as sns
-
 from matplotlib import gridspec
-from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
-
 
 matplotlib.rcParams["legend.labelspacing"] = 0.2
 matplotlib.rcParams["legend.fontsize"] = 8

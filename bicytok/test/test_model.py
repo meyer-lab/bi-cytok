@@ -1,19 +1,18 @@
 """
 Unit test file.
 """
-
 import numpy as np
 import pandas as pd
 import pytest
 
 from ..distanceMetricFuncs import KL_EMD_1D, KL_EMD_2D
+from ..MBmodel import cytBindingModel
 from ..selectivityFuncs import (
     minOffTargSelec,
     optimizeSelectivityAffs,
     restructureAffs,
-    sampleReceptorAbundances
+    sampleReceptorAbundances,
 )
-from ..MBmodel import cytBindingModel
 
 
 def sample_data():

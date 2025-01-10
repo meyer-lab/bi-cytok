@@ -12,9 +12,10 @@ def makeFigure():
         comparing target and off-target cell distributions using CITE-seq data.
 
     Data Import:
-    - Imports the CITE-seq dataframe (`importCITE`) and the plotting setup (`getSetup`).
-    - Defines a target cell type (default: "Treg") and an off-target state (`offTargState`), 
-        specifying which cells are considered "off-target".
+    - Imports the CITE-seq dataframe (`importCITE`) and the plotting 
+        setup (`getSetup`).
+    - Defines a target cell type (default: "Treg") and an off-target 
+        state (`offTargState`), specifying which cells are considered "off-target".
 
     Off-Target State Definitions:
     - Allows the selection of different off-target cells using `offTargState`:

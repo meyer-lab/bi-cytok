@@ -1,7 +1,7 @@
 """File that deals with everything about importing and sampling."""
+import gzip
 from pathlib import Path
 from zipfile import ZipFile
-import gzip
 
 import anndata as an
 import pandas as pd
