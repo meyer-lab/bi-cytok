@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import Bounds, minimize
 
-from bicytok.imports import importCITE, importReceptors
-from bicytok.MBmodel import cytBindingModel
+from .imports import importCITE, importReceptors
+from .MBmodel import cytBindingModel
 
 
 # Called in minSelecFunc and get_cell_bindings

@@ -72,7 +72,7 @@ def makeFigure():
             "Treg",
         ]
     )
-    targCell = "Treg"
+    targCell = "Treg Memory"
     offTCells = cells[cells != targCell]
 
     epitopesList = pd.read_csv(join(path_here, "data/epitopeList.csv"))
