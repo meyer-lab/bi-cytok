@@ -56,20 +56,20 @@ def test_invalid_distance_function_inputs():
         KL_EMD_1D(recAbundances, np.arange(100), offTarg) # non-boolean targ/offTarg
 
     with pytest.raises(AssertionError):
-        KL_EMD_1D(recAbundances, np.full(False), offTarg) # no target cells
+        KL_EMD_1D(recAbundances, np.full_like(targ, False), offTarg) # no target cells
 
     with pytest.raises(AssertionError):
-        KL_EMD_1D(recAbundances, targ, np.full(False)) # no off-target cells
+        KL_EMD_1D(recAbundances, targ, np.full_like(offTarg, False)) # no off-target cells
 
     # Test invalid inputs for KL_EMD_2D
     with pytest.raises(AssertionError):
         KL_EMD_2D(recAbundances, np.arange(100), offTarg) # non-boolean targ/offTarg
 
     with pytest.raises(AssertionError):
-        KL_EMD_2D(recAbundances, np.full(False), offTarg) # no target cells
+        KL_EMD_2D(recAbundances, np.full_like(targ, False), offTarg) # no target cells
 
     with pytest.raises(AssertionError):
-        KL_EMD_2D(recAbundances, targ, np.full(False)) # no off-target cells
+        KL_EMD_2D(recAbundances, targ, np.full_like(offTarg, False)) # no off-target cells
 
 
 def test_optimizeSelectivityAffs():
