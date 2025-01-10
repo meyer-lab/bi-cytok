@@ -6,15 +6,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ..distanceMetricFuncs import (
-    KL_EMD_1D, 
-    KL_EMD_2D
-)
+from ..distanceMetricFuncs import KL_EMD_1D, KL_EMD_2D
 from ..selectivityFuncs import (
-    sampleReceptorAbundances, 
-    restructureAffs,
     minOffTargSelec,
-    optimizeSelectivityAffs
+    optimizeSelectivityAffs,
+    restructureAffs,
+    sampleReceptorAbundances
 )
 from ..MBmodel import cytBindingModel
 
@@ -130,27 +127,63 @@ def test_invalid_model_function_inputs():
 
     # Test invalid inputs for cytBindingModel
     with pytest.raises(AssertionError):
-        cytBindingModel(dose, np.random.rand(100, 3, 3), valencies, modelAffs) # 3D receptor counts
+        cytBindingModel(
+            dose=dose, 
+            recCounts=np.random.rand(100, 3, 3), 
+            valencies=valencies, 
+            monomerAffs=modelAffs
+        ) # 3D receptor counts
 
     with pytest.raises(AssertionError):
-        cytBindingModel(dose, recCounts2D, np.array([[1, 1, 1, 1]]), modelAffs) # wrong number of valencies
+        cytBindingModel(
+            dose=dose, 
+            recCounts=recCounts2D, 
+            valencies=np.array([[1, 1, 1, 1]]), 
+            monomerAffs=modelAffs
+        ) # wrong number of valencies
 
     with pytest.raises(AssertionError):
-        cytBindingModel(dose, recCounts2D, valencies, restructureAffs(np.array([8.0, 8.0, 8.0, 8.0]))) # wrong number of complexes
+        cytBindingModel(
+            dose=dose, 
+            recCounts=recCounts2D, 
+            valencies=valencies, 
+            monomerAffs=restructureAffs(np.array([8.0, 8.0, 8.0, 8.0]))
+        ) # wrong number of complexes
 
     with pytest.raises(AssertionError):
-        cytBindingModel(dose, recCounts1D, np.array([[1, 1]]), restructureAffs(np.array([8.0, 8.0]))) # 1D mismatched number of receptors
+        cytBindingModel(
+            dose=dose, 
+            recCounts=recCounts1D, 
+            valencies=np.array([[1, 1]]), 
+            monomerAffs=restructureAffs(np.array([8.0, 8.0]))
+        ) # 1D mismatched number of receptors
 
     with pytest.raises(AssertionError):
-        cytBindingModel(dose, recCounts2D, np.array([[1, 1]]), restructureAffs(np.array([8.0, 8.0]))) # 2D mismatched number of receptors
+        cytBindingModel(
+            dose=dose, 
+            recCounts=recCounts2D, 
+            valencies=np.array([[1, 1]]), 
+            monomerAffs=restructureAffs(np.array([8.0, 8.0]))
+        ) # 2D mismatched number of receptors
 
     # Test invalid inputs for minOffTargSelec
     with pytest.raises(AssertionError):
-        minOffTargSelec(modelAffs, recCounts2D, np.random.rand(100, 4), dose, valencies) # mismatched number of receptors
+        minOffTargSelec(
+            monomerAffs=modelAffs, 
+            targRecs=recCounts2D, 
+            offTargRecs=np.random.rand(100, 4), 
+            dose=dose, 
+            valencies=valencies
+        ) # mismatched number of receptors
 
     # Test invalid inputs for optimizeSelectivityAffs
     with pytest.raises(AssertionError):
-        optimizeSelectivityAffs(np.array([]), recCounts2D, dose, valencies) # empty target receptors
+        optimizeSelectivityAffs(
+            targRecs=np.array([]), 
+            offTargRecs=recCounts2D, 
+            dose=dose, 
+            valencies=valencies
+        ) # empty target receptors
 
 
     # Assign default values for sampleReceptorAbundances
@@ -163,10 +196,16 @@ def test_invalid_model_function_inputs():
 
     # Test invalid inputs for sampleReceptorAbundances
     with pytest.raises(AssertionError):
-        sampleReceptorAbundances(df, 200) # requested sample size greater than available cells
+        sampleReceptorAbundances(
+            CITE_DF=df, 
+            numCells=200
+        ) # requested sample size greater than available cells
 
     with pytest.raises(AssertionError):
-        sampleReceptorAbundances(df.drop(columns="Cell Type"), numCells) # lack of cell type column
+        sampleReceptorAbundances(
+            CITE_DF=df.drop(columns="Cell Type"), 
+            numCells=numCells
+        ) # lack of cell type column
 
 
 if __name__ == "__main__":

@@ -19,20 +19,22 @@ def cytBindingModel(
         dose: ligand concentration/dose that is being modeled
         recCounts: counts of each receptor on all single cells
         valencies: valencies of each ligand
+            a nested vector
         monomerAffs: binding affinities for monomer ligands to receptors 
     Return:
         output: counts of bound receptors on all single cells
     """
 
     assert len(recCounts.shape) == 1 or len(recCounts.shape) == 2
-    assert valencies[0].shape[0] == monomerAffs.shape[0] # Assumes valencies is nested vector
+    assert valencies[0].shape[0] == monomerAffs.shape[0]
     if len(recCounts.shape) == 1:
         assert recCounts.shape[0] == monomerAffs.shape[1]
     else:
         assert recCounts.shape[1] == monomerAffs.shape[1]
 
     # Armaan: Why 1e9? Again, it should be clear why literals are chosen.
-    # Sam: valencies not always in nested vector form (see Fig1). What happens if valencies is a 1D vector?
+    # Sam: valencies not always in nested vector form (see Fig1). 
+    #   What happens if valencies is a 1D vector?
     ligandConc = dose / (valencies[0][0] * 1e9)
     
     # Calculate result for a single cell input (1D receptor counts)

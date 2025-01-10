@@ -42,8 +42,9 @@ def minOffTargSelec(
     valencies: np.ndarray,
 ) -> float:
     """
-    Serves as the function which will have its return value minimized to get optimal selectivity
-        Used in conjunction with optimizeSelectivityAffs()
+    Serves as the function which will have its return value 
+        minimized to get optimal selectivity.
+        Used in conjunction with optimizeSelectivityAffs().
     Args:
         monomerAffs: monomer ligand-receptor affinities 
             Modulated in optimization
@@ -64,7 +65,8 @@ def minOffTargSelec(
     # Sam: shouldn't this be done before the optimization?
     modelAffs = restructureAffs(monomerAffs)
 
-    # Use the binding model to calculate bound receptors for target and off-target cell types
+    # Use the binding model to calculate bound receptors 
+    #   for target and off-target cell types
     targRbound = cytBindingModel(
         dose=dose,
         recCounts=targRecs,
@@ -78,7 +80,8 @@ def minOffTargSelec(
         monomerAffs=modelAffs
     )
 
-    # Calculate total bound receptors for target and off-target cell types, normalized by number of cells
+    # Calculate total bound receptors for target and off-target 
+    #   cell types, normalized by number of cells
     targetBound = np.sum(targRbound[:, 0]) / targRbound.shape[0]
     offTargetBound = np.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
 
@@ -116,15 +119,20 @@ def optimizeSelectivityAffs(
     assert offTargRecs.size > 0
 
     # Choose initial affinities and set bounds for optimization
-    # minAffs and maxAffs chosen based on biologically realistic affinities for engineered ligands
+    # minAffs and maxAffs chosen based on biologically realistic affinities 
+    #   for engineered ligands
     # Sam: affinities are maxing and bottoming out before optimization is complete...
-    #       for fig1, target 1, final affinities are 1e7 and ~1e9 (9.997e8) (with bounds 7 and 9)
+    #    for fig1, target 1, final affinities are 1e7 and ~1e9 
+    #    (9.997e8) (with bounds 7 and 9)
     # Sam: need to test this for more than two epitopes
     minAffs = [bounds[0]] * (targRecs.shape[1])
     maxAffs = [bounds[1]] * (targRecs.shape[1])
+
+    # Start at midpoint between min and max bounds
+    # Sam: Correct this if sizes of initial affinities and valencies are not always the same
     initAffs = np.full_like(
-        valencies[0], # Correct this if sizes of initial affinities and valencies are not always the same
-        minAffs[0] + (maxAffs[0] - minAffs[0]) / 2 # Start at midpoint between min and max bounds
+        valencies[0], 
+        minAffs[0] + (maxAffs[0] - minAffs[0]) / 2
     )
     optBnds = Bounds(
         np.full_like(initAffs, minAffs), 

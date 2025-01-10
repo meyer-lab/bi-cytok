@@ -8,6 +8,7 @@ from string import ascii_lowercase
 import matplotlib
 import matplotlib.figure
 import seaborn as sns
+
 from matplotlib import gridspec
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
@@ -49,9 +50,9 @@ def getSetup(
     x = 0
     ax = list()
     while x < gridd[0] * gridd[1]:
-        if x not in multz.keys():  # If this is just a normal subplot
+        if x not in multz:  # If this is just a normal subplot
             ax.append(f.add_subplot(gs1[x]))
-        elif x in multz.keys():  # If this is a subplot that spans grid elements
+        elif x in multz:  # If this is a subplot that spans grid elements
             ax.append(f.add_subplot(gs1[x : x + multz[x] + 1]))
             x += multz[x]
         x += 1

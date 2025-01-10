@@ -1,8 +1,7 @@
 """File that deals with everything about importing and sampling."""
 from pathlib import Path
-
-import gzip
 from zipfile import ZipFile
+import gzip
 
 import anndata as an
 import pandas as pd
@@ -139,16 +138,16 @@ def makeTregSC():
         stim_an = an.AnnData()
         barcodes = pd.read_csv(
             gzip.open(
-                (path_here / "multi_output" / "outs" / "per_sample_outs" / stim / 
-                    "count" / "sample_filtered_feature_bc_matrix" / "barcodes.tsv.gz")
+                path_here / "multi_output" / "outs" / "per_sample_outs" / stim / 
+                    "count" / "sample_filtered_feature_bc_matrix" / "barcodes.tsv.gz"
             ),
             sep="\t",
             header=None,
         )
         matrix = mmread(
             gzip.open(
-                (path_here / "multi_output" / "outs" / "per_sample_outs" / stim /
-                    "count" / "sample_filtered_feature_bc_matrix" / "matrix.mtx.gz")
+                path_here / "multi_output" / "outs" / "per_sample_outs" / stim /
+                    "count" / "sample_filtered_feature_bc_matrix" / "matrix.mtx.gz"
             )
         )
         barcodes.columns = ["barcode"]
@@ -161,8 +160,9 @@ def makeTregSC():
             Treg_h5ad = stim_an
             features = pd.read_csv(
                 gzip.open(
-                    (path_here / "multi_output" / "outs" / "per_sample_outs" / stim /
-                        "count" / "sample_filtered_feature_bc_matrix" / "features.tsv.gz")
+                    path_here / "multi_output" / "outs" / "per_sample_outs" / 
+                        stim / "count" / "sample_filtered_feature_bc_matrix" / 
+                        "features.tsv.gz"
                 ),
                 sep="\t",
                 header=None,

@@ -4,19 +4,17 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from ..selectivityFuncs import (
-    sampleReceptorAbundances,
-    get_cell_bindings,
-)
-from .common import getSetup
 from ..imports import importCITE
+from ..selectivityFuncs import get_cell_bindings, sampleReceptorAbundances
+from .common import getSetup
 
 path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
     """
-    Figure file to generate bar plots for amount of signal receptor bound to each given cell type
+    Figure file to generate bar plots for amount of signal receptor 
+        bound to each given cell type
     signal: signaling receptor
     target: additional targeting receptor
     signalAff: starting affinity of ligand and signal receptor

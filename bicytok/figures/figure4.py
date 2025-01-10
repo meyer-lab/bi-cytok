@@ -4,18 +4,19 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from ..selectivityFuncs import (
-    sampleReceptorAbundances,
-    optimizeSelectivityAffs,
-)
-from .common import getSetup
 from ..imports import importCITE
+from ..selectivityFuncs import optimizeSelectivityAffs, sampleReceptorAbundances
+from .common import getSetup
 
 path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
-    """Figure file to generate bispecific ligand selectivity heatmap of selectivity for each bispecific pairing."""
+    """
+    Figure file to generate bispecific ligand selectivity heatmap 
+        of selectivity for each bispecific pairing.
+    """
+    
     ax, f = getSetup((4, 3), (1, 1))
 
     signal = ["CD122", 1]
