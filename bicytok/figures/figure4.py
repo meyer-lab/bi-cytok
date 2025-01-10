@@ -13,10 +13,10 @@ path_here = Path(__file__).parent.parent
 
 def makeFigure():
     """
-    Figure file to generate bispecific ligand selectivity heatmap 
+    Figure file to generate bispecific ligand selectivity heatmap
         of selectivity for each bispecific pairing.
     """
-    
+
     ax, f = getSetup((4, 3), (1, 1))
 
     signal = ["CD122", 1]
@@ -41,9 +41,7 @@ def makeFigure():
     targCell = "Treg"
     offTargCells = cellTypes[cellTypes != targCell]
 
-    epitopesList = pd.read_csv(
-        path_here / "data" / "epitopeList.csv"
-    )
+    epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
 
     CITE_DF = importCITE()
@@ -51,11 +49,7 @@ def makeFigure():
     epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
 
-
-    sampleDF = sampleReceptorAbundances(
-        CITE_DF = epitopesDF,
-        numCells = 1000
-    )
+    sampleDF = sampleReceptorAbundances(CITE_DF=epitopesDF, numCells=1000)
 
     df = pd.DataFrame(columns=["Target 1", "Target 2", "Selectivity"])
 
@@ -77,20 +71,16 @@ def makeFigure():
                 targetsBoth = [target1, target2]
                 valenciesBoth = np.array([[signal[1], valencies[i], valencies[j]]])
 
-            dfTargCell = sampleDF.loc[
-                sampleDF["Cell Type"] == targCell
-            ]
+            dfTargCell = sampleDF.loc[sampleDF["Cell Type"] == targCell]
             targRecs = dfTargCell[[signal[0]] + targetsBoth]
-            dfOffTargCell = sampleDF.loc[
-                sampleDF["Cell Type"].isin(offTargCells)
-            ]
+            dfOffTargCell = sampleDF.loc[sampleDF["Cell Type"].isin(offTargCells)]
             offTargRecs = dfOffTargCell[[signal[0]] + targetsBoth]
 
             optSelec, optParams = optimizeSelectivityAffs(
-                targRecs = targRecs.to_numpy(),
-                offTargRecs = offTargRecs.to_numpy(),
-                dose = dose,
-                valencies = valenciesBoth
+                targRecs=targRecs.to_numpy(),
+                offTargRecs=offTargRecs.to_numpy(),
+                dose=dose,
+                valencies=valenciesBoth,
             )
 
             data = {

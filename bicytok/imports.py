@@ -1,4 +1,5 @@
 """File that deals with everything about importing and sampling."""
+
 import gzip
 from pathlib import Path
 from zipfile import ZipFile
@@ -28,8 +29,7 @@ SC_Stims = [
 def getBindDict():
     """Gets binding to pSTAT fluorescent conversion dictionary"""
     bindingDF = pd.read_csv(
-        path_here / "bicytok" / "data" / "BindingConvDict.csv", 
-        encoding="latin1"
+        path_here / "bicytok" / "data" / "BindingConvDict.csv", encoding="latin1"
     )
     return bindingDF
 
@@ -37,12 +37,8 @@ def getBindDict():
 # Sam: Not called anywhere, not sure what original use was
 def importReceptors():
     """Makes Complete receptor expression Dict"""
-    recDF = pd.read_csv(
-        path_here / "bicytok" / "data" / "RecQuantitation.csv"
-    )
-    recDFbin = pd.read_csv(
-        path_here / "bicytok" / "data" / "BinnedReceptorData.csv"
-    )
+    recDF = pd.read_csv(path_here / "bicytok" / "data" / "RecQuantitation.csv")
+    recDFbin = pd.read_csv(path_here / "bicytok" / "data" / "BinnedReceptorData.csv")
     recDFbin = recDFbin.loc[recDFbin["Bin"].isin([1, 3])]
     recDFbin.loc[recDFbin["Bin"] == 1, "Cell Type"] += r" $IL2Ra^{lo}$"
     recDFbin.loc[recDFbin["Bin"] == 3, "Cell Type"] += r" $IL2Ra^{hi}$"
@@ -61,15 +57,11 @@ def makeCITEdf():
     matrixDF.columns = ["Marker", "Cell", "Number"]
     matrixDF.to_csv(join(path_here, "bicytok/data/CITEmatrix.csv"), index=False)
     """
-    featureDF = pd.read_csv(
-        path_here / "bicytok" / "data" / "CITEfeatures.csv"
-    )
-    matrixDF = pd.read_csv(
-        path_here / "bicytok" / "data" / "CITEmatrix.csv"
-    ).iloc[1::, :]
-    metaDF = pd.read_csv(
-        path_here / "bicytok" / "data" / "metaData3P.csv"
-    )
+    featureDF = pd.read_csv(path_here / "bicytok" / "data" / "CITEfeatures.csv")
+    matrixDF = pd.read_csv(path_here / "bicytok" / "data" / "CITEmatrix.csv").iloc[
+        1::, :
+    ]
+    metaDF = pd.read_csv(path_here / "bicytok" / "data" / "metaData3P.csv")
 
     metaDF["cellNumber"] = metaDF.index + 1
     cellNums = metaDF.cellNumber.values
@@ -105,10 +97,7 @@ def makeCITEdf():
     matrixDF["CellType3"] = pd.Categorical(
         matrixDF["Cell"].replace(cellTDict3), categories=categories3
     )
-    matrixDF.to_csv(
-        path_here / "bicytok" / "data" / "CITEdata.csv", 
-        index=False
-        )
+    matrixDF.to_csv(path_here / "bicytok" / "data" / "CITEdata.csv", index=False)
     return matrixDF  # , featureDF, metaDF
 
 
@@ -123,31 +112,43 @@ def importCITE():
 def importRNACITE():
     """Downloads all surface markers and cell types"""
     RNAsurfDF = pd.read_csv(
-        ZipFile(
-            path_here / "bicytok" / "data" / "RNAseqSurface.csv.zip"
-        ).open("RNAseqSurface.csv")
+        ZipFile(path_here / "bicytok" / "data" / "RNAseqSurface.csv.zip").open(
+            "RNAseqSurface.csv"
+        )
     )
     return RNAsurfDF
 
 
 # Sam: function not called anywhere, purpose unclear
-def makeTregSC(): 
+def makeTregSC():
     """Constructs .h5ad file for PBMC stimulation experiment"""
     Treg_h5ad = an.AnnData()
     for i, stim in enumerate(SC_Stims):
         stim_an = an.AnnData()
         barcodes = pd.read_csv(
             gzip.open(
-                path_here / "multi_output" / "outs" / "per_sample_outs" / stim / 
-                    "count" / "sample_filtered_feature_bc_matrix" / "barcodes.tsv.gz"
+                path_here
+                / "multi_output"
+                / "outs"
+                / "per_sample_outs"
+                / stim
+                / "count"
+                / "sample_filtered_feature_bc_matrix"
+                / "barcodes.tsv.gz"
             ),
             sep="\t",
             header=None,
         )
         matrix = mmread(
             gzip.open(
-                path_here / "multi_output" / "outs" / "per_sample_outs" / stim /
-                    "count" / "sample_filtered_feature_bc_matrix" / "matrix.mtx.gz"
+                path_here
+                / "multi_output"
+                / "outs"
+                / "per_sample_outs"
+                / stim
+                / "count"
+                / "sample_filtered_feature_bc_matrix"
+                / "matrix.mtx.gz"
             )
         )
         barcodes.columns = ["barcode"]
@@ -160,9 +161,14 @@ def makeTregSC():
             Treg_h5ad = stim_an
             features = pd.read_csv(
                 gzip.open(
-                    path_here / "multi_output" / "outs" / "per_sample_outs" / 
-                        stim / "count" / "sample_filtered_feature_bc_matrix" / 
-                        "features.tsv.gz"
+                    path_here
+                    / "multi_output"
+                    / "outs"
+                    / "per_sample_outs"
+                    / stim
+                    / "count"
+                    / "sample_filtered_feature_bc_matrix"
+                    / "features.tsv.gz"
                 ),
                 sep="\t",
                 header=None,
@@ -175,8 +181,6 @@ def makeTregSC():
     Treg_h5ad.var["ENSEMBLE_ids"] = features["ENSEMBLE_ids"].values
     Treg_h5ad.var["feature_type"] = features["feature_type"].values
 
-    Treg_h5ad.write_h5ad(
-        path_here / "Treg_h5ads" / "Treg_raw.h5ad"
-    )
+    Treg_h5ad.write_h5ad(path_here / "Treg_h5ads" / "Treg_raw.h5ad")
 
     return

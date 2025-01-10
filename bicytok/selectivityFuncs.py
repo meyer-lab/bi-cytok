@@ -42,18 +42,18 @@ def minOffTargSelec(
     valencies: np.ndarray,
 ) -> float:
     """
-    Serves as the function which will have its return value 
+    Serves as the function which will have its return value
         minimized to get optimal selectivity.
         Used in conjunction with optimizeSelectivityAffs().
     Args:
-        monomerAffs: monomer ligand-receptor affinities 
+        monomerAffs: monomer ligand-receptor affinities
             Modulated in optimization
         targRecs: dataframe of receptors counts of target cell type
         offTargRecs: dataframe of receptors counts of off-target cell types
         dose: ligand concentration/dose that is being modeled
         valencies: array of valencies of each ligand epitope
     Return:
-        selectivity: value will be minimized, 
+        selectivity: value will be minimized,
             defined as ratio of off target to on target signaling,
             this is selectivity for the off target cells and is minimized to
             maximize selectivity for the target cell
@@ -65,22 +65,16 @@ def minOffTargSelec(
     # Sam: shouldn't this be done before the optimization?
     modelAffs = restructureAffs(monomerAffs)
 
-    # Use the binding model to calculate bound receptors 
+    # Use the binding model to calculate bound receptors
     #   for target and off-target cell types
     targRbound = cytBindingModel(
-        dose=dose,
-        recCounts=targRecs,
-        valencies=valencies,
-        monomerAffs=modelAffs
+        dose=dose, recCounts=targRecs, valencies=valencies, monomerAffs=modelAffs
     )
     offTargRbound = cytBindingModel(
-        dose=dose,
-        recCounts=offTargRecs,
-        valencies=valencies,
-        monomerAffs=modelAffs
+        dose=dose, recCounts=offTargRecs, valencies=valencies, monomerAffs=modelAffs
     )
 
-    # Calculate total bound receptors for target and off-target 
+    # Calculate total bound receptors for target and off-target
     #   cell types, normalized by number of cells
     targetBound = np.sum(targRbound[:, 0]) / targRbound.shape[0]
     offTargetBound = np.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
@@ -95,7 +89,7 @@ def optimizeSelectivityAffs(
     offTargRecs: np.ndarray,
     dose: float,
     valencies: np.ndarray,
-    bounds: tuple[float, float] = (7.0, 9.0)
+    bounds: tuple[float, float] = (7.0, 9.0),
 ) -> tuple[float, list]:
     """
     An optimizer used to minimize selectivity output
@@ -103,7 +97,7 @@ def optimizeSelectivityAffs(
         Selectivity is defined as the ratio of binding of
         off-target cells to target cells.
     Args:
-        targRecs: receptor counts of each receptor (columns) on 
+        targRecs: receptor counts of each receptor (columns) on
             different cells (rows) of target cell type
         offTargRecs: receptor counts of each receptor on
             different cells of off-target cell types
@@ -113,32 +107,26 @@ def optimizeSelectivityAffs(
     Return:
         optSelec: optimized selectivity value
         optAffs: optimized affinity values that yield the optimized selectivity
-    """    
+    """
 
     assert targRecs.size > 0
     assert offTargRecs.size > 0
 
     # Choose initial affinities and set bounds for optimization
-    # minAffs and maxAffs chosen based on biologically realistic affinities 
+    # minAffs and maxAffs chosen based on biologically realistic affinities
     #   for engineered ligands
     # Sam: affinities are maxing and bottoming out before optimization is complete...
-    #    for fig1, target 1, final affinities are 1e7 and ~1e9 
+    #    for fig1, target 1, final affinities are 1e7 and ~1e9
     #    (9.997e8) (with bounds 7 and 9)
     # Sam: need to test this for more than two epitopes
     minAffs = [bounds[0]] * (targRecs.shape[1])
     maxAffs = [bounds[1]] * (targRecs.shape[1])
 
     # Start at midpoint between min and max bounds
-    # Sam: Correct this if sizes of initial affinities and valencies 
+    # Sam: Correct this if sizes of initial affinities and valencies
     #   are not always the same
-    initAffs = np.full_like(
-        valencies[0], 
-        minAffs[0] + (maxAffs[0] - minAffs[0]) / 2
-    )
-    optBnds = Bounds(
-        np.full_like(initAffs, minAffs), 
-        np.full_like(initAffs, maxAffs)
-    )
+    initAffs = np.full_like(valencies[0], minAffs[0] + (maxAffs[0] - minAffs[0]) / 2)
+    optBnds = Bounds(np.full_like(initAffs, minAffs), np.full_like(initAffs, maxAffs))
 
     # Run optimization to minimize off-target selectivity by changing affinities
     optimizer = minimize(
@@ -159,7 +147,7 @@ def optimizeSelectivityAffs(
     return optSelect, optAffs
 
 
-# Sam: reimplement this function when we have a clearer idea 
+# Sam: reimplement this function when we have a clearer idea
 #   of how to calculate conversion factors
 def calcCITEConvFacts() -> tuple[dict, float]:
     """
@@ -179,9 +167,9 @@ def calcCITEConvFacts() -> tuple[dict, float]:
     # ]
     # markers = ["CD122", "CD127", "CD25"]
     # markDict = {
-    #     "CD25": "IL2Ra", 
-    #     "CD122": "IL2Rb", 
-    #     "CD127": "IL7Ra", 
+    #     "CD25": "IL2Ra",
+    #     "CD122": "IL2Rb",
+    #     "CD127": "IL7Ra",
     #     "CD132": "gc"
     # }
     # cellDict = {
@@ -201,7 +189,7 @@ def calcCITEConvFacts() -> tuple[dict, float]:
         "CD25": 77.136987,
         "CD122": 332.680090,
         "CD127": 594.379215,
-    } 
+    }
     convFactDict = origConvFactDict.copy()
     defaultConvFact = np.mean(list(origConvFactDict.values()))
 
@@ -211,13 +199,13 @@ def calcCITEConvFacts() -> tuple[dict, float]:
 # Called in Figure1, Figure3, Figure4, and Figure5
 def sampleReceptorAbundances(
     CITE_DF: pd.DataFrame,
-    numCells=1000, 
+    numCells=1000,
 ) -> pd.DataFrame:
     """
-    Samples a subset of cells and converts unprocessed CITE-seq receptor values 
+    Samples a subset of cells and converts unprocessed CITE-seq receptor values
         into abundance values.
     Args:
-        CITE_DF: dataframe of unprocessed CITE-seq receptor counts 
+        CITE_DF: dataframe of unprocessed CITE-seq receptor counts
             of different receptors/epitopes (columns) on single cells (row).
             Epitopes are filtered outside of this function.
             The final column should be the cell types of each cell.
@@ -230,7 +218,7 @@ def sampleReceptorAbundances(
 
     assert numCells <= CITE_DF.shape[0]
     assert "Cell Type" in CITE_DF.columns
-    
+
     # Sample a subset of cells
     sampleDF = CITE_DF.sample(numCells, random_state=42)
 
@@ -239,21 +227,16 @@ def sampleReceptorAbundances(
 
     # Multiply the receptor counts of epitope by the conversion factor for that epitope
     epitopes = CITE_DF.columns[CITE_DF.columns != "Cell Type"]
-    convFacts = [convFactDict.get(epitope, defaultConvFact) 
-                 for epitope 
-                 in epitopes]
+    convFacts = [convFactDict.get(epitope, defaultConvFact) for epitope in epitopes]
 
     sampleDF[epitopes] = sampleDF[epitopes] * convFacts
-    
+
     return sampleDF
 
 
 # Called in Figure1 and Figure3
 def get_cell_bindings(
-    recCounts: np.ndarray,
-    monomerAffs: np.ndarray,
-    dose: float,
-    valencies: np.ndarray
+    recCounts: np.ndarray, monomerAffs: np.ndarray, dose: float, valencies: np.ndarray
 ) -> np.ndarray:
     """
     Returns amount of receptor bound to each cell
@@ -271,10 +254,7 @@ def get_cell_bindings(
 
     # Use the binding model to calculate bound receptors for each cell
     Rbound = cytBindingModel(
-        dose=dose, 
-        recCounts=recCounts,
-        valencies=valencies, 
-        monomerAffs=modelAffs
+        dose=dose, recCounts=recCounts, valencies=valencies, monomerAffs=modelAffs
     )
 
     return Rbound

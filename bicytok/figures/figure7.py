@@ -10,45 +10,45 @@ from .common import getSetup
 
 def makeFigure():
     """
-     Generates a heatmap visualizing the Earth Mover's Distance (EMD) 
-        between selected receptors (CD25 and CD35) for a target cell 
+     Generates a heatmap visualizing the Earth Mover's Distance (EMD)
+        between selected receptors (CD25 and CD35) for a target cell
         type ("Treg") compared to off-target populations
 
     Data Import:
-    - Loads the CITE-seq dataset using `importCITE` 
+    - Loads the CITE-seq dataset using `importCITE`
         and samples the first 1000 rows for analysis.
-    - Identifies non-marker columns (`CellType1`, `CellType2`, 
-        `CellType3`, `Cell`) and filters out these columns 
+    - Identifies non-marker columns (`CellType1`, `CellType2`,
+        `CellType3`, `Cell`) and filters out these columns
         to retain only the marker (receptor) columns for analysis.
 
     Receptor Selection:
-    - Filters the marker dataframe to include only columns 
-        related to the receptors of interest, specifically 
-        `"CD25"` and `"CD35"`, focusing on these markers 
+    - Filters the marker dataframe to include only columns
+        related to the receptors of interest, specifically
+        `"CD25"` and `"CD35"`, focusing on these markers
         for the calculation of EMD.
 
     Target and Off-Target Cell Definition:
-    - Creates a binary array for on-target cells based on 
+    - Creates a binary array for on-target cells based on
         the specified target cell type (`"Treg"`).
-    - Defines off-target cell populations using the 
+    - Defines off-target cell populations using the
         `offTargState` parameter:
       - `offTargState = 0`: All non-memory Tregs.
       - `offTargState = 1`: All non-Tregs.
       - `offTargState = 2`: Only naive Tregs.
 
     EMD Calculation:
-    - Computes an Earth Mover's Distance (EMD) matrix using 
-        the `EMD_2D` function to measure the dissimilarity 
-        between on-target ("Treg") and off-target cell distributions 
+    - Computes an Earth Mover's Distance (EMD) matrix using
+        the `EMD_2D` function to measure the dissimilarity
+        between on-target ("Treg") and off-target cell distributions
         for the selected receptors (CD25 and CD35).
-    - Constructs a DataFrame (`df_recep`) to store the computed 
-        EMD values, with rows and columns labeled by the 
+    - Constructs a DataFrame (`df_recep`) to store the computed
+        EMD values, with rows and columns labeled by the
         receptors of interest.
 
     Visualization:
-    - Generates a heatmap of the EMD matrix using Seaborn's 
+    - Generates a heatmap of the EMD matrix using Seaborn's
         `heatmap` function.
-    - The heatmap uses a "bwr" color map to visually represent 
+    - The heatmap uses a "bwr" color map to visually represent
         the EMD values, with annotations to display specific values.
     """
 

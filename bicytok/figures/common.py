@@ -1,6 +1,7 @@
 """
 This file contains functions that are used in multiple figures.
 """
+
 import sys
 import time
 from string import ascii_lowercase

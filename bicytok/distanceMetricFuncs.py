@@ -47,9 +47,7 @@ def KL_EMD_1D(
         )
 
         targKDE = KernelDensity(kernel="gaussian").fit(targAbun.reshape(-1, 1))
-        offTargKDE = KernelDensity(kernel="gaussian").fit(
-            offTargAbun.reshape(-1, 1)
-        )
+        offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbun.reshape(-1, 1))
         minAbun = np.minimum(targAbun.min(), offTargAbun.min()) - 10
         maxAbun = np.maximum(targAbun.max(), offTargAbun.max()) + 10
         outcomes = np.arange(minAbun, maxAbun + 1).reshape(-1, 1)
@@ -114,9 +112,7 @@ def KL_EMD_2D(
         assert targAbunAll.shape == (np.sum(targ), 2)
 
         targKDE = KernelDensity(kernel="gaussian").fit(targAbunAll.reshape(-1, 2))
-        offTargKDE = KernelDensity(kernel="gaussian").fit(
-            offTargAbunAll.reshape(-1, 2)
-        )
+        offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbunAll.reshape(-1, 2))
         minAbun = np.minimum(targAbunAll.min(), offTargAbunAll.min()) - 10
         maxAbun = np.maximum(targAbunAll.max(), offTargAbunAll.max()) + 10
         X, Y = np.mgrid[

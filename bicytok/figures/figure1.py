@@ -20,9 +20,9 @@ plt.rcParams["svg.fonttype"] = "none"
 
 def makeFigure():
     """
-    Figure file to generate dose response curves for any combination 
+    Figure file to generate dose response curves for any combination
         of multivalent and multispecific ligands.
-    Outputs dose vs. selectivity for the target cell and amount of target cell 
+    Outputs dose vs. selectivity for the target cell and amount of target cell
         bound at indicated signal receptor.
 
     signal: Receptor that the ligand is delivering signal to; selectivity and
@@ -67,20 +67,15 @@ def makeFigure():
     targCell = "Treg"
     offTargCells = cellTypes[cellTypes != targCell]
 
-    epitopesList = pd.read_csv(
-        path_here / "data" / "epitopeList.csv"
-    )
+    epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
 
     CITE_DF = importCITE()
     epitopesDF = CITE_DF[epitopes + ["CellType2"]]
     epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
-    
-    sampleDF = sampleReceptorAbundances(
-        CITE_DF = epitopesDF,
-        numCells = 1000
-    )
+
+    sampleDF = sampleReceptorAbundances(CITE_DF=epitopesDF, numCells=1000)
 
     doseVec = np.logspace(-2, 2, num=20)
     df = pd.DataFrame(columns=["Dose", "Selectivity", "Target Bound", "Ligand"])
@@ -97,28 +92,24 @@ def makeFigure():
 
         valencies = np.array([valencies])
 
-        dfTargCell = sampleDF.loc[
-            sampleDF["Cell Type"] == targCell
-        ]
+        dfTargCell = sampleDF.loc[sampleDF["Cell Type"] == targCell]
         targRecs = dfTargCell[[signal[0]] + targets]
-        dfOffTargCell = sampleDF.loc[
-            sampleDF["Cell Type"].isin(offTargCells)
-        ]
+        dfOffTargCell = sampleDF.loc[sampleDF["Cell Type"].isin(offTargCells)]
         offTargRecs = dfOffTargCell[[signal[0]] + targets]
 
         for dose in doseVec:
             optSelec, optParams = optimizeSelectivityAffs(
-                targRecs = targRecs.to_numpy(),
-                offTargRecs = offTargRecs.to_numpy(),
-                dose = dose,
-                valencies = valencies
+                targRecs=targRecs.to_numpy(),
+                offTargRecs=offTargRecs.to_numpy(),
+                dose=dose,
+                valencies=valencies,
             )
-            
+
             Rbound = get_cell_bindings(
-                recCounts = sampleDF[[signal[0]] + targets].to_numpy(),
-                monomerAffs = optParams, 
-                dose = dose, 
-                valencies = valencies
+                recCounts=sampleDF[[signal[0]] + targets].to_numpy(),
+                monomerAffs=optParams,
+                dose=dose,
+                valencies=valencies,
             )
 
             cellBindDF = sampleDF[[signal] + ["Cell Type"]]

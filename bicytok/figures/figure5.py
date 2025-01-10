@@ -14,28 +14,28 @@ path_here = Path(__file__).parent.parent
 
 def makeFigure():
     """
-    Generates line plots to visualize the relationship between 
-        KL Divergence, Earth Mover's Distance, and Correlation versus Selectivity 
-        across varying ligand valencies for target and off-target cell types 
+    Generates line plots to visualize the relationship between
+        KL Divergence, Earth Mover's Distance, and Correlation versus Selectivity
+        across varying ligand valencies for target and off-target cell types
         using CITE-seq data.
 
     Data Import:
     - Loads the CITE-seq dataframe (`importCITE`) and sets up plotting (`getSetup`).
-    - Defines experimental parameters, including signal receptor (`CD122`), valencies, 
+    - Defines experimental parameters, including signal receptor (`CD122`), valencies,
         target receptor combinations, target and off-target cell types, and dosage.
-    - Reads epitope information from a CSV file and samples their abundances 
+    - Reads epitope information from a CSV file and samples their abundances
         across target cells using `getSampleAbundances`.
 
     Data Collection:
-    - Iterates over specified valencies (`[1, 2, 4]`) 
+    - Iterates over specified valencies (`[1, 2, 4]`)
         and target receptor combinations (e.g., `["CD25", "CD278"]`).
     - For each valency and target receptor combination:
     - Optimizes ligand-receptor affinities using `optimizeDesign`.
-    - Filters the CITE-seq dataframe for relevant marker columns 
+    - Filters the CITE-seq dataframe for relevant marker columns
         corresponding to the target receptors.
 
     Target and Off-Target Cell Definition*:
-    - Defines binary arrays indicating on-target cells (`Tregs`) 
+    - Defines binary arrays indicating on-target cells (`Tregs`)
         and off-target cells based on the `offTargState` parameter:
      - `offTargState = 0`: All non-memory Tregs.
      - `offTargState = 1`: All non-Tregs.
@@ -43,25 +43,25 @@ def makeFigure():
 
     Metric Calculation:
     - Computes the following metrics for each marker subset:
-     - **KL Divergence** (`KL_divergence_2D`): Measures the divergence 
+     - **KL Divergence** (`KL_divergence_2D`): Measures the divergence
         between on-target and off-target marker distributions.
-     - **Earth Mover's Distance** (`EMD_2D`): Quantifies the minimal "effort" 
+     - **Earth Mover's Distance** (`EMD_2D`): Quantifies the minimal "effort"
         to transform one distribution into another.
-     - **Correlation** (`correlation`): Anti-correlation 
+     - **Correlation** (`correlation`): Anti-correlation
         between selected target receptors (measured using CITE-seq data).
 
     Visualization:
     - Creates line plots for each metric against selectivity:
-     - **KL Divergence vs. Selectivity**: Plotted on a logarithmic scale 
+     - **KL Divergence vs. Selectivity**: Plotted on a logarithmic scale
         to capture variations in divergence.
-     - **EMD vs. Selectivity**: Plotted on a logarithmic scale 
+     - **EMD vs. Selectivity**: Plotted on a logarithmic scale
         to highlight differences in distribution shifts.
-     - **Correlation vs. Selectivity**: Shows the impact 
+     - **Correlation vs. Selectivity**: Shows the impact
         of receptor anti-correlation on ligand selectivity.
-    - Uses different hues to indicate valency levels, 
+    - Uses different hues to indicate valency levels,
         providing a visual comparison across varying ligand valencies.
     """
-    
+
     ax, f = getSetup((9, 3), (1, 3))
 
     CITE_DF = importCITE()
@@ -87,9 +87,7 @@ def makeFigure():
     targCell = "Treg"
     offTargCells = cellTypes[cellTypes != targCell]
 
-    epitopesList = pd.read_csv(
-        path_here / "data" / "epitopeList.csv"
-    )
+    epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
 
     CITE_DF = importCITE()
@@ -97,10 +95,7 @@ def makeFigure():
     epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
 
-    sampleDF = sampleReceptorAbundances(
-        CITE_DF=epitopesDF,
-        numCells=1000
-    )
+    sampleDF = sampleReceptorAbundances(CITE_DF=epitopesDF, numCells=1000)
 
     df = pd.DataFrame(
         columns=[
@@ -115,21 +110,17 @@ def makeFigure():
     for valency in valencies:
         for targets in allTargets:
             modelValencies = np.array([[signal_valency, valency, valency]])
-            
-            dfTargCell = sampleDF.loc[
-                sampleDF["Cell Type"] == targCell
-            ]
+
+            dfTargCell = sampleDF.loc[sampleDF["Cell Type"] == targCell]
             targRecs = dfTargCell[[signal_receptor] + targets]
-            dfOffTargCell = sampleDF.loc[
-                sampleDF["Cell Type"].isin(offTargCells)
-            ]
+            dfOffTargCell = sampleDF.loc[sampleDF["Cell Type"].isin(offTargCells)]
             offTargRecs = dfOffTargCell[[signal_receptor] + targets]
 
             optSelec, optParams = optimizeSelectivityAffs(
-                targRecs = targRecs.to_numpy(),
-                offTargRecs = offTargRecs.to_numpy(),
-                dose = dose,
-                valencies = modelValencies
+                targRecs=targRecs.to_numpy(),
+                offTargRecs=offTargRecs.to_numpy(),
+                dose=dose,
+                valencies=modelValencies,
             )
             select = (1 / optSelec,)
 

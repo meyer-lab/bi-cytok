@@ -17,7 +17,7 @@ plt.rcParams["svg.fonttype"] = "none"
 
 def makeFigure():
     """
-    Figure file to generate bar plots of 1D KL divergence and EMD values of 
+    Figure file to generate bar plots of 1D KL divergence and EMD values of
     most unique receptor for each given cell type/subset.
     toRemove: cell types to remove from calculations and figure generation
     cellLevel: cell type categorization level, see cell types/subsets in CITE data
@@ -49,11 +49,11 @@ def makeFigure():
 
     for targCell in cells:
         markerDF = pd.DataFrame(columns=["Marker", "KL", "EMD"])
-        
+
         non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
         marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
         markerDF = CITE_DF.loc[:, marker_columns]
-        
+
         for marker in CITE_DF.columns:
             markAvg = np.mean(CITE_DF[marker].values)
             if markAvg > 0.0001:

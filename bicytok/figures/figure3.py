@@ -13,7 +13,7 @@ path_here = Path(__file__).parent.parent
 
 def makeFigure():
     """
-    Figure file to generate bar plots for amount of signal receptor 
+    Figure file to generate bar plots for amount of signal receptor
         bound to each given cell type
     signal: signaling receptor
     target: additional targeting receptor
@@ -47,10 +47,8 @@ def makeFigure():
         "NK Proliferating",
         "NK_CD56bright",
     ]
-    
-    epitopesList = pd.read_csv(
-        path_here / "data" / "epitopeList.csv"
-    )
+
+    epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
 
     CITE_DF = importCITE()
@@ -58,16 +56,13 @@ def makeFigure():
     epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
 
-    sampleDF = sampleReceptorAbundances(
-        CITE_DF=epitopesDF,
-        numCells=1000
-    )
-    
+    sampleDF = sampleReceptorAbundances(CITE_DF=epitopesDF, numCells=1000)
+
     Rbound = get_cell_bindings(
-        recCounts = sampleDF[signal + targets].to_numpy(),
-        monomerAffs = affs,
-        dose = dose,
-        valencies = valencies,
+        recCounts=sampleDF[signal + targets].to_numpy(),
+        monomerAffs=affs,
+        dose=dose,
+        valencies=valencies,
     )
 
     cellBindDF = sampleDF[signal + ["Cell Type"]]
