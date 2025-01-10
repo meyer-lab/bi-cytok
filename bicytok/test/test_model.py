@@ -8,8 +8,7 @@ import pytest
 
 from ..distanceMetricFuncs import (
     KL_EMD_1D, 
-    KL_EMD_2D, 
-    KL_EMD_3D
+    KL_EMD_2D
 )
 from ..selectivityFuncs import (
     sampleReceptorAbundances, 
@@ -110,24 +109,6 @@ def test_optimizeSelectivityAffs():
 #         )[0],
 #         4.070165414304938e-5
 #     )
-#     assert np.isclose(
-#         cytBindingModel(
-#             dose=1., 
-#             recCounts=np.array([6000., 2100.]),         
-#             valencies=np.array([[4, 4]]),
-#             monomerAffs=restructureAffs(np.array([7.6, 8.2]))
-#         )[0],
-#         0.0009870173680610606
-#     )
-#     assert np.isclose(
-#         cytBindingModel(
-#             dose=0.1,
-#             recCounts=np.array([4000., 3400., 5700., 33800.]),
-#             valencies=np.array([[1, 4, 4, 4]]),
-#             monomerAffs=restructureAffs(np.array([8.9, 7.0, 8.0, 8.0]))
-#         ),
-#         0.017104443169046135
-#     )
 
 
 def test_invalid_model_function_inputs():
@@ -193,5 +174,5 @@ if __name__ == "__main__":
     test_KL_EMD_2D()
     test_invalid_distance_function_inputs()
     test_optimizeSelectivityAffs()
-    test_binding_model()
+    # test_binding_model()
     test_invalid_model_function_inputs()

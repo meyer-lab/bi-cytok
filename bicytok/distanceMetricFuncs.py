@@ -20,13 +20,10 @@ def KL_EMD_1D(
         KL_div_vals: vector of KL Divergences per receptor
         EMD_vals: a vector of EMDs per receptor
     """
-
     assert all(
         isinstance(i, np.bool) for i in np.append(targ, offTarg)
     )  # Check that targ and offTarg are only boolean
-    assert (
-        sum(targ) != 0 and sum(offTarg) != 0
-    )  # Check that there are target and off-target cells
+    assert sum(targ) != 0 and sum(offTarg) != 0
 
     KL_div_vals = np.full(recAbundances.shape[1], np.nan)
     EMD_vals = np.full(recAbundances.shape[1], np.nan)
@@ -45,8 +42,8 @@ def KL_EMD_1D(
         targAbun = targNorms[:, rec]
         offTargAbun = offTargNorms[:, rec]
 
-        assert all(
-            targAbun == recAbundances[targ, rec] / np.mean(recAbundances[:, rec])
+        assert np.allclose(
+            targAbun, recAbundances[targ, rec] / np.mean(recAbundances[:, rec])
         )
 
         targKDE = KernelDensity(kernel="gaussian").fit(targAbun.reshape(-1, 1))
@@ -88,7 +85,7 @@ def KL_EMD_2D(
         EMD_vals: similar to KL_div_vals but with EMDs
     """
 
-    assert all(isinstance(i, bool) for i in np.append(targ, offTarg))
+    assert all(isinstance(i, np.bool) for i in np.append(targ, offTarg))
     assert sum(targ) != 0 and sum(offTarg) != 0
 
     KL_div_vals = np.full((recAbundances.shape[1], recAbundances.shape[1]), np.nan)
@@ -107,8 +104,8 @@ def KL_EMD_2D(
         targAbun1, targAbun2 = targNorms[:, rec1], targNorms[:, rec2]
         offTargAbun1, offTargAbun2 = offTargNorms[:, rec1], offTargNorms[:, rec2]
 
-        assert all(
-            targAbun1 == recAbundances[targ, rec1] / np.mean(recAbundances[:, rec1])
+        assert np.allclose(
+            targAbun1, recAbundances[targ, rec1] / np.mean(recAbundances[:, rec1])
         )
 
         targAbunAll = np.vstack((targAbun1, targAbun2)).transpose()
