@@ -75,7 +75,7 @@ def makeFigure():
     epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
 
-    sampleDF = sampleReceptorAbundances(CITE_DF=epitopesDF, numCells=1000)
+    sampleDF = sampleReceptorAbundances(CITE_DF=epitopesDF, numCells=7)
 
     doseVec = np.logspace(-2, 2, num=20)
     df = pd.DataFrame(columns=["Dose", "Selectivity", "Target Bound", "Ligand"])
@@ -112,7 +112,7 @@ def makeFigure():
                 valencies=valencies,
             )
 
-            cellBindDF = sampleDF[[signal] + ["Cell Type"]]
+            cellBindDF = sampleDF[[signal[0]] + ["Cell Type"]]
             cellBindDF.insert(0, "Receptor Bound", Rbound[:, 0], True)
             cellBindDF = cellBindDF.groupby(["Cell Type"]).mean(0)
 
@@ -126,7 +126,7 @@ def makeFigure():
             df_temp = pd.DataFrame(
                 data, columns=["Dose", "Selectivity", "Target Bound", "Ligand"]
             )
-            df = pd.concat([df, df_temp], ignore_index=True)
+            df = df_temp if df.empty else pd.concat([df, df_temp], ignore_index=True)
 
     print(df)
 

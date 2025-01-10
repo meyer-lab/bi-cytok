@@ -69,7 +69,7 @@ def makeFigure():
     cellBindDF.insert(0, "Receptor Bound", Rbound[:, 0], True)
     cellBindDF = cellBindDF.groupby(["Cell Type"]).mean(0)
     cellBindDF["Percent Bound of Signal Receptor"] = (
-        cellBindDF["Receptor Bound"] / cellBindDF[signal].iloc[:, 0]
+        cellBindDF["Receptor Bound"] / cellBindDF[signal[0]]
     ) * 10
 
     palette = sns.color_palette("husl", 10)
