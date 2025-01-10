@@ -69,16 +69,20 @@ def makeFigure():
     cellBindDF.insert(0, "Receptor Bound", Rbound[:, 0], True)
     cellBindDF = cellBindDF.groupby(["Cell Type"]).mean(0)
     cellBindDF["Percent Bound of Signal Receptor"] = (
-        cellBindDF["Receptor Bound"] / cellBindDF[signal]
+        cellBindDF["Receptor Bound"] / cellBindDF[signal].iloc[:, 0]
     ) * 10
 
     palette = sns.color_palette("husl", 10)
     sns.barplot(
-        data=Rbound, x=Rbound.index, y="Receptor Bound", palette=palette, ax=ax[0]
+        data=cellBindDF,
+        x=cellBindDF.index,
+        y="Receptor Bound",
+        palette=palette,
+        ax=ax[0],
     )
     sns.barplot(
-        data=Rbound,
-        x=Rbound.index,
+        data=cellBindDF,
+        x=cellBindDF.index,
         y="Percent Bound of Signal Receptor",
         palette=palette,
         ax=ax[1],

@@ -87,15 +87,29 @@ def makeFigure():
     targCell = "Treg"
     offTargCells = cellTypes[cellTypes != targCell]
 
+    assert isinstance(offTargState, int)
+    assert any(np.array([0, 1, 2]) == offTargState)
+    assert not (targCell == "Treg Naive" and offTargState == 2)
+
     epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
 
     CITE_DF = importCITE()
+
+    # Sam: Previously there was a mismatch between the cell categorization being
+    #     analyzed with the binding model and the distance functions. Should make
+    #     a user-defined parameter to specify the categorization. For now, I set them
+    #     all to cell type 2
+    #     (distance functions previously used cell type 3 as in other figs)
+    assert targCell in CITE_DF["CellType2"].unique()
+
     epitopesDF = CITE_DF[epitopes + ["CellType2"]]
     epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
 
     sampleDF = sampleReceptorAbundances(CITE_DF=epitopesDF, numCells=1000)
+
+    assert targCell in sampleDF["Cell Type"].unique()
 
     df = pd.DataFrame(
         columns=[
@@ -138,18 +152,18 @@ def makeFigure():
             ]
 
             # Create binary arrays for on-target and off-target cell types
-            on_target = (CITE_DF["CellType3"] == targCell).to_numpy()
+            on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
 
             off_target_conditions = {
-                0: (CITE_DF["CellType3"] != targCell),  # All non-memory Tregs
-                1: (CITE_DF["CellType2"] != "Treg"),  # All non-Tregs
-                2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
+                0: (CITE_DF["CellType2"] != targCell),  # All non-target cells
+                1: (
+                    (CITE_DF["CellType2"] != "Treg")
+                    & (CITE_DF["CellType2"] != targCell)
+                ),  # All non-Tregs and non-target cells
+                2: (CITE_DF["CellType2"] == "Treg Naive"),  # Naive Tregs
             }
 
-            if offTargState in off_target_conditions:
-                off_target = off_target_conditions[offTargState].to_numpy()
-            else:
-                raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
+            off_target = off_target_conditions[offTargState].to_numpy()
 
             rec_abundances = filtered_markerDF.to_numpy()
             KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target)

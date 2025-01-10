@@ -48,6 +48,8 @@ def makeFigure():
 
     CITE_DF = importCITE()
 
+    assert targCell in CITE_DF["CellType3"].unique()
+
     # Filter out non-marker columns
     non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
     marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
@@ -63,10 +65,7 @@ def makeFigure():
         2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
     }
 
-    if offTargState in off_target_conditions:
-        off_target_mask = off_target_conditions[offTargState].to_numpy()
-    else:
-        raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
+    off_target_mask = off_target_conditions[offTargState].to_numpy()
 
     recAbundances = markerDF.to_numpy()
 

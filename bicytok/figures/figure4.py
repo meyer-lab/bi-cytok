@@ -91,7 +91,8 @@ def makeFigure():
             df_temp = pd.DataFrame(
                 data, columns=["Target 1", "Target 2", "Selectivity"], index=[0]
             )
-            df = pd.concat([df, df_temp], ignore_index=True)
+
+            df = df_temp if df.empty else pd.concat([df, df_temp], ignore_index=True)
 
     selectivities = df.pivot(index="Target 1", columns="Target 2", values="Selectivity")
     sns.heatmap(selectivities)
