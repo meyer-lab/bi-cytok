@@ -1,3 +1,11 @@
+"""
+Figure file to generate bar plots for amount of signal receptor
+    bound to each given cell type
+signal: signaling receptor
+target: additional targeting receptor
+signalAff: starting affinity of ligand and signal receptor
+"""
+
 from pathlib import Path
 
 import numpy as np
@@ -12,14 +20,6 @@ path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
-    """
-    Figure file to generate bar plots for amount of signal receptor
-        bound to each given cell type
-    signal: signaling receptor
-    target: additional targeting receptor
-    signalAff: starting affinity of ligand and signal receptor
-    """
-
     ax, f = getSetup((8, 3), (1, 2))
 
     signal = ["CD122"]

@@ -1,3 +1,19 @@
+"""
+Figure file to generate dose response curves for any combination
+    of multivalent and multispecific ligands.
+Outputs dose vs. selectivity for the target cell and amount of target cell
+    bound at indicated signal receptor.
+
+signal: Receptor that the ligand is delivering signal to; selectivity and
+    target bound are with respect to engagement with this receptor
+allTargets: List of paired [(target receptor, valency)] combinations for each
+    targeting receptor; to be used for targeting the target cell, not signaling
+cells: Array of cells that will be sampled from and used in calculations
+targCell: Target cell whose selectivity will be maximized
+startingAff: Starting affinity to modulate from in order to
+    maximize selectivity for the targCell, affinities are K_a in L/mol
+"""
+
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -19,22 +35,6 @@ plt.rcParams["svg.fonttype"] = "none"
 
 
 def makeFigure():
-    """
-    Figure file to generate dose response curves for any combination
-        of multivalent and multispecific ligands.
-    Outputs dose vs. selectivity for the target cell and amount of target cell
-        bound at indicated signal receptor.
-
-    signal: Receptor that the ligand is delivering signal to; selectivity and
-        target bound are with respect to engagement with this receptor
-    allTargets: List of paired [(target receptor, valency)] combinations for each
-        targeting receptor; to be used for targeting the target cell, not signaling
-    cells: Array of cells that will be sampled from and used in calculations
-    targCell: Target cell whose selectivity will be maximized
-    startingAff: Starting affinity to modulate from in order to
-        maximize selectivity for the targCell, affinities are K_a in L/mol
-    """
-
     ax, f = getSetup((6, 3), (1, 2))
 
     signal = ["CD122", 1]

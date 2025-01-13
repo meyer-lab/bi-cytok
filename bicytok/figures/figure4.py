@@ -1,3 +1,8 @@
+"""
+Figure file to generate bispecific ligand selectivity heatmap
+    of selectivity for each bispecific pairing.
+"""
+
 from pathlib import Path
 
 import numpy as np
@@ -12,11 +17,6 @@ path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
-    """
-    Figure file to generate bispecific ligand selectivity heatmap
-        of selectivity for each bispecific pairing.
-    """
-
     ax, f = getSetup((4, 3), (1, 1))
 
     signal = ["CD122", 1]

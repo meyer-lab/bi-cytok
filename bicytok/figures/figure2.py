@@ -1,3 +1,34 @@
+"""
+Generates horizontal bar charts to visualize the top 5 markers
+    with the highest KL Divergence and Earth Mover's Distance (EMD) values,
+    comparing target and off-target cell distributions using CITE-seq data.
+
+Data Import:
+- Imports the CITE-seq dataframe (`importCITE`) and the plotting
+    setup (`getSetup`).
+- Defines a target cell type (default: "Treg") and an off-target
+    state (`offTargState`), specifying which cells are considered "off-target".
+
+Off-Target State Definitions:
+- Allows the selection of different off-target cells using `offTargState`:
+    - `offTargState = 0`: All non-target cells.
+    - `offTargState = 1`: All non-Tregs.
+    - `offTargState = 2`: Only naive Tregs.
+
+KL Divergence and EMD Calculation**:
+- Computes the 1D KL divergence and EMD for each marker between
+    the target and off-target cell distributions using `KL_EMD_1D`.
+- Returns two arrays: one with KL divergence values and one with EMD values.
+
+Identifies the top 5 markers with the highest KL divergence
+    and the top 5 markers with the highest EMD.
+- Plots horizontal bar charts for these top markers:
+    - **KL Divergence Plot**: Top 5 markers sorted by KL divergence.
+    - **EMD Plot**: Top 5 markers sorted by EMD.
+- Each plot is labeled with marker names on the y-axis
+    and their respective values (KL or EMD) on the x-axis.
+"""
+
 import numpy as np
 
 from ..distance_metric_funcs import KL_EMD_1D
@@ -6,37 +37,6 @@ from .common import getSetup
 
 
 def makeFigure():
-    """
-    Generates horizontal bar charts to visualize the top 5 markers
-        with the highest KL Divergence and Earth Mover's Distance (EMD) values,
-        comparing target and off-target cell distributions using CITE-seq data.
-
-    Data Import:
-    - Imports the CITE-seq dataframe (`importCITE`) and the plotting
-        setup (`getSetup`).
-    - Defines a target cell type (default: "Treg") and an off-target
-        state (`offTargState`), specifying which cells are considered "off-target".
-
-    Off-Target State Definitions:
-    - Allows the selection of different off-target cells using `offTargState`:
-      - `offTargState = 0`: All non-target cells.
-      - `offTargState = 1`: All non-Tregs.
-      - `offTargState = 2`: Only naive Tregs.
-
-    KL Divergence and EMD Calculation**:
-    - Computes the 1D KL divergence and EMD for each marker between
-        the target and off-target cell distributions using `KL_EMD_1D`.
-    - Returns two arrays: one with KL divergence values and one with EMD values.
-
-    Identifies the top 5 markers with the highest KL divergence
-        and the top 5 markers with the highest EMD.
-    - Plots horizontal bar charts for these top markers:
-      - **KL Divergence Plot**: Top 5 markers sorted by KL divergence.
-      - **EMD Plot**: Top 5 markers sorted by EMD.
-    - Each plot is labeled with marker names on the y-axis
-        and their respective values (KL or EMD) on the x-axis.
-    """
-
     ax, f = getSetup((8, 8), (1, 2))
 
     targCell = "Treg Memory"
