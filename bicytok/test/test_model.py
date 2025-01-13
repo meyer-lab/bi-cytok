@@ -97,18 +97,6 @@ def test_optimize_affs():
     assert all(optParams >= 0)
 
 
-# def test_binding_model():
-#     assert np.isclose(
-#         cytBindingModel(
-#             dose=0.1,
-#             recCounts=np.array([4000., 3400.]),
-#             valencies=np.array([[1, 1]]),
-#             monomerAffs=restructureAffs(np.array([8., 8.]))
-#         )[0],
-#         4.070165414304938e-5
-#     )
-
-
 def test_invalid_model_function_inputs():
     # Test invalid inputs for restructuringAffs
     with pytest.raises(AssertionError):
@@ -205,12 +193,3 @@ def test_invalid_model_function_inputs():
         sample_receptor_abundances(
             CITE_DF=df.drop(columns="Cell Type"), numCells=numCells
         )  # lack of cell type column
-
-
-if __name__ == "__main__":
-    test_KL_EMD_1D()
-    test_KL_EMD_2D()
-    test_invalid_distance_function_inputs()
-    test_optimize_affs()
-    # test_binding_model()
-    test_invalid_model_function_inputs()
