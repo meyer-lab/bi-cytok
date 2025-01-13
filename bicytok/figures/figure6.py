@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from ..distanceMetricFuncs import KL_EMD_2D
+from ..distance_metric_funcs import KL_EMD_2D
 from ..imports import importCITE
 from .common import getSetup
 

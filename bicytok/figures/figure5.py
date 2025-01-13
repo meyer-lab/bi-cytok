@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from ..distanceMetricFuncs import KL_EMD_2D
+from ..distance_metric_funcs import KL_EMD_2D
 from ..imports import importCITE
-from ..selectivityFuncs import optimizeSelectivityAffs, sampleReceptorAbundances
+from ..selectivity_funcs import optimize_affs, sample_receptor_abundances
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent
@@ -107,7 +107,7 @@ def makeFigure():
     epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
 
-    sampleDF = sampleReceptorAbundances(CITE_DF=epitopesDF, numCells=1000)
+    sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=1000)
 
     assert targCell in sampleDF["Cell Type"].unique()
 
@@ -130,7 +130,7 @@ def makeFigure():
             dfOffTargCell = sampleDF.loc[sampleDF["Cell Type"].isin(offTargCells)]
             offTargRecs = dfOffTargCell[[signal_receptor] + targets]
 
-            optSelec, optParams = optimizeSelectivityAffs(
+            optSelec, optParams = optimize_affs(
                 targRecs=targRecs.to_numpy(),
                 offTargRecs=offTargRecs.to_numpy(),
                 dose=dose,

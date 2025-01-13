@@ -6,12 +6,12 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import Bounds, minimize
 
-from .MBmodel import cytBindingModel
+from .binding_model_funcs import cyt_binding_model
 
 
 # Called in minOffTargSelec and get_cell_bindings
 # Sam: why not just input the affinities in the correct format...
-def restructureAffs(affs: np.ndarray) -> np.ndarray:
+def restructure_affs(affs: np.ndarray) -> np.ndarray:
     """
     Structures array of receptor affinities to be compatible with the binding model
     Args:
@@ -34,7 +34,7 @@ def restructureAffs(affs: np.ndarray) -> np.ndarray:
 
 
 # Called in optimizeDesign
-def minOffTargSelec(
+def min_off_targ_selec(
     monomerAffs: np.ndarray,
     targRecs: np.ndarray,
     offTargRecs: np.ndarray,
@@ -63,14 +63,14 @@ def minOffTargSelec(
 
     # Reformat input affinities to 10^aff and diagonalize
     # Sam: shouldn't this be done before the optimization?
-    modelAffs = restructureAffs(monomerAffs)
+    modelAffs = restructure_affs(monomerAffs)
 
     # Use the binding model to calculate bound receptors
     #   for target and off-target cell types
-    targRbound = cytBindingModel(
+    targRbound = cyt_binding_model(
         dose=dose, recCounts=targRecs, valencies=valencies, monomerAffs=modelAffs
     )
-    offTargRbound = cytBindingModel(
+    offTargRbound = cyt_binding_model(
         dose=dose, recCounts=offTargRecs, valencies=valencies, monomerAffs=modelAffs
     )
 
@@ -84,7 +84,7 @@ def minOffTargSelec(
 
 
 # Called in Figure1, Figure4, and Figure5
-def optimizeSelectivityAffs(
+def optimize_affs(
     targRecs: np.ndarray,
     offTargRecs: np.ndarray,
     dose: float,
@@ -130,7 +130,7 @@ def optimizeSelectivityAffs(
 
     # Run optimization to minimize off-target selectivity by changing affinities
     optimizer = minimize(
-        fun=minOffTargSelec,
+        fun=min_off_targ_selec,
         x0=initAffs,
         bounds=optBnds,
         args=(
@@ -149,7 +149,7 @@ def optimizeSelectivityAffs(
 
 # Sam: reimplement this function when we have a clearer idea
 #   of how to calculate conversion factors
-def calcCITEConvFacts() -> tuple[dict, float]:
+def calc_conv_facts() -> tuple[dict, float]:
     """
     Returns conversion factors by marker for converting CITEseq signal into abundance
     """
@@ -197,7 +197,7 @@ def calcCITEConvFacts() -> tuple[dict, float]:
 
 
 # Called in Figure1, Figure3, Figure4, and Figure5
-def sampleReceptorAbundances(
+def sample_receptor_abundances(
     CITE_DF: pd.DataFrame,
     numCells=1000,
 ) -> pd.DataFrame:
@@ -223,7 +223,7 @@ def sampleReceptorAbundances(
     sampleDF = CITE_DF.sample(numCells, random_state=42)
 
     # Calculate conversion factors for each epitope
-    convFactDict, defaultConvFact = calcCITEConvFacts()
+    convFactDict, defaultConvFact = calc_conv_facts()
 
     # Multiply the receptor counts of epitope by the conversion factor for that epitope
     epitopes = CITE_DF.columns[CITE_DF.columns != "Cell Type"]
@@ -250,10 +250,10 @@ def get_cell_bindings(
     """
 
     # Reformat input affinities to 10^aff and diagonalize
-    modelAffs = restructureAffs(monomerAffs)
+    modelAffs = restructure_affs(monomerAffs)
 
     # Use the binding model to calculate bound receptors for each cell
-    Rbound = cytBindingModel(
+    Rbound = cyt_binding_model(
         dose=dose, recCounts=recCounts, valencies=valencies, monomerAffs=modelAffs
     )
 

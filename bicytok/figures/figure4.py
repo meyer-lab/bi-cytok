@@ -5,7 +5,7 @@ import pandas as pd
 import seaborn as sns
 
 from ..imports import importCITE
-from ..selectivityFuncs import optimizeSelectivityAffs, sampleReceptorAbundances
+from ..selectivity_funcs import optimize_affs, sample_receptor_abundances
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent
@@ -49,7 +49,7 @@ def makeFigure():
     epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
 
-    sampleDF = sampleReceptorAbundances(CITE_DF=epitopesDF, numCells=1000)
+    sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=1000)
 
     df = pd.DataFrame(columns=["Target 1", "Target 2", "Selectivity"])
 
@@ -76,7 +76,7 @@ def makeFigure():
             dfOffTargCell = sampleDF.loc[sampleDF["Cell Type"].isin(offTargCells)]
             offTargRecs = dfOffTargCell[[signal[0]] + targetsBoth]
 
-            optSelec, optParams = optimizeSelectivityAffs(
+            optSelec, optParams = optimize_affs(
                 targRecs=targRecs.to_numpy(),
                 offTargRecs=offTargRecs.to_numpy(),
                 dose=dose,

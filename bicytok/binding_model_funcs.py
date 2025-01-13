@@ -99,7 +99,7 @@ def polyc(
     return Rbound
 
 
-def cytBindingModel(
+def cyt_binding_model(
     dose: float,  # L0
     recCounts: np.ndarray,  # Rtot
     valencies: np.ndarray,  # Cplx
