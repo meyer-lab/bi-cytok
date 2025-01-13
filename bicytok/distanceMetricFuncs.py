@@ -133,7 +133,7 @@ def KL_EMD_2D(
             a,
             b,
             M,
-            numItermax=100,  # Check numIterMax
+            numThreads=12,
         )
 
     return KL_div_vals, EMD_vals
