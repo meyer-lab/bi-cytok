@@ -70,8 +70,6 @@ def makeFigure():
     signal_valency = 1
     valencies = [1, 2, 4]
     allTargets = [["CD25", "CD278"], ["CD25", "CD4-2"], ["CD25", "CD45RB"]]
-    # valencies = [1]
-    # allTargets = [["CD25", "CD278"]]
     dose = 10e-2
     offTargState = 0  # Adjust as needed
     cellTypes = np.array(
@@ -105,10 +103,39 @@ def makeFigure():
     #     (distance functions previously used cell type 3 as in other figs)
     assert targCell in CITE_DF["CellType2"].unique()
 
+    # Calculate KL divergence and EMD between each target receptor pair
     epitopesDF = CITE_DF[epitopes + ["CellType2"]]
     epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
 
+    non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
+    marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
+    markerDF = CITE_DF.loc[:, marker_columns]
+
+    on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
+    off_target_conditions = {
+        0: (CITE_DF["CellType2"] != targCell),  # All non-target cells
+        1: (
+            (CITE_DF["CellType2"] != "Treg")
+            & (CITE_DF["CellType2"] != targCell)
+        ),  # All non-Tregs and non-target cells
+        2: (CITE_DF["CellType2"] == "Treg Naive"),  # Naive Tregs
+    }
+    off_target = off_target_conditions[offTargState].to_numpy()
+
+    KL_div_vals = []
+    EMD_vals = []
+    for targets in allTargets:
+        receptors_of_interest = targets
+        filtered_markerDF = markerDF.loc[:, markerDF.columns.isin(receptors_of_interest)]
+
+        KL_div_mat, EMD_mat = KL_EMD_2D(filtered_markerDF.to_numpy(), on_target, off_target)
+
+        KL_div_vals.append(KL_div_mat[1, 0])
+        EMD_vals.append(EMD_mat[1, 0])
+
+    # Calculate binding model estimate of selectivity for each target receptor pair
+    #   and save the results in a dataframe with distance values
     sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=100)
 
     assert targCell in sampleDF["Cell Type"].unique()
@@ -124,7 +151,7 @@ def makeFigure():
     )
 
     for valency in valencies:
-        for targets in allTargets:
+        for i, targets in enumerate(allTargets):
             modelValencies = np.array([[signal_valency, valency, valency]])
 
             dfTargCell = sampleDF.loc[sampleDF["Cell Type"] == targCell]
@@ -140,38 +167,41 @@ def makeFigure():
             )
             select = (1 / optSelec,)
 
-            non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
-            marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
-            markerDF = CITE_DF.loc[:, marker_columns]
+            # non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
+            # marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
+            # markerDF = CITE_DF.loc[:, marker_columns]
 
-            # Filter to include only columns related to the target receptors
-            receptors_of_interest = targets
-            filtered_markerDF = markerDF.loc[
-                :,
-                markerDF.columns.str.contains(
-                    "|".join(receptors_of_interest), case=False
-                ),
-            ]
+            # # Filter to include only columns related to the target receptors
+            # receptors_of_interest = targets
+            # filtered_markerDF = markerDF.loc[
+            #     :,
+            #     markerDF.columns.str.contains(
+            #         "|".join(receptors_of_interest), case=False
+            #     ),
+            # ]
 
-            # Create binary arrays for on-target and off-target cell types
-            on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
+            # # Create binary arrays for on-target and off-target cell types
+            # on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
 
-            off_target_conditions = {
-                0: (CITE_DF["CellType2"] != targCell),  # All non-target cells
-                1: (
-                    (CITE_DF["CellType2"] != "Treg")
-                    & (CITE_DF["CellType2"] != targCell)
-                ),  # All non-Tregs and non-target cells
-                2: (CITE_DF["CellType2"] == "Treg Naive"),  # Naive Tregs
-            }
+            # off_target_conditions = {
+            #     0: (CITE_DF["CellType2"] != targCell),  # All non-target cells
+            #     1: (
+            #         (CITE_DF["CellType2"] != "Treg")
+            #         & (CITE_DF["CellType2"] != targCell)
+            #     ),  # All non-Tregs and non-target cells
+            #     2: (CITE_DF["CellType2"] == "Treg Naive"),  # Naive Tregs
+            # }
 
-            off_target = off_target_conditions[offTargState].to_numpy()
+            # off_target = off_target_conditions[offTargState].to_numpy()
 
-            rec_abundances = filtered_markerDF.to_numpy()
-            KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target)
+            # rec_abundances = filtered_markerDF.to_numpy()
+            # KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target)
 
-            KL_div_val = KL_div_vals[1, 0]
-            EMD_val = EMD_vals[1, 0]
+            # KL_div_val = KL_div_vals[1, 0]
+            # EMD_val = EMD_vals[1, 0]
+
+            KL_div_val = KL_div_vals[i]
+            EMD_val = EMD_vals[i]
 
             # Calculate Pearson correlation inline (no separate function)
             corr = sampleDF[receptors_of_interest].corr(method="pearson")
@@ -202,6 +232,7 @@ def makeFigure():
             )
             df = df_temp if df.empty else pd.concat([df, df_temp], ignore_index=True)
 
+    # Plot results
     sns.lineplot(data=df, x="KL Divergence", y="Selectivity", hue="Valency", ax=ax[0])
     sns.lineplot(
         data=df, x="Earth Mover's Distance", y="Selectivity", hue="Valency", ax=ax[1]
