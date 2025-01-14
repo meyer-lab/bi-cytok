@@ -116,8 +116,7 @@ def makeFigure():
     off_target_conditions = {
         0: (CITE_DF["CellType2"] != targCell),  # All non-target cells
         1: (
-            (CITE_DF["CellType2"] != "Treg")
-            & (CITE_DF["CellType2"] != targCell)
+            (CITE_DF["CellType2"] != "Treg") & (CITE_DF["CellType2"] != targCell)
         ),  # All non-Tregs and non-target cells
         2: (CITE_DF["CellType2"] == "Treg Naive"),  # Naive Tregs
     }
@@ -127,9 +126,12 @@ def makeFigure():
     EMD_vals = []
     for targets in allTargets:
         receptors_of_interest = targets
-        filtered_markerDF = markerDF.loc[:, markerDF.columns.isin(receptors_of_interest)]
+        filtered_markerDF = markerDF.loc[
+            :, markerDF.columns.isin(receptors_of_interest)
+        ]
+        filtered_markerDF = filtered_markerDF.to_numpy()
 
-        KL_div_mat, EMD_mat = KL_EMD_2D(filtered_markerDF.to_numpy(), on_target, off_target)
+        KL_div_mat, EMD_mat = KL_EMD_2D(filtered_markerDF, on_target, off_target)
 
         KL_div_vals.append(KL_div_mat[1, 0])
         EMD_vals.append(EMD_mat[1, 0])
@@ -167,39 +169,7 @@ def makeFigure():
             )
             select = (1 / optSelec,)
 
-            # non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
-            # marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
-            # markerDF = CITE_DF.loc[:, marker_columns]
-
-            # # Filter to include only columns related to the target receptors
-            # receptors_of_interest = targets
-            # filtered_markerDF = markerDF.loc[
-            #     :,
-            #     markerDF.columns.str.contains(
-            #         "|".join(receptors_of_interest), case=False
-            #     ),
-            # ]
-
-            # # Create binary arrays for on-target and off-target cell types
-            # on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
-
-            # off_target_conditions = {
-            #     0: (CITE_DF["CellType2"] != targCell),  # All non-target cells
-            #     1: (
-            #         (CITE_DF["CellType2"] != "Treg")
-            #         & (CITE_DF["CellType2"] != targCell)
-            #     ),  # All non-Tregs and non-target cells
-            #     2: (CITE_DF["CellType2"] == "Treg Naive"),  # Naive Tregs
-            # }
-
-            # off_target = off_target_conditions[offTargState].to_numpy()
-
-            # rec_abundances = filtered_markerDF.to_numpy()
-            # KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target)
-
-            # KL_div_val = KL_div_vals[1, 0]
-            # EMD_val = EMD_vals[1, 0]
-
+            # Get distance metrics for current target pair
             KL_div_val = KL_div_vals[i]
             EMD_val = EMD_vals[i]
 
