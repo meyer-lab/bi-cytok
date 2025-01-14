@@ -26,15 +26,6 @@ h5py==3.12.1
     # via anndata
 iniconfig==2.0.0
     # via pytest
-jax==0.4.35
-    # via jaxopt
-    # via valentbind
-jaxlib==0.4.35
-    # via jax
-    # via jaxopt
-    # via valentbind
-jaxopt==0.8.3
-    # via valentbind
 joblib==1.4.2
     # via scikit-learn
 kiwisolver==1.4.7
@@ -42,9 +33,6 @@ kiwisolver==1.4.7
 matplotlib==3.9.2
     # via bi-cytok
     # via seaborn
-ml-dtypes==0.5.0
-    # via jax
-    # via jaxlib
 natsort==8.4.0
     # via anndata
 nodeenv==1.9.1
@@ -53,19 +41,12 @@ numpy==2.0.1
     # via anndata
     # via contourpy
     # via h5py
-    # via jax
-    # via jaxlib
-    # via jaxopt
     # via matplotlib
-    # via ml-dtypes
     # via pandas
     # via pot
     # via scikit-learn
     # via scipy
     # via seaborn
-    # via valentbind
-opt-einsum==3.4.0
-    # via jax
 packaging==24.1
     # via anndata
     # via matplotlib
@@ -96,12 +77,8 @@ scikit-learn==1.5.2
 scipy==1.14.1
     # via anndata
     # via bi-cytok
-    # via jax
-    # via jaxlib
-    # via jaxopt
     # via pot
     # via scikit-learn
-    # via valentbind
 seaborn==0.13.2
     # via bi-cytok
 six==1.16.0
@@ -112,5 +89,3 @@ typing-extensions==4.12.2
     # via pyright
 tzdata==2024.2
     # via pandas
-valentbind @ git+https://github.com/meyer-lab/valentBind.git@406673faf3ec6fa5bff13f53d4b1070461230759
-    # via bi-cytok

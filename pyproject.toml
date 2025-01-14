@@ -12,7 +12,6 @@ dependencies = [
     "pot>=0.9.4",
     "matplotlib>=3.9.2",
     "seaborn>=0.13.2",
-    "valentbind @ git+https://github.com/meyer-lab/valentBind.git@main",
     "pytest>=8.3.4",
 ]
 readme = "README.md"

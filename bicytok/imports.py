@@ -1,33 +1,44 @@
 """File that deals with everything about importing and sampling."""
 
 import gzip
-import os
-from functools import cache
-from os.path import join
+from pathlib import Path
 from zipfile import ZipFile
 
 import anndata as an
 import pandas as pd
 from scipy.io import mmread
 
-path_here = os.path.dirname(os.path.dirname(__file__))
+path_here = Path(__file__).parent.parent
+
+SC_Stims = [
+    "control",
+    "IL2_100pM",
+    "IL2_1nM",
+    "IL2_10nM",
+    "IL2_50nM",
+    "IL2_200nM",
+    "IL7_100nM",
+    "IL10_500nM",
+    "IL10_2000nM",
+    "TGFB_10nM",
+    "TGFB_50nM",
+]  # "IL7_500nM is blank"
 
 
-@cache
+# Originally called in selectivityFuncs.getConvFactDict
 def getBindDict():
     """Gets binding to pSTAT fluorescent conversion dictionary"""
-    path = os.path.dirname(os.path.dirname(__file__))
     bindingDF = pd.read_csv(
-        join(path, "bicytok/data/BindingConvDict.csv"), encoding="latin1"
+        path_here / "bicytok" / "data" / "BindingConvDict.csv", encoding="latin1"
     )
     return bindingDF
 
 
-@cache
+# Sam: Not called anywhere, not sure what original use was
 def importReceptors():
     """Makes Complete receptor expression Dict"""
-    recDF = pd.read_csv(join(path_here, "bicytok/data/RecQuantitation.csv"))
-    recDFbin = pd.read_csv(join(path_here, "bicytok/data/BinnedReceptorData.csv"))
+    recDF = pd.read_csv(path_here / "bicytok" / "data" / "RecQuantitation.csv")
+    recDFbin = pd.read_csv(path_here / "bicytok" / "data" / "BinnedReceptorData.csv")
     recDFbin = recDFbin.loc[recDFbin["Bin"].isin([1, 3])]
     recDFbin.loc[recDFbin["Bin"] == 1, "Cell Type"] += r" $IL2Ra^{lo}$"
     recDFbin.loc[recDFbin["Bin"] == 3, "Cell Type"] += r" $IL2Ra^{hi}$"
@@ -35,18 +46,22 @@ def importReceptors():
     return recDF
 
 
-@cache
+# Not called anywhere
 def makeCITEdf():
-    """Makes cite surface epitope csv for given cell type, DON'T USE THIS UNLESS DATA NEEDS RESTRUCTURING"""
+    """Makes cite surface epitope csv for given cell type,
+    DON'T USE THIS UNLESS DATA NEEDS RESTRUCTURING"""
     """
-    matrixDF = pd.read_csv(join(path_here, "bicytok/data/CITEmatrix.gz"), compression='gzip', header=0, sep=' ', quotechar='"', error_bad_lines=False)
+    matrixDF = pd.read_csv(join(path_here, "bicytok/data/CITEmatrix.gz"),
+        compression='gzip', header=0, sep=' ', quotechar='"', error_bad_lines=False)
     matrixDF = matrixDF.iloc[:, 0:-2]
     matrixDF.columns = ["Marker", "Cell", "Number"]
     matrixDF.to_csv(join(path_here, "bicytok/data/CITEmatrix.csv"), index=False)
     """
-    featureDF = pd.read_csv(join(path_here, "bicytok/data/CITEfeatures.csv"))
-    matrixDF = pd.read_csv(join(path_here, "bicytok/data/CITEmatrix.csv")).iloc[1::, :]
-    metaDF = pd.read_csv(join(path_here, "bicytok/data/metaData3P.csv"))
+    featureDF = pd.read_csv(path_here / "bicytok" / "data" / "CITEfeatures.csv")
+    matrixDF = pd.read_csv(path_here / "bicytok" / "data" / "CITEmatrix.csv").iloc[
+        1::, :
+    ]
+    metaDF = pd.read_csv(path_here / "bicytok" / "data" / "metaData3P.csv")
 
     metaDF["cellNumber"] = metaDF.index + 1
     cellNums = metaDF.cellNumber.values
@@ -82,26 +97,29 @@ def makeCITEdf():
     matrixDF["CellType3"] = pd.Categorical(
         matrixDF["Cell"].replace(cellTDict3), categories=categories3
     )
-    matrixDF.to_csv(join(path_here, "bicytok/data/CITEdata.csv"), index=False)
+    matrixDF.to_csv(path_here / "bicytok" / "data" / "CITEdata.csv", index=False)
     return matrixDF  # , featureDF, metaDF
 
 
 def importCITE():
     """Downloads all surface markers and cell types"""
-    CITEmarkerDF = pd.read_csv(join(path_here, "bicytok/data/CITEdata_SurfMarkers.zip"))
+    CITEmarkerDF = pd.read_csv(
+        path_here / "bicytok" / "data" / "CITEdata_SurfMarkers.zip"
+    )
     return CITEmarkerDF
 
 
 def importRNACITE():
     """Downloads all surface markers and cell types"""
     RNAsurfDF = pd.read_csv(
-        ZipFile(join(path_here, "bicytok/data/RNAseqSurface.csv.zip")).open(
+        ZipFile(path_here / "bicytok" / "data" / "RNAseqSurface.csv.zip").open(
             "RNAseqSurface.csv"
         )
     )
     return RNAsurfDF
 
 
+# Sam: function not called anywhere, purpose unclear
 def makeTregSC():
     """Constructs .h5ad file for PBMC stimulation experiment"""
     Treg_h5ad = an.AnnData()
@@ -109,18 +127,28 @@ def makeTregSC():
         stim_an = an.AnnData()
         barcodes = pd.read_csv(
             gzip.open(
-                "/opt/extra-storage/multi_output/outs/per_sample_outs/"
-                + stim
-                + "/count/sample_filtered_feature_bc_matrix/barcodes.tsv.gz"
+                path_here
+                / "multi_output"
+                / "outs"
+                / "per_sample_outs"
+                / stim
+                / "count"
+                / "sample_filtered_feature_bc_matrix"
+                / "barcodes.tsv.gz"
             ),
             sep="\t",
             header=None,
         )
         matrix = mmread(
             gzip.open(
-                "/opt/extra-storage/multi_output/outs/per_sample_outs/"
-                + stim
-                + "/count/sample_filtered_feature_bc_matrix/matrix.mtx.gz"
+                path_here
+                / "multi_output"
+                / "outs"
+                / "per_sample_outs"
+                / stim
+                / "count"
+                / "sample_filtered_feature_bc_matrix"
+                / "matrix.mtx.gz"
             )
         )
         barcodes.columns = ["barcode"]
@@ -128,15 +156,19 @@ def makeTregSC():
         stim_an.obs.index = barcodes["barcode"].values
         stim_an.obs["Condition"] = stim
 
-        if (
-            i == 0
-        ):  # First condition - load features for later labeling (all conditions have same genes)
+        if i == 0:  # First condition - load features for later labeling
+            # (all conditions have same genes)
             Treg_h5ad = stim_an
             features = pd.read_csv(
                 gzip.open(
-                    "/opt/extra-storage/multi_output/outs/per_sample_outs/"
-                    + stim
-                    + "/count/sample_filtered_feature_bc_matrix/features.tsv.gz"
+                    path_here
+                    / "multi_output"
+                    / "outs"
+                    / "per_sample_outs"
+                    / stim
+                    / "count"
+                    / "sample_filtered_feature_bc_matrix"
+                    / "features.tsv.gz"
                 ),
                 sep="\t",
                 header=None,
@@ -149,21 +181,6 @@ def makeTregSC():
     Treg_h5ad.var["ENSEMBLE_ids"] = features["ENSEMBLE_ids"].values
     Treg_h5ad.var["feature_type"] = features["feature_type"].values
 
-    Treg_h5ad.write_h5ad("/opt/extra-storage/Treg_h5ads/Treg_raw.h5ad")
+    Treg_h5ad.write_h5ad(path_here / "Treg_h5ads" / "Treg_raw.h5ad")
 
     return
-
-
-SC_Stims = [
-    "control",
-    "IL2_100pM",
-    "IL2_1nM",
-    "IL2_10nM",
-    "IL2_50nM",
-    "IL2_200nM",
-    "IL7_100nM",
-    "IL10_500nM",
-    "IL10_2000nM",
-    "TGFB_10nM",
-    "TGFB_50nM",
-]  # "IL7_500nM is blank"

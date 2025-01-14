@@ -1,140 +1,115 @@
-from os.path import dirname
+"""
+    Generates a heatmap visualizing the Earth Mover's Distance (EMD)
+    between selected receptors (CD25 and CD35) for a target cell
+    type ("Treg") compared to off-target populations
+
+Data Import:
+- Loads the CITE-seq dataset using `importCITE`
+    and samples the first 1000 rows for analysis.
+- Identifies non-marker columns (`CellType1`, `CellType2`,
+    `CellType3`, `Cell`) and filters out these columns
+    to retain only the marker (receptor) columns for analysis.
+
+Receptor Selection:
+- Filters the marker dataframe to include only columns
+    related to the receptors of interest, specifically
+    `"CD25"` and `"CD35"`, focusing on these markers
+    for the calculation of EMD.
+
+Target and Off-Target Cell Definition:
+- Creates a binary array for on-target cells based on
+    the specified target cell type (`"Treg"`).
+- Defines off-target cell populations using the
+    `offTargState` parameter:
+    - `offTargState = 0`: All non-memory Tregs.
+    - `offTargState = 1`: All non-Tregs.
+    - `offTargState = 2`: Only naive Tregs.
+
+EMD Calculation:
+- Computes an Earth Mover's Distance (EMD) matrix using
+    the `EMD_2D` function to measure the dissimilarity
+    between on-target ("Treg") and off-target cell distributions
+    for the selected receptors (CD25 and CD35).
+- Constructs a DataFrame (`df_recep`) to store the computed
+    EMD values, with rows and columns labeled by the
+    receptors of interest.
+
+Visualization:
+- Generates a heatmap of the EMD matrix using Seaborn's
+    `heatmap` function.
+- The heatmap uses a "bwr" color map to visually represent
+    the EMD values, with annotations to display specific values.
+"""
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from scipy import stats
-from sklearn.neighbors import KernelDensity
 
+from ..distance_metric_funcs import KL_EMD_2D
 from ..imports import importCITE
 from .common import getSetup
 
-path_here = dirname(dirname(__file__))
-
-plt.rcParams["svg.fonttype"] = "none"
-
 
 def makeFigure():
-    """Figure file to generate bar plots of 1D KL divergence and EMD values of most unique receptor for each given cell type/subset."""
-    ax, f = getSetup((12, 4), (1, 2))
-
     CITE_DF = importCITE()
-    cellLevel = "CellType2"
+    CITE_DF = CITE_DF.head(1000)
 
-    cells = list(CITE_DF[cellLevel].unique())
-    toRemove = [
-        "Eryth",
-        "MAIT",
-        "ASDC",
-        "Platelet",
-        "gdT",
-        "dnT",
-        "B intermediate",
-        "CD4 CTL",
-        "NK Proliferating",
-        "CD8 Proliferating",
-        "CD4 Proliferating",
+    ax, f = getSetup((10, 5), (1, 2))
+
+    targCell = "Treg Memory"
+    offTargState = 0
+
+    # Define non-marker columns
+    non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
+    marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
+    markerDF = CITE_DF.loc[:, marker_columns]
+
+    # Further filter to include only columns related to CD25 and CD35
+    receptors_of_interest = ["CD25", "CD35"]
+    filtered_markerDF = markerDF.loc[
+        :, markerDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False)
     ]
-    for removed in toRemove:
-        cells.remove(removed)
 
-    df = pd.DataFrame(columns=["Cell", "KL Divergence", "Earth Mover's Distance"])
+    on_target = (CITE_DF["CellType3"] == targCell).to_numpy()
 
-    for targCell in cells:
-        markerDF = pd.DataFrame(columns=["Marker", "KL", "EMD"])
-        for marker in CITE_DF.loc[
-            :,
-            (
-                (CITE_DF.columns != "CellType1")
-                & (CITE_DF.columns != "CellType2")
-                & (CITE_DF.columns != "CellType3")
-                & (CITE_DF.columns != "Cell")
-            ),
-        ].columns:
-            markAvg = np.mean(CITE_DF[marker].values)
-            if markAvg > 0.0001:
-                targCellMark = (
-                    CITE_DF.loc[CITE_DF[cellLevel] == targCell][marker].values / markAvg
-                )
-                offTargCellMark = (
-                    CITE_DF.loc[CITE_DF[cellLevel] != targCell][marker].values / markAvg
-                )
-                if np.mean(targCellMark) > np.mean(offTargCellMark):
-                    kdeTarg = KernelDensity(kernel="gaussian").fit(
-                        targCellMark.reshape(-1, 1)
-                    )
-                    kdeOffTarg = KernelDensity(kernel="gaussian").fit(
-                        offTargCellMark.reshape(-1, 1)
-                    )
-                    minVal = np.minimum(targCellMark.min(), offTargCellMark.min()) - 10
-                    maxVal = np.maximum(targCellMark.max(), offTargCellMark.max()) + 10
-                    outcomes = np.arange(minVal, maxVal + 1).reshape(-1, 1)
-                    distTarg = np.exp(kdeTarg.score_samples(outcomes))
-                    distOffTarg = np.exp(kdeOffTarg.score_samples(outcomes))
-                    KL_div = stats.entropy(
-                        distOffTarg.flatten() + 1e-200,
-                        distTarg.flatten() + 1e-200,
-                        base=2,
-                    )
-                    markerDF = pd.concat(
-                        [
-                            markerDF,
-                            pd.DataFrame(
-                                {
-                                    "Marker": [marker],
-                                    "KL": KL_div,
-                                    "EMD": stats.wasserstein_distance(
-                                        targCellMark, offTargCellMark
-                                    ),
-                                }
-                            ),
-                        ],
-                        ignore_index=True,
-                    )
-        KLrow = markerDF.iloc[markerDF["KL"].idxmax()]
-        markerKL = KLrow["Marker"]
-        KL = KLrow["KL"]
-        EMDrow = markerDF.iloc[markerDF["EMD"].idxmax()]
-        markerEMD = EMDrow["Marker"]
-        EMD = EMDrow["EMD"]
+    off_target_conditions = {
+        0: (CITE_DF["CellType3"] != targCell),  # All non-memory Tregs
+        1: (CITE_DF["CellType2"] != "Treg"),  # All non-Tregs
+        2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
+    }
 
-        data = {
-            "Cell": targCell,
-            "KL Marker": targCell + " " + markerKL,
-            "KL Divergence": [KL],
-            "EMD Marker": targCell + " " + markerEMD,
-            "Earth Mover's Distance": [EMD],
-        }
-        df_temp = pd.DataFrame(
-            data,
-            columns=[
-                "Cell",
-                "KL Marker",
-                "KL Divergence",
-                "EMD Marker",
-                "Earth Mover's Distance",
-            ],
-        )
-        df = pd.concat([df, df_temp], ignore_index=True)
+    if offTargState in off_target_conditions:
+        off_target_mask = off_target_conditions[offTargState].to_numpy()
+    else:
+        raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
 
-    sns.barplot(
-        data=df.sort_values(by=["KL Divergence"]),
-        x="KL Marker",
-        y="KL Divergence",
-        ax=ax[0],
+    rec_abundances = filtered_markerDF.to_numpy()
+
+    KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target_mask)
+
+    EMD_matrix = np.tril(EMD_vals, k=0)
+    EMD_matrix = EMD_matrix + EMD_matrix.T - np.diag(np.diag(EMD_matrix))
+    KL_matrix = np.tril(KL_div_vals, k=0)
+    KL_matrix = KL_matrix + KL_matrix.T - np.diag(np.diag(KL_matrix))
+
+    df_EMD = pd.DataFrame(
+        EMD_matrix, index=receptors_of_interest, columns=receptors_of_interest
     )
-    sns.barplot(
-        data=df.sort_values(by=["Earth Mover's Distance"]),
-        x="EMD Marker",
-        y="Earth Mover's Distance",
-        ax=ax[1],
+    df_KL = pd.DataFrame(
+        KL_matrix, index=receptors_of_interest, columns=receptors_of_interest
     )
-    ax[0].set_xticklabels(
-        labels=ax[0].get_xticklabels(), rotation=45, horizontalalignment="right"
+
+    # Visualize the EMD matrix with a heatmap
+    sns.heatmap(
+        df_EMD, cmap="bwr", annot=True, ax=ax[0], cbar=True, annot_kws={"fontsize": 16}
     )
-    ax[1].set_xticklabels(
-        labels=ax[1].get_xticklabels(), rotation=45, horizontalalignment="right"
+    sns.heatmap(
+        df_KL, cmap="bwr", annot=True, ax=ax[1], cbar=True, annot_kws={"fontsize": 16}
     )
+
+    ax[0].set_title("EMD between: CD25 and CD35")
+    ax[1].set_title("KL Divergence between: CD25 and CD35")
+    plt.show()
 
     return f
