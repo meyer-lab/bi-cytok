@@ -70,6 +70,8 @@ def makeFigure():
     signal_valency = 1
     valencies = [1, 2, 4]
     allTargets = [["CD25", "CD278"], ["CD25", "CD4-2"], ["CD25", "CD45RB"]]
+    # valencies = [1]
+    # allTargets = [["CD25", "CD278"]]
     dose = 10e-2
     offTargState = 0  # Adjust as needed
     cellTypes = np.array(
@@ -168,6 +170,9 @@ def makeFigure():
             rec_abundances = filtered_markerDF.to_numpy()
             KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target)
 
+            KL_div_val = KL_div_vals[1, 0]
+            EMD_val = EMD_vals[1, 0]
+
             # Calculate Pearson correlation inline (no separate function)
             corr = sampleDF[receptors_of_interest].corr(method="pearson")
             sorted_corr = corr.stack().sort_values(ascending=False)
@@ -179,8 +184,8 @@ def makeFigure():
             ]["Correlation"]
 
             data = {
-                "KL Divergence": [KL_div_vals],
-                "Earth Mover's Distance": [EMD_vals],
+                "KL Divergence": KL_div_val,
+                "Earth Mover's Distance": EMD_val,
                 "Correlation": [corr],
                 "Selectivity": select,
                 "Valency": [valency],
@@ -195,7 +200,7 @@ def makeFigure():
                     "Valency",
                 ],
             )
-            df = pd.concat([df, df_temp], ignore_index=True)
+            df = df_temp if df.empty else pd.concat([df, df_temp], ignore_index=True)
 
     sns.lineplot(data=df, x="KL Divergence", y="Selectivity", hue="Valency", ax=ax[0])
     sns.lineplot(

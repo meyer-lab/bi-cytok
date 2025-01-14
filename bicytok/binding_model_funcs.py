@@ -62,7 +62,6 @@ def polyc(
     :param Ctheta: the composition of complexes
     :param Kav: Ka for monomer ligand to receptors
     :return:
-        Lbound: a list of Lbound of each complex
         Rbound: a list of Rbound of each kind of receptor
     """
     # Consistency check
@@ -153,7 +152,7 @@ def cyt_binding_model(
                 KxStar=2.24e-12,
                 Rtot=Rtot,
                 Cplx=valencies,
-                Ctheta=np.array([1]),
+                Ctheta=np.full(len(valencies), 1 / len(valencies)),
                 Kav=monomerAffs,
             )
             output[i, :] = Rbound
