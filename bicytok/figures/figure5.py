@@ -64,14 +64,16 @@ path_here = Path(__file__).parent.parent
 def makeFigure():
     ax, f = getSetup((9, 3), (1, 3))
 
-    CITE_DF = importCITE()
+    # Distance metric parameters
+    offTargState = 1
+    targCell = "Treg"
 
+    # Binding model parameters
     signal_receptor = "CD122"
     signal_valency = 1
     valencies = [1, 2, 4]
     allTargets = [["CD25", "CD278"], ["CD25", "CD4-2"], ["CD25", "CD45RB"]]
     dose = 10e-2
-    offTargState = 0  # Adjust as needed
     cellTypes = np.array(
         [
             "CD8 Naive",
@@ -84,23 +86,17 @@ def makeFigure():
             "Treg",
         ]
     )
-    targCell = "Treg"
     offTargCells = cellTypes[cellTypes != targCell]
 
     assert isinstance(offTargState, int)
     assert any(np.array([0, 1, 2]) == offTargState)
     assert not (targCell == "Treg Naive" and offTargState == 2)
 
+    # Imports
     epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
-
     CITE_DF = importCITE()
 
-    # Sam: Previously there was a mismatch between the cell categorization being
-    #     analyzed with the binding model and the distance functions. Should make
-    #     a user-defined parameter to specify the categorization. For now, I set them
-    #     all to cell type 2
-    #     (distance functions previously used cell type 3 as in other figs)
     assert targCell in CITE_DF["CellType2"].unique()
 
     # Calculate KL divergence and EMD between each target receptor pair
@@ -114,11 +110,11 @@ def makeFigure():
 
     on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
     off_target_conditions = {
-        0: (CITE_DF["CellType2"] != targCell),  # All non-target cells
+        0: (CITE_DF["CellType3"] != targCell),  # All non-target cells
         1: (
             (CITE_DF["CellType2"] != "Treg") & (CITE_DF["CellType2"] != targCell)
         ),  # All non-Tregs and non-target cells
-        2: (CITE_DF["CellType2"] == "Treg Naive"),  # Naive Tregs
+        2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
     }
     off_target = off_target_conditions[offTargState].to_numpy()
 
@@ -131,7 +127,9 @@ def makeFigure():
         ]
         filtered_markerDF = filtered_markerDF.to_numpy()
 
-        KL_div_mat, EMD_mat = KL_EMD_2D(filtered_markerDF, on_target, off_target)
+        KL_div_mat, EMD_mat = KL_EMD_2D(
+            filtered_markerDF, on_target, off_target, calc_1D=False
+        )
 
         KL_div_vals.append(KL_div_mat[1, 0])
         EMD_vals.append(EMD_mat[1, 0])

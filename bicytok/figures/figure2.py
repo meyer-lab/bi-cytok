@@ -39,8 +39,10 @@ from .common import getSetup
 def makeFigure():
     ax, f = getSetup((8, 8), (1, 2))
 
-    targCell = "Treg Memory"
-    offTargState = 0
+    targCell = "Treg"
+    offTargState = 1
+    # receptors_of_interest = ["CD25", "CD35"]
+    receptors_of_interest = None
 
     assert isinstance(offTargState, int)
     assert any(np.array([0, 1, 2]) == offTargState)
@@ -48,15 +50,21 @@ def makeFigure():
 
     CITE_DF = importCITE()
 
-    assert targCell in CITE_DF["CellType3"].unique()
+    assert targCell in CITE_DF["CellType2"].unique()
 
     # Filter out non-marker columns
     non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
     marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
     markerDF = CITE_DF.loc[:, marker_columns]
+    if receptors_of_interest is not None:
+        filtered_markerDF = markerDF.loc[
+            :,
+            markerDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False),
+        ]
+    else:
+        filtered_markerDF = markerDF
 
-    on_target = (CITE_DF["CellType3"] == targCell).to_numpy()
-
+    on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
     off_target_conditions = {
         0: (CITE_DF["CellType3"] != targCell),  # All non-target cells
         1: (
@@ -64,19 +72,20 @@ def makeFigure():
         ),  # All non-Tregs and non-target cells
         2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
     }
+    off_target = off_target_conditions[offTargState].to_numpy()
 
-    off_target_mask = off_target_conditions[offTargState].to_numpy()
+    recAbundances = filtered_markerDF.to_numpy()
 
-    recAbundances = markerDF.to_numpy()
-
-    KL_values, EMD_values = KL_EMD_1D(recAbundances, on_target, off_target_mask)
+    KL_values, EMD_values = KL_EMD_1D(recAbundances, on_target, off_target)
 
     top_5_KL_indices = np.argsort(np.nan_to_num(KL_values))[-5:]
     top_5_EMD_indices = np.argsort(np.nan_to_num(EMD_values))[-5:]
 
     # Plot KL values
     ax[0].barh(
-        markerDF.columns[top_5_KL_indices], KL_values[top_5_KL_indices], color="b"
+        filtered_markerDF.columns[top_5_KL_indices],
+        KL_values[top_5_KL_indices],
+        color="b",
     )
     ax[0].set_title("Top 5 KL Divergence Values")
     ax[0].set_xlabel("KL Divergence")
@@ -84,7 +93,9 @@ def makeFigure():
 
     # Plot EMD values
     ax[1].barh(
-        markerDF.columns[top_5_EMD_indices], EMD_values[top_5_EMD_indices], color="g"
+        filtered_markerDF.columns[top_5_EMD_indices],
+        EMD_values[top_5_EMD_indices],
+        color="g",
     )
     ax[1].set_title("Top 5 EMD Values")
     ax[1].set_xlabel("EMD Value")

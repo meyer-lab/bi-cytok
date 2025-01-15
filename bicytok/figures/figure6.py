@@ -1,7 +1,7 @@
 """
-    Generates a heatmap visualizing the Earth Mover's Distance (EMD)
-    between selected receptors (CD25 and CD35) for a target cell
-    type ("Treg") compared to off-target populations
+Generates a heatmap visualizing the Earth Mover's Distance (EMD)
+between selected receptors (CD25 and CD35) for a target cell
+type ("Treg") compared to off-target populations
 
 Data Import:
 - Loads the CITE-seq dataset using `importCITE`
@@ -41,7 +41,6 @@ Visualization:
     the EMD values, with annotations to display specific values.
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -52,13 +51,16 @@ from .common import getSetup
 
 
 def makeFigure():
-    CITE_DF = importCITE()
-    CITE_DF = CITE_DF.head(1000)
-
     ax, f = getSetup((10, 5), (1, 2))
 
-    targCell = "Treg Memory"
-    offTargState = 0
+    targCell = "Treg"
+    offTargState = 1
+    receptors_of_interest = ["CD25", "CD35"]
+
+    assert any(np.array([0, 1, 2]) == offTargState)
+
+    CITE_DF = importCITE()
+    # CITE_DF = CITE_DF.head(1000)
 
     # Define non-marker columns
     non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
@@ -66,27 +68,23 @@ def makeFigure():
     markerDF = CITE_DF.loc[:, marker_columns]
 
     # Further filter to include only columns related to CD25 and CD35
-    receptors_of_interest = ["CD25", "CD35"]
     filtered_markerDF = markerDF.loc[
         :, markerDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False)
     ]
 
-    on_target = (CITE_DF["CellType3"] == targCell).to_numpy()
-
+    on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
     off_target_conditions = {
         0: (CITE_DF["CellType3"] != targCell),  # All non-memory Tregs
-        1: (CITE_DF["CellType2"] != "Treg"),  # All non-Tregs
+        1: (
+            (CITE_DF["CellType2"] != "Treg") & (CITE_DF["CellType2"] != targCell)
+        ),  # All non-Tregs
         2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
     }
-
-    if offTargState in off_target_conditions:
-        off_target_mask = off_target_conditions[offTargState].to_numpy()
-    else:
-        raise ValueError("Invalid offTargState value. Must be 0, 1, or 2.")
+    off_target = off_target_conditions[offTargState].to_numpy()
 
     rec_abundances = filtered_markerDF.to_numpy()
 
-    KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target_mask)
+    KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target)
 
     EMD_matrix = np.tril(EMD_vals, k=0)
     EMD_matrix = EMD_matrix + EMD_matrix.T - np.diag(np.diag(EMD_matrix))
@@ -110,6 +108,5 @@ def makeFigure():
 
     ax[0].set_title("EMD between: CD25 and CD35")
     ax[1].set_title("KL Divergence between: CD25 and CD35")
-    plt.show()
 
     return f
