@@ -20,6 +20,7 @@ def KL_EMD_1D(
         KL_div_vals: vector of KL Divergences per receptor
         EMD_vals: a vector of EMDs per receptor
     """
+
     assert all(
         isinstance(i, np.bool) for i in np.append(targ, offTarg)
     )  # Check that targ and offTarg are only boolean
@@ -42,32 +43,27 @@ def KL_EMD_1D(
         targAbun = targNorms[:, rec]
         offTargAbun = offTargNorms[:, rec]
 
-        assert np.allclose(
-            targAbun, recAbundances[targ, rec] / np.mean(recAbundances[:, rec])
-        )
+        if np.mean(recAbundances[:, rec]) > 5 and np.mean(targAbun) > np.mean(
+            offTargAbun
+        ):
+            assert np.allclose(
+                targAbun, recAbundances[targ, rec] / np.mean(recAbundances[:, rec])
+            )
 
-        targKDE = KernelDensity(kernel="gaussian").fit(targAbun.reshape(-1, 1))
-        offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbun.reshape(-1, 1))
-        minAbun = np.minimum(targAbun.min(), offTargAbun.min()) - 10
-        maxAbun = np.maximum(targAbun.max(), offTargAbun.max()) + 10
-        outcomes = np.arange(minAbun, maxAbun + 1, (maxAbun - minAbun) / 100).reshape(
-            -1, 1
-        )
-        targDist = np.exp(targKDE.score_samples(outcomes))
-        offTargDist = np.exp(offTargKDE.score_samples(outcomes))
-        KL_div_vals[rec] = stats.entropy(
-            offTargDist.flatten() + 1e-200, targDist.flatten() + 1e-200, base=2
-        )
+            targKDE = KernelDensity(kernel="gaussian").fit(targAbun.reshape(-1, 1))
+            offTargKDE = KernelDensity(kernel="gaussian").fit(
+                offTargAbun.reshape(-1, 1)
+            )
+            minAbun = np.minimum(targAbun.min(), offTargAbun.min()) - 10
+            maxAbun = np.maximum(targAbun.max(), offTargAbun.max()) + 10
+            outcomes = np.arange(minAbun, maxAbun + 1).reshape(-1, 1)
+            targDist = np.exp(targKDE.score_samples(outcomes))
+            offTargDist = np.exp(offTargKDE.score_samples(outcomes))
+            KL_div_vals[rec] = stats.entropy(
+                offTargDist.flatten() + 1e-200, targDist.flatten() + 1e-200, base=2
+            )
 
-        # EMD_vals[rec] = stats.wasserstein_distance(
-        #     targAbun, offTargAbun
-        # )
-        EMD_vals[rec] = ot.emd2_1d(
-            x_a=targAbun,
-            x_b=offTargAbun,
-            a=[],
-            b=[],
-        )
+            EMD_vals[rec] = stats.wasserstein_distance(targAbun, offTargAbun)
 
     return KL_div_vals, EMD_vals
 
@@ -118,49 +114,56 @@ def KL_EMD_2D(
         targAbun1, targAbun2 = targNorms[:, rec1], targNorms[:, rec2]
         offTargAbun1, offTargAbun2 = offTargNorms[:, rec1], offTargNorms[:, rec2]
 
-        assert np.allclose(
-            targAbun1, recAbundances[targ, rec1] / np.mean(recAbundances[:, rec1])
-        )
+        if (
+            np.mean(recAbundances[:, rec1]) > 5
+            and np.mean(recAbundances[:, rec2]) > 5
+            and np.mean(targAbun1) > np.mean(offTargAbun1)
+            and np.mean(targAbun2) > np.mean(offTargAbun2)
+        ):
+            assert np.allclose(
+                targAbun1, recAbundances[targ, rec1] / np.mean(recAbundances[:, rec1])
+            )
 
-        targAbunAll = np.vstack((targAbun1, targAbun2)).transpose()
-        offTargAbunAll = np.vstack((offTargAbun1, offTargAbun2)).transpose()
+            targAbunAll = np.vstack((targAbun1, targAbun2)).transpose()
+            offTargAbunAll = np.vstack((offTargAbun1, offTargAbun2)).transpose()
 
-        assert targAbunAll.shape == (np.sum(targ), 2)
+            assert targAbunAll.shape == (np.sum(targ), 2)
 
-        # Estimate the 2D probability distributions of the two receptors
-        targKDE = KernelDensity(kernel="gaussian").fit(targAbunAll)
-        offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbunAll)
+            # Estimate the 2D probability distributions of the two receptors
+            targKDE = KernelDensity(kernel="gaussian").fit(targAbunAll)
+            offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbunAll)
 
-        # Compare over the entire distribution space by looking at the global max/min
-        minAbun = np.minimum(targAbunAll.min(), offTargAbunAll.min()) - 10
-        maxAbun = np.maximum(targAbunAll.max(), offTargAbunAll.max()) + 10
+            # Compare over the entire distribution space by looking at the
+            #   global max/min
+            minAbun = np.minimum(targAbunAll.min(), offTargAbunAll.min()) - 10
+            maxAbun = np.maximum(targAbunAll.max(), offTargAbunAll.max()) + 10
 
-        # Need a mesh grid for 2D comparison because
-        #   need to explore the entire distribution space
-        X, Y = np.mgrid[
-            minAbun : maxAbun + 1 : ((maxAbun - minAbun) / 100),
-            minAbun : maxAbun + 1 : ((maxAbun - minAbun) / 100),
-        ]
-        outcomes = np.concatenate((X.reshape(-1, 1), Y.reshape(-1, 1)), axis=1)
+            # Need a mesh grid for 2D comparison because
+            #   need to explore the entire distribution space
+            X, Y = np.mgrid[
+                minAbun : maxAbun + 1 : ((maxAbun - minAbun) / 100),
+                minAbun : maxAbun + 1 : ((maxAbun - minAbun) / 100),
+            ]
+            outcomes = np.concatenate((X.reshape(-1, 1), Y.reshape(-1, 1)), axis=1)
 
-        # Calculate the probabilities (log-likelihood)
-        #   of all X, Y combos in the mesh grid based on the estimates
-        #   of the two receptor distributions
-        targDist = np.exp(targKDE.score_samples(outcomes))
-        offTargDist = np.exp(offTargKDE.score_samples(outcomes))
+            # Calculate the probabilities (log-likelihood)
+            #   of all X, Y combos in the mesh grid based on the estimates
+            #   of the two receptor distributions
+            targDist = np.exp(targKDE.score_samples(outcomes))
+            offTargDist = np.exp(offTargKDE.score_samples(outcomes))
 
-        KL_div_vals[rec1, rec2] = stats.entropy(
-            offTargDist + 1e-200, targDist + 1e-200, base=2
-        )
+            KL_div_vals[rec1, rec2] = stats.entropy(
+                offTargDist + 1e-200, targDist + 1e-200, base=2
+            )
 
-        M = ot.dist(targAbunAll, offTargAbunAll)
-        EMD_vals[rec1, rec2] = ot.emd2(
-            a=[],
-            b=[],
-            M=M,
-            numItermax=1000000,
-            numThreads=12,
-        )
+            M = ot.dist(targAbunAll, offTargAbunAll)
+            EMD_vals[rec1, rec2] = ot.emd2(
+                a=[],
+                b=[],
+                M=M,
+                # numItermax=1000000,
+                numThreads=12,
+            )
 
     return KL_div_vals, EMD_vals
 
