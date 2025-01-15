@@ -1,7 +1,6 @@
 from itertools import combinations_with_replacement
 
 import numpy as np
-import ot
 from scipy import stats
 from sklearn.neighbors import KernelDensity
 
@@ -43,8 +42,9 @@ def KL_EMD_1D(
         targAbun = targNorms[:, rec]
         offTargAbun = offTargNorms[:, rec]
 
-        if np.mean(recAbundances[:, rec]) > 5 and np.mean(targAbun) > np.mean(
-            offTargAbun
+        if (
+            np.mean(recAbundances[:, rec]) > 5 
+            and np.mean(targAbun) > np.mean(offTargAbun)
         ):
             assert np.allclose(
                 targAbun, recAbundances[targ, rec] / np.mean(recAbundances[:, rec])
@@ -64,6 +64,9 @@ def KL_EMD_1D(
             )
 
             EMD_vals[rec] = stats.wasserstein_distance(targAbun, offTargAbun)
+            # print("Receptor", rec, "KL:", KL_div_vals[rec], "EMD:", EMD_vals[rec])
+        # else:
+            # print("Skipped receptor", rec)
 
     return KL_div_vals, EMD_vals
 
@@ -156,13 +159,8 @@ def KL_EMD_2D(
                 offTargDist + 1e-200, targDist + 1e-200, base=2
             )
 
-            M = ot.dist(targAbunAll, offTargAbunAll)
-            EMD_vals[rec1, rec2] = ot.emd2(
-                a=[],
-                b=[],
-                M=M,
-                # numItermax=1000000,
-                numThreads=12,
+            EMD_vals[rec1, rec2] = stats.wasserstein_distance_nd(
+                targAbunAll, offTargAbunAll
             )
 
     return KL_div_vals, EMD_vals
@@ -221,14 +219,8 @@ def KL_EMD_3D(
 
         KL_div_vals[rec1, rec2, rec3] = 0  # Placeholder unimplemented
 
-        M = ot.dist(targAbunAll, offTargAbunAll)
-        a = np.ones((targAbunAll.shape[0],)) / targAbunAll.shape[0]
-        b = np.ones((offTargAbunAll.shape[0],)) / offTargAbunAll.shape[0]
-        EMD_vals[rec1, rec2, rec3] = ot.emd2(
-            a,
-            b,
-            M,
-            numItermax=100,  # Check numIterMax
+        EMD_vals[rec1, rec2, rec3] = stats.wasserstein_distance_nd(
+            targAbunAll, offTargAbunAll
         )
 
     return KL_div_vals, EMD_vals
