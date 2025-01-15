@@ -50,22 +50,33 @@ def KL_EMD_1D(
         offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbun.reshape(-1, 1))
         minAbun = np.minimum(targAbun.min(), offTargAbun.min()) - 10
         maxAbun = np.maximum(targAbun.max(), offTargAbun.max()) + 10
-        outcomes = np.arange(minAbun, maxAbun + 1).reshape(-1, 1)
+        outcomes = np.arange(minAbun, maxAbun + 1, (maxAbun - minAbun) / 100).reshape(
+            -1, 1
+        )
         targDist = np.exp(targKDE.score_samples(outcomes))
         offTargDist = np.exp(offTargKDE.score_samples(outcomes))
         KL_div_vals[rec] = stats.entropy(
             offTargDist.flatten() + 1e-200, targDist.flatten() + 1e-200, base=2
         )
 
-        EMD_vals[rec] = stats.wasserstein_distance(
-            targAbun, offTargAbun
-        )  # Consider switching/comparing to ot.emd2_1d
+        # EMD_vals[rec] = stats.wasserstein_distance(
+        #     targAbun, offTargAbun
+        # )
+        EMD_vals[rec] = ot.emd2_1d(
+            x_a=targAbun,
+            x_b=offTargAbun,
+            a=[],
+            b=[],
+        )
 
     return KL_div_vals, EMD_vals
 
 
 def KL_EMD_2D(
-    recAbundances: np.ndarray, targ: np.ndarray, offTarg: np.ndarray
+    recAbundances: np.ndarray,
+    targ: np.ndarray,
+    offTarg: np.ndarray,
+    calc_1D: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 2D EMD and KL Divergence between the target and off-target populations
@@ -95,9 +106,14 @@ def KL_EMD_2D(
     assert targNorms.shape[0] == sum(targ)
     assert targNorms.shape[0] != recAbundances.shape[0]
 
-    row, col = np.tril_indices(
-        recAbundances.shape[1]
-    )  # Triangle indices, includes diagonal (k=0 by default)
+    if calc_1D:
+        row, col = np.tril_indices(
+            recAbundances.shape[1], k=0
+        )  # k=0 includes diagonals which are 1D distances
+    else:
+        row, col = np.triu_indices(
+            recAbundances.shape[1], k=1
+        )  # k=1 excludes diagonals
     for rec1, rec2 in zip(row, col, strict=False):
         targAbun1, targAbun2 = targNorms[:, rec1], targNorms[:, rec2]
         offTargAbun1, offTargAbun2 = offTargNorms[:, rec1], offTargNorms[:, rec2]
@@ -111,28 +127,38 @@ def KL_EMD_2D(
 
         assert targAbunAll.shape == (np.sum(targ), 2)
 
-        targKDE = KernelDensity(kernel="gaussian").fit(targAbunAll.reshape(-1, 2))
-        offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbunAll.reshape(-1, 2))
+        # Estimate the 2D probability distributions of the two receptors
+        targKDE = KernelDensity(kernel="gaussian").fit(targAbunAll)
+        offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbunAll)
+
+        # Compare over the entire distribution space by looking at the global max/min
         minAbun = np.minimum(targAbunAll.min(), offTargAbunAll.min()) - 10
         maxAbun = np.maximum(targAbunAll.max(), offTargAbunAll.max()) + 10
+
+        # Need a mesh grid for 2D comparison because
+        #   need to explore the entire distribution space
         X, Y = np.mgrid[
-            minAbun : maxAbun : ((maxAbun - minAbun) / 100),
-            minAbun : maxAbun : ((maxAbun - minAbun) / 100),
+            minAbun : maxAbun + 1 : ((maxAbun - minAbun) / 100),
+            minAbun : maxAbun + 1 : ((maxAbun - minAbun) / 100),
         ]
         outcomes = np.concatenate((X.reshape(-1, 1), Y.reshape(-1, 1)), axis=1)
+
+        # Calculate the probabilities (log-likelihood)
+        #   of all X, Y combos in the mesh grid based on the estimates
+        #   of the two receptor distributions
         targDist = np.exp(targKDE.score_samples(outcomes))
         offTargDist = np.exp(offTargKDE.score_samples(outcomes))
+
         KL_div_vals[rec1, rec2] = stats.entropy(
-            offTargDist.flatten() + 1e-200, targDist.flatten() + 1e-200, base=2
+            offTargDist + 1e-200, targDist + 1e-200, base=2
         )
 
         M = ot.dist(targAbunAll, offTargAbunAll)
-        a = np.ones((targAbunAll.shape[0],)) / targAbunAll.shape[0]
-        b = np.ones((offTargAbunAll.shape[0],)) / offTargAbunAll.shape[0]
         EMD_vals[rec1, rec2] = ot.emd2(
-            a,
-            b,
-            M,
+            a=[],
+            b=[],
+            M=M,
+            numItermax=1000000,
             numThreads=12,
         )
 
