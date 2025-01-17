@@ -52,15 +52,16 @@ from .common import getSetup
 
 def makeFigure():
     ax, f = getSetup((10, 5), (1, 2))
+    np.random.seed(42)
 
     targCell = "Treg"
     offTargState = 1
-    receptors_of_interest = ["CD25", "CD35"]
+    receptors_of_interest = ["CD25", "CD27"]
+    sample_size = 1000
 
     assert any(np.array([0, 1, 2]) == offTargState)
 
     CITE_DF = importCITE()
-    # CITE_DF = CITE_DF.head(1000)
 
     # Define non-marker columns
     non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
@@ -84,7 +85,17 @@ def makeFigure():
 
     rec_abundances = filtered_markerDF.to_numpy()
 
-    KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, on_target, off_target)
+    # Randomly sample a subset of rows
+    subset_indices = np.random.choice(
+        len(on_target), size=min(sample_size, len(on_target)), replace=False
+    )
+    on_target = on_target[subset_indices]
+    off_target = off_target[subset_indices]
+    rec_abundances = rec_abundances[subset_indices]
+
+    KL_div_vals, EMD_vals = KL_EMD_2D(
+        rec_abundances, on_target, off_target, calc_1D=True
+    )
 
     EMD_matrix = np.tril(EMD_vals, k=0)
     EMD_matrix = EMD_matrix + EMD_matrix.T - np.diag(np.diag(EMD_matrix))

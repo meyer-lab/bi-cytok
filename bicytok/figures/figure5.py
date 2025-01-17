@@ -63,10 +63,12 @@ path_here = Path(__file__).parent.parent
 
 def makeFigure():
     ax, f = getSetup((9, 3), (1, 3))
+    np.random.seed(42)
 
     # Distance metric parameters
     offTargState = 1
     targCell = "Treg"
+    sample_size = 1000
 
     # Binding model parameters
     signal_receptor = "CD122"
@@ -118,17 +120,22 @@ def makeFigure():
     }
     off_target = off_target_conditions[offTargState].to_numpy()
 
+    # Randomly sample a subset of rows
+    subset_indices = np.random.choice(
+        len(on_target), size=min(sample_size, len(on_target)), replace=False
+    )
+    on_target = on_target[subset_indices]
+    off_target = off_target[subset_indices]
+
     KL_div_vals = []
     EMD_vals = []
     for targets in allTargets:
-        receptors_of_interest = targets
-        filtered_markerDF = markerDF.loc[
-            :, markerDF.columns.isin(receptors_of_interest)
-        ]
-        filtered_markerDF = filtered_markerDF.to_numpy()
+        filtered_markerDF = markerDF.loc[:, markerDF.columns.isin(targets)]
+        rec_abundances = filtered_markerDF.to_numpy()
+        rec_abundances = rec_abundances[subset_indices]
 
         KL_div_mat, EMD_mat = KL_EMD_2D(
-            filtered_markerDF, on_target, off_target, calc_1D=False
+            rec_abundances, on_target, off_target, calc_1D=False
         )
 
         KL_div_vals.append(KL_div_mat[1, 0])
@@ -153,6 +160,7 @@ def makeFigure():
     for valency in valencies:
         for i, targets in enumerate(allTargets):
             modelValencies = np.array([[signal_valency, valency, valency]])
+            receptors_of_interest = targets
 
             dfTargCell = sampleDF.loc[sampleDF["Cell Type"] == targCell]
             targRecs = dfTargCell[[signal_receptor] + targets]
