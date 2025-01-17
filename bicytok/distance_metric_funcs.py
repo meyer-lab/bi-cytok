@@ -42,6 +42,12 @@ def KL_EMD_1D(
         targAbun = targNorms[:, rec]
         offTargAbun = offTargNorms[:, rec]
 
+        # Filters remove edge cases that effect KL div, but not EMD
+        # First filter removes receptors that have low overall expression. Even if
+        #   such receptors were differentially expressed, they would not be useful?
+        # Second filter removes receptors that are differentially expressed BUT have low
+        #   expression on target cells and thus cannot be used for selective targeting
+        #   eg IgE, CD272
         if np.mean(recAbundances[:, rec]) > 5 and np.mean(targAbun) > np.mean(
             offTargAbun
         ):

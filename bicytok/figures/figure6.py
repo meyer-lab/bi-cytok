@@ -56,7 +56,15 @@ def makeFigure():
 
     targCell = "Treg"
     offTargState = 1
-    receptors_of_interest = ["CD25", "CD27"]
+    receptors_of_interest = [
+        "CD25",
+        "CD4-1",
+        "CD27",
+        "CD4-2",
+        "CD278",
+        "CD28",
+        "CD45RB",
+    ]
     sample_size = 1000
 
     assert any(np.array([0, 1, 2]) == offTargState)
@@ -67,11 +75,11 @@ def makeFigure():
     non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
     marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
     markerDF = CITE_DF.loc[:, marker_columns]
-
-    # Further filter to include only columns related to CD25 and CD35
     filtered_markerDF = markerDF.loc[
-        :, markerDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False)
+        :,
+        markerDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False),
     ]
+    receptors_of_interest = filtered_markerDF.columns
 
     on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
     off_target_conditions = {
