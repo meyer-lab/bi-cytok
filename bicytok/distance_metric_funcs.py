@@ -42,9 +42,8 @@ def KL_EMD_1D(
         targAbun = targNorms[:, rec]
         offTargAbun = offTargNorms[:, rec]
 
-        if (
-            np.mean(recAbundances[:, rec]) > 5 
-            and np.mean(targAbun) > np.mean(offTargAbun)
+        if np.mean(recAbundances[:, rec]) > 5 and np.mean(targAbun) > np.mean(
+            offTargAbun
         ):
             assert np.allclose(
                 targAbun, recAbundances[targ, rec] / np.mean(recAbundances[:, rec])
@@ -64,9 +63,6 @@ def KL_EMD_1D(
             )
 
             EMD_vals[rec] = stats.wasserstein_distance(targAbun, offTargAbun)
-            # print("Receptor", rec, "KL:", KL_div_vals[rec], "EMD:", EMD_vals[rec])
-        # else:
-            # print("Skipped receptor", rec)
 
     return KL_div_vals, EMD_vals
 
@@ -84,6 +80,7 @@ def KL_EMD_2D(
     :param recAbundances: abundances across cells (rows) and receptors (columns)
     :param targ: a numpy vector with boolean values indicating indices of target cells
     :param offTarg: vector with boolean values indicating indices of off-target cells
+    :param calc_1D: whether to calculate 1D distances
     :return:
         KL_div_vals: an array of KL Divergences between the on- and off-target
             abundances of multiple receptors for each entry the value is calculated
@@ -105,15 +102,13 @@ def KL_EMD_2D(
     assert targNorms.shape[0] == sum(targ)
     assert targNorms.shape[0] != recAbundances.shape[0]
 
-    if calc_1D:
-        row, col = np.tril_indices(
-            recAbundances.shape[1], k=0
-        )  # k=0 includes diagonals which are 1D distances
-    else:
-        row, col = np.triu_indices(
-            recAbundances.shape[1], k=1
-        )  # k=1 excludes diagonals
+    row, col = np.tril_indices(
+        recAbundances.shape[1], k=0
+    )  # k=0 includes diagonals which are 1D distances
     for rec1, rec2 in zip(row, col, strict=False):
+        if not calc_1D and rec1 == rec2:
+            continue
+
         targAbun1, targAbun2 = targNorms[:, rec1], targNorms[:, rec2]
         offTargAbun1, offTargAbun2 = offTargNorms[:, rec1], offTargNorms[:, rec2]
 
