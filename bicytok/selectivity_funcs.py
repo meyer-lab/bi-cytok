@@ -44,25 +44,27 @@ def min_off_targ_selec(
     """
     Serves as the function which will have its return value
         minimized to get optimal selectivity.
-        Used in conjunction with optimizeSelectivityAffs().
+        Used in conjunction with optimize_affs.
+        The output (selectivity) is calculated based on the amounts of 
+        bound receptors of only the first column/receptor of 
+        the receptor abundance arrays.
     Args:
         monomerAffs: monomer ligand-receptor affinities
             Modulated in optimization
-        targRecs: dataframe of receptors counts of target cell type
-        offTargRecs: dataframe of receptors counts of off-target cell types
+        targRecs: receptor counts of target cell type
+        offTargRecs: receptors count of off-target cell types
         dose: ligand concentration/dose that is being modeled
         valencies: array of valencies of each ligand epitope
     Return:
-        selectivity: value will be minimized,
-            defined as ratio of off target to on target signaling,
-            this is selectivity for the off target cells and is minimized to
-            maximize selectivity for the target cell
+        selectivity: value to be minimized.
+            Defined as ratio of off target to on target binding.
+            This is the selectivity for the off target cells, so is 
+            minimized to maximize selectivity for the target cell type.
     """
 
     assert targRecs.shape[1] == offTargRecs.shape[1]
 
-    # Reformat input affinities to 10^aff and diagonalize
-    # Sam: shouldn't this be done before the optimization?
+    # Reformat input affinities
     modelAffs = restructure_affs(monomerAffs)
 
     # Use the binding model to calculate bound receptors
@@ -92,17 +94,21 @@ def optimize_affs(
     bounds: tuple[float, float] = (7.0, 9.0),
 ) -> tuple[float, list]:
     """
-    An optimizer used to minimize selectivity output
-        by varying the affinity parameters.
-        Selectivity is defined as the ratio of binding of
-        off-target cells to target cells.
+    An optimizer that maximizes the selectivity for a target cell type
+        by varying the affinities of each receptor-ligand pair. 
     Args:
         targRecs: receptor counts of each receptor (columns) on
-            different cells (rows) of target cell type
+            different cells (rows) of a target cell type. The
+            first column must be the signal receptor which is used
+            to calculate selectivity in min_off_targ_selec.
         offTargRecs: receptor counts of each receptor on
-            different cells of off-target cell types
+            different cells of off-target cell types. The
+            columns must match the columns of targRecs.
         dose: ligand concentration/dose that is being modeled
         valencies: array of valencies of each ligand epitope
+            Only set up for single complex modeling. Valencies
+            must be a nested array, such as [[1, 1]] for a bivalent
+            complex with two different ligands.
         bounds: minimum and maximum optimization bounds for affinity values
     Return:
         optSelec: optimized selectivity value
@@ -116,9 +122,7 @@ def optimize_affs(
     # minAffs and maxAffs chosen based on biologically realistic affinities
     #   for engineered ligands
     # Sam: affinities are maxing and bottoming out before optimization is complete...
-    #    for fig1, target 1, final affinities are 1e7 and ~1e9
-    #    (9.997e8) (with bounds 7 and 9)
-    # Sam: need to test this for more than two epitopes
+    #    for fig1, target 1, final affinities are 1e7 and ~1e9 (9.997e8) (bounds 7-9)
     minAffs = [bounds[0]] * (targRecs.shape[1])
     maxAffs = [bounds[1]] * (targRecs.shape[1])
 
