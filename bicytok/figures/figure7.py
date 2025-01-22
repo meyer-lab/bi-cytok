@@ -1,5 +1,5 @@
 """
-Generates the "1D" selectivities of receptors for targeting a specific cell type over 
+Generates the "1D" selectivities of receptors for targeting a specific cell type over
     off-target cell types.
 
 Data Import:
@@ -13,11 +13,12 @@ User inputs:
 Selectivity Calculation:
 - Uses the multivalent binding model to predict how many receptors will be bound
     by that receptor's ligand on target versus off-target cells.
-- This prediction is made based on the measured receptor abundances in the CITE-seq data.
+- This prediction is made based on the measured receptor abundances in the CITE-seq
+    data.
 - The optimal selectivity of each receptor is determined by optimizing the affinity
-    between each receptor-ligand pair such that the ratio of off-target to 
+    between each receptor-ligand pair such that the ratio of off-target to
     on-target binding is minimized.
-- The selectivity measurement represents the optimal ratio of target to off-target 
+- The selectivity measurement represents the optimal ratio of target to off-target
     binding based on differences in receptor abundances across cell types.
 
 Visualization:

@@ -74,8 +74,9 @@ def makeFigure():
     signal_receptor = "CD122"
     signal_valency = 1
     valencies = [1, 2, 4]
-    allTargets = [["CD25", "CD278"], ["CD25", "CD4-2"], ["CD25", "CD45RB"]]
+    allTargets = [["CD25", "CD278"], ["CD25", "CD4-1"], ["CD25", "CD45RB"]]
     dose = 10e-2
+
     cellTypes = np.array(
         [
             "CD8 Naive",
@@ -102,10 +103,6 @@ def makeFigure():
     assert targCell in CITE_DF["CellType2"].unique()
 
     # Calculate KL divergence and EMD between each target receptor pair
-    epitopesDF = CITE_DF[epitopes + ["CellType2"]]
-    epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
-    epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
-
     non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
     marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
     markerDF = CITE_DF.loc[:, marker_columns]
@@ -143,6 +140,10 @@ def makeFigure():
 
     # Calculate binding model estimate of selectivity for each target receptor pair
     #   and save the results in a dataframe with distance values
+    epitopesDF = CITE_DF[epitopes + ["CellType2"]]
+    epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
+    epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
+
     sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=100)
 
     assert targCell in sampleDF["Cell Type"].unique()

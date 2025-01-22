@@ -1,5 +1,5 @@
 """
-Generates the "2D" selectivities of receptors for targeting a specific cell type over 
+Generates the "2D" selectivities of receptors for targeting a specific cell type over
     off-target cell types. The 2D selectivity is different from 1D selectivity in that
     it considers a multivalent ligand complex to target two receptors simultaneously.
 
@@ -15,11 +15,12 @@ User inputs:
 Selectivity Calculation:
 - Uses the multivalent binding model to predict how many receptors will be bound
     by that receptor's ligand on target versus off-target cells.
-- This prediction is made based on the measured receptor abundances in the CITE-seq data.
+- This prediction is made based on the measured receptor abundances in the CITE-seq
+    data.
 - The optimal selectivity of each receptor is determined by optimizing the affinity
-    between each receptor-ligand pair such that the ratio of off-target to 
+    between each receptor-ligand pair such that the ratio of off-target to
     on-target binding is minimized.
-- The selectivity measurement represents the optimal ratio of target to off-target 
+- The selectivity measurement represents the optimal ratio of target to off-target
     binding based on differences in receptor abundances across cell types.
 
 Visualization:
@@ -29,8 +30,8 @@ Visualization:
 from pathlib import Path
 
 import numpy as np
-import seaborn as sns
 import pandas as pd
+import seaborn as sns
 
 from ..imports import importCITE
 from ..selectivity_funcs import optimize_affs, sample_receptor_abundances
@@ -73,11 +74,9 @@ def makeFigure():
             opt_selec, opt_affs = optimize_affs(
                 targ_abun, off_targ_abun, dose, valencies=valency
             )
-            selectivities[i, j] = (1 / opt_selec)
+            selectivities[i, j] = 1 / opt_selec
 
-    selecDF = pd.DataFrame(
-        selectivities, index=receptors, columns=receptors
-    )
+    selecDF = pd.DataFrame(selectivities, index=receptors, columns=receptors)
 
     sns.heatmap(
         selecDF, cmap="bwr", annot=True, ax=ax[0], cbar=True, annot_kws={"fontsize": 16}

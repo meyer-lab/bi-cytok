@@ -45,8 +45,8 @@ def min_off_targ_selec(
     Serves as the function which will have its return value
         minimized to get optimal selectivity.
         Used in conjunction with optimize_affs.
-        The output (selectivity) is calculated based on the amounts of 
-        bound receptors of only the first column/receptor of 
+        The output (selectivity) is calculated based on the amounts of
+        bound receptors of only the first column/receptor of
         the receptor abundance arrays.
     Args:
         monomerAffs: monomer ligand-receptor affinities
@@ -58,7 +58,7 @@ def min_off_targ_selec(
     Return:
         selectivity: value to be minimized.
             Defined as ratio of off target to on target binding.
-            This is the selectivity for the off target cells, so is 
+            This is the selectivity for the off target cells, so is
             minimized to maximize selectivity for the target cell type.
     """
 
@@ -95,7 +95,7 @@ def optimize_affs(
 ) -> tuple[float, list]:
     """
     An optimizer that maximizes the selectivity for a target cell type
-        by varying the affinities of each receptor-ligand pair. 
+        by varying the affinities of each receptor-ligand pair.
     Args:
         targRecs: receptor counts of each receptor (columns) on
             different cells (rows) of a target cell type. The
