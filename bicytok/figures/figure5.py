@@ -62,7 +62,7 @@ path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
-    ax, f = getSetup((9, 3), (1, 3))
+    ax, f = getSetup((12, 6), (1, 2))
     np.random.seed(42)
 
     # Distance metric parameters
@@ -72,8 +72,8 @@ def makeFigure():
 
     # Binding model parameters
     signal_receptor = "CD122"
-    signal_valency = 1
-    valencies = [1, 2, 4]
+    #signal_valency = 1
+    cplx = [(1, 1), (2, 2)]
     allTargets = [["CD25", "CD278"], ["CD25", "CD4-1"], ["CD25", "CD45RB"]]
     dose = 10e-2
 
@@ -102,7 +102,6 @@ def makeFigure():
 
     assert targCell in CITE_DF["CellType2"].unique()
 
-    # Calculate KL divergence and EMD between each target receptor pair
     non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
     marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
     markerDF = CITE_DF.loc[:, marker_columns]
@@ -124,9 +123,83 @@ def makeFigure():
     on_target = on_target[subset_indices]
     off_target = off_target[subset_indices]
 
+    
+    
     KL_div_vals = []
     EMD_vals = []
+    Rbound_vals = []
+    
     for targets in allTargets:
+        markerDF = CITE_DF.loc[:, targets]
+        rec_abundances = markerDF.to_numpy()
+        rec_abundances = rec_abundances[subset_indices]
+
+        # Calculate metrics (KL and EMD) once for each receptor pair
+        KL_div_mat, EMD_mat = KL_EMD_2D(
+            rec_abundances, on_target, off_target, calc_1D=False
+        )
+        KL_div = KL_div_mat[1, 0]
+        EMD = EMD_mat[1, 0]
+
+        KL_div_vals.append(KL_div)
+        EMD_vals.append(EMD)
+
+        # Sample receptor abundances
+        epitopesDF = CITE_DF[epitopes + ["CellType2"]]
+        epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
+        epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
+        sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=100)
+
+        # Selectivity calculation for each valency
+        for valency_pair in cplx:
+            modelValencies = np.array([[1] + list(valency_pair)])
+            dfTargCell = sampleDF.loc[sampleDF["Cell Type"] == targCell]
+            targRecs = dfTargCell[[signal_receptor] + targets]
+            dfOffTargCell = sampleDF.loc[sampleDF["Cell Type"].isin(offTargCells)]
+            offTargRecs = dfOffTargCell[[signal_receptor] + targets]
+
+            optSelec, _ = optimize_affs(
+                targRecs=targRecs.to_numpy(),
+                offTargRecs=offTargRecs.to_numpy(),
+                dose=dose,
+                valencies=modelValencies,
+            )
+            Rbound_vals.append(1 / optSelec)
+
+    metrics_df = pd.DataFrame(
+        {
+            "Receptor Pair": [str(pair) for pair in allTargets for _ in cplx],
+            "Valency": [str(v) for _ in allTargets for v in cplx],
+            "KL Divergence": np.repeat(KL_div_vals, len(cplx)),
+            "EMD": np.repeat(EMD_vals, len(cplx)),
+            "Selectivity (Rbound)": Rbound_vals,
+        }
+    )
+
+    # Plot KL vs Selectivity
+    sns.scatterplot(
+        data=metrics_df,
+        x="KL Divergence",
+        y="Selectivity (Rbound)",
+        hue="Receptor Pair",
+        style="Valency",
+        ax=ax[0],
+    )
+
+    # Plot EMD vs Selectivity
+    sns.scatterplot(
+        data=metrics_df,
+        x="EMD",
+        y="Selectivity (Rbound)",
+        hue="Receptor Pair",
+        style="Valency",
+        ax=ax[1],
+    )
+
+    ax[0].set(xscale="log", title="KL Divergence vs Selectivity")
+    ax[1].set(xscale="log", title="EMD vs Selectivity")
+
+    '''
         filtered_markerDF = markerDF.loc[:, markerDF.columns.isin(targets)]
         rec_abundances = filtered_markerDF.to_numpy()
         rec_abundances = rec_abundances[subset_indices]
@@ -137,7 +210,8 @@ def makeFigure():
 
         KL_div_vals.append(KL_div_mat[1, 0])
         EMD_vals.append(EMD_mat[1, 0])
-
+    print ("KL:", KL_div_vals)
+    print ("EMD:", EMD_vals)
     # Calculate binding model estimate of selectivity for each target receptor pair
     #   and save the results in a dataframe with distance values
     epitopesDF = CITE_DF[epitopes + ["CellType2"]]
@@ -217,5 +291,5 @@ def makeFigure():
     sns.lineplot(data=df, x="Correlation", y="Selectivity", hue="Valency", ax=ax[2])
     ax[0].set(xscale="log")
     ax[1].set(xscale="log")
-
+    '''
     return f
