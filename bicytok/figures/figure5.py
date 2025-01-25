@@ -72,9 +72,15 @@ def makeFigure():
 
     # Binding model parameters
     signal_receptor = "CD122"
-    #signal_valency = 1
     cplx = [(1, 1), (2, 2)]
-    allTargets = [["CD25", "CD278"], ["CD25", "CD4-1"], ["CD25", "CD45RB"]]
+    main_targets = [["CD25", "CD278"], ["CD25", "CD4-1"], ["CD25", "CD45RB"]]
+    additional_targets = [
+        ["CD25", "CD45RB"],
+        ["CD27", "CD45RB"],
+        ["CD25", "CD25"],
+        ["CD278", "CD28"],
+        ["CD4-1", "CD4-2"],
+    ]
     dose = 10e-2
 
     cellTypes = np.array(
@@ -123,13 +129,11 @@ def makeFigure():
     on_target = on_target[subset_indices]
     off_target = off_target[subset_indices]
 
-    
-    
     KL_div_vals = []
     EMD_vals = []
     Rbound_vals = []
-    
-    for targets in allTargets:
+
+    for targets in main_targets + additional_targets:
         markerDF = CITE_DF.loc[:, targets]
         rec_abundances = markerDF.to_numpy()
         rec_abundances = rec_abundances[subset_indices]
@@ -168,11 +172,11 @@ def makeFigure():
 
     metrics_df = pd.DataFrame(
         {
-            "Receptor Pair": [str(pair) for pair in allTargets for _ in cplx],
-            "Valency": [str(v) for _ in allTargets for v in cplx],
-            "KL Divergence": np.repeat(KL_div_vals, len(cplx)),
-            "EMD": np.repeat(EMD_vals, len(cplx)),
-            "Selectivity (Rbound)": Rbound_vals,
+            "Receptor Pair": [str(pair) for pair in main_targets for _ in cplx],
+            "Valency": np.tile(["Valency 2", "Valency 4"], len(main_targets)),
+            "KL Divergence": np.repeat(KL_div_vals[: len(main_targets)], len(cplx)),
+            "EMD": np.repeat(EMD_vals[: len(main_targets)], len(cplx)),
+            "Selectivity (Rbound)": Rbound_vals[: len(main_targets) * len(cplx)],
         }
     )
 
@@ -183,6 +187,7 @@ def makeFigure():
         y="Selectivity (Rbound)",
         hue="Receptor Pair",
         style="Valency",
+        s=150,  
         ax=ax[0],
     )
 
@@ -193,103 +198,40 @@ def makeFigure():
         y="Selectivity (Rbound)",
         hue="Receptor Pair",
         style="Valency",
+        s=150,  
         ax=ax[1],
     )
 
-    ax[0].set(xscale="log", title="KL Divergence vs Selectivity")
-    ax[1].set(xscale="log", title="EMD vs Selectivity")
-
-    '''
-        filtered_markerDF = markerDF.loc[:, markerDF.columns.isin(targets)]
-        rec_abundances = filtered_markerDF.to_numpy()
-        rec_abundances = rec_abundances[subset_indices]
-
-        KL_div_mat, EMD_mat = KL_EMD_2D(
-            rec_abundances, on_target, off_target, calc_1D=False
+    # Add additional points without legend
+    additional_colors = {"Valency 2": "lightcoral", "Valency 4": "darkred"}
+    for i, valency_pair in enumerate(cplx):
+        valency_label = "Valency 2" if valency_pair == (1, 1) else "Valency 4"
+        ax[0].scatter(
+            KL_div_vals[len(main_targets) + i:: len(cplx)],
+            Rbound_vals[len(main_targets) + i:: len(cplx)],
+            color=additional_colors[valency_label],
+            s=150,
+            label=None,
+        )
+        ax[1].scatter(
+            EMD_vals[len(main_targets) + i:: len(cplx)],
+            Rbound_vals[len(main_targets) + i:: len(cplx)],
+            color=additional_colors[valency_label],
+            s=150,
+            label=None,
         )
 
-        KL_div_vals.append(KL_div_mat[1, 0])
-        EMD_vals.append(EMD_mat[1, 0])
-    print ("KL:", KL_div_vals)
-    print ("EMD:", EMD_vals)
-    # Calculate binding model estimate of selectivity for each target receptor pair
-    #   and save the results in a dataframe with distance values
-    epitopesDF = CITE_DF[epitopes + ["CellType2"]]
-    epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
-    epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
+    # Adjust titles, labels, and border
+    ax[0].set_title("KL Divergence vs Selectivity", fontsize=16)
+    ax[1].set_title("EMD vs Selectivity", fontsize=16)
+    ax[0].set_xlabel("KL Divergence", fontsize=14)
+    ax[0].set_ylabel("Selectivity (Rbound)", fontsize=14)
+    ax[1].set_xlabel("EMD", fontsize=14)
+    ax[1].set_ylabel("Selectivity (Rbound)", fontsize=14)
 
-    sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=100)
-
-    assert targCell in sampleDF["Cell Type"].unique()
-
-    df = pd.DataFrame(
-        columns=[
-            "KL Divergence",
-            "Earth Mover's Distance",
-            "Correlation",
-            "Selectivity",
-            "Valency",
-        ]
-    )
-
-    for valency in valencies:
-        for i, targets in enumerate(allTargets):
-            modelValencies = np.array([[signal_valency, valency, valency]])
-            receptors_of_interest = targets
-
-            dfTargCell = sampleDF.loc[sampleDF["Cell Type"] == targCell]
-            targRecs = dfTargCell[[signal_receptor] + targets]
-            dfOffTargCell = sampleDF.loc[sampleDF["Cell Type"].isin(offTargCells)]
-            offTargRecs = dfOffTargCell[[signal_receptor] + targets]
-
-            optSelec, optParams = optimize_affs(
-                targRecs=targRecs.to_numpy(),
-                offTargRecs=offTargRecs.to_numpy(),
-                dose=dose,
-                valencies=modelValencies,
-            )
-            select = (1 / optSelec,)
-
-            # Get distance metrics for current target pair
-            KL_div_val = KL_div_vals[i]
-            EMD_val = EMD_vals[i]
-
-            # Calculate Pearson correlation inline (no separate function)
-            corr = sampleDF[receptors_of_interest].corr(method="pearson")
-            sorted_corr = corr.stack().sort_values(ascending=False)
-            sorted_corr_df = pd.DataFrame({"Correlation": sorted_corr})
-
-            # Extract correlation value for the relevant receptors (CD25, CD35)
-            corr = sorted_corr_df.loc[
-                receptors_of_interest[0], receptors_of_interest[1]
-            ]["Correlation"]
-
-            data = {
-                "KL Divergence": KL_div_val,
-                "Earth Mover's Distance": EMD_val,
-                "Correlation": [corr],
-                "Selectivity": select,
-                "Valency": [valency],
-            }
-            df_temp = pd.DataFrame(
-                data,
-                columns=[
-                    "KL Divergence",
-                    "Earth Mover's Distance",
-                    "Correlation",
-                    "Selectivity",
-                    "Valency",
-                ],
-            )
-            df = df_temp if df.empty else pd.concat([df, df_temp], ignore_index=True)
-
-    # Plot results
-    sns.lineplot(data=df, x="KL Divergence", y="Selectivity", hue="Valency", ax=ax[0])
-    sns.lineplot(
-        data=df, x="Earth Mover's Distance", y="Selectivity", hue="Valency", ax=ax[1]
-    )
-    sns.lineplot(data=df, x="Correlation", y="Selectivity", hue="Valency", ax=ax[2])
-    ax[0].set(xscale="log")
-    ax[1].set(xscale="log")
-    '''
+    for a in ax:
+        a.tick_params(axis="both", labelsize=12)
+        sns.despine(ax=a, trim=True)
+        for spine in a.spines.values():
+            spine.set_linewidth(1.5)
     return f
