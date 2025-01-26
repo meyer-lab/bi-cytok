@@ -190,9 +190,6 @@ def makeFigure():
         ax.plot(x, intercept + slope * x, label=f"{label}: Slope = {slope:.2f}", linestyle="--")
         return slope
     '''
-    
-    kl_corr, _ = pearsonr(metrics_df["KL Divergence"], metrics_df["Selectivity (Rbound)"])
-    emd_corr, _ = pearsonr(metrics_df["EMD"], metrics_df["Selectivity (Rbound)"])
   
 
     # Plot KL vs Selectivity
@@ -255,8 +252,22 @@ def makeFigure():
     )
     '''
     # Adjust titles, labels, and border
-    ax[0].set_title(f"KL Divergence vs Selectivity (r = {kl_corr:.3f})", fontsize=16)
-    ax[1].set_title(f"EMD vs Selectivity (r = {emd_corr:.3f})", fontsize=16)
+
+    valency_2_df = metrics_df[metrics_df["Valency"] == "Valency 2"]
+    valency_4_df = metrics_df[metrics_df["Valency"] == "Valency 4"]
+
+    # Calculate Pearson correlations for Valency 2
+    kl_corr_valency_2, _ = pearsonr(valency_2_df["KL Divergence"], valency_2_df["Selectivity (Rbound)"])
+    emd_corr_valency_2, _ = pearsonr(valency_2_df["EMD"], valency_2_df["Selectivity (Rbound)"])
+
+    # Calculate Pearson correlations for Valency 4
+    kl_corr_valency_4, _ = pearsonr(valency_4_df["KL Divergence"], valency_4_df["Selectivity (Rbound)"])
+    emd_corr_valency_4, _ = pearsonr(valency_4_df["EMD"], valency_4_df["Selectivity (Rbound)"])
+
+    # Update plot titles with both Valency 2 and Valency 4 correlation values
+    ax[0].set_title(f"KL Divergence vs Selectivity\nValency 2 (r = {kl_corr_valency_2:.3f}), Valency 4 (r = {kl_corr_valency_4:.3f})", fontsize=16)
+    ax[1].set_title(f"EMD vs Selectivity\nValency 2 (r = {emd_corr_valency_2:.3f}), Valency 4 (r = {emd_corr_valency_4:.3f})", fontsize=16)
+
     ax[0].set_xlabel("KL Divergence", fontsize=14)
     ax[0].set_ylabel("Selectivity (Rbound)", fontsize=14)
     ax[1].set_xlabel("EMD", fontsize=14)
