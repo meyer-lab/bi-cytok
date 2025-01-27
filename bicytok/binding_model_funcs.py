@@ -3,7 +3,7 @@ Implementation of a simple multivalent binding model.
 """
 
 import numpy as np
-from scipy.optimize import fixed_point
+from scipy.optimize import root
 
 
 def commonChecks(
@@ -42,7 +42,7 @@ def Req_polyc(
             axis=0,
         )
     )
-    return Req + Rbound - Rtot
+    return Rtot - Req - Rbound
 
 
 def polyc(
@@ -72,11 +72,15 @@ def polyc(
     assert Cplx.shape[0] == Ctheta.size
 
     # Solve Req
-    Req = fixed_point(
+    sol = root(
         Req_polyc,
-        np.zeros_like(Rtot),
+        Rtot / 100.0,
         args=(Rtot, L0, KxStar, Cplx, Ctheta, Kav),
+        method="lm",
     )
+    Req = sol.x
+    if sol.status < 1:
+        print(sol.message)
 
     # Calculate the results
     Psi = Req.T * Kav * KxStar
