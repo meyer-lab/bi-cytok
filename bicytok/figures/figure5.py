@@ -74,12 +74,23 @@ def makeFigure():
     # Binding model parameters
     signal_receptor = "CD122"
     cplx = [(1, 1), (2, 2)]
-    allTargets = [["CD25", "CD278"], ["CD25", "CD4-1"], ["CD25", "CD45RB"],
+    allTargets = [["CD25", "CD278"], ["CD25", "CD4-1"], ["CD25", "CD45RB"], 
         ["CD27", "CD45RB"],
         ["CD25", "CD25"],
         ["CD278", "CD28"],
         ["CD4-1", "CD4-2"],
-        ["CD27", "CD45RB"],]
+        ["CD27", "CD45RB"],["TIGIT", "CD45RO"], ["CD27", "CD45RO"], ["TCR-2", "CD45RO"], ["CD4-2", "CD45RO"], ["CD122", "CD45RO"],
+    ["CD25", "CD45RO"], ["CD278", "CD45RO"],  # Receptors with CD45RO
+    ["TIGIT", "CD25"], ["CD27", "CD25"], ["TCR-2", "CD25"], ["CD4-2", "CD25"], ["CD122", "CD25"],  # With CD25
+    ["TIGIT", "CD122"], ["CD27", "CD122"], ["TCR-2", "CD122"], ["CD4-2", "CD122"], ["CD122", "CD122"],
+    ["CD25", "CD122"], ["CD278", "CD122"],  # With CD122
+    ["TIGIT", "TIGIT"], ["CD27", "TIGIT"], ["TCR-2", "TIGIT"], ["CD4-2", "TIGIT"], ["CD122", "TIGIT"],
+    ["CD25", "TIGIT"], ["CD278", "TIGIT"],  # With TIGIT
+    ["TIGIT", "CD278"], ["CD27", "CD278"], ["TCR-2", "CD278"], ["CD4-2", "CD278"], ["CD122", "CD278"],
+    ["CD278", "CD278"]]
+
+
+
     dose = 10e-2
 
     cellTypes = np.array(
@@ -123,37 +134,36 @@ def makeFigure():
 
     # Randomly sample a subset of rows
     subset_indices = np.random.choice(
-        len(on_target), size=min(sample_size, len(on_target)), replace=False
-    )
+    len(on_target), size=min(sample_size, len(on_target)), replace=False
+)
     on_target = on_target[subset_indices]
     off_target = off_target[subset_indices]
+
+    CITE_DF_subset = CITE_DF.iloc[subset_indices]
+    markerDF = CITE_DF_subset.loc[:, marker_columns]
 
     KL_div_vals = []
     EMD_vals = []
     Rbound_vals = []
 
     for targets in allTargets:
-        markerDF = CITE_DF.loc[:, targets]
-        rec_abundances = markerDF.to_numpy()
-        rec_abundances = rec_abundances[subset_indices]
-
-        # Calculate metrics (KL and EMD) once for each receptor pair
+        rec_abundances = markerDF[targets].to_numpy()
         KL_div_mat, EMD_mat = KL_EMD_2D(
             rec_abundances, on_target, off_target, calc_1D=False
         )
         KL_div = KL_div_mat[1, 0]
         EMD = EMD_mat[1, 0]
-
         KL_div_vals.append(KL_div)
         EMD_vals.append(EMD)
 
         # Sample receptor abundances
-        epitopesDF = CITE_DF[epitopes + ["CellType2"]]
+        epitopesDF = CITE_DF_subset[epitopes + ["CellType2"]]
         epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
         epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
         sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=100)
 
         # Selectivity calculation for each valency
+        
         for valency_pair in cplx:
             modelValencies = np.array([[1] + list(valency_pair)])
             dfTargCell = sampleDF.loc[sampleDF["Cell Type"] == targCell]
@@ -184,13 +194,7 @@ def makeFigure():
             "Selectivity (Rbound)": Rbound_vals,
         }
     )
-    '''
-    def add_best_fit_line(ax, x, y, subset, label):
-        slope, intercept, _, _, _ = linregress(x, y)
-        ax.plot(x, intercept + slope * x, label=f"{label}: Slope = {slope:.2f}", linestyle="--")
-        return slope
-    '''
-  
+
 
     # Plot KL vs Selectivity
     sns.scatterplot(
@@ -201,28 +205,8 @@ def makeFigure():
         style="Valency",
         s=70,  # Increase point size
         ax=ax[0],
+        legend=False,
     )
-
-    # Add best fit lines for Valency 2 and Valency 4 on KL plot
-    '''
-    valency_2 = metrics_df[metrics_df["Valency"] == "Valency 2"]
-    valency_4 = metrics_df[metrics_df["Valency"] == "Valency 4"]
-    
-    slope_v2 = add_best_fit_line(
-        ax[0],
-        valency_2["KL Divergence"].values,
-        valency_2["Selectivity (Rbound)"].values,
-        valency_2,
-        "Valency 2",
-    )
-    slope_v4 = add_best_fit_line(
-        ax[0],
-        valency_4["KL Divergence"].values,
-        valency_4["Selectivity (Rbound)"].values,
-        valency_4,
-        "Valency 4",
-    )
-    '''
 
     # Plot EMD vs Selectivity
     sns.scatterplot(
@@ -233,25 +217,9 @@ def makeFigure():
         style="Valency",
         s=70,  # Increase point size
         ax=ax[1],
+        legend=False,
     )
-    '''
-    # Add best fit lines for Valency 2 and Valency 4 on EMD plot
-    slope_v2_emd = add_best_fit_line(
-        ax[1],
-        valency_2["EMD"].values,
-        valency_2["Selectivity (Rbound)"].values,
-        valency_2,
-        "Valency 2",
-    )
-    slope_v4_emd = add_best_fit_line(
-        ax[1], 
-        valency_4["EMD"].values,
-        valency_4["Selectivity (Rbound)"].values,
-        valency_4,
-        "Valency 4",
-    )
-    '''
-    # Adjust titles, labels, and border
+   
 
     valency_2_df = metrics_df[metrics_df["Valency"] == "Valency 2"]
     valency_4_df = metrics_df[metrics_df["Valency"] == "Valency 4"]
@@ -264,7 +232,6 @@ def makeFigure():
     kl_corr_valency_4, _ = pearsonr(valency_4_df["KL Divergence"], valency_4_df["Selectivity (Rbound)"])
     emd_corr_valency_4, _ = pearsonr(valency_4_df["EMD"], valency_4_df["Selectivity (Rbound)"])
 
-    # Update plot titles with both Valency 2 and Valency 4 correlation values
     ax[0].set_title(f"KL Divergence vs Selectivity\nValency 2 (r = {kl_corr_valency_2:.3f}), Valency 4 (r = {kl_corr_valency_4:.3f})", fontsize=16)
     ax[1].set_title(f"EMD vs Selectivity\nValency 2 (r = {emd_corr_valency_2:.3f}), Valency 4 (r = {emd_corr_valency_4:.3f})", fontsize=16)
 
