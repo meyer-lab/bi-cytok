@@ -126,9 +126,11 @@ def test_cyt_binding_model():
     dose = 0.1
     valencies = np.array([np.full(num_receptors, 1)])
 
-    Rbound = cyt_binding_model(
+    R_bound = cyt_binding_model(
         dose=dose, recCounts=rec_counts, valencies=valencies, monomerAffs=affs
     )
+
+    assert R_bound.shape == rec_counts.shape
 
 
 def test_invalid_model_function_inputs():
