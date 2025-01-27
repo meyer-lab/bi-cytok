@@ -79,8 +79,7 @@ def makeFigure():
         ["CD25", "CD25"],
         ["CD278", "CD28"],
         ["CD4-1", "CD4-2"],
-        ["CD27", "CD45RB"],["TIGIT", "CD45RO"], ["CD27", "CD45RO"], ["TCR-2", "CD45RO"], ["CD4-2", "CD45RO"], ["CD122", "CD45RO"],
-    ["CD25", "CD45RO"], ["CD278", "CD45RO"],  # Receptors with CD45RO
+        ["CD27", "CD45RB"],
     ["TIGIT", "CD25"], ["CD27", "CD25"], ["TCR-2", "CD25"], ["CD4-2", "CD25"], ["CD122", "CD25"],  # With CD25
     ["TIGIT", "CD122"], ["CD27", "CD122"], ["TCR-2", "CD122"], ["CD4-2", "CD122"], ["CD122", "CD122"],
     ["CD25", "CD122"], ["CD278", "CD122"],  # With CD122
@@ -201,7 +200,8 @@ def makeFigure():
         data=metrics_df,
         x="KL Divergence",
         y="Selectivity (Rbound)",
-        hue="Receptor Pair",
+        #hue="Receptor Pair",
+        hue = "Valency",
         style="Valency",
         s=70,  # Increase point size
         ax=ax[0],
@@ -213,7 +213,8 @@ def makeFigure():
         data=metrics_df,
         x="EMD",
         y="Selectivity (Rbound)",
-        hue="Receptor Pair",
+        hue = "Valency",
+        # hue="Receptor Pair",
         style="Valency",
         s=70,  # Increase point size
         ax=ax[1],
@@ -223,6 +224,10 @@ def makeFigure():
 
     valency_2_df = metrics_df[metrics_df["Valency"] == "Valency 2"]
     valency_4_df = metrics_df[metrics_df["Valency"] == "Valency 4"]
+    valency_2_df = valency_2_df.dropna(subset=["KL Divergence", "Selectivity (Rbound)"])
+    valency_4_df = valency_4_df.dropna(subset=["KL Divergence", "Selectivity (Rbound)"])
+    valency_2_df = valency_2_df[~np.isinf(valency_2_df[["KL Divergence", "Selectivity (Rbound)"]].values).any(axis=1)]
+    valency_4_df = valency_4_df[~np.isinf(valency_4_df[["KL Divergence", "Selectivity (Rbound)"]].values).any(axis=1)]
 
     # Calculate Pearson correlations for Valency 2
     kl_corr_valency_2, _ = pearsonr(valency_2_df["KL Divergence"], valency_2_df["Selectivity (Rbound)"])
