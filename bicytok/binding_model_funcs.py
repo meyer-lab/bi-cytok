@@ -3,7 +3,7 @@ Implementation of a simple multivalent binding model.
 """
 
 import numpy as np
-from scipy.optimize import least_squares
+from scipy.optimize import fixed_point
 
 
 def commonChecks(
@@ -72,13 +72,11 @@ def polyc(
     assert Cplx.shape[0] == Ctheta.size
 
     # Solve Req
-    lsq = least_squares(
+    Req = fixed_point(
         Req_polyc,
         np.zeros_like(Rtot),
-        jac="cs",
         args=(Rtot, L0, KxStar, Cplx, Ctheta, Kav),
     )
-    Req = lsq.x
 
     # Calculate the results
     Psi = Req.T * Kav * KxStar
@@ -116,22 +114,18 @@ def cyt_binding_model(
     Return:
         output: counts of bound receptors on all single cells
     """
-
-    assert len(recCounts.shape) == 1 or len(recCounts.shape) == 2
+    assert recCounts.ndim == 2
     assert valencies[0].shape[0] == monomerAffs.shape[0]
-    if len(recCounts.shape) == 1:
-        assert recCounts.shape[0] == monomerAffs.shape[1]
-    else:
-        assert recCounts.shape[1] == monomerAffs.shape[1]
+    assert recCounts.shape[1] == monomerAffs.shape[1]
 
     # Armaan: Why 1e9? Again, it should be clear why literals are chosen.
     # Sam: valencies not always in nested vector form (see Fig1).
     #   What happens if valencies is a 1D vector?
     ligandConc = dose / (valencies[0][0] * 1e9)
 
-    # Calculate result for a single cell input (1D receptor counts)
-    if len(recCounts.shape) == 1:
-        Rtot = recCounts
+    output = np.zeros_like(recCounts)
+    for i in range(recCounts.shape[0]):
+        Rtot = recCounts[i, :]
         Rbound = polyc(
             L0=ligandConc,
             KxStar=2.24e-12,
@@ -140,23 +134,6 @@ def cyt_binding_model(
             Ctheta=np.full(len(valencies), 1 / len(valencies)),
             Kav=monomerAffs,
         )
-        output = Rbound[0]
-
-    # Calculate result for a multi-cell input (2D receptor counts)
-    else:
-        output = np.zeros_like(recCounts)
-        for i in range(recCounts.shape[0]):
-            Rtot = recCounts[i, :]
-            Rbound = polyc(
-                L0=ligandConc,
-                KxStar=2.24e-12,
-                Rtot=Rtot,
-                Cplx=valencies,
-                Ctheta=np.full(len(valencies), 1 / len(valencies)),
-                Kav=monomerAffs,
-            )
-            output[i, :] = Rbound
-
-    assert output.shape == recCounts.shape
+        output[i, :] = Rbound
 
     return output
