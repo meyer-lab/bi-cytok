@@ -118,7 +118,7 @@ def test_cyt_binding_model():
     rec_mean = samples.mean()
     rec_std = samples.std()
 
-    rec_counts = np.random.normal(rec_mean, rec_std, (num_cells, num_receptors))
+    rec_counts = np.abs(np.random.normal(rec_mean, rec_std, (num_cells, num_receptors)))
 
     affs = np.random.uniform(7, 9, num_receptors)
     affs = restructure_affs(affs)

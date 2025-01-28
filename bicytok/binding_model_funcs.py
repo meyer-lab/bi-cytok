@@ -6,43 +6,27 @@ import numpy as np
 from scipy.optimize import root
 
 
-def commonChecks(
-    L0: float,
-    Rtot: np.ndarray,
-    KxStar: float,
-    Kav: np.ndarray,
-    Ctheta: np.ndarray,
-):
-    """Check that the inputs are sane."""
-    Kav = np.array(Kav, dtype=float)
-    Rtot = np.array(Rtot, dtype=float)
-    Ctheta = np.array(Ctheta, dtype=float)
-    assert Rtot.ndim <= 1
-    assert Rtot.size == Kav.shape[1]
-    assert Kav.ndim == 2
-    assert Ctheta.ndim <= 1
-    Ctheta = Ctheta / np.sum(Ctheta)
-    return L0, Rtot, KxStar, Kav, Ctheta
-
-
-def Req_polyc(
-    Req, Rtot: np.ndarray, L0: float, KxStar, Cplx, Ctheta, Kav: np.ndarray
+def Rbnd_polyc(
+    Req, L0: float, KxStar, Cplx, Kav: np.ndarray
 ) -> np.ndarray:
     Psi = Req * Kav * KxStar
-    Psirs = Psi.sum(axis=1).reshape(-1, 1) + 1
-    Psinorm = Psi / Psirs
+    Psirs = Psi.sum(axis=1) + 1
+    Psinorm = Psi / Psirs[None, :]
 
     Rbound = (
         L0
         / KxStar
-        * np.sum(
-            Ctheta.reshape(-1, 1)
-            * np.dot(Cplx, Psinorm)
-            * np.exp(np.dot(Cplx, np.log(Psirs))),
-            axis=0,
-        )
+        * (Cplx @ Psinorm)
+        * np.exp(Cplx @ np.log(Psirs))
     )
-    return Rtot - Req - Rbound
+    return Rbound
+
+
+def Req_polyc(
+    Req, Rtot: np.ndarray, L0: float, KxStar, Cplx, Kav: np.ndarray
+) -> np.ndarray:
+    Rbound = Rbnd_polyc(Req, L0, KxStar, Cplx, Kav)
+    return Rtot - Req - Rbound.sum(axis=1)
 
 
 def polyc(
@@ -50,7 +34,6 @@ def polyc(
     KxStar: float,
     Rtot: np.ndarray,
     Cplx: np.ndarray,
-    Ctheta: np.ndarray,
     Kav: np.ndarray,
 ):
     """
@@ -59,45 +42,23 @@ def polyc(
     :param KxStar: Kx for detailed balance correction
     :param Rtot: numbers of each receptor on the cell
     :param Cplx: the monomer ligand composition of each complex
-    :param Ctheta: the composition of complexes
     :param Kav: Ka for monomer ligand to receptors
     :return:
         Rbound: a list of Rbound of each kind of receptor
     """
-    # Consistency check
-    L0, Rtot, KxStar, Kav, Ctheta = commonChecks(L0, Rtot, KxStar, Kav, Ctheta)
-    Cplx = np.array(Cplx)
-    assert Cplx.ndim == 2
-    assert Kav.shape[0] == Cplx.shape[1]
-    assert Cplx.shape[0] == Ctheta.size
-
     # Solve Req
     sol = root(
         Req_polyc,
-        Rtot / 100.0,
-        args=(Rtot, L0, KxStar, Cplx, Ctheta, Kav),
+        Rtot / 10.0,
+        args=(Rtot, L0, KxStar, Cplx, Kav),
         method="lm",
     )
     Req = sol.x
+    print(sol)
     if sol.status < 1:
         print(sol.message)
 
-    # Calculate the results
-    Psi = Req.T * Kav * KxStar
-    Psi = np.concatenate((Psi, np.ones((Kav.shape[0], 1))), axis=1)
-    Psirs = np.sum(Psi, axis=1).reshape(-1, 1)
-    Psinorm = (Psi / Psirs)[:, :-1]
-
-    Rbound = (
-        L0
-        / KxStar
-        * Ctheta.reshape(-1, 1)
-        * np.dot(Cplx, Psinorm)
-        * np.exp(np.dot(Cplx, np.log(Psirs)))
-    )
-    assert Rbound.shape[0] == len(Ctheta)
-    assert Rbound.shape[1] == len(Rtot)
-    return Rbound
+    return Rbnd_polyc(Req, L0, KxStar, Cplx, Kav)
 
 
 def cyt_binding_model(
@@ -118,9 +79,17 @@ def cyt_binding_model(
     Return:
         output: counts of bound receptors on all single cells
     """
+    # Consistency check
     assert recCounts.ndim == 2
+    assert monomerAffs.ndim == 2
+    assert valencies.ndim == 2
+    assert monomerAffs.shape[0] == valencies.shape[1]
     assert valencies[0].shape[0] == monomerAffs.shape[0]
     assert recCounts.shape[1] == monomerAffs.shape[1]
+    assert valencies.shape[0] == 1
+
+    # Needed for numba
+    valencies = np.array(valencies, dtype=float)
 
     # Armaan: Why 1e9? Again, it should be clear why literals are chosen.
     # Sam: valencies not always in nested vector form (see Fig1).
@@ -135,7 +104,6 @@ def cyt_binding_model(
             KxStar=2.24e-12,
             Rtot=Rtot,
             Cplx=valencies,
-            Ctheta=np.full(len(valencies), 1 / len(valencies)),
             Kav=monomerAffs,
         )
         output[i, :] = Rbound
