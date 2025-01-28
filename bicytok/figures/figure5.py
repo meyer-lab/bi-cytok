@@ -74,7 +74,10 @@ def makeFigure():
     # Binding model parameters
     signal_receptor = "CD122"
     cplx = [(1, 1), (2, 2)]
-    allTargets = [["CD25", "CD278"], ["CD25", "CD4-1"], ["CD25", "CD45RB"], 
+    allTargets = [["CD25", "CD278"], ["CD25", "CD4-1"], ["CD25", "CD45RB"]]
+                  
+    '''
+                  , 
         ["CD27", "CD45RB"],
         ["CD25", "CD25"],
         ["CD278", "CD28"],
@@ -86,7 +89,7 @@ def makeFigure():
     ["TIGIT", "TIGIT"], ["CD27", "TIGIT"], ["TCR-2", "TIGIT"], ["CD4-2", "TIGIT"], ["CD122", "TIGIT"],
     ["CD25", "TIGIT"], ["CD278", "TIGIT"],  # With TIGIT
     ["TIGIT", "CD278"], ["CD27", "CD278"], ["TCR-2", "CD278"], ["CD4-2", "CD278"], ["CD122", "CD278"],
-    ["CD278", "CD278"]]
+    ["CD278", "CD278"]]'''
 
 
 
@@ -200,21 +203,23 @@ def makeFigure():
         data=metrics_df,
         x="KL Divergence",
         y="Selectivity (Rbound)",
-        #hue="Receptor Pair",
-        hue = "Valency",
+        hue="Receptor Pair",
         style="Valency",
         s=70,  # Increase point size
         ax=ax[0],
-        legend=False,
+        legend=True,
     )
 
+
+# Adjust the legend for KL vs Selectivity plot
+    ax[0].legend(loc='upper left', bbox_to_anchor=(1, 1), frameon=True )  # Move the legend outside the plot
+    
     # Plot EMD vs Selectivity
     sns.scatterplot(
         data=metrics_df,
         x="EMD",
         y="Selectivity (Rbound)",
-        hue = "Valency",
-        # hue="Receptor Pair",
+        hue="Receptor Pair",
         style="Valency",
         s=70,  # Increase point size
         ax=ax[1],
