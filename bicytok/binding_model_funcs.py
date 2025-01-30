@@ -10,7 +10,7 @@ from jaxopt import LevenbergMarquardt
 jax.config.update("jax_enable_x64", True)
 
 
-def cyt_binding_modl( # originally called infer_Rbound_batched()
+def cyt_binding_modl(  # originally called infer_Rbound_batched()
     L0: np.ndarray,  # n_samples
     KxStar: np.ndarray,  # n_samples
     Rtot: np.ndarray,  # n_samples x n_R
