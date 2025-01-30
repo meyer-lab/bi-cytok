@@ -102,7 +102,7 @@ def test_optimize_affs():
     assert all(optParams >= 0)
 
 
-def test_cyt_binding_model():
+def test_binding_model():
     np.random.seed(0)
     num_receptors = 3
     num_cells = 1000
@@ -117,20 +117,20 @@ def test_cyt_binding_model():
     samples = sample_DF.to_numpy()
     rec_mean = samples.mean()
     rec_std = samples.std()
-
-    rec_counts = np.abs(np.random.normal(rec_mean, rec_std, (num_cells, num_receptors)))
-
     affs = np.random.uniform(7, 9, num_receptors)
-    affs = restructure_affs(affs)
 
-    dose = 0.1
-    valencies = np.array([np.full(num_receptors, 1)])
+    dose = np.full(num_cells, 0.1)
+    Kx_star = np.full(num_cells, 2.24e-12)
+    Rtot = np.abs(np.random.normal(rec_mean, rec_std, (num_cells, num_receptors)))
+    Cplx = np.full((num_cells, 1, num_receptors), np.full(num_receptors, 1))
+    Ctheta = np.full((num_cells, 1), 1.0)
+    Ka = np.full((num_cells, num_receptors, num_receptors), restructure_affs(affs))
 
     R_bound = cyt_binding_model(
-        dose=dose, recCounts=rec_counts, valencies=valencies, monomerAffs=affs
+        L0=dose, KxStar=Kx_star, Rtot=Rtot, Cplx=Cplx, Ctheta=Ctheta, Ka=Ka
     )
 
-    assert R_bound.shape == rec_counts.shape
+    assert R_bound.shape == Rtot.shape
 
 
 def test_invalid_model_function_inputs():
