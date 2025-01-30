@@ -10,17 +10,19 @@ from jaxopt import LevenbergMarquardt
 jax.config.update("jax_enable_x64", True)
 
 
-def cyt_binding_modl(  # originally called infer_Rbound_batched()
-    L0: np.ndarray,  # n_samples
-    KxStar: np.ndarray,  # n_samples
-    Rtot: np.ndarray,  # n_samples x n_R
-    Cplx: np.ndarray,  # n_samples x n_cplx x n_L
-    Ctheta: np.ndarray,  # n_samples x n_cplx
-    Ka: np.ndarray,  # n_samples x n_L x n_R
+def cyt_binding_model(
+    dose: float,
+    recCounts: np.ndarray,
+    valencies: np.ndarray,
+    monomerAffs: np.ndarray,
 ) -> np.ndarray:
     """
     Each system should have the same number of ligands, receptors, and complexes.
     """
+    L0, KxStar, Rtot, Cplx, Ctheta, Ka = reformat_parameters(
+        dose, recCounts, valencies, monomerAffs
+    )
+
     validate_inputs(L0, KxStar, Rtot, Cplx, Ctheta, Ka)
     return np.array(
         infer_Rbound_batched_jax(
@@ -129,3 +131,31 @@ def validate_inputs(
     assert Ctheta.shape == (L0.shape[0], Cplx.shape[1])
     assert Cplx.shape == (L0.shape[0], Ctheta.shape[1], Ka.shape[1])
     assert L0.shape[0] == Ka.shape[0]
+
+
+def reformat_parameters(
+    dose: float,
+    recCounts: np.ndarray,
+    valencies: np.ndarray,
+    monomerAffs: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Reformats parameters to be compatible with the batched binding model."""
+
+    assert recCounts.ndim == 2
+    assert monomerAffs.ndim == 2
+    assert valencies.ndim == 2
+    assert monomerAffs.shape[0] == valencies.shape[1]
+    assert valencies[0].shape[0] == monomerAffs.shape[0]
+    assert recCounts.shape[1] == monomerAffs.shape[1]
+    assert valencies.shape[0] == 1
+
+    num_cells = recCounts.shape[0]
+    num_receptors = recCounts.shape[1]
+
+    dose = np.full(num_cells, dose)
+    Kx_star = np.full(num_cells, 2.24e-12)
+    Cplx = np.full((num_cells, 1, num_receptors), valencies)
+    Ctheta = np.full((num_cells, 1), 1.0)
+    Ka = np.full((num_cells, num_receptors, num_receptors), monomerAffs)
+
+    return dose, Kx_star, recCounts, Cplx, Ctheta, Ka
