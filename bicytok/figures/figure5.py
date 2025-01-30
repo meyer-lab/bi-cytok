@@ -64,32 +64,27 @@ path_here = Path(__file__).parent.parent
 
 def makeFigure():
     ax, f = getSetup((14, 7), (1, 2))
-    np.random.seed(42)
+    
+    np.random.seed(98)
+    seed = 15
 
     # Distance metric parameters
     offTargState = 1
     targCell = "Treg"
     sample_size = 1000
-
+ 
     # Binding model parameters
     signal_receptor = "CD122"
     cplx = [(1, 1), (2, 2)]
-    allTargets = [["CD25", "CD278"], ["CD25", "CD4-1"], ["CD25", "CD45RB"]]
-                  
-    '''
-                  , 
-        ["CD27", "CD45RB"],
-        ["CD25", "CD25"],
-        ["CD278", "CD28"],
-        ["CD4-1", "CD4-2"],
-        ["CD27", "CD45RB"],
-    ["TIGIT", "CD25"], ["CD27", "CD25"], ["TCR-2", "CD25"], ["CD4-2", "CD25"], ["CD122", "CD25"],  # With CD25
-    ["TIGIT", "CD122"], ["CD27", "CD122"], ["TCR-2", "CD122"], ["CD4-2", "CD122"], ["CD122", "CD122"],
-    ["CD25", "CD122"], ["CD278", "CD122"],  # With CD122
-    ["TIGIT", "TIGIT"], ["CD27", "TIGIT"], ["TCR-2", "TIGIT"], ["CD4-2", "TIGIT"], ["CD122", "TIGIT"],
-    ["CD25", "TIGIT"], ["CD278", "TIGIT"],  # With TIGIT
-    ["TIGIT", "CD278"], ["CD27", "CD278"], ["TCR-2", "CD278"], ["CD4-2", "CD278"], ["CD122", "CD278"],
-    ["CD278", "CD278"]]'''
+    allTargets = [["CD25", "CD278"], ["CD25", "CD4-1"], ["CD25", "CD45RB"], ["CD27", "CD45RB"],
+        ["CD25", "CD25"], ["CD278", "CD28"], ["CD4-1", "CD4-2"], ["CD27", "CD45RB"],
+        ["TIGIT", "CD25"], ["CD27", "CD25"], ["TCR-2", "CD25"], ["CD4-2", "CD25"],
+        ["CD122", "CD25"], ["TIGIT", "CD122"], ["CD27", "CD122"], ["TCR-2", "CD122"],
+        ["CD4-2", "CD122"], ["CD122", "CD122"], ["CD25", "CD122"], ["CD278", "CD122"],
+        ["TIGIT", "TIGIT"], ["CD27", "TIGIT"], ["TCR-2", "TIGIT"], ["CD4-2", "TIGIT"],
+        ["CD122", "TIGIT"], ["CD25", "TIGIT"], ["CD278", "TIGIT"], ["TIGIT", "CD278"],
+        ["CD27", "CD278"], ["TCR-2", "CD278"], ["CD4-2", "CD278"], ["CD122", "CD278"],
+        ["CD278", "CD278"]]
 
 
 
@@ -242,7 +237,7 @@ def makeFigure():
     kl_corr_valency_4, _ = pearsonr(valency_4_df["KL Divergence"], valency_4_df["Selectivity (Rbound)"])
     emd_corr_valency_4, _ = pearsonr(valency_4_df["EMD"], valency_4_df["Selectivity (Rbound)"])
 
-    ax[0].set_title(f"KL Divergence vs Selectivity\nValency 2 (r = {kl_corr_valency_2:.3f}), Valency 4 (r = {kl_corr_valency_4:.3f})", fontsize=16)
+    ax[0].set_title(f"KL Divergence vs Selectivity\nValency 2 (r = {kl_corr_valency_2:.3f}), Valency 4 (r = {kl_corr_valency_4:.3f}, Seed =, {seed})", fontsize=16)
     ax[1].set_title(f"EMD vs Selectivity\nValency 2 (r = {emd_corr_valency_2:.3f}), Valency 4 (r = {emd_corr_valency_4:.3f})", fontsize=16)
 
     ax[0].set_xlabel("KL Divergence", fontsize=14)
