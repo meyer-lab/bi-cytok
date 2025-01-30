@@ -67,6 +67,7 @@ def makeFigure():
     
     np.random.seed(98)
     seed = 98
+
     # Distance metric parameters
     offTargState = 1
     targCell = "Treg"
@@ -129,7 +130,6 @@ def makeFigure():
     off_target = off_target_conditions[offTargState].to_numpy()
 
     # Randomly sample a subset of rows
-    '''
     subset_indices = np.random.choice(
     len(on_target), size=min(sample_size, len(on_target)), replace=False
 )
@@ -138,8 +138,6 @@ def makeFigure():
 
     CITE_DF_subset = CITE_DF.iloc[subset_indices]
     markerDF = CITE_DF_subset.loc[:, marker_columns]
-    '''
-    markerDF = CITE_DF.loc[:, marker_columns]
 
     KL_div_vals = []
     EMD_vals = []
@@ -156,11 +154,10 @@ def makeFigure():
         EMD_vals.append(EMD)
 
         # Sample receptor abundances
-        #epitopesDF = CITE_DF_subset[epitopes + ["CellType2"]]
-        epitopesDF = CITE_DF[epitopes + ["CellType2"]]
+        epitopesDF = CITE_DF_subset[epitopes + ["CellType2"]]
         epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
         epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
-        sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=100)
+        sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=350)
 
         # Selectivity calculation for each valency
         
@@ -240,7 +237,7 @@ def makeFigure():
     kl_corr_valency_4, _ = pearsonr(valency_4_df["KL Divergence"], valency_4_df["Selectivity (Rbound)"])
     emd_corr_valency_4, _ = pearsonr(valency_4_df["EMD"], valency_4_df["Selectivity (Rbound)"])
 
-    ax[0].set_title(f"KL Divergence vs Selectivity\nValency 2 (r = {kl_corr_valency_2:.3f}), Valency 4 (r = {kl_corr_valency_4:.3f}, Seed =, {seed})", fontsize=16)
+    ax[0].set_title(f"KL Divergence vs Selectivity\nValency 2 (r = {kl_corr_valency_2:.3f}), Valency 4 (r = {kl_corr_valency_4:.3f}, Seed = {seed})", fontsize=16)
     ax[1].set_title(f"EMD vs Selectivity\nValency 2 (r = {emd_corr_valency_2:.3f}), Valency 4 (r = {emd_corr_valency_4:.3f})", fontsize=16)
 
     ax[0].set_xlabel("KL Divergence", fontsize=14)
