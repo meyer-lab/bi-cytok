@@ -71,7 +71,7 @@ def min_off_targ_selec(
         dose=dose, recCounts=targRecs, valencies=valencies, monomerAffs=modelAffs
     )
     offTargRbound = cyt_binding_model(
-        L0=dose, recCounts=offTargRecs, valencies=valencies, monomerAffs=modelAffs
+        dose=dose, recCounts=offTargRecs, valencies=valencies, monomerAffs=modelAffs
     )
 
     # Calculate total bound receptors for target and off-target
