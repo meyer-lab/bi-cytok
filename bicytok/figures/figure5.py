@@ -157,7 +157,7 @@ def makeFigure():
         epitopesDF = CITE_DF_subset[epitopes + ["CellType2"]]
         epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
         epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
-        sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=350)
+        sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=100)
 
         # Selectivity calculation for each valency
         
