@@ -152,10 +152,11 @@ def reformat_parameters(
     num_cells = recCounts.shape[0]
     num_receptors = recCounts.shape[1]
 
-    dose = np.full(num_cells, dose)
+    ligand_conc = dose / (valencies[0][0] * 1e9)
+    L0 = np.full(num_cells, ligand_conc)
     Kx_star = np.full(num_cells, 2.24e-12)
     Cplx = np.full((num_cells, 1, num_receptors), valencies)
     Ctheta = np.full((num_cells, 1), 1.0)
     Ka = np.full((num_cells, num_receptors, num_receptors), monomerAffs)
 
-    return dose, Kx_star, recCounts, Cplx, Ctheta, Ka
+    return L0, Kx_star, recCounts, Cplx, Ctheta, Ka

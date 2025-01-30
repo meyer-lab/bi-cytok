@@ -128,6 +128,9 @@ def optimize_affs(
     initAffs = np.full_like(valencies[0], minAffs[0] + (maxAffs[0] - minAffs[0]) / 2)
     optBnds = Bounds(np.full_like(initAffs, minAffs), np.full_like(initAffs, maxAffs))
 
+    targRecs[targRecs == 0] = 1e-9
+    offTargRecs[offTargRecs == 0] = 1e-9
+
     # Run optimization to minimize off-target selectivity by changing affinities
     optimizer = minimize(
         fun=min_off_targ_selec,

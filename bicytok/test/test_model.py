@@ -119,12 +119,6 @@ def test_binding_model():
     rec_std = samples.std()
     affs = np.random.uniform(7, 9, num_receptors)
 
-    # dose = np.full(num_cells, 0.1)
-    # Kx_star = np.full(num_cells, 2.24e-12)
-    # Rtot = np.abs(np.random.normal(rec_mean, rec_std, (num_cells, num_receptors)))
-    # Cplx = np.full((num_cells, 1, num_receptors), np.full(num_receptors, 1))
-    # Ctheta = np.full((num_cells, 1), 1.0)
-    # Ka = np.full((num_cells, num_receptors, num_receptors), restructure_affs(affs))
     dose = 0.1
     recCounts = np.abs(np.random.normal(rec_mean, rec_std, (num_cells, num_receptors)))
     valencies = np.array([[1, 1, 1]])
