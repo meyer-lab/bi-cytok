@@ -22,8 +22,6 @@ fonttools==4.54.1
     # via matplotlib
 h5py==3.12.1
     # via anndata
-iniconfig==2.0.0
-    # via pytest
 jax==0.5.0
     # via bi-cytok
     # via jaxopt
@@ -54,7 +52,6 @@ numpy==2.0.1
     # via matplotlib
     # via ml-dtypes
     # via pandas
-    # via pot
     # via scikit-learn
     # via scipy
     # via seaborn
@@ -63,26 +60,19 @@ opt-einsum==3.4.0
 packaging==24.1
     # via anndata
     # via matplotlib
-    # via pytest
 pandas==2.2.3
     # via anndata
     # via seaborn
 pillow==10.4.0
     # via matplotlib
-pluggy==1.5.0
-    # via pytest
-pot==0.9.4
-    # via bi-cytok
 pyparsing==3.1.4
     # via matplotlib
-pytest==8.3.4
-    # via bi-cytok
 python-dateutil==2.9.0.post0
     # via matplotlib
     # via pandas
 pytz==2024.2
     # via pandas
-scikit-learn==1.5.2
+scikit-learn==1.6.1
     # via bi-cytok
 scipy==1.14.1
     # via anndata
@@ -90,7 +80,6 @@ scipy==1.14.1
     # via jax
     # via jaxlib
     # via jaxopt
-    # via pot
     # via scikit-learn
 seaborn==0.13.2
     # via bi-cytok

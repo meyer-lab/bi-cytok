@@ -58,7 +58,6 @@ numpy==2.0.1
     # via matplotlib
     # via ml-dtypes
     # via pandas
-    # via pot
     # via scikit-learn
     # via scipy
     # via seaborn
@@ -75,13 +74,10 @@ pillow==10.4.0
     # via matplotlib
 pluggy==1.5.0
     # via pytest
-pot==0.9.4
-    # via bi-cytok
 pyparsing==3.1.4
     # via matplotlib
 pyright==1.1.384
 pytest==8.3.4
-    # via bi-cytok
     # via pytest-cov
 pytest-cov==6.0.0
 python-dateutil==2.9.0.post0
@@ -89,7 +85,7 @@ python-dateutil==2.9.0.post0
     # via pandas
 pytz==2024.2
     # via pandas
-scikit-learn==1.5.2
+scikit-learn==1.6.1
     # via bi-cytok
 scipy==1.14.1
     # via anndata
@@ -97,7 +93,6 @@ scipy==1.14.1
     # via jax
     # via jaxlib
     # via jaxopt
-    # via pot
     # via scikit-learn
 seaborn==0.13.2
     # via bi-cytok
