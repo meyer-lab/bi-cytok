@@ -22,8 +22,14 @@ fonttools==4.54.1
     # via matplotlib
 h5py==3.12.1
     # via anndata
-iniconfig==2.0.0
-    # via pytest
+jax==0.5.0
+    # via bi-cytok
+    # via jaxopt
+jaxlib==0.5.0
+    # via jax
+    # via jaxopt
+jaxopt==0.8.3
+    # via bi-cytok
 joblib==1.4.2
     # via scikit-learn
 kiwisolver==1.4.7
@@ -31,45 +37,52 @@ kiwisolver==1.4.7
 matplotlib==3.9.2
     # via bi-cytok
     # via seaborn
+ml-dtypes==0.5.1
+    # via jax
+    # via jaxlib
 natsort==8.4.0
     # via anndata
 numpy==2.0.1
     # via anndata
     # via contourpy
     # via h5py
+    # via jax
+    # via jaxlib
+    # via jaxopt
     # via matplotlib
+    # via ml-dtypes
     # via pandas
     # via pot
     # via scikit-learn
     # via scipy
     # via seaborn
+opt-einsum==3.4.0
+    # via jax
 packaging==24.1
     # via anndata
     # via matplotlib
-    # via pytest
 pandas==2.2.3
     # via anndata
     # via seaborn
 pillow==10.4.0
     # via matplotlib
-pluggy==1.5.0
-    # via pytest
-pot==0.9.4
+pot==0.9.5
     # via bi-cytok
 pyparsing==3.1.4
     # via matplotlib
-pytest==8.3.4
-    # via bi-cytok
 python-dateutil==2.9.0.post0
     # via matplotlib
     # via pandas
 pytz==2024.2
     # via pandas
-scikit-learn==1.5.2
+scikit-learn==1.6.1
     # via bi-cytok
 scipy==1.14.1
     # via anndata
     # via bi-cytok
+    # via jax
+    # via jaxlib
+    # via jaxopt
     # via pot
     # via scikit-learn
 seaborn==0.13.2
