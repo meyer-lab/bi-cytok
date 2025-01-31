@@ -52,6 +52,7 @@ numpy==2.0.1
     # via matplotlib
     # via ml-dtypes
     # via pandas
+    # via pot
     # via scikit-learn
     # via scipy
     # via seaborn
@@ -65,6 +66,8 @@ pandas==2.2.3
     # via seaborn
 pillow==10.4.0
     # via matplotlib
+pot==0.9.5
+    # via bi-cytok
 pyparsing==3.1.4
     # via matplotlib
 python-dateutil==2.9.0.post0
@@ -80,6 +83,7 @@ scipy==1.14.1
     # via jax
     # via jaxlib
     # via jaxopt
+    # via pot
     # via scikit-learn
 seaborn==0.13.2
     # via bi-cytok
