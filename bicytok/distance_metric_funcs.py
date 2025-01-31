@@ -1,3 +1,4 @@
+import time
 from itertools import combinations_with_replacement
 from pathlib import Path
 
@@ -175,18 +176,12 @@ def KL_EMD_2D(
 
 
 def make_2D_distance_metrics():
+    start = time.time()
+
     targCell = "Treg"
     offTargState = 1
-    receptors_of_interest = [
-        "CD25",
-        "CD4-1",
-        "CD27",
-        "CD4-2",
-        "CD278",
-        "CD28",
-        "CD45RB",
-    ]
-    sample_size = 100
+    receptors_of_interest = None
+    sample_size = None
 
     assert any(np.array([0, 1, 2]) == offTargState)
 
@@ -248,6 +243,11 @@ def make_2D_distance_metrics():
     )
     df_KL.to_csv(
         path_here / "bicytok" / "data" / "2D_KL_div_all.csv", header=True, index=True
+    )
+
+    print(
+        f"Completed generation of distance metric CSV in {time.time() - start} ",
+        f"seconds on {time.ctime(time.time())}.",
     )
 
 
