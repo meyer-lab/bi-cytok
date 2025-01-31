@@ -59,9 +59,10 @@ def KL_EMD_1D(
             offTargKDE = KernelDensity(kernel="gaussian").fit(
                 offTargAbun.reshape(-1, 1)
             )
-            minAbun = np.minimum(targAbun.min(), offTargAbun.min()) - 10
-            maxAbun = np.maximum(targAbun.max(), offTargAbun.max()) + 10
-            outcomes = np.arange(minAbun, maxAbun + 1).reshape(-1, 1)
+            minAbun = np.minimum(targAbun.min(), offTargAbun.min()) - 100
+            maxAbun = np.maximum(targAbun.max(), offTargAbun.max()) + 100
+            X = np.mgrid[minAbun : maxAbun : (maxAbun - minAbun) / 100]
+            outcomes = X.reshape(-1, 1)
             targDist = np.exp(targKDE.score_samples(outcomes))
             offTargDist = np.exp(offTargKDE.score_samples(outcomes))
             KL_div_vals[rec] = stats.entropy(
@@ -139,14 +140,14 @@ def KL_EMD_2D(
 
             # Compare over the entire distribution space by looking at the
             #   global max/min
-            minAbun = np.minimum(targAbunAll.min(), offTargAbunAll.min()) - 10
-            maxAbun = np.maximum(targAbunAll.max(), offTargAbunAll.max()) + 10
+            minAbun = np.minimum(targAbunAll.min(), offTargAbunAll.min()) - 100
+            maxAbun = np.maximum(targAbunAll.max(), offTargAbunAll.max()) + 100
 
             # Need a mesh grid for 2D comparison because
             #   need to explore the entire distribution space
             X, Y = np.mgrid[
-                minAbun : maxAbun + 1 : ((maxAbun - minAbun) / 100),
-                minAbun : maxAbun + 1 : ((maxAbun - minAbun) / 100),
+                minAbun : maxAbun : ((maxAbun - minAbun) / 100),
+                minAbun : maxAbun : ((maxAbun - minAbun) / 100),
             ]
             outcomes = np.concatenate((X.reshape(-1, 1), Y.reshape(-1, 1)), axis=1)
 
