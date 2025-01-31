@@ -71,9 +71,10 @@ def makeFigure():
     # Distance metric parameters
     offTargState = 1
     targCell = "Treg"
-    sample_size = 1000
+    sample_size_dist = 1000
  
     # Binding model parameters
+    sample_size_model = 1000
     signal_receptor = "CD122"
     cplx = [(1, 1), (2, 2)]
     allTargets = [["CD25", "CD278"], ["CD25", "CD4-1"], ["CD25", "CD45RB"], ["CD27", "CD45RB"],
@@ -85,8 +86,6 @@ def makeFigure():
         ["CD122", "TIGIT"], ["CD25", "TIGIT"], ["CD278", "TIGIT"], ["TIGIT", "CD278"],
         ["CD27", "CD278"], ["TCR-2", "CD278"], ["CD4-2", "CD278"], ["CD122", "CD278"],
         ["CD278", "CD278"]]
-
-
 
     dose = 10e-2
 
@@ -131,8 +130,8 @@ def makeFigure():
 
     # Randomly sample a subset of rows
     subset_indices = np.random.choice(
-    len(on_target), size=min(sample_size, len(on_target)), replace=False
-)
+        len(on_target), size=min(sample_size_dist, len(on_target)), replace=False
+    )
     on_target = on_target[subset_indices]
     off_target = off_target[subset_indices]
 
@@ -142,6 +141,12 @@ def makeFigure():
     KL_div_vals = []
     EMD_vals = []
     Rbound_vals = []
+
+    # Sample receptor abundances
+    epitopesDF = CITE_DF_subset[epitopes + ["CellType2"]]
+    epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
+    epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
+    sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=sample_size_model)
 
     for targets in allTargets:
         rec_abundances = markerDF[targets].to_numpy()
@@ -153,14 +158,7 @@ def makeFigure():
         KL_div_vals.append(KL_div)
         EMD_vals.append(EMD)
 
-        # Sample receptor abundances
-        epitopesDF = CITE_DF_subset[epitopes + ["CellType2"]]
-        epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
-        epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
-        sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=100)
-
         # Selectivity calculation for each valency
-        
         for valency_pair in cplx:
             modelValencies = np.array([[1] + list(valency_pair)])
             dfTargCell = sampleDF.loc[sampleDF["Cell Type"] == targCell]
