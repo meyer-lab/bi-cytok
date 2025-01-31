@@ -1,8 +1,14 @@
 from itertools import combinations_with_replacement
+from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from scipy import stats
 from sklearn.neighbors import KernelDensity
+
+from bicytok.imports import importCITE
+
+path_here = Path(__file__).parent.parent
 
 
 def KL_EMD_1D(
@@ -166,6 +172,83 @@ def KL_EMD_2D(
             )
 
     return KL_div_vals, EMD_vals
+
+
+def make_2D_distance_metrics():
+    targCell = "Treg"
+    offTargState = 1
+    receptors_of_interest = [
+        "CD25",
+        "CD4-1",
+        "CD27",
+        "CD4-2",
+        "CD278",
+        "CD28",
+        "CD45RB",
+    ]
+    sample_size = 100
+
+    assert any(np.array([0, 1, 2]) == offTargState)
+
+    CITE_DF = importCITE()
+
+    # Define non-marker columns
+    non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
+    marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
+    markerDF = CITE_DF.loc[:, marker_columns]
+
+    if receptors_of_interest is not None:
+        filtered_markerDF = markerDF.loc[
+            :,
+            markerDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False),
+        ]
+    else:
+        filtered_markerDF = markerDF
+    receptors_of_interest = filtered_markerDF.columns
+
+    on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
+    off_target_conditions = {
+        0: (CITE_DF["CellType3"] != targCell),  # All non-memory Tregs
+        1: (
+            (CITE_DF["CellType2"] != "Treg") & (CITE_DF["CellType2"] != targCell)
+        ),  # All non-Tregs
+        2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
+    }
+    off_target = off_target_conditions[offTargState].to_numpy()
+
+    rec_abundances = filtered_markerDF.to_numpy()
+
+    # Randomly sample a subset of rows
+    if sample_size is not None:
+        subset_indices = np.random.choice(
+            len(on_target), size=min(sample_size, len(on_target)), replace=False
+        )
+        on_target = on_target[subset_indices]
+        off_target = off_target[subset_indices]
+        rec_abundances = rec_abundances[subset_indices]
+
+    KL_div_vals, EMD_vals = KL_EMD_2D(
+        rec_abundances, on_target, off_target, calc_1D=True
+    )
+
+    EMD_matrix = np.tril(EMD_vals, k=0)
+    EMD_matrix = EMD_matrix + EMD_matrix.T - np.diag(np.diag(EMD_matrix))
+    KL_matrix = np.tril(KL_div_vals, k=0)
+    KL_matrix = KL_matrix + KL_matrix.T - np.diag(np.diag(KL_matrix))
+
+    df_EMD = pd.DataFrame(
+        EMD_matrix, index=receptors_of_interest, columns=receptors_of_interest
+    )
+    df_KL = pd.DataFrame(
+        KL_matrix, index=receptors_of_interest, columns=receptors_of_interest
+    )
+
+    df_EMD.to_csv(
+        path_here / "bicytok" / "data" / "2D_EMD_all.csv", header=True, index=True
+    )
+    df_KL.to_csv(
+        path_here / "bicytok" / "data" / "2D_KL_div_all.csv", header=True, index=True
+    )
 
 
 def KL_EMD_3D(
