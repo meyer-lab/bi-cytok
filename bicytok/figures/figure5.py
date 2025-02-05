@@ -63,7 +63,7 @@ path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
-    ax, f = getSetup((14, 7), (1, 2))
+    ax, f = getSetup((28, 14), (2,2))
     
     np.random.seed(98)
     seed = 98
@@ -142,6 +142,7 @@ def makeFigure():
     KL_div_vals = []
     EMD_vals = []
     Rbound_vals = []
+    Aff_vals = []
 
     for targets in allTargets:
         rec_abundances = markerDF[targets].to_numpy()
@@ -168,13 +169,14 @@ def makeFigure():
             dfOffTargCell = sampleDF.loc[sampleDF["Cell Type"].isin(offTargCells)]
             offTargRecs = dfOffTargCell[[signal_receptor] + targets]
 
-            optSelec, _ = optimize_affs(
+            optSelec, aff = optimize_affs(
                 targRecs=targRecs.to_numpy(),
                 offTargRecs=offTargRecs.to_numpy(),
                 dose=dose,
                 valencies=modelValencies,
             )
             Rbound_vals.append(1 / optSelec)
+            Aff_vals.append(aff)
 
     # Modify valency labels
     valency_map = {"(1, 1)": "Valency 2", "(2, 2)": "Valency 4"}
@@ -189,6 +191,7 @@ def makeFigure():
             "KL Divergence": np.repeat(KL_div_vals, len(cplx)),
             "EMD": np.repeat(EMD_vals, len(cplx)),
             "Selectivity (Rbound)": Rbound_vals,
+            "Affinity": Aff_vals,
         }
     )
 
@@ -220,30 +223,44 @@ def makeFigure():
         ax=ax[1],
         legend=False,
     )
+    sns.scatterplot(
+        data=metrics_df,
+        x="KL Divergence",
+        y="Affinity",
+        hue="Receptor Pair",
+        style="Valency",
+        s=70,  # Increase point size
+        ax=ax[2],
+        legend=False,
+    )
+    sns.scatterplot(
+        data=metrics_df,
+        x="EMD",
+        y="Affinity",
+        hue="Receptor Pair",
+        style="Valency",
+        s=70,  # Increase point size
+        ax=ax[3],
+        legend=False,
+    )
    
 
-    valency_2_df = metrics_df[metrics_df["Valency"] == "Valency 2"]
-    valency_4_df = metrics_df[metrics_df["Valency"] == "Valency 4"]
-    valency_2_df = valency_2_df.dropna(subset=["KL Divergence", "Selectivity (Rbound)"])
-    valency_4_df = valency_4_df.dropna(subset=["KL Divergence", "Selectivity (Rbound)"])
-    valency_2_df = valency_2_df[~np.isinf(valency_2_df[["KL Divergence", "Selectivity (Rbound)"]].values).any(axis=1)]
-    valency_4_df = valency_4_df[~np.isinf(valency_4_df[["KL Divergence", "Selectivity (Rbound)"]].values).any(axis=1)]
 
-    # Calculate Pearson correlations for Valency 2
-    kl_corr_valency_2, _ = pearsonr(valency_2_df["KL Divergence"], valency_2_df["Selectivity (Rbound)"])
-    emd_corr_valency_2, _ = pearsonr(valency_2_df["EMD"], valency_2_df["Selectivity (Rbound)"])
 
-    # Calculate Pearson correlations for Valency 4
-    kl_corr_valency_4, _ = pearsonr(valency_4_df["KL Divergence"], valency_4_df["Selectivity (Rbound)"])
-    emd_corr_valency_4, _ = pearsonr(valency_4_df["EMD"], valency_4_df["Selectivity (Rbound)"])
-
-    ax[0].set_title(f"KL Divergence vs Selectivity\nValency 2 (r = {kl_corr_valency_2:.3f}), Valency 4 (r = {kl_corr_valency_4:.3f}, Seed = {seed})", fontsize=16)
-    ax[1].set_title(f"EMD vs Selectivity\nValency 2 (r = {emd_corr_valency_2:.3f}), Valency 4 (r = {emd_corr_valency_4:.3f})", fontsize=16)
+    ax[0].set_title(f"KL Divergence vs Selectivity")
+    ax[1].set_title(f"EMD vs Selectivity")
+    ax[2].set_title(f"KL Divergence vs Affintiy")
+    ax[3].set_title(f"EMD vs Affintiy")
 
     ax[0].set_xlabel("KL Divergence", fontsize=14)
     ax[0].set_ylabel("Selectivity (Rbound)", fontsize=14)
     ax[1].set_xlabel("EMD", fontsize=14)
     ax[1].set_ylabel("Selectivity (Rbound)", fontsize=14)
+   
+    ax[2].set_xlabel("KL Divergence", fontsize=14)
+    ax[2].set_ylabel("Affinity", fontsize=14)
+    ax[3].set_xlabel("EMD", fontsize=14)
+    ax[3].set_ylabel("Affinity", fontsize=14)
 
     for a in ax:
         a.tick_params(axis="both", labelsize=12)
