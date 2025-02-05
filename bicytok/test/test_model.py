@@ -2,18 +2,23 @@
 Unit test file.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from ..binding_model_funcs import cyt_binding_model
 from ..distance_metric_funcs import KL_EMD_1D, KL_EMD_2D
+from ..imports import importCITE
 from ..selectivity_funcs import (
     min_off_targ_selec,
     optimize_affs,
     restructure_affs,
     sample_receptor_abundances,
 )
+
+path_here = Path(__file__).parent.parent
 
 
 def sample_data():
@@ -95,6 +100,35 @@ def test_optimize_affs():
     assert optSelec >= 0
     assert optParams.shape == valencies[0].shape
     assert all(optParams >= 0)
+
+
+def test_binding_model():
+    np.random.seed(0)
+    num_receptors = 3
+    num_cells = 1000
+
+    epitopes_list = pd.read_csv(path_here / "data" / "epitopeList.csv")
+    epitopes = list(epitopes_list["Epitope"].unique())
+    CITE_DF = importCITE()
+    CITE_DF = CITE_DF[epitopes + ["CellType2"]]
+    CITE_DF = CITE_DF.rename(columns={"CellType2": "Cell Type"})
+    sample_DF = sample_receptor_abundances(CITE_DF=CITE_DF, numCells=CITE_DF.shape[0])
+    sample_DF = sample_DF.drop(columns="Cell Type")
+    samples = sample_DF.to_numpy()
+    rec_mean = samples.mean()
+    rec_std = samples.std()
+    affs = np.random.uniform(7, 9, num_receptors)
+
+    dose = 0.1
+    recCounts = np.abs(np.random.normal(rec_mean, rec_std, (num_cells, num_receptors)))
+    valencies = np.array([[1, 1, 1]])
+    monomerAffs = restructure_affs(affs)
+
+    R_bound = cyt_binding_model(
+        dose=dose, recCounts=recCounts, valencies=valencies, monomerAffs=monomerAffs
+    )
+
+    assert R_bound.shape == recCounts.shape
 
 
 def test_invalid_model_function_inputs():

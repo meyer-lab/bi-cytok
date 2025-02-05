@@ -7,18 +7,20 @@ authors = [
 ]
 dependencies = [
     "scipy>=1.14.1",
-    "scikit-learn>=1.5.2",
+    "scikit-learn>=1.6",
     "anndata>=0.10.9",
-    "pot>=0.9.4",
     "matplotlib>=3.9.2",
     "seaborn>=0.13.2",
-    "pytest>=8.3.4",
+    "jax>=0.5.0",
+    "jaxopt>=0.8.3",
+    "pot>=0.9.5",
 ]
 readme = "README.md"
-requires-python = ">= 3.11"
+requires-python = ">= 3.12"
 
 [project.scripts]
 fbuild = "bicytok.figures.common:genFigure"
+distanceCSV = "bicytok.distance_metric_funcs:make_2D_distance_metrics"
 
 [build-system]
 requires = ["hatchling"]
@@ -27,7 +29,7 @@ build-backend = "hatchling.build"
 [tool.rye]
 managed = true
 dev-dependencies = [
-    "pytest>=8.3.3",
+    "pytest>=8.3",
     "pytest-cov>=6.0.0",
     "pyright>=1.1.384",
 ]
