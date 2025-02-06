@@ -206,17 +206,22 @@ def calc_conv_facts() -> tuple[dict, float]:
 # Called in Figure1, Figure3, Figure4, and Figure5
 def sample_receptor_abundances(
     CITE_DF: pd.DataFrame,
-    numCells=1000,
+    numCells: int,
+    targCellType: str,
+    offTargCellTypes: list[str],
 ) -> pd.DataFrame:
     """
     Samples a subset of cells and converts unprocessed CITE-seq receptor values
-        into abundance values.
+        into abundance values. Samples an equal number of target and off target cells.
     Args:
         CITE_DF: dataframe of unprocessed CITE-seq receptor counts
             of different receptors/epitopes (columns) on single cells (row).
             Epitopes are filtered outside of this function.
             The final column should be the cell types of each cell.
         numCells: number of cells to sample
+        targCellType: the cell type that will be used to split target and
+            off targer sampling
+        offTargCellTypes: list of cell types that are distinct from target cellss
     Return:
         sampleDF: dataframe containing single cell abundances of
             receptors (column) for each individual cell (row).
@@ -226,8 +231,19 @@ def sample_receptor_abundances(
     assert numCells <= CITE_DF.shape[0]
     assert "Cell Type" in CITE_DF.columns
 
-    # Sample a subset of cells
-    sampleDF = CITE_DF.sample(numCells, random_state=42)
+    # Sample an equal number of target and off-target cells
+    target_cells = CITE_DF[CITE_DF["Cell Type"] == targCellType]
+    off_target_cells = CITE_DF[CITE_DF["Cell Type"].isin(offTargCellTypes)]
+
+    num_target_cells = numCells // 2
+    num_off_target_cells = numCells - num_target_cells
+
+    sampled_target_cells = target_cells.sample(num_target_cells, random_state=42)
+    sampled_off_target_cells = off_target_cells.sample(
+        num_off_target_cells, random_state=42
+    )
+
+    sampleDF = pd.concat([sampled_target_cells, sampled_off_target_cells])
 
     # Calculate conversion factors for each epitope
     convFactDict, defaultConvFact = calc_conv_facts()
