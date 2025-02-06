@@ -41,13 +41,18 @@ Visualization:
     the EMD values, with annotations to display specific values.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
 from ..distance_metric_funcs import KL_EMD_2D
 from ..imports import importCITE
+from ..selectivity_funcs import sample_receptor_abundances
 from .common import getSetup
+
+path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
@@ -66,43 +71,51 @@ def makeFigure():
         "CD45RB",
     ]
     sample_size = 1000
+    cellTypes = np.array(
+        [
+            "CD8 Naive",
+            "NK",
+            "CD8 TEM",
+            "CD4 Naive",
+            "CD4 CTL",
+            "CD8 TCM",
+            "CD8 Proliferating",
+            "Treg",
+        ]
+    )
+    offTargCells = cellTypes[cellTypes != targCell]
+    cell_categorization = "CellType2"
 
     assert any(np.array([0, 1, 2]) == offTargState)
 
+    epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
+    epitopes = list(epitopesList["Epitope"].unique())
     CITE_DF = importCITE()
 
-    # Define non-marker columns
-    non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
-    marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
-    markerDF = CITE_DF.loc[:, marker_columns]
-    filtered_markerDF = markerDF.loc[
-        :,
-        markerDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False),
-    ]
-    receptors_of_interest = filtered_markerDF.columns
+    assert targCell in CITE_DF[cell_categorization].unique()
 
-    on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
-    off_target_conditions = {
-        0: (CITE_DF["CellType3"] != targCell),  # All non-memory Tregs
-        1: (
-            (CITE_DF["CellType2"] != "Treg") & (CITE_DF["CellType2"] != targCell)
-        ),  # All non-Tregs
-        2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
-    }
-    off_target = off_target_conditions[offTargState].to_numpy()
-
-    rec_abundances = filtered_markerDF.to_numpy()
-
-    # Randomly sample a subset of rows
-    subset_indices = np.random.choice(
-        len(on_target), size=min(sample_size, len(on_target)), replace=False
+    epitopesDF = CITE_DF[epitopes + [cell_categorization]]
+    epitopesDF = epitopesDF.loc[epitopesDF[cell_categorization].isin(cellTypes)]
+    epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
+    sampleDF = sample_receptor_abundances(
+        CITE_DF=epitopesDF,
+        numCells=min(sample_size, epitopesDF.shape[0]),
+        targCellType=targCell,
+        offTargCellTypes=offTargCells,
     )
-    on_target = on_target[subset_indices]
-    off_target = off_target[subset_indices]
-    rec_abundances = rec_abundances[subset_indices]
+    filtered_sampleDF = sampleDF.loc[
+        :,
+        sampleDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False),
+    ]
+    receptors_of_interest = filtered_sampleDF.columns
+
+    on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    off_target_mask = sampleDF["Cell Type"].isin(offTargCells).to_numpy()
+
+    rec_abundances = filtered_sampleDF.to_numpy()
 
     KL_div_vals, EMD_vals = KL_EMD_2D(
-        rec_abundances, on_target, off_target, calc_1D=True
+        rec_abundances, on_target_mask, off_target_mask, calc_1D=False
     )
 
     EMD_matrix = np.tril(EMD_vals, k=0)
