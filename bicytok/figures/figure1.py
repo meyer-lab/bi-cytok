@@ -75,7 +75,12 @@ def makeFigure():
     epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
 
-    sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=100)
+    sampleDF = sample_receptor_abundances(
+        CITE_DF=epitopesDF,
+        numCells=100,
+        targCellType=targCell,
+        offTargCellTypes=offTargCells,
+    )
 
     doseVec = np.logspace(-2, 2, num=10)
     df = pd.DataFrame(columns=["Dose", "Selectivity", "Target Bound", "Ligand"])

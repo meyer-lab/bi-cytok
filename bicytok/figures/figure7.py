@@ -42,6 +42,19 @@ def makeFigure():
     receptors = ["CD25", "CD4-1", "CD27", "CD4-2", "CD278"]
     cell_type = "Treg"
     dose = 10e-2
+    cellTypes = np.array(
+        [
+            "CD8 Naive",
+            "NK",
+            "CD8 TEM",
+            "CD4 Naive",
+            "CD4 CTL",
+            "CD8 TCM",
+            "CD8 Proliferating",
+            "Treg",
+        ]
+    )
+    offTargCells = cellTypes[cellTypes != cell_type]
 
     CITE_DF = importCITE()
 
@@ -50,10 +63,10 @@ def makeFigure():
     markerDF = CITE_DF.loc[:, marker_columns]
     markerDF = markerDF.rename(columns={"CellType2": "Cell Type"})
 
-    sampleDF = sample_receptor_abundances(markerDF, 100)
+    sampleDF = sample_receptor_abundances(markerDF, 100, cell_type, offTargCells)
 
     targ_mask = (sampleDF["Cell Type"] == cell_type).to_numpy()
-    off_targ_mask = (sampleDF["Cell Type"] != cell_type).to_numpy()
+    off_targ_mask = sampleDF["Cell Type"].isin(offTargCells).to_numpy()
 
     selectivities = []
     for receptor in receptors:
