@@ -63,7 +63,7 @@ path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
-    ax, f = getSetup((28, 7), (1, 4))
+    ax, f = getSetup((35, 7), (1, 4))
 
     np.random.seed(98)
     seed = 98
@@ -177,6 +177,7 @@ def makeFigure():
             )
             Rbound_vals.append(1 / optSelec)
             optAffs_vals.append(optAffs)
+    
     optAffs_vals_aggregated = [np.mean(affs) for affs in optAffs_vals]
     
     # Modify valency labels
@@ -190,10 +191,10 @@ def makeFigure():
             "KL Divergence": np.repeat(KL_div_vals, len(cplx)),
             "EMD": np.repeat(EMD_vals, len(cplx)),
             "Selectivity (Rbound)": Rbound_vals,
+            "Optimized Affinity": optAffs_vals_aggregated
             
         }
     )
-    print(optAffs_vals_aggregated)
     # Plot KL vs Selectivity
     sns.scatterplot(
         data=metrics_df,
@@ -203,12 +204,11 @@ def makeFigure():
         style="Valency",
         s=70,  # Increase point size
         ax=ax[0],
-        legend=True,
+        legend=False,
     )
 
-    # Adjust the legend for KL vs Selectivity plot
-    # Move the legend outside the plot
-    ax[0].legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=True)
+ 
+    
 
     # Plot EMD vs Selectivity
     sns.scatterplot(
@@ -219,13 +219,14 @@ def makeFigure():
         style="Valency",
         s=70,  # Increase point size
         ax=ax[1],
-        legend=False,
+        legend=True,
     )
+    ax[1].legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=True)
     
     sns.scatterplot(
     data=metrics_df,
-    x="Optimized Affinity",  # Plot against optimized affinities
-    y="KL Divergence",
+    x="KL Divergence",  # Plot against optimized affinities
+    y="Optimized Affinity",
     hue="Receptor Pair",
     style="Valency",
     s=70,  # Increase point size
@@ -234,12 +235,12 @@ def makeFigure():
     )
     sns.scatterplot(
     data=metrics_df,
-    x="Optimized Affinity",  # Plot against optimized affinities
-    y="EMD",
+    x="EMD",  # Plot against optimized affinities
+    y="Optimized Affinity",
     hue="Receptor Pair",
     style="Valency",
     s=70,  # Increase point size
-    ax=ax[1],
+    ax=ax[3],
     legend=False,
     )
     
@@ -288,11 +289,16 @@ def makeFigure():
         ),
         fontsize=16,
     )
-
+    ax[2].set_title(("Affinity vs KL Divergence"), fontsize=16,)
+    ax[3].set_title(("Affinity vs EMD"), fontsize=16,)
     ax[0].set_xlabel("KL Divergence", fontsize=14)
     ax[0].set_ylabel("Selectivity (Rbound)", fontsize=14)
     ax[1].set_xlabel("EMD", fontsize=14)
     ax[1].set_ylabel("Selectivity (Rbound)", fontsize=14)
+    ax[2].set_xlabel("KL Divergence", fontsize=14)
+    ax[2].set_ylabel("Affinity", fontsize=14)
+    ax[3].set_xlabel("EMD", fontsize=14)
+    ax[3].set_ylabel("Affinity", fontsize=14)
 
     for a in ax:
         a.tick_params(axis="both", labelsize=12)
