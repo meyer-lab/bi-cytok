@@ -74,13 +74,16 @@ def makeFigure():
     sample_size_dist = 1000
 
     # Binding model parameters
-    sample_size_model = 1000
+    sample_size_model = 100
     signal_receptor = "CD122"
     cplx = [(1, 1), (2, 2)]
     allTargets = [
         ["CD25", "CD278"],
         ["CD25", "CD4-1"],
-        ["CD25", "CD45RB"],
+        ["CD25", "CD45RB"]
+        ]   
+        
+    '''
         ["CD27", "CD45RB"],
         ["CD25", "CD25"],
         ["CD278", "CD28"],
@@ -110,8 +113,9 @@ def makeFigure():
         ["TCR-2", "CD278"],
         ["CD4-2", "CD278"],
         ["CD122", "CD278"],
-        ["CD278", "CD278"],
-    ]
+        ["CD278", "CD278"],]
+        '''
+    
 
     dose = 10e-2
 
@@ -128,46 +132,37 @@ def makeFigure():
         ]
     )
     offTargCells = cellTypes[cellTypes != targCell]
-
-    assert isinstance(offTargState, int)
-    assert any(np.array([0, 1, 2]) == offTargState)
-    assert not (targCell == "Treg Naive" and offTargState == 2)
+    cell_categorization = "CellType2"
 
     # Imports
     epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
     CITE_DF = importCITE()
 
-    assert targCell in CITE_DF["CellType2"].unique()
-
-    non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
-    marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
-    markerDF = CITE_DF.loc[:, marker_columns]
-
-    on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
-    off_target_conditions = {
-        0: (CITE_DF["CellType3"] != targCell),  # All non-target cells
-        1: (
-            (CITE_DF["CellType2"] != "Treg") & (CITE_DF["CellType2"] != targCell)
-        ),  # All non-Tregs and non-target cells
-        2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
-    }
-    off_target = off_target_conditions[offTargState].to_numpy()
+    assert targCell in CITE_DF[cell_categorization].unique()
 
     # Randomly sample a subset of rows
-    subset_indices = np.random.choice(
-        len(on_target), size=min(sample_size_dist, len(on_target)), replace=False
+    epitopesDF = CITE_DF[epitopes + [cell_categorization]]
+    epitopesDF = epitopesDF.loc[epitopesDF[cell_categorization].isin(cellTypes)]
+    epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
+    sampleDF = sample_receptor_abundances(
+        CITE_DF=epitopesDF,
+        numCells=min(sample_size, epitopesDF.shape[0]),
+        targCellType=targCell,
+        offTargCellTypes=offTargCells,
     )
-    on_target = on_target[subset_indices]
-    off_target = off_target[subset_indices]
 
-    CITE_DF_subset = CITE_DF.iloc[subset_indices]
-    markerDF = CITE_DF_subset.loc[:, marker_columns]
+    # Define target and off-target cell masks (for distance metrics)
+    on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    off_target_mask = sampleDF["Cell Type"].isin(offTargCells).to_numpy()
+
+    # Define target and off-target cell dataframes (for model)
+    dfTargCell = sampleDF.loc[on_target_mask]
+    dfOffTargCell = sampleDF.loc[off_target_mask]
 
     KL_div_vals = []
     EMD_vals = []
     Rbound_vals = []
-    Aff_vals = []
     # Sample receptor abundances
     epitopesDF = CITE_DF[epitopes + ["CellType2"]]
     epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
@@ -178,9 +173,9 @@ def makeFigure():
     
 
     for targets in allTargets:
-        rec_abundances = markerDF[targets].to_numpy()
+        rec_abundances = sampleDF[targets].to_numpy()
         KL_div_mat, EMD_mat = KL_EMD_2D(
-            rec_abundances, on_target, off_target, calc_1D=False
+            rec_abundances, on_target_mask, off_target_mask, calc_1D=False
         )
         KL_div = KL_div_mat[1, 0]
         EMD = EMD_mat[1, 0]
@@ -190,10 +185,8 @@ def makeFigure():
         # Selectivity calculation for each valency
         for valency_pair in cplx:
             modelValencies = np.array([[1] + list(valency_pair)])
-            dfTargCell = sampleDF.loc[sampleDF["Cell Type"] == targCell]
-            targRecs = dfTargCell[[signal_receptor] + targets]
-            dfOffTargCell = sampleDF.loc[sampleDF["Cell Type"].isin(offTargCells)]
-            offTargRecs = dfOffTargCell[[signal_receptor] + targets]
+            targRecs = dfTargCell[[signal_receptor] + targets].to_numpy()
+            offTargRecs = dfOffTargCell[[signal_receptor] + targets].to_numpy()
 
             optSelec, aff = optimize_affs(
                 targRecs=targRecs.to_numpy(),
@@ -202,7 +195,6 @@ def makeFigure():
                 valencies=modelValencies,
             )
             Rbound_vals.append(1 / optSelec)
-            Aff_vals.append(aff)
 
     # Modify valency labels
     valency_map = {"(1, 1)": "Valency 2", "(2, 2)": "Valency 4"}
@@ -215,7 +207,6 @@ def makeFigure():
             "KL Divergence": np.repeat(KL_div_vals, len(cplx)),
             "EMD": np.repeat(EMD_vals, len(cplx)),
             "Selectivity (Rbound)": Rbound_vals,
-            "Affinity": Aff_vals,
         }
     )
 
@@ -246,34 +237,13 @@ def makeFigure():
         ax=ax[1],
         legend=False,
     )
-    sns.scatterplot(
-        data=metrics_df,
-        x="KL Divergence",
-        y="Affinity",
-        hue="Receptor Pair",
-        style="Valency",
-        s=70,  # Increase point size
-        ax=ax[2],
-        legend=False,
-    )
-    sns.scatterplot(
-        data=metrics_df,
-        x="EMD",
-        y="Affinity",
-        hue="Receptor Pair",
-        style="Valency",
-        s=70,  # Increase point size
-        ax=ax[3],
-        legend=False,
-    )
-   
-
-
+    
 
     valency_2_df = metrics_df[metrics_df["Valency"] == "Valency 2"]
     valency_4_df = metrics_df[metrics_df["Valency"] == "Valency 4"]
     valency_2_df = valency_2_df.dropna(subset=["KL Divergence", "Selectivity (Rbound)"])
     valency_4_df = valency_4_df.dropna(subset=["KL Divergence", "Selectivity (Rbound)"])
+    '''
     valency_2_df = valency_2_df[
         ~np.isinf(valency_2_df[["KL Divergence", "Selectivity (Rbound)"]].values).any(
             axis=1
@@ -284,7 +254,7 @@ def makeFigure():
             axis=1
         )
     ]
-
+    '''
     # Calculate Pearson correlations for Valency 2
     kl_corr_valency_2, _ = pearsonr(
         valency_2_df["KL Divergence"], valency_2_df["Selectivity (Rbound)"]
@@ -304,7 +274,7 @@ def makeFigure():
     ax[0].set_title(f"KL Divergence vs Selectivity")
     ax[1].set_title(f"EMD vs Selectivity")
     ax[2].set_title(f"KL Divergence vs Affintiy")
-    ax[3].set_title(f"EMD vs Affintiy")
+    #ax[3].set_title(f"EMD vs Affintiy")
     ax[0].set_title(
         (
             f"KL Divergence vs Selectivity\nValency 2 (r = {kl_corr_valency_2:.3f}), ",
@@ -327,14 +297,14 @@ def makeFigure():
    
     ax[2].set_xlabel("KL Divergence", fontsize=14)
     ax[2].set_ylabel("Affinity", fontsize=14)
-    ax[3].set_xlabel("EMD", fontsize=14)
-    ax[3].set_ylabel("Affinity", fontsize=14)
-
+    #ax[3].set_xlabel("EMD", fontsize=14)
+    #ax[3].set_ylabel("Affinity", fontsize=14)
+    '''
     for a in ax:
         a.tick_params(axis="both", labelsize=12)
         sns.despine(ax=a, trim=True)
         for spine in a.spines.values():
             spine.set_linewidth(1.5)
         a.legend(fontsize=12, loc="best")
-
+    '''
     return f

@@ -49,7 +49,12 @@ def makeFigure():
     epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
 
-    sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=100)
+    sampleDF = sample_receptor_abundances(
+        CITE_DF=epitopesDF,
+        numCells=100,
+        targCellType="Treg",
+        offTargCellTypes=offTargCells,
+    )
 
     df = pd.DataFrame(columns=["Target 1", "Target 2", "Selectivity"])
 

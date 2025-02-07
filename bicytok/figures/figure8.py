@@ -48,6 +48,20 @@ def makeFigure():
     dose = 10e-2
     valency = np.array([[2, 2]])
 
+    cellTypes = np.array(
+        [
+            "CD8 Naive",
+            "NK",
+            "CD8 TEM",
+            "CD4 Naive",
+            "CD4 CTL",
+            "CD8 TCM",
+            "CD8 Proliferating",
+            "Treg",
+        ]
+    )
+    offTargCells = cellTypes[cellTypes != cell_type]
+
     CITE_DF = importCITE()
 
     filt_cols = ["CellType1", "CellType3", "Cell"]
@@ -55,10 +69,10 @@ def makeFigure():
     markerDF = CITE_DF.loc[:, marker_columns]
     markerDF = markerDF.rename(columns={"CellType2": "Cell Type"})
 
-    sampleDF = sample_receptor_abundances(markerDF, 50)
+    sampleDF = sample_receptor_abundances(markerDF, 50, cell_type, offTargCells)
 
     targ_mask = (sampleDF["Cell Type"] == cell_type).to_numpy()
-    off_targ_mask = (sampleDF["Cell Type"] != cell_type).to_numpy()
+    off_targ_mask = sampleDF["Cell Type"].isin(offTargCells).to_numpy()
 
     selectivities = np.full((len(receptors), len(receptors)), np.nan)
     for i, rec1 in enumerate(receptors):
