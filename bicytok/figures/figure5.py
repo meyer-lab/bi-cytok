@@ -71,10 +71,6 @@ def makeFigure():
     # Parameters
     sample_size = 100  
     targCell = "Treg"
-    sample_size_dist = 1000
-
-    # Binding model parameters
-    sample_size_model = 100
     signal_receptor = "CD122"
     cplx = [(1, 1), (2, 2)]
     allTargets = [
@@ -110,12 +106,9 @@ def makeFigure():
         ["TCR-2", "CD278"],
         ["CD4-2", "CD278"],
         ["CD122", "CD278"],
-        ["CD278", "CD278"],]
-
-    
-
+        ["CD278", "CD278"],
+    ]
     dose = 10e-2
-
     cellTypes = np.array(
         [
             "CD8 Naive",
@@ -144,7 +137,7 @@ def makeFigure():
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
     sampleDF = sample_receptor_abundances(
         CITE_DF=epitopesDF,
-        numCells=min(sample_size_dist, epitopesDF.shape[0]),
+        numCells=min(sample_size, epitopesDF.shape[0]),
         targCellType=targCell,
         offTargCellTypes=offTargCells,
     )
@@ -160,15 +153,6 @@ def makeFigure():
     KL_div_vals = []
     EMD_vals = []
     Rbound_vals = []
-    # Sample receptor abundances
-    epitopesDF = CITE_DF[epitopes + ["CellType2"]]
-    epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
-    epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
-    sampleDF = sample_receptor_abundances(
-        CITE_DF=epitopesDF, numCells=sample_size_model
-    )
-    
-
     for targets in allTargets:
         rec_abundances = sampleDF[targets].to_numpy()
         KL_div_mat, EMD_mat = KL_EMD_2D(
@@ -264,7 +248,6 @@ def makeFigure():
     valency_4_df = metrics_df[metrics_df["Valency"] == "Valency 4"]
     valency_2_df = valency_2_df.dropna(subset=["KL Divergence", "Selectivity (Rbound)"])
     valency_4_df = valency_4_df.dropna(subset=["KL Divergence", "Selectivity (Rbound)"])
-    '''
     valency_2_df = valency_2_df[
         ~np.isinf(valency_2_df[["KL Divergence", "Selectivity (Rbound)"]].values).any(
             axis=1
@@ -275,7 +258,7 @@ def makeFigure():
             axis=1
         )
     ]
-    '''
+
     # Calculate Pearson correlations for Valency 2
     kl_corr_valency_2, _ = pearsonr(
         valency_2_df["KL Divergence"], valency_2_df["Selectivity (Rbound)"]
@@ -292,10 +275,6 @@ def makeFigure():
         valency_4_df["EMD"], valency_4_df["Selectivity (Rbound)"]
     )
 
-    ax[0].set_title(f"KL Divergence vs Selectivity")
-    ax[1].set_title(f"EMD vs Selectivity")
-    ax[2].set_title(f"KL Divergence vs Affintiy")
-    #ax[3].set_title(f"EMD vs Affintiy")
     ax[0].set_title(
         (
             f"KL Divergence vs Selectivity\nValency 2 (r = {kl_corr_valency_2:.3f}), ",
@@ -327,5 +306,5 @@ def makeFigure():
         for spine in a.spines.values():
             spine.set_linewidth(1.5)
         a.legend(fontsize=12, loc="best")
-    
+
     return f
