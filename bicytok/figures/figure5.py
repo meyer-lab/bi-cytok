@@ -80,10 +80,7 @@ def makeFigure():
     allTargets = [
         ["CD25", "CD278"],
         ["CD25", "CD4-1"],
-        ["CD25", "CD45RB"]
-        ]   
-        
-    '''
+        ["CD25", "CD45RB"],
         ["CD27", "CD45RB"],
         ["CD25", "CD25"],
         ["CD278", "CD28"],
@@ -114,7 +111,7 @@ def makeFigure():
         ["CD4-2", "CD278"],
         ["CD122", "CD278"],
         ["CD278", "CD278"],]
-        '''
+
     
 
     dose = 10e-2
@@ -147,7 +144,7 @@ def makeFigure():
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
     sampleDF = sample_receptor_abundances(
         CITE_DF=epitopesDF,
-        numCells=min(sample_size, epitopesDF.shape[0]),
+        numCells=min(sample_size_dist, epitopesDF.shape[0]),
         targCellType=targCell,
         offTargCellTypes=offTargCells,
     )
