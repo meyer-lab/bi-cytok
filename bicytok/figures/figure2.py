@@ -28,62 +28,78 @@ Identifies the top 5 markers with the highest KL divergence
 - Each plot is labeled with marker names on the y-axis
     and their respective values (KL or EMD) on the x-axis.
 """
+from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
+from ..selectivity_funcs import sample_receptor_abundances
 from ..distance_metric_funcs import KL_EMD_1D
 from ..imports import importCITE
 from .common import getSetup
+
+path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
     ax, f = getSetup((8, 8), (1, 2))
 
     targCell = "Treg"
-    offTargState = 1
-    # receptors_of_interest = ["CD25", "CD35"]
+    # receptors_of_interest = ["CD25", "CD4-1"]
     receptors_of_interest = None
+    sample_size = 160000
+    cellTypes = np.array(
+        [
+            "CD8 Naive",
+            "NK",
+            "CD8 TEM",
+            "CD4 Naive",
+            "CD4 CTL",
+            "CD8 TCM",
+            "CD8 Proliferating",
+            "Treg",
+        ]
+    )
+    offTargCells = cellTypes[cellTypes != targCell]
+    cell_categorization = "CellType2"
 
-    assert isinstance(offTargState, int)
-    assert any(np.array([0, 1, 2]) == offTargState)
-    assert not (targCell == "Treg Naive" and offTargState == 2)
-
+    epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
+    epitopes = list(epitopesList["Epitope"].unique())
     CITE_DF = importCITE()
 
-    assert targCell in CITE_DF["CellType2"].unique()
+    assert targCell in CITE_DF[cell_categorization].unique()
 
-    # Filter out non-marker columns
-    non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
-    marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
-    markerDF = CITE_DF.loc[:, marker_columns]
+    epitopesDF = CITE_DF[epitopes + [cell_categorization]]
+    epitopesDF = epitopesDF.loc[epitopesDF[cell_categorization].isin(cellTypes)]
+    epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
+    sampleDF = sample_receptor_abundances(
+        CITE_DF=epitopesDF,
+        numCells=min(sample_size, epitopesDF.shape[0]),
+        targCellType=targCell,
+        offTargCellTypes=offTargCells,
+    )
     if receptors_of_interest is not None:
-        filtered_markerDF = markerDF.loc[
+        filtered_sampleDF = sampleDF.loc[
             :,
-            markerDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False),
+            sampleDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False),
         ]
     else:
-        filtered_markerDF = markerDF
+        filtered_sampleDF = sampleDF[sampleDF.columns[~sampleDF.columns.isin(["Cell Type"])]]
+    receptors_of_interest = filtered_sampleDF.columns
 
-    on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
-    off_target_conditions = {
-        0: (CITE_DF["CellType3"] != targCell),  # All non-target cells
-        1: (
-            (CITE_DF["CellType2"] != "Treg") & (CITE_DF["CellType2"] != targCell)
-        ),  # All non-Tregs and non-target cells
-        2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
-    }
-    off_target = off_target_conditions[offTargState].to_numpy()
+    on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    off_target_mask = sampleDF["Cell Type"].isin(offTargCells).to_numpy()
 
-    recAbundances = filtered_markerDF.to_numpy()
+    rec_abundances = filtered_sampleDF.to_numpy()
 
-    KL_values, EMD_values = KL_EMD_1D(recAbundances, on_target, off_target)
+    KL_values, EMD_values = KL_EMD_1D(rec_abundances, on_target_mask, off_target_mask)
 
     top_5_KL_indices = np.argsort(np.nan_to_num(KL_values))[-5:]
     top_5_EMD_indices = np.argsort(np.nan_to_num(EMD_values))[-5:]
 
     # Plot KL values
     ax[0].barh(
-        filtered_markerDF.columns[top_5_KL_indices],
+        filtered_sampleDF.columns[top_5_KL_indices],
         KL_values[top_5_KL_indices],
         color="b",
     )
@@ -93,7 +109,7 @@ def makeFigure():
 
     # Plot EMD values
     ax[1].barh(
-        filtered_markerDF.columns[top_5_EMD_indices],
+        filtered_sampleDF.columns[top_5_EMD_indices],
         EMD_values[top_5_EMD_indices],
         color="g",
     )
