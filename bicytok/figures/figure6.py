@@ -60,7 +60,6 @@ def makeFigure():
     np.random.seed(42)
 
     targCell = "Treg"
-    offTargState = 1
     receptors_of_interest = [
         "CD25",
         "CD4-1",
@@ -85,8 +84,6 @@ def makeFigure():
     )
     offTargCells = cellTypes[cellTypes != targCell]
     cell_categorization = "CellType2"
-
-    assert any(np.array([0, 1, 2]) == offTargState)
 
     epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())

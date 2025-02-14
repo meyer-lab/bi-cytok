@@ -222,7 +222,8 @@ def sample_receptor_abundances(
         numCells: number of cells to sample
         targCellType: the cell type that will be used to split target and
             off targer sampling
-        offTargCellTypes: list of cell types that are distinct from target cellss
+        offTargCellTypes: list of cell types that are distinct from target cells
+        rand_state: random seed for reproducibility
     Return:
         sampleDF: dataframe containing single cell abundances of
             receptors (column) for each individual cell (row).

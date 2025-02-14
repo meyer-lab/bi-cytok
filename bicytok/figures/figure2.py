@@ -28,14 +28,15 @@ Identifies the top 5 markers with the highest KL divergence
 - Each plot is labeled with marker names on the y-axis
     and their respective values (KL or EMD) on the x-axis.
 """
+
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from ..selectivity_funcs import sample_receptor_abundances
 from ..distance_metric_funcs import KL_EMD_1D
 from ..imports import importCITE
+from ..selectivity_funcs import sample_receptor_abundances
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent
@@ -84,7 +85,9 @@ def makeFigure():
             sampleDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False),
         ]
     else:
-        filtered_sampleDF = sampleDF[sampleDF.columns[~sampleDF.columns.isin(["Cell Type"])]]
+        filtered_sampleDF = sampleDF[
+            sampleDF.columns[~sampleDF.columns.isin(["Cell Type"])]
+        ]
     receptors_of_interest = filtered_sampleDF.columns
 
     on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()

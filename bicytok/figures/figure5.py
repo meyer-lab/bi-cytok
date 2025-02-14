@@ -69,7 +69,7 @@ def makeFigure():
     seed = 98
 
     # Parameters
-    sample_size = 100  
+    sample_size = 100
     targCell = "Treg"
     signal_receptor = "CD122"
     cplx = [(1, 1), (2, 2)]
@@ -170,16 +170,16 @@ def makeFigure():
             offTargRecs = dfOffTargCell[[signal_receptor] + targets].to_numpy()
 
             optSelec, optAffs = optimize_affs(
-                targRecs=targRecs, 
+                targRecs=targRecs,
                 offTargRecs=offTargRecs,
                 dose=dose,
                 valencies=modelValencies,
             )
             Rbound_vals.append(1 / optSelec)
             optAffs_vals.append(optAffs)
-    
+
     optAffs_vals_aggregated = [np.mean(affs) for affs in optAffs_vals]
-    
+
     # Modify valency labels
     valency_map = {"(1, 1)": "Valency 2", "(2, 2)": "Valency 4"}
     valency_labels = [valency_map[str(v)] for _ in allTargets for v in cplx]
@@ -191,8 +191,7 @@ def makeFigure():
             "KL Divergence": np.repeat(KL_div_vals, len(cplx)),
             "EMD": np.repeat(EMD_vals, len(cplx)),
             "Selectivity (Rbound)": Rbound_vals,
-            "Optimized Affinity": optAffs_vals_aggregated
-            
+            "Optimized Affinity": optAffs_vals_aggregated,
         }
     )
     # Plot KL vs Selectivity
@@ -207,9 +206,6 @@ def makeFigure():
         legend=False,
     )
 
- 
-    
-
     # Plot EMD vs Selectivity
     sns.scatterplot(
         data=metrics_df,
@@ -222,28 +218,28 @@ def makeFigure():
         legend=True,
     )
     ax[1].legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=True)
-    
+
     sns.scatterplot(
-    data=metrics_df,
-    x="KL Divergence",  # Plot against optimized affinities
-    y="Optimized Affinity",
-    hue="Receptor Pair",
-    style="Valency",
-    s=70,  # Increase point size
-    ax=ax[2],
-    legend=False,
+        data=metrics_df,
+        x="KL Divergence",  # Plot against optimized affinities
+        y="Optimized Affinity",
+        hue="Receptor Pair",
+        style="Valency",
+        s=70,  # Increase point size
+        ax=ax[2],
+        legend=False,
     )
     sns.scatterplot(
-    data=metrics_df,
-    x="EMD",  # Plot against optimized affinities
-    y="Optimized Affinity",
-    hue="Receptor Pair",
-    style="Valency",
-    s=70,  # Increase point size
-    ax=ax[3],
-    legend=False,
+        data=metrics_df,
+        x="EMD",  # Plot against optimized affinities
+        y="Optimized Affinity",
+        hue="Receptor Pair",
+        style="Valency",
+        s=70,  # Increase point size
+        ax=ax[3],
+        legend=False,
     )
-    
+
     valency_2_df = metrics_df[metrics_df["Valency"] == "Valency 2"]
     valency_4_df = metrics_df[metrics_df["Valency"] == "Valency 4"]
     valency_2_df = valency_2_df.dropna(subset=["KL Divergence", "Selectivity (Rbound)"])
@@ -289,8 +285,14 @@ def makeFigure():
         ),
         fontsize=16,
     )
-    ax[2].set_title(("Affinity vs KL Divergence"), fontsize=16,)
-    ax[3].set_title(("Affinity vs EMD"), fontsize=16,)
+    ax[2].set_title(
+        ("Affinity vs KL Divergence"),
+        fontsize=16,
+    )
+    ax[3].set_title(
+        ("Affinity vs EMD"),
+        fontsize=16,
+    )
     ax[0].set_xlabel("KL Divergence", fontsize=14)
     ax[0].set_ylabel("Selectivity (Rbound)", fontsize=14)
     ax[1].set_xlabel("EMD", fontsize=14)
