@@ -1,9 +1,13 @@
 """Generate plots to compare 1D and 2D distance metrics, which should match."""
 
 import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import PolynomialFeatures
 
 from ..distance_metric_funcs import KL_EMD_1D, KL_EMD_2D
 from ..imports import importCITE
+from ..selectivity_funcs import sample_receptor_abundances
 from .common import getSetup
 
 
@@ -11,60 +15,94 @@ def makeFigure():
     ax, f = getSetup((10, 5), (2, 2))
     np.random.seed(42)
 
+    # Parameters
     targCell = "Treg"
-    offTargState = 1
     receptors_of_interest = [
         "CD25",
         "CD4-1",
         "CD27",
         "CD4-2",
         "CD278",
-        "CD28",
-        "CD45RB",
+        "CD122",
     ]
-    sample_size = 1000
+    sample_size = 500
 
-    assert any(np.array([0, 1, 2]) == offTargState)
+    # Define non-marker columns
+    cellTypes = np.array(
+        [
+            "CD8 Naive",
+            "NK",
+            "CD8 TEM",
+            "CD4 Naive",
+            "CD4 CTL",
+            "CD8 TCM",
+            "CD8 Proliferating",
+            "Treg",
+        ]
+    )
+    offTargCells = cellTypes[cellTypes != targCell]
+    cell_categorization = "CellType2"
 
     CITE_DF = importCITE()
 
-    # Define non-marker columns
-    non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
-    marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
-    markerDF = CITE_DF.loc[:, marker_columns]
-    filtered_markerDF = markerDF.loc[
-        :,
-        markerDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False),
-    ]
-    receptors_of_interest = filtered_markerDF.columns
+    assert targCell in CITE_DF[cell_categorization].unique()
 
-    on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
-    off_target_conditions = {
-        0: (CITE_DF["CellType3"] != targCell),  # All non-memory Tregs
-        1: (
-            (CITE_DF["CellType2"] != "Treg") & (CITE_DF["CellType2"] != targCell)
-        ),  # All non-Tregs
-        2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
-    }
-    off_target = off_target_conditions[offTargState].to_numpy()
-
-    rec_abundances = filtered_markerDF.to_numpy()
-
-    # Randomly sample a subset of rows
-    subset_indices = np.random.choice(
-        len(on_target), size=min(sample_size, len(on_target)), replace=False
+    epitopesDF = CITE_DF[receptors_of_interest + [cell_categorization]]
+    epitopesDF = epitopesDF.loc[epitopesDF[cell_categorization].isin(cellTypes)]
+    epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
+    sampleDF = sample_receptor_abundances(
+        CITE_DF=epitopesDF,
+        numCells=sample_size,
+        targCellType=targCell,
+        offTargCellTypes=offTargCells,
     )
-    on_target = on_target[subset_indices]
-    off_target = off_target[subset_indices]
-    rec_abundances = rec_abundances[subset_indices]
+    rec_abundances = sampleDF[receptors_of_interest].to_numpy()
 
-    KL_div_vals_1D, EMD_vals_1D = KL_EMD_1D(rec_abundances, on_target, off_target)
+    target_mask = sampleDF["Cell Type"] == targCell
+    off_target_mask = sampleDF["Cell Type"].isin(offTargCells)
+
+    KL_div_vals_1D, EMD_vals_1D = KL_EMD_1D(
+        rec_abundances, target_mask, off_target_mask
+    )
 
     KL_div_vals_2D, EMD_vals_2D = KL_EMD_2D(
-        rec_abundances, on_target, off_target, calc_1D=True
+        rec_abundances, target_mask, off_target_mask, calc_1D=True
     )
     KL_div_vals_2D = np.diag(KL_div_vals_2D)
     EMD_vals_2D = np.diag(EMD_vals_2D)
+
+    # EMD values have exact linear scaling between 1D and 2D based on Euclidean
+    #   distance. KL divergence values have some non-linear scaling. The EMD
+    #   scaling factor does a pretty good job of approximating the KL divergence.
+    EMD_vals_2D_scaled = EMD_vals_2D * 2**0.5 / 2
+    KL_div_vals_2D_scaled = KL_div_vals_2D * 2**0.5 / 2
+
+    KL_div_r2 = 1 - np.sum((KL_div_vals_1D - KL_div_vals_2D_scaled) ** 2) / np.sum(
+        (KL_div_vals_1D - np.mean(KL_div_vals_1D)) ** 2
+    )
+    print(f"R^2 for KL divergence with EMD scaling factor: {KL_div_r2}")
+
+    # KL div polynomial model (best fit, likely overfit)
+    poly = PolynomialFeatures(degree=2)
+    kl_model = make_pipeline(poly, LinearRegression())
+    kl_model.fit(KL_div_vals_2D.reshape(-1, 1), KL_div_vals_1D)
+    print(kl_model.score(KL_div_vals_2D.reshape(-1, 1), KL_div_vals_1D))
+    print(kl_model.named_steps["linearregression"].intercept_)
+    print(kl_model.named_steps["linearregression"].coef_)
+
+    # KL div linear model (better fit than EMD scaling, worse than polynomial)
+    kl_model = LinearRegression()
+    kl_model.fit(KL_div_vals_2D.reshape(-1, 1), KL_div_vals_1D)
+    print(kl_model.score(KL_div_vals_2D.reshape(-1, 1), KL_div_vals_1D))
+    print(kl_model.intercept_)
+    print(kl_model.coef_)
+
+    # EMD linear model (perfect fit)
+    emd_model = LinearRegression()
+    emd_model.fit(EMD_vals_2D_scaled.reshape(-1, 1), EMD_vals_1D)
+    print(emd_model.score(EMD_vals_2D_scaled.reshape(-1, 1), EMD_vals_1D))
+    print(emd_model.intercept_)
+    print(emd_model.coef_)
 
     # Plot KL values
     ax[0].barh(
@@ -76,7 +114,7 @@ def makeFigure():
     ax[0].set_xlabel("1D KL Divergence")
     ax[2].barh(
         receptors_of_interest,
-        KL_div_vals_2D,
+        KL_div_vals_2D_scaled,
         color="b",
     )
     ax[2].set_title("2D KL Divergence Values")
@@ -92,7 +130,7 @@ def makeFigure():
     ax[1].set_xlabel("1D EMD")
     ax[3].barh(
         receptors_of_interest,
-        EMD_vals_2D,
+        EMD_vals_2D_scaled,
         color="g",
     )
     ax[3].set_title("2D EMD Values")
