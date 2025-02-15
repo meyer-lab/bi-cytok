@@ -5,6 +5,7 @@ as it varies with sample size.
 
 from pathlib import Path
 
+import time
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -22,8 +23,10 @@ def makeFigure():
     ax, f = getSetup((15, 5), (1, 3))
 
     # Parameters
-    sample_sizes = [50, 100, 200, 500, 1000, 2000, 5000]
-    randomizations = 100
+    # sample_sizes = [50, 100, 200, 500, 1000, 2000, 5000]
+    # randomizations = 20
+    sample_sizes = [50, 100, 200]
+    randomizations = 5
 
     targCell = "Treg"
     signal_receptor = "CD122"
@@ -85,9 +88,11 @@ def makeFigure():
 
             # Calculate distance metrics
             rec_abundances = rand_samples[targets].to_numpy()
+            time_start_dist = time.time()
             KL_div_mat, EMD_mat = KL_EMD_2D(
                 rec_abundances, target_mask, off_target_mask, calc_1D=False
             )
+            time_ellapsed_dist = time.time() - time_start_dist
             KL_div = KL_div_mat[1, 0]
             EMD = EMD_mat[1, 0]
 
@@ -98,12 +103,14 @@ def makeFigure():
             off_targ_recs = off_targ_df[[signal_receptor] + targets].to_numpy()
 
             # Calculate selectivity and affinities
+            time_start_mod = time.time()
             opt_selec, opt_affs = optimize_affs(
                 targRecs=targ_recs,
                 offTargRecs=off_targ_recs,
                 dose=dose,
                 valencies=valencies,
             )
+            time_ellapsed_mod = time.time() - time_start_mod
 
             metrics.append(
                 {
@@ -112,10 +119,12 @@ def makeFigure():
                     "EMD": EMD,
                     "selectivity": 1 / opt_selec,
                     "affinities": opt_affs,
+                    "model_time": time_ellapsed_mod,
+                    "distance_metric_time": time_ellapsed_dist,
                 }
             )
 
-    metrics_df = pd.DataFrame(metrics)
+    metrics_df = pd.DataFrame(metrics)    
 
     # Plotting
     sns.boxplot(x="sample_size", y="KL_div", data=metrics_df, ax=ax[0])
@@ -134,5 +143,11 @@ def makeFigure():
     ax[2].set_ylabel("Selectivity")
 
     plt.tight_layout()
+
+    # Print average run times
+    # Note: the EMD and KL div times are both included in the distance time, but 
+    #   KL runtimes are negligible compared to EMD.
+    avg_times = metrics_df.groupby("sample_size")[["model_time", "distance_metric_time"]].mean().reset_index()
+    print(avg_times.to_string(index=False))
 
     return f
