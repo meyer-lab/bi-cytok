@@ -176,9 +176,9 @@ def makeFigure():
                 valencies=modelValencies,
             )
             Rbound_vals.append(1 / optSelec)
-            optAffs_vals.append(optAffs)
+            optAffs_vals.extend(optAffs)
 
-    optAffs_vals_aggregated = [np.mean(affs) for affs in optAffs_vals]
+    optAffs_vals_aggregated = optAffs_vals
 
     # Modify valency labels
     valency_map = {"(1, 1)": "Valency 2", "(2, 2)": "Valency 4"}
@@ -191,10 +191,12 @@ def makeFigure():
             "KL Divergence": np.repeat(KL_div_vals, len(cplx)),
             "EMD": np.repeat(EMD_vals, len(cplx)),
             "Selectivity (Rbound)": Rbound_vals,
-            "Optimized Affinity": optAffs_vals_aggregated,
+            "Optimized Affinity": optAffs_vals,
+            "Receptor": np.tile(targets, len(optAffs_vals) // len(targets)),
+            
         }
     )
-    # Plot KL vs Selectivity
+    # Plot KL vs Selectivity 
     sns.scatterplot(
         data=metrics_df,
         x="KL Divergence",
