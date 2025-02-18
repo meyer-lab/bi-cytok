@@ -63,7 +63,7 @@ path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
-    ax, f = getSetup((35, 7), (1, 4))
+    ax, f = getSetup((14, 7), (1, 2))
 
     np.random.seed(98)
     seed = 98
@@ -149,7 +149,6 @@ def makeFigure():
     # Define target and off-target cell dataframes (for model)
     dfTargCell = sampleDF.loc[on_target_mask]
     dfOffTargCell = sampleDF.loc[off_target_mask]
-    optAffs_vals = []
     KL_div_vals = []
     EMD_vals = []
     Rbound_vals = []
@@ -176,9 +175,8 @@ def makeFigure():
                 valencies=modelValencies,
             )
             Rbound_vals.append(1 / optSelec)
-            optAffs_vals.extend(optAffs)
+            
 
-    optAffs_vals_aggregated = optAffs_vals
 
     # Modify valency labels
     valency_map = {"(1, 1)": "Valency 2", "(2, 2)": "Valency 4"}
@@ -191,8 +189,6 @@ def makeFigure():
             "KL Divergence": np.repeat(KL_div_vals, len(cplx)),
             "EMD": np.repeat(EMD_vals, len(cplx)),
             "Selectivity (Rbound)": Rbound_vals,
-            "Optimized Affinity": optAffs_vals,
-            "Receptor": np.tile(targets, len(optAffs_vals) // len(targets)),
             
         }
     )
@@ -221,26 +217,6 @@ def makeFigure():
     )
     ax[1].legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=True)
 
-    sns.scatterplot(
-        data=metrics_df,
-        x="KL Divergence",  # Plot against optimized affinities
-        y="Optimized Affinity",
-        hue="Receptor Pair",
-        style="Valency",
-        s=70,  # Increase point size
-        ax=ax[2],
-        legend=False,
-    )
-    sns.scatterplot(
-        data=metrics_df,
-        x="EMD",  # Plot against optimized affinities
-        y="Optimized Affinity",
-        hue="Receptor Pair",
-        style="Valency",
-        s=70,  # Increase point size
-        ax=ax[3],
-        legend=False,
-    )
 
     valency_2_df = metrics_df[metrics_df["Valency"] == "Valency 2"]
     valency_4_df = metrics_df[metrics_df["Valency"] == "Valency 4"]
@@ -287,22 +263,13 @@ def makeFigure():
         ),
         fontsize=16,
     )
-    ax[2].set_title(
-        ("Affinity vs KL Divergence"),
-        fontsize=16,
-    )
-    ax[3].set_title(
-        ("Affinity vs EMD"),
-        fontsize=16,
-    )
+
+    
     ax[0].set_xlabel("KL Divergence", fontsize=14)
     ax[0].set_ylabel("Selectivity (Rbound)", fontsize=14)
     ax[1].set_xlabel("EMD", fontsize=14)
     ax[1].set_ylabel("Selectivity (Rbound)", fontsize=14)
-    ax[2].set_xlabel("KL Divergence", fontsize=14)
-    ax[2].set_ylabel("Affinity", fontsize=14)
-    ax[3].set_xlabel("EMD", fontsize=14)
-    ax[3].set_ylabel("Affinity", fontsize=14)
+
 
     for a in ax:
         a.tick_params(axis="both", labelsize=12)
