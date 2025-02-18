@@ -29,8 +29,8 @@ from pathlib import Path
 
 import numpy as np
 
-from ..imports import importCITE
-from ..selectivity_funcs import optimize_affs, sample_receptor_abundances
+from ..imports import importCITE, sample_receptor_abundances
+from ..selectivity_funcs import optimize_affs
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent

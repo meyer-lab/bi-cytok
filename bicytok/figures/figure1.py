@@ -21,11 +21,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from ..imports import importCITE
+from ..imports import importCITE, sample_receptor_abundances
 from ..selectivity_funcs import (
     get_cell_bindings,
     optimize_affs,
-    sample_receptor_abundances,
 )
 from .common import getSetup
 

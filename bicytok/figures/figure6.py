@@ -48,8 +48,7 @@ import pandas as pd
 import seaborn as sns
 
 from ..distance_metric_funcs import KL_EMD_2D
-from ..imports import importCITE
-from ..selectivity_funcs import sample_receptor_abundances
+from ..imports import importCITE, sample_receptor_abundances
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent

@@ -12,8 +12,8 @@ import pandas as pd
 import seaborn as sns
 
 from ..distance_metric_funcs import KL_EMD_2D
-from ..imports import importCITE
-from ..selectivity_funcs import optimize_affs, sample_receptor_abundances
+from ..imports import importCITE, sample_receptor_abundances
+from ..selectivity_funcs import optimize_affs
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent
@@ -24,7 +24,7 @@ def makeFigure():
 
     # Parameters
     sample_sizes = [50, 100, 200]
-    randomizations = 5
+    randomizations = 2
 
     targCell = "Treg"
     signal_receptor = "CD122"

@@ -7,7 +7,7 @@ import pandas as pd
 from scipy import stats
 from sklearn.neighbors import KernelDensity
 
-from bicytok.imports import importCITE
+from .imports import importCITE, sample_receptor_abundances
 
 path_here = Path(__file__).parent.parent
 
@@ -180,50 +180,51 @@ def make_2D_distance_metrics():
 
     targCell = "Treg"
     offTargState = 1
-    receptors_of_interest = None
-    sample_size = None
+    receptors_of_interest = None # Can be a list of receptors or None
+    sample_size = 1000
+    cell_categorization = "CellType2"
+    cellTypes = np.array(
+        [
+            "CD8 Naive",
+            "NK",
+            "CD8 TEM",
+            "CD4 Naive",
+            "CD4 CTL",
+            "CD8 TCM",
+            "CD8 Proliferating",
+            "Treg",
+        ]
+    )
+    offTargCells = cellTypes[cellTypes != targCell]
 
     assert any(np.array([0, 1, 2]) == offTargState)
 
+    epitopesList = pd.read_csv(path_here / "bicytok" / "data" / "epitopeList.csv")
+    epitopes = list(epitopesList["Epitope"].unique())
     CITE_DF = importCITE()
 
-    # Define non-marker columns
-    non_marker_columns = ["CellType1", "CellType2", "CellType3", "Cell"]
-    marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(non_marker_columns)]
-    markerDF = CITE_DF.loc[:, marker_columns]
+    # Randomly sample a subset of rows
+    epitopesDF = CITE_DF[epitopes + [cell_categorization]]
+    epitopesDF = epitopesDF.loc[epitopesDF[cell_categorization].isin(cellTypes)]
+    epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
+    sampleDF = sample_receptor_abundances(
+        CITE_DF=epitopesDF,
+        numCells=min(sample_size, epitopesDF.shape[0]),
+        targCellType=targCell,
+        offTargCellTypes=offTargCells,
+    )
+
+    # Define target and off-target cell masks (for distance metrics)
+    on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    off_target_mask = sampleDF["Cell Type"].isin(offTargCells).to_numpy()
 
     if receptors_of_interest is not None:
-        filtered_markerDF = markerDF.loc[
-            :,
-            markerDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False),
-        ]
+        rec_abundances = sampleDF[receptors_of_interest].to_numpy()
     else:
-        filtered_markerDF = markerDF
-    receptors_of_interest = filtered_markerDF.columns
-
-    on_target = (CITE_DF["CellType2"] == targCell).to_numpy()
-    off_target_conditions = {
-        0: (CITE_DF["CellType3"] != targCell),  # All non-memory Tregs
-        1: (
-            (CITE_DF["CellType2"] != "Treg") & (CITE_DF["CellType2"] != targCell)
-        ),  # All non-Tregs
-        2: (CITE_DF["CellType3"] == "Treg Naive"),  # Naive Tregs
-    }
-    off_target = off_target_conditions[offTargState].to_numpy()
-
-    rec_abundances = filtered_markerDF.to_numpy()
-
-    # Randomly sample a subset of rows
-    if sample_size is not None:
-        subset_indices = np.random.choice(
-            len(on_target), size=min(sample_size, len(on_target)), replace=False
-        )
-        on_target = on_target[subset_indices]
-        off_target = off_target[subset_indices]
-        rec_abundances = rec_abundances[subset_indices]
+        rec_abundances = sampleDF[epitopes].to_numpy()
 
     KL_div_vals, EMD_vals = KL_EMD_2D(
-        rec_abundances, on_target, off_target, calc_1D=True
+        rec_abundances, on_target_mask, off_target_mask, calc_1D=True
     )
 
     EMD_matrix = np.tril(EMD_vals, k=0)

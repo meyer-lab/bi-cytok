@@ -35,8 +35,7 @@ import numpy as np
 import pandas as pd
 
 from ..distance_metric_funcs import KL_EMD_1D
-from ..imports import importCITE
-from ..selectivity_funcs import sample_receptor_abundances
+from ..imports import importCITE, sample_receptor_abundances
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent

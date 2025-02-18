@@ -55,8 +55,8 @@ import seaborn as sns
 from scipy.stats import pearsonr
 
 from ..distance_metric_funcs import KL_EMD_2D
-from ..imports import importCITE
-from ..selectivity_funcs import optimize_affs, sample_receptor_abundances
+from ..imports import importCITE, sample_receptor_abundances
+from ..selectivity_funcs import optimize_affs
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent
