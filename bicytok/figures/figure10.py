@@ -20,11 +20,9 @@ path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
-    ax, f = getSetup((15, 5), (1, 3))
+    ax, f = getSetup((15, 5), (1, 4))
 
     # Parameters
-    # sample_sizes = [50, 100, 200, 500, 1000, 2000, 5000]
-    # randomizations = 20
     sample_sizes = [50, 100, 200]
     randomizations = 5
 
@@ -124,7 +122,9 @@ def makeFigure():
                 }
             )
 
-    metrics_df = pd.DataFrame(metrics)    
+    metrics_df = pd.DataFrame(metrics)  
+
+    print(metrics_df)  
 
     # Plotting
     sns.boxplot(x="sample_size", y="KL_div", data=metrics_df, ax=ax[0])
@@ -141,6 +141,20 @@ def makeFigure():
     ax[2].set_title("Selectivity")
     ax[2].set_xlabel("Sample Size")
     ax[2].set_ylabel("Selectivity")
+
+    # Extract affinities into separate columns
+    affinities_df = pd.DataFrame(metrics_df["affinities"].tolist(), columns=["aff1", "aff2", "aff3"])
+    affinities_df["sample_size"] = metrics_df["sample_size"]
+
+    # Melt the dataframe for seaborn
+    affinities_melted = affinities_df.melt(id_vars=["sample_size"], value_vars=["aff1", "aff2", "aff3"], 
+                                           var_name="Affinity", value_name="Value")
+
+    sns.boxplot(x="sample_size", y="Value", hue="Affinity", data=affinities_melted, ax=ax[3])
+    ax[3].set_title("Affinities")
+    ax[3].set_xlabel("Sample Size")
+    ax[3].set_ylabel("Affinity Value")
+    ax[3].legend(title="Affinity")
 
     plt.tight_layout()
 
