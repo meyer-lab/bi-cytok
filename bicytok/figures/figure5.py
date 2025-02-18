@@ -54,7 +54,7 @@ import pandas as pd
 import seaborn as sns
 from scipy.stats import pearsonr
 
-from ..distance_metric_funcs import KL_EMD_2D
+from ..distance_metric_funcs import KL_EMD_2D, KL_EMD_1D
 from ..imports import importCITE, sample_receptor_abundances
 from ..selectivity_funcs import optimize_affs
 from .common import getSetup
@@ -108,6 +108,7 @@ def makeFigure():
         ["CD122", "CD278"],
         ["CD278", "CD278"],
     ]
+
     dose = 10e-2
     cellTypes = np.array(
         [
@@ -149,18 +150,79 @@ def makeFigure():
     # Define target and off-target cell dataframes (for model)
     dfTargCell = sampleDF.loc[on_target_mask]
     dfOffTargCell = sampleDF.loc[off_target_mask]
+    receptors_of_interest = [
+        "CD25",
+        "CD4-1",
+        "CD27",
+        "CD4-2",
+        "CD278",
+        "CD122",
+    ]
+    rec_abundances = sampleDF[receptors_of_interest].to_numpy()
     KL_div_vals = []
     EMD_vals = []
     Rbound_vals = []
+    KL_div_vals_1D, EMD_vals_1D = KL_EMD_1D(rec_abundances, on_target_mask, off_target_mask)
+    for targets in receptors_of_interest:
+        for valency_pair in cplx:
+            modelValencies = np.array([[1] + list(valency_pair)])
+            #targRecs = dfTargCell[[signal_receptor] + targets].to_numpy()
+            #offTargRecs = dfOffTargCell[[signal_receptor] + targets].to_numpy()
+            targRecs = dfTargCell[[signal_receptor, targets]].to_numpy()  
+            offTargRecs = dfOffTargCell[[signal_receptor, targets]].to_numpy()  
+        
+
+            optSelec, optAffs = optimize_affs(
+                targRecs=targRecs,
+                offTargRecs=offTargRecs,
+                dose=dose,
+                valencies=modelValencies,
+            )
+            Rbound_vals.append(1 / optSelec)
+
+    data = pd.DataFrame({
+        'Rbound': Rbound_vals,
+        'KL Divergence': KL_div_vals_1D,
+        'EMD': EMD_vals_1D,
+        "Receptor": [str(receptor) for receptor in receptors_of_interest for _ in cplx],
+
+    })
+    sns.scatterplot(
+        data=data,
+        x="KL Divergence",
+        y="Selectivity (Rbound)",
+        hue="Receptor",
+        style="Valency",
+        s=70,  
+        ax=ax[0],
+        legend=False,
+    )
+    sns.scatterplot(
+        data=data,
+        x="EMD",
+        y="Selectivity (Rbound)",
+        hue="Receptor",
+        style="Valency",
+        s=70,  
+        ax=ax[1],
+        legend=True,
+    )
+
+    ax[1].legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=True)
+
+    '''
     for targets in allTargets:
         rec_abundances = sampleDF[targets].to_numpy()
         KL_div_mat, EMD_mat = KL_EMD_2D(
             rec_abundances, on_target_mask, off_target_mask, calc_1D=False
         )
+    
         KL_div = KL_div_mat[1, 0]
         EMD = EMD_mat[1, 0]
         KL_div_vals.append(KL_div)
         EMD_vals.append(EMD)
+    
+
 
         # Selectivity calculation for each valency
         for valency_pair in cplx:
@@ -178,10 +240,13 @@ def makeFigure():
             
 
 
-    # Modify valency labels
     valency_map = {"(1, 1)": "Valency 2", "(2, 2)": "Valency 4"}
     valency_labels = [valency_map[str(v)] for _ in allTargets for v in cplx]
-
+    
+    
+    
+    
+    
     metrics_df = pd.DataFrame(
         {
             "Receptor Pair": [str(pair) for pair in allTargets for _ in cplx],
@@ -216,7 +281,7 @@ def makeFigure():
         legend=True,
     )
     ax[1].legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=True)
-
+    
 
     valency_2_df = metrics_df[metrics_df["Valency"] == "Valency 2"]
     valency_4_df = metrics_df[metrics_df["Valency"] == "Valency 4"]
@@ -269,7 +334,7 @@ def makeFigure():
     ax[0].set_ylabel("Selectivity (Rbound)", fontsize=14)
     ax[1].set_xlabel("EMD", fontsize=14)
     ax[1].set_ylabel("Selectivity (Rbound)", fontsize=14)
-
+    '''
 
     for a in ax:
         a.tick_params(axis="both", labelsize=12)
