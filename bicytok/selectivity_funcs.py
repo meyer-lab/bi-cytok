@@ -3,7 +3,6 @@ Functions used in binding and selectivity analysis
 """
 
 import numpy as np
-import pandas as pd
 from scipy.optimize import Bounds, minimize
 
 from .binding_model_funcs import cyt_binding_model
@@ -152,114 +151,6 @@ def optimize_affs(
     optAffs = optimizer.x
 
     return optSelect, optAffs
-
-
-# Sam: reimplement this function when we have a clearer idea
-#   of how to calculate conversion factors
-def calc_conv_facts() -> tuple[dict, float]:
-    """
-    Returns conversion factors by marker for converting CITEseq signal into abundance
-    """
-
-    # cellTypes = [
-    #     "CD4 TCM",
-    #     "CD8 Naive",
-    #     "NK",
-    #     "CD8 TEM",
-    #     "CD4 Naive",
-    #     "CD4 CTL",
-    #     "CD8 TCM",
-    #     "Treg",
-    #     "CD4 TEM",
-    # ]
-    # markers = ["CD122", "CD127", "CD25"]
-    # markDict = {
-    #     "CD25": "IL2Ra",
-    #     "CD122": "IL2Rb",
-    #     "CD127": "IL7Ra",
-    #     "CD132": "gc"
-    # }
-    # cellDict = {
-    #     "CD4 Naive": "Thelper",
-    #     "CD4 CTL": "Thelper",
-    #     "CD4 TCM": "Thelper",
-    #     "CD4 TEM": "Thelper",
-    #     "NK": "NK",
-    #     "CD8 Naive": "CD8",
-    #     "CD8 TCM": "CD8",
-    #     "CD8 TEM": "CD8",
-    #     "Treg": "Treg",
-    # }
-
-    # Sam: calculation of these conversion factors was unclear, should be revised
-    origConvFactDict = {
-        "CD25": 77.136987,
-        "CD122": 332.680090,
-        "CD127": 594.379215,
-    }
-    convFactDict = origConvFactDict.copy()
-    defaultConvFact = np.mean(list(origConvFactDict.values()))
-
-    return convFactDict, defaultConvFact
-
-
-# Called in Figure1, Figure3, Figure4, and Figure5
-def sample_receptor_abundances(
-    CITE_DF: pd.DataFrame,
-    numCells: int,
-    targCellType: str,
-    offTargCellTypes: list[str],
-    rand_state: int = 42,
-) -> pd.DataFrame:
-    """
-    Samples a subset of cells and converts unprocessed CITE-seq receptor values
-        into abundance values. Samples an equal number of target and off target cells.
-    Args:
-        CITE_DF: dataframe of unprocessed CITE-seq receptor counts
-            of different receptors/epitopes (columns) on single cells (row).
-            Epitopes are filtered outside of this function.
-            The final column should be the cell types of each cell.
-        numCells: number of cells to sample
-        targCellType: the cell type that will be used to split target and
-            off targer sampling
-        offTargCellTypes: list of cell types that are distinct from target cells
-        rand_state: random seed for reproducibility
-    Return:
-        sampleDF: dataframe containing single cell abundances of
-            receptors (column) for each individual cell (row).
-            The final column is the cell type of each cell.
-    """
-
-    assert numCells <= CITE_DF.shape[0]
-    assert "Cell Type" in CITE_DF.columns
-
-    # Sample an equal number of target and off-target cells
-    target_cells = CITE_DF[CITE_DF["Cell Type"] == targCellType]
-    off_target_cells = CITE_DF[CITE_DF["Cell Type"].isin(offTargCellTypes)]
-
-    num_target_cells = numCells // 2
-    num_off_target_cells = numCells - num_target_cells
-
-    sampled_target_cells = target_cells.sample(
-        min(num_target_cells, target_cells.shape[0]), random_state=rand_state
-    )
-    sampled_off_target_cells = off_target_cells.sample(
-        min(num_off_target_cells, off_target_cells.shape[0]),
-        random_state=rand_state,
-    )
-
-    sampleDF = pd.concat([sampled_target_cells, sampled_off_target_cells])
-
-    # Calculate conversion factors for each epitope
-    convFactDict, defaultConvFact = calc_conv_facts()
-
-    # Multiply the receptor counts of epitope by the conversion factor for that epitope
-    epitopes = CITE_DF.columns[CITE_DF.columns != "Cell Type"]
-    convFacts = [convFactDict.get(epitope, defaultConvFact) for epitope in epitopes]
-
-    sampleDF[epitopes] = sampleDF[epitopes] * convFacts
-
-    return sampleDF
 
 
 # Called in Figure1 and Figure3

@@ -10,12 +10,11 @@ import pytest
 
 from ..binding_model_funcs import cyt_binding_model
 from ..distance_metric_funcs import KL_EMD_1D, KL_EMD_2D
-from ..imports import importCITE
+from ..imports import importCITE, sample_receptor_abundances
 from ..selectivity_funcs import (
     min_off_targ_selec,
     optimize_affs,
     restructure_affs,
-    sample_receptor_abundances,
 )
 
 path_here = Path(__file__).parent.parent

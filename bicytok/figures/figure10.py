@@ -3,30 +3,28 @@ Figure serves to visualize the variability of the distance metrics and selectivi
 as it varies with sample size.
 """
 
+import time
 from pathlib import Path
 
-import time
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
 from ..distance_metric_funcs import KL_EMD_2D
-from ..imports import importCITE
-from ..selectivity_funcs import optimize_affs, sample_receptor_abundances
+from ..imports import importCITE, sample_receptor_abundances
+from ..selectivity_funcs import optimize_affs
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
-    ax, f = getSetup((15, 5), (1, 3))
+    ax, f = getSetup((15, 5), (1, 4))
 
     # Parameters
-    # sample_sizes = [50, 100, 200, 500, 1000, 2000, 5000]
-    # randomizations = 20
     sample_sizes = [50, 100, 200]
-    randomizations = 5
+    randomizations = 2
 
     targCell = "Treg"
     signal_receptor = "CD122"
@@ -124,7 +122,9 @@ def makeFigure():
                 }
             )
 
-    metrics_df = pd.DataFrame(metrics)    
+    metrics_df = pd.DataFrame(metrics)
+
+    print(metrics_df)
 
     # Plotting
     sns.boxplot(x="sample_size", y="KL_div", data=metrics_df, ax=ax[0])
@@ -142,12 +142,38 @@ def makeFigure():
     ax[2].set_xlabel("Sample Size")
     ax[2].set_ylabel("Selectivity")
 
+    # Extract affinities into separate columns
+    affinities_df = pd.DataFrame(
+        metrics_df["affinities"].tolist(), columns=["aff1", "aff2", "aff3"]
+    )
+    affinities_df["sample_size"] = metrics_df["sample_size"]
+
+    # Melt the dataframe for seaborn
+    affinities_melted = affinities_df.melt(
+        id_vars=["sample_size"],
+        value_vars=["aff1", "aff2", "aff3"],
+        var_name="Affinity",
+        value_name="Value",
+    )
+
+    sns.boxplot(
+        x="sample_size", y="Value", hue="Affinity", data=affinities_melted, ax=ax[3]
+    )
+    ax[3].set_title("Affinities")
+    ax[3].set_xlabel("Sample Size")
+    ax[3].set_ylabel("Affinity Value")
+    ax[3].legend(title="Affinity")
+
     plt.tight_layout()
 
     # Print average run times
-    # Note: the EMD and KL div times are both included in the distance time, but 
+    # Note: the EMD and KL div times are both included in the distance time, but
     #   KL runtimes are negligible compared to EMD.
-    avg_times = metrics_df.groupby("sample_size")[["model_time", "distance_metric_time"]].mean().reset_index()
+    avg_times = (
+        metrics_df.groupby("sample_size")[["model_time", "distance_metric_time"]]
+        .mean()
+        .reset_index()
+    )
     print(avg_times.to_string(index=False))
 
     return f

@@ -6,8 +6,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 
 from ..distance_metric_funcs import KL_EMD_1D, KL_EMD_2D
-from ..imports import importCITE
-from ..selectivity_funcs import sample_receptor_abundances
+from ..imports import importCITE, sample_receptor_abundances
 from .common import getSetup
 
 
