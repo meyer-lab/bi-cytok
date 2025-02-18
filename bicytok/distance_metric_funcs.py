@@ -180,7 +180,7 @@ def make_2D_distance_metrics():
 
     targCell = "Treg"
     offTargState = 1
-    receptors_of_interest = None # Can be a list of receptors or None
+    receptors_of_interest = None  # Can be a list of receptors or None
     sample_size = 1000
     cell_categorization = "CellType2"
     cellTypes = np.array(

@@ -3,9 +3,9 @@ Figure serves to visualize the variability of the distance metrics and selectivi
 as it varies with sample size.
 """
 
+import time
 from pathlib import Path
 
-import time
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -122,9 +122,9 @@ def makeFigure():
                 }
             )
 
-    metrics_df = pd.DataFrame(metrics)  
+    metrics_df = pd.DataFrame(metrics)
 
-    print(metrics_df)  
+    print(metrics_df)
 
     # Plotting
     sns.boxplot(x="sample_size", y="KL_div", data=metrics_df, ax=ax[0])
@@ -143,14 +143,22 @@ def makeFigure():
     ax[2].set_ylabel("Selectivity")
 
     # Extract affinities into separate columns
-    affinities_df = pd.DataFrame(metrics_df["affinities"].tolist(), columns=["aff1", "aff2", "aff3"])
+    affinities_df = pd.DataFrame(
+        metrics_df["affinities"].tolist(), columns=["aff1", "aff2", "aff3"]
+    )
     affinities_df["sample_size"] = metrics_df["sample_size"]
 
     # Melt the dataframe for seaborn
-    affinities_melted = affinities_df.melt(id_vars=["sample_size"], value_vars=["aff1", "aff2", "aff3"], 
-                                           var_name="Affinity", value_name="Value")
+    affinities_melted = affinities_df.melt(
+        id_vars=["sample_size"],
+        value_vars=["aff1", "aff2", "aff3"],
+        var_name="Affinity",
+        value_name="Value",
+    )
 
-    sns.boxplot(x="sample_size", y="Value", hue="Affinity", data=affinities_melted, ax=ax[3])
+    sns.boxplot(
+        x="sample_size", y="Value", hue="Affinity", data=affinities_melted, ax=ax[3]
+    )
     ax[3].set_title("Affinities")
     ax[3].set_xlabel("Sample Size")
     ax[3].set_ylabel("Affinity Value")
@@ -159,9 +167,13 @@ def makeFigure():
     plt.tight_layout()
 
     # Print average run times
-    # Note: the EMD and KL div times are both included in the distance time, but 
+    # Note: the EMD and KL div times are both included in the distance time, but
     #   KL runtimes are negligible compared to EMD.
-    avg_times = metrics_df.groupby("sample_size")[["model_time", "distance_metric_time"]].mean().reset_index()
+    avg_times = (
+        metrics_df.groupby("sample_size")[["model_time", "distance_metric_time"]]
+        .mean()
+        .reset_index()
+    )
     print(avg_times.to_string(index=False))
 
     return f
