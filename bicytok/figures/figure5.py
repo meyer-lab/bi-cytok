@@ -108,7 +108,6 @@ def makeFigure():
         ["CD122", "CD278"],
         ["CD278", "CD278"],
     ]
-    #allTargets = ["CD25", "CD278", "CD4-1", "CD45RB", "CD28", "CD122", "TIGIT", "TCR-2"]
 
     dose = 10e-2
     cellTypes = np.array(
@@ -277,7 +276,6 @@ def makeFigure():
     ax[0].set_ylabel("Selectivity (Rbound)", fontsize=14)
     ax[1].set_xlabel("EMD", fontsize=14)
     ax[1].set_ylabel("Selectivity (Rbound)", fontsize=14)
-    '''
 
     for a in ax:
         a.tick_params(axis="both", labelsize=12)
