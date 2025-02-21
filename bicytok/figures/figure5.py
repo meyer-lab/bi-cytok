@@ -68,6 +68,7 @@ def makeFigure():
     np.random.seed(98)
     seed = 98
 
+    '''
     # Parameters
     sample_size = 100
     targCell = "Treg"
@@ -283,5 +284,83 @@ def makeFigure():
         for spine in a.spines.values():
             spine.set_linewidth(1.5)
         a.legend(fontsize=12, loc="best")
+    '''
+    receptors = np.array(["CD25", "CD278", "CD4-1", "CD45RB", "CD27", "CD45RB", "CD28", "TCR-2", "TIGIT"])
+    signal_receptor = "CD122"
+    selectivity_values = []
+    kl_values = []
+    emd_values = []
+    sample_size = 100
 
+    valencies = [(1, 1), (2, 2)]
+    dose = 10e-2
+    cellTypes = np.array(
+        [
+            "CD8 Naive",
+            "NK",
+            "CD8 TEM",
+            "CD4 Naive",
+            "CD4 CTL",
+            "CD8 TCM",
+            "CD8 Proliferating",
+            "Treg",
+        ]
+    )
+    offTargCells = cellTypes[cellTypes != targCell]
+    cell_categorization = "CellType2"
+
+    # Imports
+    epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
+    epitopes = list(epitopesList["Epitope"].unique())
+    CITE_DF = importCITE()
+
+    assert targCell in CITE_DF[cell_categorization].unique()
+
+    # Randomly sample a subset of rows
+    epitopesDF = CITE_DF[epitopes + [cell_categorization]]
+    epitopesDF = epitopesDF.loc[epitopesDF[cell_categorization].isin(cellTypes)]
+    epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
+    sampleDF = sample_receptor_abundances(
+        CITE_DF=epitopesDF,
+        numCells=min(sample_size, epitopesDF.shape[0]),
+        targCellType=targCell,
+        offTargCellTypes=offTargCells,
+    )
+
+    # Define target and off-target cell masks (for distance metrics)
+    on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    off_target_mask = sampleDF["Cell Type"].isin(offTargCells).to_numpy()
+
+    # Define target and off-target cell dataframes (for model)
+    dfTargCell = sampleDF.loc[on_target_mask]
+    dfOffTargCell = sampleDF.loc[off_target_mask]
+    
+    for receptor in receptors:
+        if receptor == signal_receptor:
+            continue
+        
+        # Extract receptor data
+        signal_idx = np.where(receptors == signal_receptor)[0][0]
+        receptor_idx = np.where(receptors == receptor)[0][0]
+        targRecs = dfTargCell[[signal_receptor] + targets].to_numpy()
+        offTargRecs = dfOffTargCell[[signal_receptor] + targets].to_numpy()
+
+        # Run selectivity optimization
+        opt_selec, _ = optimize_affs(
+            
+            targRecs[:, [signal_idx, receptor_idx]], 
+            offTargRecs[:, [signal_idx, receptor_idx]], 
+            dose, valencies
+        )
+        selectivity_values.append(opt_selec)
+        
+        # Compute KL divergence
+        kl_div = KL_EMD_1D(targRecs[:, signal_idx], targRecs[:, receptor_idx])
+        kl_values.append(kl_div)
+        
+        # Compute EMD
+        emd_value = EMD_1D(targRecs[:, signal_idx], targRecs[:, receptor_idx])
+        emd_values.append(emd_value)
+    
+    return selectivity_values, kl_values, emd_values
     return f
