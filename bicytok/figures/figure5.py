@@ -63,12 +63,13 @@ path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
+    '''
     ax, f = getSetup((14, 7), (1, 2))
 
     np.random.seed(98)
     seed = 98
 
-    '''
+    
     # Parameters
     sample_size = 100
     targCell = "Treg"
@@ -285,14 +286,19 @@ def makeFigure():
             spine.set_linewidth(1.5)
         a.legend(fontsize=12, loc="best")
     '''
-    receptors = np.array(["CD25", "CD278", "CD4-1", "CD45RB", "CD27", "CD45RB", "CD28", "TCR-2", "TIGIT"])
-    signal_receptor = "CD122"
-    selectivity_values = []
-    kl_values = []
-    emd_values = []
-    sample_size = 100
+    ax, f = getSetup((14, 7), (1, 2))
 
-    valencies = [(1, 1), (2, 2)]
+    np.random.seed(98)
+    seed = 98
+    receptors = [["CD25"], ["CD278"], ["CD4-1"], ["CD27"], ["CD45RB"], ["CD28"], ["TCR-2"], ["TIGIT"]]
+    signal_receptor = "CD122"
+    Rbound_vals = []
+    KL_div_vals = []
+    EMD_vals = []
+    sample_size = 100
+    targCell = "Treg"
+
+    cplx = [(1), (2)]
     dose = 10e-2
     cellTypes = np.array(
         [
@@ -306,10 +312,11 @@ def makeFigure():
             "Treg",
         ]
     )
+    
     offTargCells = cellTypes[cellTypes != targCell]
     cell_categorization = "CellType2"
 
-    # Imports
+    # Load data
     epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
     CITE_DF = importCITE()
@@ -334,33 +341,118 @@ def makeFigure():
     # Define target and off-target cell dataframes (for model)
     dfTargCell = sampleDF.loc[on_target_mask]
     dfOffTargCell = sampleDF.loc[off_target_mask]
-    
-    for receptor in receptors:
-        if receptor == signal_receptor:
-            continue
-        
-        # Extract receptor data
-        signal_idx = np.where(receptors == signal_receptor)[0][0]
-        receptor_idx = np.where(receptors == receptor)[0][0]
-        targRecs = dfTargCell[[signal_receptor] + targets].to_numpy()
-        offTargRecs = dfOffTargCell[[signal_receptor] + targets].to_numpy()
 
-        # Run selectivity optimization
-        opt_selec, _ = optimize_affs(
-            
-            targRecs[:, [signal_idx, receptor_idx]], 
-            offTargRecs[:, [signal_idx, receptor_idx]], 
-            dose, valencies
+    for receptor in receptors:
+        rec_abundances = sampleDF[receptor].to_numpy()
+        
+        KL_div_mat, EMD_mat = KL_EMD_2D(
+            rec_abundances, on_target_mask, off_target_mask, calc_1D=True
         )
-        selectivity_values.append(opt_selec)
-        
-        # Compute KL divergence
-        kl_div = KL_EMD_1D(targRecs[:, signal_idx], targRecs[:, receptor_idx])
-        kl_values.append(kl_div)
-        
-        # Compute EMD
-        emd_value = EMD_1D(targRecs[:, signal_idx], targRecs[:, receptor_idx])
-        emd_values.append(emd_value)
+        KL_div = KL_div_mat[0]
+        EMD = EMD_mat[0]
+        KL_div_vals.append(KL_div)
+        EMD_vals.append(EMD)
     
-    return selectivity_values, kl_values, emd_values
+
+
+        # Selectivity calculation for each valency
+        for valency_pair in cplx:
+            modelValencies = np.array([[1, valency_pair]])
+            targRecs = dfTargCell[[signal_receptor] + receptor].to_numpy()
+            offTargRecs = dfOffTargCell[[signal_receptor] + receptor].to_numpy()
+            optSelec, optAffs = optimize_affs(
+                targRecs=targRecs,
+                offTargRecs=offTargRecs,
+                dose=dose,
+                valencies=modelValencies,
+            )
+            Rbound_vals.append(1 / optSelec)
+            
+
+
+    valency_map = {1: "Valency 2", 2: "Valency 4"}
+    valency_labels = [valency_map[v] for _ in receptors for v in cplx]
+
+
+        
+    metrics_df = pd.DataFrame(
+        {
+            "Receptor Pair": [str(receptor) for receptor in receptors for _ in cplx],
+            "Valency": valency_labels,
+            "KL Divergence": np.repeat(KL_div_vals, len(cplx)),
+            "EMD": np.repeat(EMD_vals, len(cplx)),
+            "Selectivity (Rbound)": Rbound_vals,
+            
+        }
+    )
+    # Plot KL vs Selectivity 
+    sns.scatterplot(
+        data=metrics_df,
+        x="KL Divergence",
+        y="Selectivity (Rbound)",
+        hue="Receptor Pair",
+        style="Valency",
+        s=70,  
+        ax=ax[0],
+        legend=False,
+    )
+
+    # Plot EMD vs Selectivity
+    sns.scatterplot(
+        data=metrics_df,
+        x="EMD",
+        y="Selectivity (Rbound)",
+        hue="Receptor Pair",
+        style="Valency",
+        s=70,  
+        ax=ax[1],
+        legend=True,
+    )
+    ax[1].legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=True)
+    
+
+    valency_2_df = metrics_df[metrics_df["Valency"] == "Valency 2"]
+    valency_4_df = metrics_df[metrics_df["Valency"] == "Valency 4"]
+    valency_2_df = valency_2_df.dropna(subset=["KL Divergence", "Selectivity (Rbound)"])
+    valency_4_df = valency_4_df.dropna(subset=["KL Divergence", "Selectivity (Rbound)"])
+    valency_2_df = valency_2_df[
+        ~np.isinf(valency_2_df[["KL Divergence", "Selectivity (Rbound)"]].values).any(
+            axis=1
+        )
+    ]
+    valency_4_df = valency_4_df[
+        ~np.isinf(valency_4_df[["KL Divergence", "Selectivity (Rbound)"]].values).any(
+            axis=1
+        )
+    ]
+
+    # Calculate Pearson correlations for Valency 2
+    kl_corr_valency_2, _ = pearsonr(
+        valency_2_df["KL Divergence"], valency_2_df["Selectivity (Rbound)"]
+    )
+    emd_corr_valency_2, _ = pearsonr(
+        valency_2_df["EMD"], valency_2_df["Selectivity (Rbound)"]
+    )
+
+    # Calculate Pearson correlations for Valency 4
+    kl_corr_valency_4, _ = pearsonr(
+        valency_4_df["KL Divergence"], valency_4_df["Selectivity (Rbound)"]
+    )
+    emd_corr_valency_4, _ = pearsonr(
+        valency_4_df["EMD"], valency_4_df["Selectivity (Rbound)"]
+    )
+    ax[0].set_title(
+        (
+            f"KL Divergence vs Selectivity, Valency 2 (r = {kl_corr_valency_2:.3f}), ",
+            f"Valency 4 (r = {kl_corr_valency_4:.3f}, Seed = {seed})",
+        ),
+        fontsize=13,
+    )
+    ax[1].set_title(
+        (
+            f"EMD vs Selectivity, Valency 2 (r = {emd_corr_valency_2:.3f}), ",
+            f"Valency 4 (r = {emd_corr_valency_4:.3f})",
+        ),
+        fontsize=13,
+    )
     return f
