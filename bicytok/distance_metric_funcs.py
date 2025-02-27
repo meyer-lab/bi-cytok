@@ -176,10 +176,13 @@ def KL_EMD_2D(
 
 
 def make_2D_distance_metrics():
+    """
+    Generates a CSV of 2D EMD and KL Divergence values for all receptors.
+    Called with "rye run distanceCSV"
+    """
     start = time.time()
 
     targCell = "Treg"
-    offTargState = 1
     receptors_of_interest = None  # Can be a list of receptors or None
     sample_size = 1000
     cell_categorization = "CellType2"
@@ -196,8 +199,6 @@ def make_2D_distance_metrics():
         ]
     )
     offTargCells = cellTypes[cellTypes != targCell]
-
-    assert any(np.array([0, 1, 2]) == offTargState)
 
     epitopesList = pd.read_csv(path_here / "bicytok" / "data" / "epitopeList.csv")
     epitopes = list(epitopesList["Epitope"].unique())
@@ -292,21 +293,54 @@ def KL_EMD_3D(
             offTargNorms[:, rec3],
         )
 
-        assert all(
-            targAbun1 == recAbundances[targ, rec1] / np.mean(recAbundances[:, rec1])
-        )
+        if (
+            np.mean(recAbundances[:, rec1]) > 5
+            and np.mean(recAbundances[:, rec2]) > 5
+            and np.mean(recAbundances[:, rec3]) > 5
+            and np.mean(targAbun1) > np.mean(offTargAbun1)
+            and np.mean(targAbun2) > np.mean(offTargAbun2)
+            and np.mean(targAbun3) > np.mean(offTargAbun3)
+        ):
+            assert np.allclose(
+                targAbun1, recAbundances[targ, rec1] / np.mean(recAbundances[:, rec1])
+            )
 
-        targAbunAll = np.vstack((targAbun1, targAbun2, targAbun3)).transpose()
-        offTargAbunAll = np.vstack(
-            (offTargAbun1, offTargAbun2, offTargAbun3)
-        ).tranpose()  # Check that this is the same as original concat
+            targAbunAll = np.vstack((targAbun1, targAbun2, targAbun3)).transpose()
+            offTargAbunAll = np.vstack(
+                (offTargAbun1, offTargAbun2, offTargAbun3)
+            ).transpose()
 
-        assert targAbunAll.shape == (np.sum(targ), 3)
+            assert targAbunAll.shape == (np.sum(targ), 3)
 
-        KL_div_vals[rec1, rec2, rec3] = 0  # Placeholder unimplemented
+            # Estimate the 3D probability distributions of the two receptors
+            targKDE = KernelDensity(kernel="gaussian").fit(targAbunAll)
+            offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbunAll)
 
-        EMD_vals[rec1, rec2, rec3] = stats.wasserstein_distance_nd(
-            targAbunAll, offTargAbunAll
-        )
+            # Compare over the entire distribution space by looking at the
+            #   global max/min
+            minAbun = np.minimum(targAbunAll.min(), offTargAbunAll.min()) - 100
+            maxAbun = np.maximum(targAbunAll.max(), offTargAbunAll.max()) + 100
+
+            # Need a mesh grid for 2D comparison because
+            #   need to explore the entire distribution space
+            X, Y = np.mgrid[
+                minAbun : maxAbun : ((maxAbun - minAbun) / 100),
+                minAbun : maxAbun : ((maxAbun - minAbun) / 100),
+            ]
+            outcomes = np.concatenate((X.reshape(-1, 1), Y.reshape(-1, 1)), axis=1)
+
+            # Calculate the probabilities (log-likelihood)
+            #   of all X, Y combos in the mesh grid based on the estimates
+            #   of the two receptor distributions
+            targDist = np.exp(targKDE.score_samples(outcomes))
+            offTargDist = np.exp(offTargKDE.score_samples(outcomes))
+
+            KL_div_vals[rec1, rec2, rec3] = stats.entropy(
+                offTargDist + 1e-200, targDist + 1e-200, base=2
+            )
+
+            EMD_vals[rec1, rec2, rec3] = stats.wasserstein_distance_nd(
+                targAbunAll, offTargAbunAll
+            )
 
     return KL_div_vals, EMD_vals
