@@ -220,9 +220,11 @@ def make_2D_distance_metrics():
     off_target_mask = sampleDF["Cell Type"].isin(offTargCells).to_numpy()
 
     if receptors_of_interest is not None:
-        rec_abundances = sampleDF[receptors_of_interest].to_numpy()
+        sampleDF = sampleDF[receptors_of_interest]
     else:
-        rec_abundances = sampleDF[epitopes].to_numpy()
+        sampleDF = sampleDF[epitopes]
+    rec_abundances = sampleDF.to_numpy()
+    receptors_of_interest = sampleDF.columns
 
     KL_div_vals, EMD_vals = KL_EMD_2D(
         rec_abundances, on_target_mask, off_target_mask, calc_1D=True
