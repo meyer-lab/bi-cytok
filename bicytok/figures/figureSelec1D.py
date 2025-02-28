@@ -4,7 +4,6 @@ Generates a bar plot of optimal selectivities achieved by monovalent complexes o
 
 Data Import:
 - The CITE-seq dataframe (`importCITE`)
-- Reads a list of epitopes from a CSV file (`epitopeList.csv`)
 
 Parameters:
 - receptors: list of receptors to be analyzed
@@ -67,7 +66,7 @@ def makeFigure():
         targ_abun = receptor_abun[targ_mask]
         off_targ_abun = receptor_abun[off_targ_mask]
 
-        opt_selec, opt_affs = optimize_affs(
+        opt_selec, _ = optimize_affs(
             targ_abun, off_targ_abun, dose, valencies=np.array([[1]])
         )
         selectivities.append(1 / opt_selec)

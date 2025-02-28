@@ -4,7 +4,6 @@ Generates a heatmap of optimal selectivities achieved by multivalent complexes
 
 Data Import:
 - The CITE-seq dataframe (`importCITE`)
-- Reads a list of epitopes from a CSV file (`epitopeList.csv`)
 
 Parameters:
 - receptors: list of receptors to be analyzed
@@ -75,7 +74,7 @@ def makeFigure():
             targ_abun = receptor_abuns[targ_mask]
             off_targ_abun = receptor_abuns[off_targ_mask]
 
-            opt_selec, opt_affs = optimize_affs(
+            opt_selec, _ = optimize_affs(
                 targ_abun, off_targ_abun, dose, valencies=valency
             )
             selectivities[i, j] = 1 / opt_selec
