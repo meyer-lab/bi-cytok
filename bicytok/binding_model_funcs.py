@@ -34,6 +34,9 @@ def cyt_binding_model(
         )
     )
 
+    loss = solution.state.value**2
+    return Req_opt, loss
+
 
 @jax.jit
 def infer_Rbound_batched_jax(
@@ -146,5 +149,5 @@ def reformat_parameters(
     assert Ctheta.shape == (L0.shape[0], Cplx.shape[1])
     assert Cplx.shape == (L0.shape[0], Ctheta.shape[1], Ka.shape[1])
     assert L0.shape[0] == Ka.shape[0]
-
+    
     return L0, Kx_star, recCounts, Cplx, Ctheta, Ka
