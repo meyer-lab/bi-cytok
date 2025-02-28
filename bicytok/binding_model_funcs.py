@@ -34,9 +34,6 @@ def cyt_binding_model(
         )
     )
 
-    loss = solution.state.value**2
-    return Req_opt, loss
-
 
 @jax.jit
 def infer_Rbound_batched_jax(
