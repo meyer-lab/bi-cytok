@@ -1,30 +1,20 @@
 """
-Generates the "2D" selectivities of receptors for targeting a specific cell type over
-    off-target cell types. The 2D selectivity is different from 1D selectivity in that
-    it considers a multivalent ligand complex to target two receptors simultaneously.
+Generates a heatmap of optimal selectivities achieved by multivalent complexes
+    composed of ligands for various relevant receptors.
 
 Data Import:
-- Loads the CITE-seq dataset using `importCITE`
+- The CITE-seq dataframe (`importCITE`)
+- Reads a list of epitopes from a CSV file (`epitopeList.csv`)
 
-User inputs:
-- Receptors to be analyzed
-- Target cell type
-- Dose of receptor targeting ligand
-- Valency of the ligand complex
+Parameters:
+- receptors: list of receptors to be analyzed
+- cell_type: cell type whose selectivity will be maximized
+- dose: dose of ligand to be used in the selectivity calculation
+- cellTypes: Array of all relevant cell types
+- valency: valency of the complex to be used in the selectivity calculation
 
-Selectivity Calculation:
-- Uses the multivalent binding model to predict how many receptors will be bound
-    by that receptor's ligand on target versus off-target cells.
-- This prediction is made based on the measured receptor abundances in the CITE-seq
-    data.
-- The optimal selectivity of each receptor is determined by optimizing the affinity
-    between each receptor-ligand pair such that the ratio of off-target to
-    on-target binding is minimized.
-- The selectivity measurement represents the optimal ratio of target to off-target
-    binding based on differences in receptor abundances across cell types.
-
-Visualization:
-- Displays the optimal selectivities of all receptors in a bar plot.
+Outputs:
+- Displays the optimal selectivities of all relevant receptor pairs in a heatmap
 """
 
 from pathlib import Path
@@ -47,7 +37,6 @@ def makeFigure():
     cell_type = "Treg"
     dose = 10e-2
     valency = np.array([[2, 2]])
-
     cellTypes = np.array(
         [
             "CD8 Naive",
@@ -60,6 +49,7 @@ def makeFigure():
             "Treg",
         ]
     )
+
     offTargCells = cellTypes[cellTypes != cell_type]
 
     CITE_DF = importCITE()

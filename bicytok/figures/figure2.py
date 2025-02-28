@@ -1,32 +1,26 @@
 """
 Generates horizontal bar charts to visualize the top 5 markers
-    with the highest KL Divergence and Earth Mover's Distance (EMD) values,
+    with the highest 1D KL Divergence and Earth Mover's Distance (EMD) values,
     comparing target and off-target cell distributions using CITE-seq data.
 
 Data Import:
-- Imports the CITE-seq dataframe (`importCITE`) and the plotting
-    setup (`getSetup`).
-- Defines a target cell type (default: "Treg") and an off-target
-    state (`offTargState`), specifying which cells are considered "off-target".
+- The CITE-seq dataframe (`importCITE`)
+- Reads a list of epitopes from a CSV file (`epitopeList.csv`)
 
-Off-Target State Definitions:
-- Allows the selection of different off-target cells using `offTargState`:
-    - `offTargState = 0`: All non-target cells.
-    - `offTargState = 1`: All non-Tregs.
-    - `offTargState = 2`: Only naive Tregs.
+Parameters:
+- targCell: cell type whose selectivity will be maximized
+- receptors_of_interest: list of receptors to be analyzed
+- sample_size: number of cells to sample for analysis
+    (if greater than available cells, will use all)
+- cellTypes: Array of all relevant cell types
+- cell_categorization: column name in CITE-seq dataframe for cell type categorization
 
-KL Divergence and EMD Calculation**:
-- Computes the 1D KL divergence and EMD for each marker between
-    the target and off-target cell distributions using `KL_EMD_1D`.
-- Returns two arrays: one with KL divergence values and one with EMD values.
-
-Identifies the top 5 markers with the highest KL divergence
-    and the top 5 markers with the highest EMD.
+Outputs:
 - Plots horizontal bar charts for these top markers:
-    - **KL Divergence Plot**: Top 5 markers sorted by KL divergence.
-    - **EMD Plot**: Top 5 markers sorted by EMD.
+    - KL Divergence Plot: Top 5 markers sorted by KL divergence
+    - EMD Plot: Top 5 markers sorted by EMD
 - Each plot is labeled with marker names on the y-axis
-    and their respective values (KL or EMD) on the x-axis.
+    and their respective values (KL or EMD) on the x-axis
 """
 
 from pathlib import Path
@@ -45,9 +39,8 @@ def makeFigure():
     ax, f = getSetup((8, 8), (1, 2))
 
     targCell = "Treg"
-    # receptors_of_interest = ["CD25", "CD4-1"]
     receptors_of_interest = None
-    sample_size = 160000
+    sample_size = 200000
     cellTypes = np.array(
         [
             "CD8 Naive",

@@ -9,7 +9,6 @@ from .binding_model_funcs import cyt_binding_model
 
 
 # Called in minOffTargSelec and get_cell_bindings
-# Sam: why not just input the affinities in the correct format...
 def restructure_affs(affs: np.ndarray) -> np.ndarray:
     """
     Structures array of receptor affinities to be compatible with the binding model
@@ -84,7 +83,6 @@ def min_off_targ_selec(
     return offTargetBound / targetBound
 
 
-# Called in Figure1, Figure4, and Figure5
 def optimize_affs(
     targRecs: np.ndarray,
     offTargRecs: np.ndarray,
@@ -120,14 +118,10 @@ def optimize_affs(
     # Choose initial affinities and set bounds for optimization
     # minAffs and maxAffs chosen based on biologically realistic affinities
     #   for engineered ligands
-    # Sam: affinities are maxing and bottoming out before optimization is complete...
-    #    for fig1, target 1, final affinities are 1e7 and ~1e9 (9.997e8) (bounds 7-9)
     minAffs = [bounds[0]] * (targRecs.shape[1])
     maxAffs = [bounds[1]] * (targRecs.shape[1])
 
     # Start at midpoint between min and max bounds
-    # Sam: Correct this if sizes of initial affinities and valencies
-    #   are not always the same
     initAffs = np.full_like(valencies[0], minAffs[0] + (maxAffs[0] - minAffs[0]) / 2)
     optBnds = Bounds(np.full_like(initAffs, minAffs), np.full_like(initAffs, maxAffs))
 
@@ -153,7 +147,6 @@ def optimize_affs(
     return optSelect, optAffs
 
 
-# Called in Figure1 and Figure3
 def get_cell_bindings(
     recCounts: np.ndarray, monomerAffs: np.ndarray, dose: float, valencies: np.ndarray
 ) -> np.ndarray:

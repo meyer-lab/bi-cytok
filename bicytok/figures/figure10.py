@@ -1,6 +1,27 @@
 """
-Figure serves to visualize the variability of the distance metrics and selectivity
-as it varies with sample size.
+Generates box plots to visualize the relationship between sample size and the
+    variation in the KL Divergence, EMD, and selectivity.
+
+Data Import:
+- The CITE-seq dataframe (`importCITE`)
+- Reads a list of epitopes from a CSV file (`epitopeList.csv`)
+
+Parameters:
+- sample_sizes: list of sample sizes to be tested
+- randomizations: number of randomizations to be performed for each sample size
+- targCell: cell type whose selectivity will be maximized
+- signal_receptor: receptor to be analyzed
+- valencies: valency of the complex
+- targets: receptor pair on which the variation will be tested
+- dose: dose of ligand to be used in the selectivity calculation
+- cellTypes: Array of all relevant cell types
+- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+
+Outputs:
+- Displays box plots for KL Divergence, EMD, selectivity, and affinities, visualizing
+    the variation within each metric across sample sizes
+- Prints the average run times for each sample size
+    (model time and distance metric time)
 """
 
 import time
@@ -24,8 +45,7 @@ def makeFigure():
 
     # Parameters
     sample_sizes = [50, 100, 200]
-    randomizations = 2
-
+    randomizations = 5
     targCell = "Treg"
     signal_receptor = "CD122"
     valencies = np.array([[1, 1, 1]])
@@ -43,8 +63,9 @@ def makeFigure():
             "Treg",
         ]
     )
-    offTargCells = cellTypes[cellTypes != targCell]
     cell_categorization = "CellType2"
+
+    offTargCells = cellTypes[cellTypes != targCell]
 
     # Imports
     CITE_DF = importCITE()

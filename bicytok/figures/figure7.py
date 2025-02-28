@@ -1,28 +1,19 @@
 """
-Generates the "1D" selectivities of receptors for targeting a specific cell type over
-    off-target cell types.
+Generates a bar plot of optimal selectivities achieved by monovalent complexes of
+    ligands for a various set of relevant receptors.
 
 Data Import:
-- Loads the CITE-seq dataset using `importCITE`
+- The CITE-seq dataframe (`importCITE`)
+- Reads a list of epitopes from a CSV file (`epitopeList.csv`)
 
-User inputs:
-- Receptors to be analyzed
-- Target cell type
-- Dose of receptor targeting ligand
+Parameters:
+- receptors: list of receptors to be analyzed
+- cell_type: cell type whose selectivity will be maximized
+- dose: dose of ligand to be used in the selectivity calculation
+- cellTypes: Array of all relevant cell types
 
-Selectivity Calculation:
-- Uses the multivalent binding model to predict how many receptors will be bound
-    by that receptor's ligand on target versus off-target cells.
-- This prediction is made based on the measured receptor abundances in the CITE-seq
-    data.
-- The optimal selectivity of each receptor is determined by optimizing the affinity
-    between each receptor-ligand pair such that the ratio of off-target to
-    on-target binding is minimized.
-- The selectivity measurement represents the optimal ratio of target to off-target
-    binding based on differences in receptor abundances across cell types.
-
-Visualization:
-- Displays the optimal selectivities of all receptors in a bar plot.
+Outputs:
+- Displays the optimal selectivities of all relevant receptors in a bar plot
 """
 
 from pathlib import Path
@@ -54,6 +45,7 @@ def makeFigure():
             "Treg",
         ]
     )
+
     offTargCells = cellTypes[cellTypes != cell_type]
 
     CITE_DF = importCITE()
