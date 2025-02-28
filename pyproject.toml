@@ -20,6 +20,7 @@ requires-python = ">= 3.12"
 
 [project.scripts]
 fbuild = "bicytok.figures.common:genFigure"
+distanceCSV = "bicytok.distance_metric_funcs:make_2D_distance_metrics"
 
 [build-system]
 requires = ["hatchling"]

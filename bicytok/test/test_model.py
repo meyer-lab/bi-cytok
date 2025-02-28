@@ -10,12 +10,11 @@ import pytest
 
 from ..binding_model_funcs import cyt_binding_model
 from ..distance_metric_funcs import KL_EMD_1D, KL_EMD_2D
-from ..imports import importCITE
+from ..imports import importCITE, sample_receptor_abundances
 from ..selectivity_funcs import (
     min_off_targ_selec,
     optimize_affs,
     restructure_affs,
-    sample_receptor_abundances,
 )
 
 path_here = Path(__file__).parent.parent
@@ -112,7 +111,12 @@ def test_binding_model():
     CITE_DF = importCITE()
     CITE_DF = CITE_DF[epitopes + ["CellType2"]]
     CITE_DF = CITE_DF.rename(columns={"CellType2": "Cell Type"})
-    sample_DF = sample_receptor_abundances(CITE_DF=CITE_DF, numCells=CITE_DF.shape[0])
+    sample_DF = sample_receptor_abundances(
+        CITE_DF=CITE_DF,
+        numCells=CITE_DF.shape[0],
+        targCellType="Treg",
+        offTargCellTypes=["Treg"],
+    )
     sample_DF = sample_DF.drop(columns="Cell Type")
     samples = sample_DF.to_numpy()
     rec_mean = samples.mean()
@@ -220,10 +224,13 @@ def test_invalid_model_function_inputs():
     # Test invalid inputs for sampleReceptorAbundances
     with pytest.raises(AssertionError):
         sample_receptor_abundances(
-            CITE_DF=df, numCells=200
+            CITE_DF=df, numCells=200, targCellType="Treg", offTargCellTypes=["Treg"]
         )  # requested sample size greater than available cells
 
     with pytest.raises(AssertionError):
         sample_receptor_abundances(
-            CITE_DF=df.drop(columns="Cell Type"), numCells=numCells
+            CITE_DF=df.drop(columns="Cell Type"),
+            numCells=numCells,
+            targCellType="Treg",
+            offTargCellTypes=["Treg"],
         )  # lack of cell type column

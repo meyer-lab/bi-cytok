@@ -4,14 +4,24 @@ Figure file to generate dose response curves for any combination
 Outputs dose vs. selectivity for the target cell and amount of target cell
     bound at indicated signal receptor.
 
-signal: Receptor that the ligand is delivering signal to; selectivity and
+Data Import:
+- The CITE-seq dataframe (`importCITE`)
+- Reads a list of epitopes from a CSV file (`epitopeList.csv`)
+
+Parameters:
+- signal: Receptor that the ligand is delivering signal to; selectivity and
     target bound are with respect to engagement with this receptor
-allTargets: List of paired [(target receptor, valency)] combinations for each
+- allTargets: List of paired [(target receptor, valency)] combinations for each
     targeting receptor; to be used for targeting the target cell, not signaling
-cells: Array of cells that will be sampled from and used in calculations
-targCell: Target cell whose selectivity will be maximized
-startingAff: Starting affinity to modulate from in order to
-    maximize selectivity for the targCell, affinities are K_a in L/mol
+- cellTypes: Array of all relevant cell types
+- targCell: cell type whose selectivity will be maximized
+- receptors_of_interest: list of receptors to be analyzed
+
+Outputs:
+- Plots dose vs. selectivity and dose vs. target bound for each combination
+    of targeting receptors
+- Each plot is labeled with receptor names on the y-axis and their respective
+    values (selectivity or target bound) on the x-axis
 """
 
 from pathlib import Path
@@ -21,11 +31,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from ..imports import importCITE
+from ..imports import importCITE, sample_receptor_abundances
 from ..selectivity_funcs import (
     get_cell_bindings,
     optimize_affs,
-    sample_receptor_abundances,
 )
 from .common import getSetup
 
@@ -48,7 +57,6 @@ def makeFigure():
         [("CD25", 1), ("CD278", 1), ("CD27", 1)],
         [("CD25", 4), ("CD278", 4), ("CD27", 4)],
     ]
-
     cellTypes = np.array(
         [
             "CD8 Naive",
@@ -65,6 +73,7 @@ def makeFigure():
         ]
     )
     targCell = "Treg"
+
     offTargCells = cellTypes[cellTypes != targCell]
 
     epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
@@ -75,7 +84,12 @@ def makeFigure():
     epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
 
-    sampleDF = sample_receptor_abundances(CITE_DF=epitopesDF, numCells=100)
+    sampleDF = sample_receptor_abundances(
+        CITE_DF=epitopesDF,
+        numCells=1000,
+        targCellType=targCell,
+        offTargCellTypes=offTargCells,
+    )
 
     doseVec = np.logspace(-2, 2, num=10)
     df = pd.DataFrame(columns=["Dose", "Selectivity", "Target Bound", "Ligand"])
@@ -98,7 +112,7 @@ def makeFigure():
         offTargRecs = dfOffTargCell[[signal[0]] + targets]
 
         for dose in doseVec:
-            optSelec, optParams = optimize_affs(
+            _, optParams = optimize_affs(
                 targRecs=targRecs.to_numpy(),
                 offTargRecs=offTargRecs.to_numpy(),
                 dose=dose,

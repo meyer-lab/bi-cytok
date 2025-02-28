@@ -23,7 +23,6 @@ def cyt_binding_model(
         dose, recCounts, valencies, monomerAffs
     )
 
-    validate_inputs(L0, KxStar, Rtot, Cplx, Ctheta, Ka)
     return np.array(
         infer_Rbound_batched_jax(
             jnp.array(L0, dtype=jnp.float64),
@@ -108,31 +107,6 @@ def infer_Rbound_from_Req(
     return L0_Ctheta_KxStar * jnp.prod(Psirs**Cplxsum) * jnp.dot(Cplxsum, Psinorm)
 
 
-def validate_inputs(
-    L0: np.ndarray,
-    KxStar: np.ndarray,
-    Rtot: np.ndarray,
-    Cplx: np.ndarray,
-    Ctheta: np.ndarray,
-    Ka: np.ndarray,
-) -> None:
-    assert L0.dtype == np.float64
-    assert KxStar.dtype == np.float64
-    assert Rtot.dtype == np.float64
-    assert Ka.dtype == np.float64
-    assert Ctheta.dtype == np.float64
-    # assert each input has the correct shape
-    assert L0.ndim == 1
-    assert KxStar.ndim == 1
-    assert Rtot.ndim == 2
-    assert Ka.ndim == 3
-    assert L0.shape[0] == KxStar.shape[0]
-    assert L0.shape[0] == Rtot.shape[0]
-    assert Ctheta.shape == (L0.shape[0], Cplx.shape[1])
-    assert Cplx.shape == (L0.shape[0], Ctheta.shape[1], Ka.shape[1])
-    assert L0.shape[0] == Ka.shape[0]
-
-
 def reformat_parameters(
     dose: float,
     recCounts: np.ndarray,
@@ -158,5 +132,19 @@ def reformat_parameters(
     Cplx = np.full((num_cells, 1, num_receptors), valencies)
     Ctheta = np.full((num_cells, 1), 1.0)
     Ka = np.full((num_cells, num_receptors, num_receptors), monomerAffs)
+
+    assert L0.dtype == np.float64
+    assert Kx_star.dtype == np.float64
+    assert recCounts.dtype == np.float64
+    assert Ka.dtype == np.float64
+    assert Ctheta.dtype == np.float64
+    assert L0.ndim == 1
+    assert Kx_star.ndim == 1
+    assert Ka.ndim == 3
+    assert L0.shape[0] == Kx_star.shape[0]
+    assert L0.shape[0] == recCounts.shape[0]
+    assert Ctheta.shape == (L0.shape[0], Cplx.shape[1])
+    assert Cplx.shape == (L0.shape[0], Ctheta.shape[1], Ka.shape[1])
+    assert L0.shape[0] == Ka.shape[0]
 
     return L0, Kx_star, recCounts, Cplx, Ctheta, Ka
