@@ -268,11 +268,19 @@ def KL_EMD_3D(
     recAbundances: np.ndarray, targ: np.ndarray, offTarg: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    3D applicatin of KL Divergence and EMD
-    NOT YET IMPLEMENTED
-    """
+    Calculates 3D EMD and KL Divergence between the target and off-target populations
+    of three receptors, across multiple receptors
 
-    raise NotImplementedError("3D KL Divergence and EMD not yet implemented")
+    :param recAbundances: abundances across cells (rows) and receptors (columns)
+    :param targ: a numpy vector with boolean values indicating indices of target cells
+    :param offTarg: vector with boolean values indicating indices of off-target cells
+    :return:
+        KL_div_vals: an array of KL Divergences between the on- and off-target
+            abundances of multiple receptors for each entry the value is calculated
+            for three receptors, so every entry is for a different receptor triplet. The array
+            is pyramidal because it is symmetric across the diagonal.
+        EMD_vals: similar to KL_div_vals but with EMDs
+    """
 
     assert all(isinstance(i, np.bool) for i in np.append(targ, offTarg))
     assert sum(targ) != 0 and sum(offTarg) != 0
@@ -290,9 +298,15 @@ def KL_EMD_3D(
     assert targNorms.shape[0] == sum(targ)
     assert targNorms.shape[0] != recAbundances.shape[0]
 
-    for rec1, rec2, rec3 in combinations_with_replacement(
-        range(recAbundances.shape[1]), 3
-    ):  # 3D triangle (pyramidal?) indices, with replacement includes diagonals
+    # Filter indices based on the conditions
+    valid_indices = [
+        rec
+        for rec in range(recAbundances.shape[1])
+        if np.mean(recAbundances[:, rec]) > 5
+        and np.mean(targNorms[:, rec]) > np.mean(offTargNorms[:, rec])
+    ]
+
+    for rec1, rec2, rec3 in combinations_with_replacement(valid_indices, 3):
         targAbun1, targAbun2, targAbun3 = (
             targNorms[:, rec1],
             targNorms[:, rec2],
@@ -304,54 +318,19 @@ def KL_EMD_3D(
             offTargNorms[:, rec3],
         )
 
-        if (
-            np.mean(recAbundances[:, rec1]) > 5
-            and np.mean(recAbundances[:, rec2]) > 5
-            and np.mean(recAbundances[:, rec3]) > 5
-            and np.mean(targAbun1) > np.mean(offTargAbun1)
-            and np.mean(targAbun2) > np.mean(offTargAbun2)
-            and np.mean(targAbun3) > np.mean(offTargAbun3)
-        ):
-            assert np.allclose(
-                targAbun1, recAbundances[targ, rec1] / np.mean(recAbundances[:, rec1])
-            )
+        assert np.allclose(
+            targAbun1, recAbundances[targ, rec1] / np.mean(recAbundances[:, rec1])
+        )
 
-            targAbunAll = np.vstack((targAbun1, targAbun2, targAbun3)).transpose()
-            offTargAbunAll = np.vstack(
-                (offTargAbun1, offTargAbun2, offTargAbun3)
-            ).transpose()
+        targAbunAll = np.vstack((targAbun1, targAbun2, targAbun3)).transpose()
+        offTargAbunAll = np.vstack(
+            (offTargAbun1, offTargAbun2, offTargAbun3)
+        ).transpose()
 
-            assert targAbunAll.shape == (np.sum(targ), 3)
+        assert targAbunAll.shape == (np.sum(targ), 3)
 
-            # Estimate the 3D probability distributions of the two receptors
-            targKDE = KernelDensity(kernel="gaussian").fit(targAbunAll)
-            offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbunAll)
-
-            # Compare over the entire distribution space by looking at the
-            #   global max/min
-            minAbun = np.minimum(targAbunAll.min(), offTargAbunAll.min()) - 100
-            maxAbun = np.maximum(targAbunAll.max(), offTargAbunAll.max()) + 100
-
-            # Need a mesh grid for 2D comparison because
-            #   need to explore the entire distribution space
-            X, Y = np.mgrid[
-                minAbun : maxAbun : ((maxAbun - minAbun) / 100),
-                minAbun : maxAbun : ((maxAbun - minAbun) / 100),
-            ]
-            outcomes = np.concatenate((X.reshape(-1, 1), Y.reshape(-1, 1)), axis=1)
-
-            # Calculate the probabilities (log-likelihood)
-            #   of all X, Y combos in the mesh grid based on the estimates
-            #   of the two receptor distributions
-            targDist = np.exp(targKDE.score_samples(outcomes))
-            offTargDist = np.exp(offTargKDE.score_samples(outcomes))
-
-            KL_div_vals[rec1, rec2, rec3] = stats.entropy(
-                offTargDist + 1e-200, targDist + 1e-200, base=2
-            )
-
-            EMD_vals[rec1, rec2, rec3] = stats.wasserstein_distance_nd(
-                targAbunAll, offTargAbunAll
-            )
+        KL_div_vals[rec1, rec2, rec3], EMD_vals[rec1, rec2, rec3] = calculate_KL_EMD(
+            targAbunAll, offTargAbunAll
+        )
 
     return KL_div_vals, EMD_vals
