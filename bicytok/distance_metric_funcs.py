@@ -277,8 +277,8 @@ def KL_EMD_3D(
     :return:
         KL_div_vals: an array of KL Divergences between the on- and off-target
             abundances of multiple receptors for each entry the value is calculated
-            for three receptors, so every entry is for a different receptor triplet. The array
-            is pyramidal because it is symmetric across the diagonal.
+            for three receptors, so every entry is for a different receptor triplet.
+            The array is pyramidal because it is symmetric across the diagonal.
         EMD_vals: similar to KL_div_vals but with EMDs
     """
 

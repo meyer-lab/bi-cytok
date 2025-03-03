@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 from ..binding_model_funcs import cyt_binding_model
-from ..distance_metric_funcs import KL_EMD_1D, KL_EMD_2D
+from ..distance_metric_funcs import KL_EMD_1D, KL_EMD_2D, KL_EMD_3D
 from ..imports import importCITE, sample_receptor_abundances
 from ..selectivity_funcs import (
     min_off_targ_selec,
@@ -53,6 +53,19 @@ def test_KL_EMD_2D():
     assert np.all(np.isnan(EMD_vals) | (EMD_vals >= 0))
 
 
+def test_KL_EMD_3D():
+    recAbundances, targ, offTarg = sample_data()
+    targ = np.array(targ, dtype=bool)
+    offTarg = np.array(offTarg, dtype=bool)
+
+    KL_div_vals, EMD_vals = KL_EMD_3D(recAbundances, targ, offTarg)
+
+    assert KL_div_vals.shape == (recAbundances.shape[1], recAbundances.shape[1], recAbundances.shape[1])
+    assert EMD_vals.shape == (recAbundances.shape[1], recAbundances.shape[1], recAbundances.shape[1])
+    assert np.all(np.isnan(KL_div_vals) | (KL_div_vals >= 0))
+    assert np.all(np.isnan(EMD_vals) | (EMD_vals >= 0))
+
+
 def test_invalid_distance_function_inputs():
     recAbundances, targ, offTarg = sample_data()
 
@@ -79,6 +92,16 @@ def test_invalid_distance_function_inputs():
         KL_EMD_2D(
             recAbundances, targ, np.full_like(offTarg, False)
         )  # no off-target cells
+
+    # Test invalid inputs for KL_EMD_3D
+    with pytest.raises(AssertionError):
+        KL_EMD_3D(recAbundances, np.arange(100), offTarg)
+
+    with pytest.raises(AssertionError):
+        KL_EMD_3D(recAbundances, np.full_like(targ, False), offTarg)
+
+    with pytest.raises(AssertionError):
+        KL_EMD_3D(recAbundances, targ, np.full_like(offTarg, False))
 
 
 def test_optimize_affs():
