@@ -15,7 +15,7 @@ path_here = Path(__file__).parent.parent
 
 def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> float:
     """
-    Calculates the KL Divergence between two distributions of n variables.
+    Calculates the KL Divergence and EMD between two distributions of n variables.
 
     :param dist1: First distribution
     :param dist2: Second distribution
@@ -90,26 +90,25 @@ def KL_EMD_1D(
         targNorms.shape[0] != recAbundances.shape[0]
     )  # Check that not all cells are target cells
 
-    for rec in range(recAbundances.shape[1]):
+    # Filter indices based on the conditions
+    valid_indices = [
+        rec
+        for rec in range(recAbundances.shape[1])
+        if np.mean(recAbundances[:, rec]) > 5
+        and np.mean(targNorms[:, rec]) > np.mean(offTargNorms[:, rec])
+    ]
+
+    for rec in valid_indices:
         targAbun = targNorms[:, rec]
         offTargAbun = offTargNorms[:, rec]
 
-        # Filters remove edge cases that effect KL div, but not EMD
-        # First filter removes receptors that have low overall expression. Even if
-        #   such receptors were differentially expressed, they would not be useful?
-        # Second filter removes receptors that are differentially expressed BUT have low
-        #   expression on target cells and thus cannot be used for selective targeting
-        #   eg IgE, CD272
-        if np.mean(recAbundances[:, rec]) > 5 and np.mean(targAbun) > np.mean(
-            offTargAbun
-        ):
-            assert np.allclose(
-                targAbun, recAbundances[targ, rec] / np.mean(recAbundances[:, rec])
-            )
+        assert np.allclose(
+            targAbun, recAbundances[targ, rec] / np.mean(recAbundances[:, rec])
+        )
 
-            KL_div_vals[rec], EMD_vals[rec] = calculate_KL_EMD(
-                targAbun.reshape(-1, 1), offTargAbun.reshape(-1, 1)
-            )
+        KL_div_vals[rec], EMD_vals[rec] = calculate_KL_EMD(
+            targAbun.reshape(-1, 1), offTargAbun.reshape(-1, 1)
+        )
 
     return KL_div_vals, EMD_vals
 
@@ -149,34 +148,38 @@ def KL_EMD_2D(
     assert targNorms.shape[0] == sum(targ)
     assert targNorms.shape[0] != recAbundances.shape[0]
 
+    # Filter indices based on the conditions
+    valid_indices = [
+        rec
+        for rec in range(recAbundances.shape[1])
+        if np.mean(recAbundances[:, rec]) > 5
+        and np.mean(targNorms[:, rec]) > np.mean(offTargNorms[:, rec])
+    ]
+
     row, col = np.tril_indices(
         recAbundances.shape[1], k=0
     )  # k=0 includes diagonals which are 1D distances
     for rec1, rec2 in zip(row, col, strict=False):
         if not calc_1D and rec1 == rec2:
             continue
+        if rec1 not in valid_indices or rec2 not in valid_indices:
+            continue
 
         targAbun1, targAbun2 = targNorms[:, rec1], targNorms[:, rec2]
         offTargAbun1, offTargAbun2 = offTargNorms[:, rec1], offTargNorms[:, rec2]
 
-        if (
-            np.mean(recAbundances[:, rec1]) > 5
-            and np.mean(recAbundances[:, rec2]) > 5
-            and np.mean(targAbun1) > np.mean(offTargAbun1)
-            and np.mean(targAbun2) > np.mean(offTargAbun2)
-        ):
-            assert np.allclose(
-                targAbun1, recAbundances[targ, rec1] / np.mean(recAbundances[:, rec1])
-            )
+        assert np.allclose(
+            targAbun1, recAbundances[targ, rec1] / np.mean(recAbundances[:, rec1])
+        )
 
-            targAbunAll = np.vstack((targAbun1, targAbun2)).transpose()
-            offTargAbunAll = np.vstack((offTargAbun1, offTargAbun2)).transpose()
+        targAbunAll = np.vstack((targAbun1, targAbun2)).transpose()
+        offTargAbunAll = np.vstack((offTargAbun1, offTargAbun2)).transpose()
 
-            assert targAbunAll.shape == (np.sum(targ), 2)
+        assert targAbunAll.shape == (np.sum(targ), 2)
 
-            KL_div_vals[rec1, rec2], EMD_vals[rec1, rec2] = calculate_KL_EMD(
-                targAbunAll, offTargAbunAll
-            )
+        KL_div_vals[rec1, rec2], EMD_vals[rec1, rec2] = calculate_KL_EMD(
+            targAbunAll, offTargAbunAll
+        )
 
     return KL_div_vals, EMD_vals
 
