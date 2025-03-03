@@ -3,6 +3,7 @@ from itertools import combinations_with_replacement
 from pathlib import Path
 
 import numpy as np
+import ot
 import pandas as pd
 from scipy import stats
 from sklearn.neighbors import KernelDensity
@@ -10,6 +11,50 @@ from sklearn.neighbors import KernelDensity
 from .imports import importCITE, sample_receptor_abundances
 
 path_here = Path(__file__).parent.parent
+
+
+def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> float:
+    """
+    Calculates the KL Divergence between two distributions of n variables.
+
+    :param dist1: First distribution
+    :param dist2: Second distribution
+    :return:
+        KL Divergence between the two distributions
+        EMD between the two distributions
+    """
+    assert dist1.shape[1] == dist2.shape[1]
+
+    n_dim = dist1.shape[1]
+
+    # Estimate the n-dimensional probability distributions
+    kde1 = KernelDensity(kernel="gaussian").fit(dist1)
+    kde2 = KernelDensity(kernel="gaussian").fit(dist2)
+
+    # Compare over the entire distribution space by looking at the global max/min
+    min_abun = np.minimum(dist1.min(axis=0), dist2.min(axis=0)) - 100
+    max_abun = np.maximum(dist1.max(axis=0), dist2.max(axis=0)) + 100
+
+    # Create a mesh grid for n-dimensional comparison
+    grids = np.meshgrid(
+        *[np.linspace(min_abun[i], max_abun[i], 100) for i in range(n_dim)]
+    )
+    grids = np.stack([grid.flatten() for grid in grids], axis=-1)
+
+    # Calculate the probabilities (log-likelihood) of all combinations in the mesh grid
+    dist1_probs = np.exp(kde1.score_samples(grids))
+    dist2_probs = np.exp(kde2.score_samples(grids))
+
+    # Calculate KL Divergence
+    KL_div_val = stats.entropy(dist2_probs + 1e-200, dist1_probs + 1e-200, base=2)
+
+    # Calculate Euclidean distance matrix
+    M = ot.dist(dist1, dist2, metric="euclidean")
+
+    # Calculate EMD
+    EMD_val = ot.emd2([], [], M)
+
+    return KL_div_val, EMD_val
 
 
 def KL_EMD_1D(
@@ -62,21 +107,9 @@ def KL_EMD_1D(
                 targAbun, recAbundances[targ, rec] / np.mean(recAbundances[:, rec])
             )
 
-            targKDE = KernelDensity(kernel="gaussian").fit(targAbun.reshape(-1, 1))
-            offTargKDE = KernelDensity(kernel="gaussian").fit(
-                offTargAbun.reshape(-1, 1)
+            KL_div_vals[rec], EMD_vals[rec] = calculate_KL_EMD(
+                targAbun.reshape(-1, 1), offTargAbun.reshape(-1, 1)
             )
-            minAbun = np.minimum(targAbun.min(), offTargAbun.min()) - 100
-            maxAbun = np.maximum(targAbun.max(), offTargAbun.max()) + 100
-            X = np.mgrid[minAbun : maxAbun : (maxAbun - minAbun) / 100]
-            outcomes = X.reshape(-1, 1)
-            targDist = np.exp(targKDE.score_samples(outcomes))
-            offTargDist = np.exp(offTargKDE.score_samples(outcomes))
-            KL_div_vals[rec] = stats.entropy(
-                offTargDist.flatten() + 1e-200, targDist.flatten() + 1e-200, base=2
-            )
-
-            EMD_vals[rec] = stats.wasserstein_distance(targAbun, offTargAbun)
 
     return KL_div_vals, EMD_vals
 
@@ -141,34 +174,7 @@ def KL_EMD_2D(
 
             assert targAbunAll.shape == (np.sum(targ), 2)
 
-            # Estimate the 2D probability distributions of the two receptors
-            targKDE = KernelDensity(kernel="gaussian").fit(targAbunAll)
-            offTargKDE = KernelDensity(kernel="gaussian").fit(offTargAbunAll)
-
-            # Compare over the entire distribution space by looking at the
-            #   global max/min
-            minAbun = np.minimum(targAbunAll.min(), offTargAbunAll.min()) - 100
-            maxAbun = np.maximum(targAbunAll.max(), offTargAbunAll.max()) + 100
-
-            # Need a mesh grid for 2D comparison because
-            #   need to explore the entire distribution space
-            X, Y = np.mgrid[
-                minAbun : maxAbun : ((maxAbun - minAbun) / 100),
-                minAbun : maxAbun : ((maxAbun - minAbun) / 100),
-            ]
-            outcomes = np.concatenate((X.reshape(-1, 1), Y.reshape(-1, 1)), axis=1)
-
-            # Calculate the probabilities (log-likelihood)
-            #   of all X, Y combos in the mesh grid based on the estimates
-            #   of the two receptor distributions
-            targDist = np.exp(targKDE.score_samples(outcomes))
-            offTargDist = np.exp(offTargKDE.score_samples(outcomes))
-
-            KL_div_vals[rec1, rec2] = stats.entropy(
-                offTargDist + 1e-200, targDist + 1e-200, base=2
-            )
-
-            EMD_vals[rec1, rec2] = stats.wasserstein_distance_nd(
+            KL_div_vals[rec1, rec2], EMD_vals[rec1, rec2] = calculate_KL_EMD(
                 targAbunAll, offTargAbunAll
             )
 
