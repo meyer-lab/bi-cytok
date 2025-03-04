@@ -13,23 +13,29 @@ from .imports import importCITE, sample_receptor_abundances
 path_here = Path(__file__).parent.parent
 
 
-def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> float:
+def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float]:
     """
     Calculates the KL Divergence and EMD between two distributions of n variables.
+    Can be used to calculate distance metrics for specific combinations of receptors.
 
     :param dist1: First distribution
     :param dist2: Second distribution
     :return:
         KL Divergence between the two distributions
         EMD between the two distributions
+
+    In addition to the input parameters, there are a number of important parameters
+    associated with the kernel density estimation and the EMD distance matrix
+    calculation that can be adjusted.
     """
     assert dist1.shape[1] == dist2.shape[1]
 
     n_dim = dist1.shape[1]
 
     # Estimate the n-dimensional probability distributions
-    kde1 = KernelDensity(kernel="gaussian").fit(dist1)
-    kde2 = KernelDensity(kernel="gaussian").fit(dist2)
+    start_kl = time.time()
+    kde1 = KernelDensity(atol=1e-9, rtol=1e-9).fit(dist1)
+    kde2 = KernelDensity(atol=1e-9, rtol=1e-9).fit(dist2)
 
     # Compare over the entire distribution space by looking at the global max/min
     min_abun = np.minimum(dist1.min(axis=0), dist2.min(axis=0)) - 100
@@ -47,12 +53,15 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> float:
 
     # Calculate KL Divergence
     KL_div_val = stats.entropy(dist2_probs + 1e-200, dist1_probs + 1e-200, base=2)
+    print(f"KL Divergence calculation took {time.time() - start_kl} seconds")
 
     # Calculate Euclidean distance matrix
+    start_emd = time.time()
     M = ot.dist(dist1, dist2, metric="euclidean")
 
     # Calculate EMD
     EMD_val = ot.emd2([], [], M)
+    print(f"EMD calculation took {time.time() - start_emd} seconds")
 
     return KL_div_val, EMD_val
 
@@ -61,8 +70,8 @@ def KL_EMD_1D(
     recAbundances: np.ndarray, targ: np.ndarray, offTarg: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Calculates 1D EMD and KL Divergence between target and off-target populations within
-    multiple receptors
+    Calculates 1D EMD and KL Divergence between target and off-target populations.
+    Calculates distance metrics for all receptors.
 
     :param recAbundances: abundances across cells (rows) and receptors (columns)
     :param targ: a numpy vector with boolean values indicating indices of target cells
@@ -121,7 +130,7 @@ def KL_EMD_2D(
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 2D EMD and KL Divergence between the target and off-target populations
-    of two receptors, across multiple receptors
+    of two receptors. Calculates distance metrics for all receptor pairs.
 
     :param recAbundances: abundances across cells (rows) and receptors (columns)
     :param targ: a numpy vector with boolean values indicating indices of target cells
@@ -265,15 +274,19 @@ def make_2D_distance_metrics():
 
 
 def KL_EMD_3D(
-    recAbundances: np.ndarray, targ: np.ndarray, offTarg: np.ndarray
+    recAbundances: np.ndarray,
+    targ: np.ndarray,
+    offTarg: np.ndarray,
+    calc_diags: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 3D EMD and KL Divergence between the target and off-target populations
-    of three receptors, across multiple receptors
+    of three receptors. Calculates distance metrics for all receptor triplets.
 
     :param recAbundances: abundances across cells (rows) and receptors (columns)
     :param targ: a numpy vector with boolean values indicating indices of target cells
     :param offTarg: vector with boolean values indicating indices of off-target cells
+    :param calc_diags: whether to calculate 1D and 2D distances
     :return:
         KL_div_vals: an array of KL Divergences between the on- and off-target
             abundances of multiple receptors for each entry the value is calculated
@@ -307,6 +320,9 @@ def KL_EMD_3D(
     ]
 
     for rec1, rec2, rec3 in combinations_with_replacement(valid_indices, 3):
+        if not calc_diags and (rec1 == rec2 or rec2 == rec3 or rec1 == rec3):
+            continue
+
         targAbun1, targAbun2, targAbun3 = (
             targNorms[:, rec1],
             targNorms[:, rec2],
@@ -334,3 +350,78 @@ def KL_EMD_3D(
         )
 
     return KL_div_vals, EMD_vals
+
+
+def test_runtimes(dim: int = 3, sample_size: int = 1000):
+    """
+    Tests the runtimes of a specified distance metric function.
+
+    :param dim: the dimensionality of the distance metric function to test
+    :param sample_size: the number of cells to sample from the dataset
+    """
+
+    assert dim in [1, 2, 3]
+
+    targCell = "Treg"
+    receptors_of_interest = ["CD25", "CD4-1", "CD27", "CD4-2"]
+    cell_categorization = "CellType2"
+    cellTypes = np.array(
+        [
+            "CD8 Naive",
+            "NK",
+            "CD8 TEM",
+            "CD4 Naive",
+            "CD4 CTL",
+            "CD8 TCM",
+            "CD8 Proliferating",
+            "Treg",
+        ]
+    )
+    offTargCells = cellTypes[cellTypes != targCell]
+
+    epitopesList = pd.read_csv(path_here / "bicytok" / "data" / "epitopeList.csv")
+    epitopes = list(epitopesList["Epitope"].unique())
+    CITE_DF = importCITE()
+
+    # Randomly sample a subset of rows
+    epitopesDF = CITE_DF[epitopes + [cell_categorization]]
+    epitopesDF = epitopesDF.loc[epitopesDF[cell_categorization].isin(cellTypes)]
+    epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
+    sampleDF = sample_receptor_abundances(
+        CITE_DF=epitopesDF,
+        numCells=min(sample_size, epitopesDF.shape[0]),
+        targCellType=targCell,
+        offTargCellTypes=offTargCells,
+    )
+
+    # Define target and off-target cell masks (for distance metrics)
+    on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    off_target_mask = sampleDF["Cell Type"].isin(offTargCells).to_numpy()
+
+    if receptors_of_interest is not None:
+        sampleDF = sampleDF[receptors_of_interest]
+    else:
+        sampleDF = sampleDF[epitopes]
+    rec_abundances = sampleDF.to_numpy()
+    receptors_of_interest = sampleDF.columns
+
+    start = time.time()
+
+    if dim == 1:
+        KL_div_vals, EMD_vals = KL_EMD_1D(rec_abundances,
+            on_target_mask,
+            off_target_mask,
+        )
+    elif dim == 2:
+        KL_div_vals, EMD_vals = KL_EMD_2D(
+            rec_abundances, on_target_mask, off_target_mask, calc_1D=False
+        )
+    elif dim == 3:
+        KL_div_vals, EMD_vals = KL_EMD_3D(
+            rec_abundances, on_target_mask, off_target_mask, calc_diags=False
+        )
+
+    print(f"Completed in {time.time() - start} seconds on {time.ctime(time.time())}.")
+
+    print(KL_div_vals)
+    print(EMD_vals)
