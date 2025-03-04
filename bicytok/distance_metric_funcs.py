@@ -320,7 +320,7 @@ def KL_EMD_3D(
     ]
 
     for rec1, rec2, rec3 in combinations_with_replacement(valid_indices, 3):
-        if not calc_diags and (rec1 == rec2 or rec2 == rec3 or rec1 == rec3):
+        if not calc_diags and (rec1 in (rec2, rec3) or rec2 == rec3):
             continue
 
         targAbun1, targAbun2, targAbun3 = (
@@ -408,7 +408,8 @@ def test_runtimes(dim: int = 3, sample_size: int = 1000):
     start = time.time()
 
     if dim == 1:
-        KL_div_vals, EMD_vals = KL_EMD_1D(rec_abundances,
+        KL_div_vals, EMD_vals = KL_EMD_1D(
+            rec_abundances,
             on_target_mask,
             off_target_mask,
         )

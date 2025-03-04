@@ -60,8 +60,16 @@ def test_KL_EMD_3D():
 
     KL_div_vals, EMD_vals = KL_EMD_3D(recAbundances, targ, offTarg)
 
-    assert KL_div_vals.shape == (recAbundances.shape[1], recAbundances.shape[1], recAbundances.shape[1])
-    assert EMD_vals.shape == (recAbundances.shape[1], recAbundances.shape[1], recAbundances.shape[1])
+    assert KL_div_vals.shape == (
+        recAbundances.shape[1],
+        recAbundances.shape[1],
+        recAbundances.shape[1],
+    )
+    assert EMD_vals.shape == (
+        recAbundances.shape[1],
+        recAbundances.shape[1],
+        recAbundances.shape[1],
+    )
     assert np.all(np.isnan(KL_div_vals) | (KL_div_vals >= 0))
     assert np.all(np.isnan(EMD_vals) | (EMD_vals >= 0))
 

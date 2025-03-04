@@ -93,7 +93,8 @@ def makeFigure():
 
     rec_abundances = filtered_sampleDF.to_numpy()
 
-    KL_div_vals, EMD_vals = KL_EMD_3D(rec_abundances,
+    KL_div_vals, EMD_vals = KL_EMD_3D(
+        rec_abundances,
         on_target_mask,
         off_target_mask,
         calc_diags=True,
