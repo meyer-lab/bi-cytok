@@ -33,12 +33,12 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
     n_dim = dist1.shape[1]
 
     # Estimate the n-dimensional probability distributions
-    kde1 = KernelDensity(atol=1e-9, rtol=1e-9).fit(dist1)
-    kde2 = KernelDensity(atol=1e-9, rtol=1e-9).fit(dist2)
+    kde1 = KernelDensity(atol=1e-9, rtol=1e-9, bandwidth="scott").fit(dist1)
+    kde2 = KernelDensity(atol=1e-9, rtol=1e-9, bandwidth="scott").fit(dist2)
 
     # Compare over the entire distribution space by looking at the global max/min
-    min_abun = np.minimum(dist1.min(axis=0), dist2.min(axis=0)) - 100
-    max_abun = np.maximum(dist1.max(axis=0), dist2.max(axis=0)) + 100
+    min_abun = np.minimum(dist1.min(axis=0), dist2.min(axis=0)) - 0.5
+    max_abun = np.maximum(dist1.max(axis=0), dist2.max(axis=0)) + 0.5
 
     # Create a mesh grid for n-dimensional comparison
     grids = np.meshgrid(
@@ -51,7 +51,9 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
     dist2_probs = np.exp(kde2.score_samples(grids))
 
     # Calculate KL Divergence
-    KL_div_val = stats.entropy(dist2_probs + 1e-200, dist1_probs + 1e-200, base=2)
+    KL_div_val_1 = stats.entropy(dist2_probs + 1e-200, dist1_probs + 1e-200, base=2)
+    KL_div_val_2 = stats.entropy(dist1_probs + 1e-200, dist2_probs + 1e-200, base=2)
+    KL_div_val = (KL_div_val_1 + KL_div_val_2) / 2
 
     # Calculate Euclidean distance matrix
     M = ot.dist(dist1, dist2, metric="euclidean")
