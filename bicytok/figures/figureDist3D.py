@@ -1,6 +1,6 @@
 """
-Generates heatmaps visualizing the 2D EMD and KL Divergence
-    of a given set of receptor scRNA-seq data
+Generates a figure that shows the receptor triplets that have the highest 3D KL
+    divergence and EMD values.
 
 Data Import:
 - The CITE-seq dataframe (`importCITE`)
@@ -15,8 +15,7 @@ Parameters:
 - cell_categorization: column name in CITE-seq dataframe for cell type categorization
 
 Outputs:
-- Generates heatmaps of the EMD and KL divergences between all relevant receptor
-    pairs
+- Two bar plots showing the top 10 KL divergence and EMD values
 """
 
 from pathlib import Path

@@ -33,7 +33,6 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
     n_dim = dist1.shape[1]
 
     # Estimate the n-dimensional probability distributions
-    start_kl = time.time()
     kde1 = KernelDensity(atol=1e-9, rtol=1e-9).fit(dist1)
     kde2 = KernelDensity(atol=1e-9, rtol=1e-9).fit(dist2)
 
@@ -53,15 +52,12 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
 
     # Calculate KL Divergence
     KL_div_val = stats.entropy(dist2_probs + 1e-200, dist1_probs + 1e-200, base=2)
-    print(f"KL Divergence calculation took {time.time() - start_kl} seconds")
 
     # Calculate Euclidean distance matrix
-    start_emd = time.time()
     M = ot.dist(dist1, dist2, metric="euclidean")
 
     # Calculate EMD
-    EMD_val = ot.emd2([], [], M)
-    print(f"EMD calculation took {time.time() - start_emd} seconds")
+    EMD_val = ot.emd2([], [], M, numItermax=1e9)
 
     return KL_div_val, EMD_val
 
