@@ -23,7 +23,9 @@ path_here = Path(__file__).parent.parent
 def sample_data():
     np.random.seed(0)
     recAbundances = np.random.rand(100, 10) * 10
-    targ = np.random.choice([True, False], size=100, p=[0.3, 0.7])
+    targ_ind = np.random.choice(100, size=50, replace=False)
+    targ = np.zeros(100, dtype=bool)
+    targ[targ_ind] = True
     offTarg = ~targ
     return recAbundances, targ, offTarg
 

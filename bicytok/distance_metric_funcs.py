@@ -9,6 +9,7 @@ from scipy import stats
 from sklearn.neighbors import KernelDensity
 
 from .imports import importCITE, sample_receptor_abundances
+import warnings
 
 path_here = Path(__file__).parent.parent
 
@@ -33,8 +34,9 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
     n_dim = dist1.shape[1]
 
     # Estimate the n-dimensional probability distributions
-    kde1 = KernelDensity(atol=1e-9, rtol=1e-9, bandwidth="scott").fit(dist1)
-    kde2 = KernelDensity(atol=1e-9, rtol=1e-9, bandwidth="scott").fit(dist2)
+    bw_method = "scott"
+    kde1 = KernelDensity(atol=1e-9, rtol=1e-9, bandwidth=bw_method).fit(dist1)
+    kde2 = KernelDensity(atol=1e-9, rtol=1e-9, bandwidth=bw_method).fit(dist2)
 
     # Compare over the entire distribution space by looking at the global max/min
     min_abun = np.minimum(dist1.min(axis=0), dist2.min(axis=0)) - 0.5
@@ -54,6 +56,28 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
     KL_div_val_1 = stats.entropy(dist2_probs + 1e-200, dist1_probs + 1e-200, base=2)
     KL_div_val_2 = stats.entropy(dist1_probs + 1e-200, dist2_probs + 1e-200, base=2)
     KL_div_val = (KL_div_val_1 + KL_div_val_2) / 2
+
+    # If the distributions have different sizes, subsample the larger distribution
+    #   to match the distribution masses. An alternate solution would be to use
+    #   unbalanced OT, but this adds unnecessary complexity.
+    if not dist1.shape[0] == dist2.shape[0]:
+        warnings.warn(
+            f"Distributions had unequal sizes ({dist1.shape[0]} vs {dist2.shape[0]}). "
+            f"Larger distribution subsampled to match smaller distribution for EMD."
+        )
+        if dist1.shape[0] > dist2.shape[0]:
+            dist1 = dist1[np.random.choice(dist1.shape[0], dist2.shape[0], replace=False)]
+        else:
+            dist2 = dist2[np.random.choice(dist2.shape[0], dist1.shape[0], replace=False)]
+
+        # Renormalize
+        # Would it be better to unnormalize by multiplying by the mean prior
+        #   to normalizing, then renormalizing with the subsampled distributions?
+        dist_tot = np.vstack((dist1, dist2))
+        dist1 = dist1 / np.mean(dist_tot, axis=0)
+        dist2 = dist2 / np.mean(dist_tot, axis=0)
+
+    assert dist1.shape[0] == dist2.shape[0]
 
     # Calculate Euclidean distance matrix
     M = ot.dist(dist1, dist2, metric="euclidean")
