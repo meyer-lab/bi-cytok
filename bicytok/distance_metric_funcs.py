@@ -1,4 +1,5 @@
 import time
+import warnings
 from itertools import combinations_with_replacement
 from pathlib import Path
 
@@ -9,7 +10,6 @@ from scipy import stats
 from sklearn.neighbors import KernelDensity
 
 from .imports import importCITE, sample_receptor_abundances
-import warnings
 
 path_here = Path(__file__).parent.parent
 
@@ -60,15 +60,20 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
     # If the distributions have different sizes, subsample the larger distribution
     #   to match the distribution masses. An alternate solution would be to use
     #   unbalanced OT, but this adds unnecessary complexity.
-    if not dist1.shape[0] == dist2.shape[0]:
+    if dist1.shape[0] != dist2.shape[0]:
         warnings.warn(
             f"Distributions had unequal sizes ({dist1.shape[0]} vs {dist2.shape[0]}). "
-            f"Larger distribution subsampled to match smaller distribution for EMD."
+            f"Larger distribution subsampled to match smaller distribution for EMD.",
+            stacklevel=2,
         )
         if dist1.shape[0] > dist2.shape[0]:
-            dist1 = dist1[np.random.choice(dist1.shape[0], dist2.shape[0], replace=False)]
+            dist1 = dist1[
+                np.random.choice(dist1.shape[0], dist2.shape[0], replace=False)
+            ]
         else:
-            dist2 = dist2[np.random.choice(dist2.shape[0], dist1.shape[0], replace=False)]
+            dist2 = dist2[
+                np.random.choice(dist2.shape[0], dist1.shape[0], replace=False)
+            ]
 
         # Renormalize
         # Would it be better to unnormalize by multiplying by the mean prior
