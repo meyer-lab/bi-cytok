@@ -51,7 +51,6 @@ def makeFigure():
     dose = 10e-2
     cell_categorization = "CellType2"
 
-
     # Imports
     CITE_DF = importCITE()
 

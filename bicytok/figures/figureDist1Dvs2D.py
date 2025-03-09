@@ -43,7 +43,6 @@ def makeFigure():
     sample_size = 100
     cell_categorization = "CellType2"
 
-
     CITE_DF = importCITE()
 
     assert targCell in CITE_DF[cell_categorization].unique()

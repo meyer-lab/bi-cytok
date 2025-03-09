@@ -48,9 +48,7 @@ def makeFigure():
     CITE_DF = importCITE()
 
     # Ensure target cell exists in the dataset
-    assert (
-        targCell in CITE_DF[cell_categorization].unique()
-    )
+    assert targCell in CITE_DF[cell_categorization].unique()
 
     # Sample cells for analysis
     epitopes = [
@@ -73,10 +71,14 @@ def makeFigure():
     n_off_targ = np.sum(off_targ_mask)
 
     # Filter out any columns with all zero values
-    filtered_sampleDF = sampleDF[sampleDF.columns[~sampleDF.columns.isin(["Cell Type"])]]
-    
+    filtered_sampleDF = sampleDF[
+        sampleDF.columns[~sampleDF.columns.isin(["Cell Type"])]
+    ]
+
     # Filter columns with all zeros in off-target cells
-    off_target_zeros = filtered_sampleDF.loc[off_targ_mask].apply(lambda col: (col == 0).all())
+    off_target_zeros = filtered_sampleDF.loc[off_targ_mask].apply(
+        lambda col: (col == 0).all()
+    )
     filtered_sampleDF = filtered_sampleDF.loc[:, ~off_target_zeros]
     receptor_columns = filtered_sampleDF.columns
 
@@ -241,10 +243,18 @@ def makeFigure():
         )
 
     # Add figure title with summary of metrics ranges
-    kl_range = f"KL div range: [{metrics_df['KL_Divergence'].min():.2f}, {metrics_df['KL_Divergence'].mean():.2f}, {metrics_df['KL_Divergence'].max():.2f}]"
-    emd_range = f"EMD range: [{metrics_df['EMD'].min():.2f}, {metrics_df['EMD'].mean():.2f}, {metrics_df['EMD'].max():.2f}]"
+    kl_range = (
+        f"KL div range: [{metrics_df['KL_Divergence'].min():.2f}, "
+        f"{metrics_df['KL_Divergence'].mean():.2f}, "
+        f"{metrics_df['KL_Divergence'].max():.2f}]"
+    )
+    emd_range = (
+        f"EMD range: [{metrics_df['EMD'].min():.2f}, "
+        f"{metrics_df['EMD'].mean():.2f}, {metrics_df['EMD'].max():.2f}]"
+    )
     plt.suptitle(
-        f"Receptor Distribution Comparison: {targCell} vs Off-Target\n{kl_range}, {emd_range}",
+        f"Receptor Distribution Comparison: {targCell} vs Off-Target\n{kl_range}, "
+        f"{emd_range}",
         fontsize=14,
     )
 

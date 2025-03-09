@@ -46,9 +46,7 @@ def makeFigure():
     CITE_DF = importCITE()
 
     # Ensure target cell exists in the dataset
-    assert (
-        targCell in CITE_DF[cell_categorization].unique()
-    )
+    assert targCell in CITE_DF[cell_categorization].unique()
 
     # Sample cells for analysis
     epitopes = [
@@ -69,10 +67,14 @@ def makeFigure():
     off_targ_mask = ~targ_mask
 
     # Filter out any columns with all zero values
-    filtered_sampleDF = sampleDF[sampleDF.columns[~sampleDF.columns.isin(["Cell Type"])]]
-    
+    filtered_sampleDF = sampleDF[
+        sampleDF.columns[~sampleDF.columns.isin(["Cell Type"])]
+    ]
+
     # Filter columns with all zeros in off-target cells
-    off_target_zeros = filtered_sampleDF.loc[off_targ_mask].apply(lambda col: (col == 0).all())
+    off_target_zeros = filtered_sampleDF.loc[off_targ_mask].apply(
+        lambda col: (col == 0).all()
+    )
     filtered_sampleDF = filtered_sampleDF.loc[:, ~off_target_zeros]
     receptor_columns = filtered_sampleDF.columns
 
@@ -88,9 +90,7 @@ def makeFigure():
     ).dropna()
 
     # Calculate correlation between KL divergence and EMD
-    correlation, _ = stats.pearsonr(
-        results_df["KL_Divergence"], results_df["EMD"]
-    )
+    correlation, _ = stats.pearsonr(results_df["KL_Divergence"], results_df["EMD"])
     print(f"Pearson correlation: {correlation:.4f}")
 
     # Fit a linear regression
@@ -137,7 +137,7 @@ def makeFigure():
     colors = [color_map[t] for t in results_df["Outlier_Type"]]
 
     # Plot the scatter plot
-    scatter = ax.scatter(
+    ax.scatter(
         results_df["EMD"],
         results_df["KL_Divergence"],
         alpha=0.6,
@@ -198,8 +198,10 @@ def makeFigure():
 
     # Add summary of outliers at the bottom of the figure
     outlier_summary = (
-        f"High KL, Low EMD outliers ({len(high_kl_outliers)} shown): {', '.join(high_kl_outliers['Receptor'])}\n"
-        f"Low KL, High EMD outliers ({len(low_kl_outliers)} shown): {', '.join(low_kl_outliers['Receptor'])}"
+        f"High KL, Low EMD outliers ({len(high_kl_outliers)} shown): "
+        f"{', '.join(high_kl_outliers['Receptor'])}\n"
+        f"Low KL, High EMD outliers ({len(low_kl_outliers)} shown): "
+        f"{', '.join(low_kl_outliers['Receptor'])}"
     )
     plt.figtext(
         0.5,
