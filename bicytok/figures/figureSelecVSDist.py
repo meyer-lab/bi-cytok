@@ -5,7 +5,6 @@ Generates line plots to visualize the relationship between
 
 Data Import:
 - The CITE-seq dataframe (`importCITE`)
-- Reads a list of epitopes from a CSV file (`epitopeList.csv`)
 
 Parameters:
 - receptors: list of receptors to be analyzed
@@ -15,7 +14,7 @@ Parameters:
 - targCell: cell type whose selectivity will be maximized
 - test_valencies: list of valencies to be analyzed
 - dose: dose of ligand to be used
-- cellTypes: array of all relevant cell types
+- cell_categorization: column name in CITE-seq dataframe that
 
 Data Collection:
 - Iterates over specified valencies and receptors
@@ -66,43 +65,30 @@ def makeFigure():
     targCell = "Treg"
     test_valencies = [(1), (2)]
     dose = 10e-2
-    cellTypes = np.array(
-        [
-            "CD8 Naive",
-            "NK",
-            "CD8 TEM",
-            "CD4 Naive",
-            "CD4 CTL",
-            "CD8 TCM",
-            "CD8 Proliferating",
-            "Treg",
-        ]
-    )
-
-    offTargCells = cellTypes[cellTypes != targCell]
     cell_categorization = "CellType2"
 
     # Load data
-    epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
-    epitopes = list(epitopesList["Epitope"].unique())
     CITE_DF = importCITE()
 
     assert targCell in CITE_DF[cell_categorization].unique()
 
     # Randomly sample a subset of rows
+    epitopes = [
+        col
+        for col in CITE_DF.columns
+        if col not in ["CellType1", "CellType2", "CellType3"]
+    ]
     epitopesDF = CITE_DF[epitopes + [cell_categorization]]
-    epitopesDF = epitopesDF.loc[epitopesDF[cell_categorization].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
     sampleDF = sample_receptor_abundances(
         CITE_DF=epitopesDF,
         numCells=min(sample_size, epitopesDF.shape[0]),
         targCellType=targCell,
-        offTargCellTypes=offTargCells,
     )
 
     # Define target and off-target cell masks (for distance metrics)
     on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
-    off_target_mask = sampleDF["Cell Type"].isin(offTargCells).to_numpy()
+    off_target_mask = ~on_target_mask
 
     # Define target and off-target cell dataframes (for model)
     dfTargCell = sampleDF.loc[on_target_mask]
