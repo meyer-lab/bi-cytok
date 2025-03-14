@@ -3,14 +3,12 @@ Generate plots to compare 1D and 2D distance metrics, which should match.
 
 Data Import:
 - The CITE-seq dataframe (`importCITE`)
-- Reads a list of epitopes from a CSV file (`epitopeList.csv`)
 
 Parameters:
 - targCell: cell type whose selectivity will be maximized
 - receptors_of_interest: list of receptors to be analyzed
 - sample_size: number of cells to sample for analysis
     (if greater than available cells, will use all)
-- cellTypes: Array of all relevant cell types
 - cell_categorization: column name in CITE-seq dataframe for cell type categorization
 
 Outputs:
@@ -43,39 +41,23 @@ def makeFigure():
         "TSLPR",
     ]
     sample_size = 100
-    cellTypes = np.array(
-        [
-            "CD8 Naive",
-            "NK",
-            "CD8 TEM",
-            "CD4 Naive",
-            "CD4 CTL",
-            "CD8 TCM",
-            "CD8 Proliferating",
-            "Treg",
-        ]
-    )
     cell_categorization = "CellType2"
-
-    offTargCells = cellTypes[cellTypes != targCell]
 
     CITE_DF = importCITE()
 
     assert targCell in CITE_DF[cell_categorization].unique()
 
     epitopesDF = CITE_DF[receptors_of_interest + [cell_categorization]]
-    epitopesDF = epitopesDF.loc[epitopesDF[cell_categorization].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
     sampleDF = sample_receptor_abundances(
         CITE_DF=epitopesDF,
         numCells=sample_size,
         targCellType=targCell,
-        offTargCellTypes=offTargCells,
     )
     rec_abundances = sampleDF[receptors_of_interest].to_numpy()
 
-    target_mask = sampleDF["Cell Type"] == targCell
-    off_target_mask = sampleDF["Cell Type"].isin(offTargCells)
+    target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    off_target_mask = ~target_mask
 
     KL_div_vals_1D, EMD_vals_1D = KL_EMD_1D(
         rec_abundances, target_mask, off_target_mask

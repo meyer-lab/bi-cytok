@@ -4,7 +4,6 @@ Generates box plots to visualize the relationship between sample size and the
 
 Data Import:
 - The CITE-seq dataframe (`importCITE`)
-- Reads a list of epitopes from a CSV file (`epitopeList.csv`)
 
 Parameters:
 - sample_sizes: list of sample sizes to be tested
@@ -14,7 +13,6 @@ Parameters:
 - valencies: valency of the complex
 - targets: receptor pair on which the variation will be tested
 - dose: dose of ligand to be used in the selectivity calculation
-- cellTypes: Array of all relevant cell types
 - cell_categorization: column name in CITE-seq dataframe for cell type categorization
 
 Outputs:
@@ -51,21 +49,7 @@ def makeFigure():
     valencies = np.array([[1, 1, 1]])
     targets = ["CD25", "CD278"]
     dose = 10e-2
-    cellTypes = np.array(
-        [
-            "CD8 Naive",
-            "NK",
-            "CD8 TEM",
-            "CD4 Naive",
-            "CD4 CTL",
-            "CD8 TCM",
-            "CD8 Proliferating",
-            "Treg",
-        ]
-    )
     cell_categorization = "CellType2"
-
-    offTargCells = cellTypes[cellTypes != targCell]
 
     # Imports
     CITE_DF = importCITE()
@@ -73,19 +57,17 @@ def makeFigure():
     assert targCell in CITE_DF[cell_categorization].unique()
 
     epitopesDF = CITE_DF[[signal_receptor] + targets + [cell_categorization]]
-    epitopesDF = epitopesDF.loc[epitopesDF[cell_categorization].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
     sampleDF = sample_receptor_abundances(
         CITE_DF=epitopesDF,
         numCells=epitopesDF.shape[0],
         targCellType=targCell,
-        offTargCellTypes=offTargCells,
     )
 
     metrics = []
     for sample_size in sample_sizes:
         target_cells = sampleDF[sampleDF["Cell Type"] == targCell]
-        off_target_cells = sampleDF[sampleDF["Cell Type"].isin(offTargCells)]
+        off_target_cells = sampleDF[sampleDF["Cell Type"] != targCell]
 
         num_target_cells = sample_size // 2
         num_off_target_cells = sample_size - num_target_cells
@@ -103,7 +85,7 @@ def makeFigure():
 
             # Define target and off-target cell masks (for distance metrics)
             target_mask = (rand_samples["Cell Type"] == targCell).to_numpy()
-            off_target_mask = rand_samples["Cell Type"].isin(offTargCells).to_numpy()
+            off_target_mask = ~target_mask
 
             # Calculate distance metrics
             rec_abundances = rand_samples[targets].to_numpy()

@@ -6,14 +6,12 @@ Outputs dose vs. selectivity for the target cell and amount of target cell
 
 Data Import:
 - The CITE-seq dataframe (`importCITE`)
-- Reads a list of epitopes from a CSV file (`epitopeList.csv`)
 
 Parameters:
 - signal: Receptor that the ligand is delivering signal to; selectivity and
     target bound are with respect to engagement with this receptor
 - allTargets: List of paired [(target receptor, valency)] combinations for each
     targeting receptor; to be used for targeting the target cell, not signaling
-- cellTypes: Array of all relevant cell types
 - targCell: cell type whose selectivity will be maximized
 - receptors_of_interest: list of receptors to be analyzed
 
@@ -57,38 +55,22 @@ def makeFigure():
         [("CD25", 1), ("CD278", 1), ("CD27", 1)],
         [("CD25", 4), ("CD278", 4), ("CD27", 4)],
     ]
-    cellTypes = np.array(
-        [
-            "CD8 Naive",
-            "NK",
-            "CD8 TEM",
-            "CD4 Naive",
-            "CD4 CTL",
-            "CD8 TCM",
-            "CD8 Proliferating",
-            "Treg",
-            "CD4 TEM",
-            "NK Proliferating",
-            "NK_CD56bright",
-        ]
-    )
     targCell = "Treg"
 
-    offTargCells = cellTypes[cellTypes != targCell]
-
-    epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
-    epitopes = list(epitopesList["Epitope"].unique())
-
     CITE_DF = importCITE()
+
+    epitopes = [
+        col
+        for col in CITE_DF.columns
+        if col not in ["CellType1", "CellType2", "CellType3"]
+    ]
     epitopesDF = CITE_DF[epitopes + ["CellType2"]]
-    epitopesDF = epitopesDF.loc[epitopesDF["CellType2"].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={"CellType2": "Cell Type"})
 
     sampleDF = sample_receptor_abundances(
         CITE_DF=epitopesDF,
-        numCells=1000,
+        numCells=100,
         targCellType=targCell,
-        offTargCellTypes=offTargCells,
     )
 
     doseVec = np.logspace(-2, 2, num=10)
@@ -108,7 +90,7 @@ def makeFigure():
 
         dfTargCell = sampleDF.loc[sampleDF["Cell Type"] == targCell]
         targRecs = dfTargCell[[signal[0]] + targets]
-        dfOffTargCell = sampleDF.loc[sampleDF["Cell Type"].isin(offTargCells)]
+        dfOffTargCell = sampleDF.loc[sampleDF["Cell Type"] != targCell]
         offTargRecs = dfOffTargCell[[signal[0]] + targets]
 
         for dose in doseVec:

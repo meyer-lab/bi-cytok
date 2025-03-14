@@ -9,8 +9,8 @@ Parameters:
 - receptors: list of receptors to be analyzed
 - cell_type: cell type whose selectivity will be maximized
 - dose: dose of ligand to be used in the selectivity calculation
-- cellTypes: Array of all relevant cell types
 - valency: valency of the complex to be used in the selectivity calculation
+- cell_categorization: column name in CITE-seq dataframe for cell type categorization
 
 Outputs:
 - Displays the optimal selectivities of all relevant receptor pairs in a heatmap
@@ -36,32 +36,21 @@ def makeFigure():
     cell_type = "Treg"
     dose = 10e-2
     valency = np.array([[2, 2]])
-    cellTypes = np.array(
-        [
-            "CD8 Naive",
-            "NK",
-            "CD8 TEM",
-            "CD4 Naive",
-            "CD4 CTL",
-            "CD8 TCM",
-            "CD8 Proliferating",
-            "Treg",
-        ]
-    )
-
-    offTargCells = cellTypes[cellTypes != cell_type]
+    cell_categorization = "CellType2"
 
     CITE_DF = importCITE()
 
-    filt_cols = ["CellType1", "CellType3", "Cell"]
-    marker_columns = CITE_DF.columns[~CITE_DF.columns.isin(filt_cols)]
-    markerDF = CITE_DF.loc[:, marker_columns]
-    markerDF = markerDF.rename(columns={"CellType2": "Cell Type"})
-
-    sampleDF = sample_receptor_abundances(markerDF, 50, cell_type, offTargCells)
+    epitopes = [
+        col
+        for col in CITE_DF.columns
+        if col not in ["CellType1", "CellType2", "CellType3"]
+    ]
+    epitopesDF = CITE_DF[epitopes + [cell_categorization]]
+    epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
+    sampleDF = sample_receptor_abundances(epitopesDF, 100, cell_type)
 
     targ_mask = (sampleDF["Cell Type"] == cell_type).to_numpy()
-    off_targ_mask = sampleDF["Cell Type"].isin(offTargCells).to_numpy()
+    off_targ_mask = ~targ_mask
 
     selectivities = np.full((len(receptors), len(receptors)), np.nan)
     for i, rec1 in enumerate(receptors):

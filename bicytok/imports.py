@@ -241,7 +241,7 @@ def sample_receptor_abundances(
     CITE_DF: pd.DataFrame,
     numCells: int,
     targCellType: str,
-    offTargCellTypes: list[str],
+    offTargCellTypes: list[str] = None,
     rand_state: int = 42,
 ) -> pd.DataFrame:
     """
@@ -255,7 +255,8 @@ def sample_receptor_abundances(
         numCells: number of cells to sample
         targCellType: the cell type that will be used to split target and
             off targer sampling
-        offTargCellTypes: list of cell types that are distinct from target cells
+        offTargCellTypes: list of cell types that are distinct from target cells.
+            If None, all cell types except targCellType will be used.
         rand_state: random seed for reproducibility
     Return:
         sampleDF: dataframe containing single cell abundances of
@@ -268,7 +269,10 @@ def sample_receptor_abundances(
 
     # Sample an equal number of target and off-target cells
     target_cells = CITE_DF[CITE_DF["Cell Type"] == targCellType]
-    off_target_cells = CITE_DF[CITE_DF["Cell Type"].isin(offTargCellTypes)]
+    if offTargCellTypes is not None:
+        off_target_cells = CITE_DF[CITE_DF["Cell Type"].isin(offTargCellTypes)]
+    else:
+        off_target_cells = CITE_DF[CITE_DF["Cell Type"] != targCellType]
 
     num_target_cells = numCells // 2
     num_off_target_cells = numCells - num_target_cells
