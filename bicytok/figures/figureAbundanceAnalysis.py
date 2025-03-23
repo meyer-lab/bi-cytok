@@ -30,9 +30,12 @@ def makeFigure():
 
     CITE_DF = importCITE()
 
-    assert targCell in CITE_DF[cell_categorization].unique()
-
-    epitopesDF = CITE_DF[receptors_of_interest + [cell_categorization]]
+    epitopes = [
+        col
+        for col in CITE_DF.columns
+        if col not in ["CellType1", "CellType2", "CellType3"]
+    ]
+    epitopesDF = CITE_DF[epitopes + [cell_categorization]]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
     sampleDF = sample_receptor_abundances(
         CITE_DF=epitopesDF,
