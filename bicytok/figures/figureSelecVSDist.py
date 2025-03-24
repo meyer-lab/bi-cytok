@@ -60,8 +60,8 @@ def makeFigure():
         ["TCR-2"],
         ["TIGIT"],
     ]
-    signal_receptor = "CD122"
-    sample_size = 1000
+    signal_receptor = "CD28"
+    sample_size = 5000
     targCell = "Treg"
     test_valencies = [(1), (2)]
     dose = 10e-2
@@ -193,16 +193,16 @@ def makeFigure():
     )
     ax[0].set_title(
         (
-            f"KL Divergence vs Selectivity, Valency 2 (r = {kl_corr_valency_2:.3f}), "
+            f"KL Divergence vs Selectivity - Signal: {signal_receptor}, Valency 2 (r = {kl_corr_valency_2:.3f}), "
             f"Valency 4 (r = {kl_corr_valency_4:.3f})",
         ),
-        fontsize=13,
+        fontsize=10,
     )
     ax[1].set_title(
         (
-            f"EMD vs Selectivity, Valency 2 (r = {emd_corr_valency_2:.3f}), ",
+            f"EMD vs Selectivity - Signal: {signal_receptor}, Valency 2 (r = {emd_corr_valency_2:.3f}), ",
             f"Valency 4 (r = {emd_corr_valency_4:.3f})",
         ),
-        fontsize=13,
+        fontsize=10,
     )
     return f
