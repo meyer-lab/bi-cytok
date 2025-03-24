@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from ..distance_metric_funcs import KL_EMD_2D, KL_EMD_1D
-from ..imports import importCITE, sample_receptor_abundances
+from ..imports import importCITE, sample_receptor_abundances, calc_conv_facts
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent
@@ -23,9 +23,8 @@ def makeFigure():
         "CD28",
         "TCR-2",
         "TIGIT",
-        "TSLPR",
     ]
-    sample_size = 1000
+    sample_size = 5000
     cell_categorization = "CellType2"
 
     CITE_DF = importCITE()
@@ -37,29 +36,70 @@ def makeFigure():
     ]
     epitopesDF = CITE_DF[epitopes + [cell_categorization]]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
-    sampleDF = sample_receptor_abundances(
-        CITE_DF=epitopesDF,
-        numCells=sample_size,
-        targCellType=targCell,
+
+    ##
+    
+    target_cells = epitopesDF[epitopesDF["Cell Type"] == targCell]
+    off_target_cells = epitopesDF[epitopesDF["Cell Type"] != targCell]
+    num_target_cells = sample_size // 2
+    num_off_target_cells = sample_size - num_target_cells
+
+    sampled_target_cells = target_cells.sample(
+        min(num_target_cells, target_cells.shape[0]), random_state=42
     )
-    rec_abundances = sampleDF[receptors_of_interest].to_numpy()
+    sampled_off_target_cells = off_target_cells.sample(
+        min(num_off_target_cells, off_target_cells.shape[0]),
+        random_state=42,
+    )
 
-    target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
-    off_target_mask = ~target_mask
+    sampleDF = pd.concat([sampled_target_cells, sampled_off_target_cells])
+    raw_sampleDF = sampleDF
 
+    # Calculate conversion factors for each epitope
+    convFactDict, defaultConvFact = calc_conv_facts()
+
+    # Multiply the receptor counts of epitope by the conversion factor for that epitope
+    convFacts = [convFactDict.get(epitope, defaultConvFact) for epitope in epitopes]
+
+    sampleDF[epitopes] = sampleDF[epitopes] * convFacts
+    ###
+
+    filtered_sampleDF = sampleDF.loc[
+        :,
+        sampleDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False),
+    ]
+    receptors_of_interest = filtered_sampleDF.columns
+
+    on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    off_target_mask = ~on_target_mask
+
+    rec_abundances = filtered_sampleDF.to_numpy()
+
+    print ("rec_abundances", rec_abundances)
+    
     target_cells = epitopesDF[epitopesDF["Cell Type"] == targCell]
     num_target_cells = min(sample_size, target_cells.shape[0])
-    raw_sampleDF = target_cells.sample(num_target_cells, random_state=42)
-    rec_abundancesraw = raw_sampleDF[receptors_of_interest].to_numpy()
+    
+    filtered_sampleDFraw = raw_sampleDF.loc[
+        :,
+        raw_sampleDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False),
+    ]
+    
+    rec_abundancesraw = filtered_sampleDFraw[receptors_of_interest].to_numpy()
 
+    print ("rec_abundances raw", rec_abundancesraw)
+    print("on_target_mask sum:", sum(on_target_mask))
+    print("off_target_mask sum:", sum(off_target_mask))
+    
+    
     KL_div_vals, EMD_vals = KL_EMD_2D(
-        rec_abundances, target_mask, off_target_mask, calc_1D=True
+        rec_abundances, on_target_mask, off_target_mask, calc_1D=True
     )
     KL_div_valsRAW, EMD_valsRAW = KL_EMD_2D(
-        rec_abundancesraw, target_mask, off_target_mask, calc_1D=True
+        rec_abundancesraw, on_target_mask, off_target_mask, calc_1D=True
     )
     KL_div_valsRAW1, EMD_valsRAW1 = KL_EMD_1D(
-        rec_abundancesraw, target_mask, off_target_mask
+        rec_abundancesraw, on_target_mask, off_target_mask
     )
     
     KL_div_vals_2Draw = np.diag(KL_div_valsRAW)
