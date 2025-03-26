@@ -236,7 +236,6 @@ def calc_conv_facts() -> tuple[dict, float]:
     return convFactDict, defaultConvFact
 
 
-# Called in Figure1, Figure3, Figure4, and Figure5
 def sample_receptor_abundances(
     CITE_DF: pd.DataFrame,
     numCells: int,
@@ -274,15 +273,16 @@ def sample_receptor_abundances(
     else:
         off_target_cells = CITE_DF[CITE_DF["Cell Type"] != targCellType]
 
-    num_target_cells = numCells // 2
-    num_off_target_cells = numCells - num_target_cells
+    # Split sample size between target and off-target cells. If insufficient target
+    #   cells, fill the rest with off-target cells
+    num_target_cells = min(numCells // 2, target_cells.shape[0])
+    num_off_target_cells = min(numCells - num_target_cells, off_target_cells.shape[0])
 
     sampled_target_cells = target_cells.sample(
-        min(num_target_cells, target_cells.shape[0]), random_state=rand_state
+        num_target_cells, random_state=rand_state
     )
     sampled_off_target_cells = off_target_cells.sample(
-        min(num_off_target_cells, off_target_cells.shape[0]),
-        random_state=rand_state,
+        num_off_target_cells, random_state=rand_state
     )
 
     sampleDF = pd.concat([sampled_target_cells, sampled_off_target_cells])
