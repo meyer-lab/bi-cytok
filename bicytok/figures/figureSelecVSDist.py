@@ -44,6 +44,8 @@ from ..imports import importCITE, sample_receptor_abundances
 from ..selectivity_funcs import optimize_affs
 from .common import getSetup
 
+import time
+
 path_here = Path(__file__).parent.parent
 
 
@@ -61,7 +63,7 @@ def makeFigure():
         ["TIGIT"],
     ]
     signal_receptor = "CD122"
-    sample_size = 1000
+    sample_size = 5000
     targCell = "Treg"
     test_valencies = [(1), (2)]
     dose = 10e-2
@@ -76,8 +78,10 @@ def makeFigure():
     epitopes = [
         col
         for col in CITE_DF.columns
-        if col not in ["CellType1", "CellType2", "CellType3"]
+        if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
     ]
+    receptors = [[epitope] for epitope in epitopes]
+
     epitopesDF = CITE_DF[epitopes + [cell_categorization]]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
     sampleDF = sample_receptor_abundances(
@@ -110,6 +114,10 @@ def makeFigure():
 
         # Selectivity calculation for each valency
         for valency in test_valencies:
+            if np.isnan(KL_div) or np.isnan(EMD):
+                selectivity_vals.append(np.nan)
+                continue
+
             model_valencies = np.array([[valency, valency]])
             targRecs = dfTargCell[[signal_receptor] + receptor].to_numpy()
             offTargRecs = dfOffTargCell[[signal_receptor] + receptor].to_numpy()
@@ -135,9 +143,31 @@ def makeFigure():
         }
     )
 
-    # Plot KL vs Selectivity
+    # Create a dataframe with unique receptors and their distance metrics
+    unique_receptors_df = pd.DataFrame({
+        "Receptor Pair": [str(receptor) for receptor in receptors],
+        "KL Divergence": [KL_div_val[0] for KL_div_val in KL_div_vals],
+        "EMD": [EMD_val[0] for EMD_val in EMD_vals],
+    })
+    # Convert NaN values to 0 in the unique_receptors_df
+    unique_receptors_df = unique_receptors_df.fillna(0)
+    print(unique_receptors_df)
+    
+    # Get the indices of the top 10 receptors by KL Divergence
+    top_kl_indices = unique_receptors_df["KL Divergence"].nlargest(10).index.tolist()
+    top_kl_receptors = unique_receptors_df.iloc[top_kl_indices]["Receptor Pair"].tolist()
+    
+    # Get the indices of the top 10 receptors by EMD
+    top_emd_indices = unique_receptors_df["EMD"].nlargest(10).index.tolist()
+    top_emd_receptors = unique_receptors_df.iloc[top_emd_indices]["Receptor Pair"].tolist()
+    
+    # Create filtered dataframes for plotting
+    metrics_df_kl_filtered = metrics_df[metrics_df["Receptor Pair"].isin(top_kl_receptors)]
+    metrics_df_emd_filtered = metrics_df[metrics_df["Receptor Pair"].isin(top_emd_receptors)]
+    
+    # Plot KL vs Selectivity with only top 10 KL receptors in legend
     sns.scatterplot(
-        data=metrics_df,
+        data=metrics_df,  # Plot all data points
         x="KL Divergence",
         y="Selectivity (Rbound)",
         hue="Receptor Pair",
@@ -145,11 +175,38 @@ def makeFigure():
         s=70,
         ax=ax[0],
         legend=False,
+        alpha=0.5,  # Make all points semi-transparent
     )
-
-    # Plot EMD vs Selectivity
+    
+    # Overlay the top 10 with more visibility
     sns.scatterplot(
-        data=metrics_df,
+        data=metrics_df_kl_filtered,
+        x="KL Divergence",
+        y="Selectivity (Rbound)",
+        hue="Receptor Pair",
+        style="Valency",
+        s=70,
+        ax=ax[0],
+        legend=True,
+    )
+    ax[0].legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=True, title="Top 10 by KL Div")
+
+    # Plot EMD vs Selectivity with only top 10 EMD receptors in legend
+    sns.scatterplot(
+        data=metrics_df,  # Plot all data points
+        x="EMD",
+        y="Selectivity (Rbound)",
+        hue="Receptor Pair",
+        style="Valency",
+        s=70,
+        ax=ax[1],
+        legend=False,
+        alpha=0.5,  # Make all points semi-transparent
+    )
+    
+    # Overlay the top 10 with more visibility
+    sns.scatterplot(
+        data=metrics_df_emd_filtered,
         x="EMD",
         y="Selectivity (Rbound)",
         hue="Receptor Pair",
@@ -158,50 +215,17 @@ def makeFigure():
         ax=ax[1],
         legend=True,
     )
-    ax[1].legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=True)
+    ax[1].legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=True, title="Top 10 by EMD")
 
-    # Calculate Pearson correlations
-    valency_2_df = metrics_df[metrics_df["Valency"] == "Valency 2"]
-    valency_4_df = metrics_df[metrics_df["Valency"] == "Valency 4"]
-    valency_2_df = valency_2_df.dropna(subset=["KL Divergence", "Selectivity (Rbound)"])
-    valency_4_df = valency_4_df.dropna(subset=["KL Divergence", "Selectivity (Rbound)"])
-    valency_2_df = valency_2_df[
-        ~np.isinf(valency_2_df[["KL Divergence", "Selectivity (Rbound)"]].values).any(
-            axis=1
-        )
-    ]
-    valency_4_df = valency_4_df[
-        ~np.isinf(valency_4_df[["KL Divergence", "Selectivity (Rbound)"]].values).any(
-            axis=1
-        )
-    ]
-
-    # Calculate Pearson correlations for Valency 2
-    kl_corr_valency_2, _ = pearsonr(
-        valency_2_df["KL Divergence"], valency_2_df["Selectivity (Rbound)"]
-    )
-    emd_corr_valency_2, _ = pearsonr(
-        valency_2_df["EMD"], valency_2_df["Selectivity (Rbound)"]
-    )
-
-    # Calculate Pearson correlations for Valency 4
-    kl_corr_valency_4, _ = pearsonr(
-        valency_4_df["KL Divergence"], valency_4_df["Selectivity (Rbound)"]
-    )
-    emd_corr_valency_4, _ = pearsonr(
-        valency_4_df["EMD"], valency_4_df["Selectivity (Rbound)"]
-    )
     ax[0].set_title(
         (
-            f"KL Divergence vs Selectivity, Valency 2 (r = {kl_corr_valency_2:.3f}), "
-            f"Valency 4 (r = {kl_corr_valency_4:.3f})",
+            f"KL Divergence vs Selectivity"
         ),
         fontsize=13,
     )
     ax[1].set_title(
         (
-            f"EMD vs Selectivity, Valency 2 (r = {emd_corr_valency_2:.3f}), ",
-            f"Valency 4 (r = {emd_corr_valency_4:.3f})",
+            f"EMD vs Selectivity"
         ),
         fontsize=13,
     )
