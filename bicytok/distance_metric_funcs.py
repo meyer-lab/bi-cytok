@@ -66,7 +66,7 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
 
 
 def KL_EMD_1D(
-    recAbundances: np.ndarray, targ: np.ndarray, offTarg: np.ndarray
+    recAbundances: np.ndarray, targ: np.ndarray, offTarg: np.ndarray, filter_recs: bool = True
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 1D EMD and KL Divergence between target and off-target populations.
@@ -99,12 +99,15 @@ def KL_EMD_1D(
     )  # Check that not all cells are target cells
 
     # Filter indices based on the conditions
-    valid_indices = [
-        rec
-        for rec in range(recAbundances.shape[1])
-        if np.mean(recAbundances[:, rec]) > 5
-        and np.mean(targNorms[:, rec]) > np.mean(offTargNorms[:, rec])
-    ]
+    if filter_recs:
+        valid_indices = [
+            rec
+            for rec in range(recAbundances.shape[1])
+            if np.mean(recAbundances[:, rec]) > 5
+            and np.mean(targNorms[:, rec]) > np.mean(offTargNorms[:, rec])
+        ]
+    else:
+        valid_indices = range(recAbundances.shape[1])
 
     for rec in valid_indices:
         targAbun = targNorms[:, rec]
