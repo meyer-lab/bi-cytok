@@ -9,13 +9,14 @@ Parameters:
 - targCell: cell type whose receptor distributions will be compared to off-target cells
 - sample_size: number of cells to sample for analysis
 - cell_categorization: column name for cell type classification
+- num_hists
 
 Outputs:
-- Twenty subplots showing histograms of receptor distributions:
-  - Top 5 receptors by KL divergence
-  - Bottom 5 receptors by KL divergence
-  - Top 5 receptors by EMD
-  - Bottom 5 receptors by EMD
+- Subplots showing histograms of receptor distributions:
+  - Top receptors by KL divergence
+  - Bottom receptors by KL divergence
+  - Top receptors by EMD
+  - Bottom receptors by EMD
 - Each plot shows target and off-target distributions
 - KL divergence and EMD values are displayed on each plot
 """
@@ -29,6 +30,7 @@ import seaborn as sns
 
 from ..distance_metric_funcs import KL_EMD_1D
 from ..imports import importCITE, sample_receptor_abundances
+from ..selectivity_funcs import optimize_affs
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent
@@ -37,12 +39,14 @@ plt.rcParams["svg.fonttype"] = "none"
 
 
 def makeFigure():
-    ax, f = getSetup((20, 16), (4, 5))
+    num_hists = 10
+    ax, f = getSetup((num_hists * 4, 20), (6, num_hists))
 
     # Parameters
     targCell = "Treg"
-    sample_size = 100
+    sample_size = 200000
     cell_categorization = "CellType2"
+    dose = 10e-2
 
     # Load and prepare data
     CITE_DF = importCITE()
@@ -88,68 +92,110 @@ def makeFigure():
     # Calculate KL divergence and EMD for all receptors
     KL_div_vals, EMD_vals = KL_EMD_1D(rec_abundances, targ_mask, off_targ_mask)
 
+    selectivities = []
+    for receptor in receptor_columns:
+        receptor_abun = sampleDF[[receptor]].to_numpy()
+
+        targ_abun = receptor_abun[targ_mask]
+        off_targ_abun = receptor_abun[off_targ_mask]
+
+        opt_selec, _ = optimize_affs(
+            targ_abun, off_targ_abun, dose, valencies=np.array([[1]])
+        )
+        selectivities.append(1 / opt_selec)
+
     # Create a DataFrame with the results
     metrics_df = pd.DataFrame(
-        {"Receptor": receptor_columns, "KL_Divergence": KL_div_vals, "EMD": EMD_vals}
+        {"Receptor": receptor_columns, "KL_Divergence": KL_div_vals, "EMD": EMD_vals, "Selectivity": selectivities}
     )
 
     # Remove NaN values
     metrics_df = metrics_df.dropna()
 
     # Sort metrics to find highest and lowest values
-    top_kl_df = metrics_df.nlargest(5, "KL_Divergence")
-    bottom_kl_df = metrics_df.nsmallest(5, "KL_Divergence")
-    top_emd_df = metrics_df.nlargest(5, "EMD")
-    bottom_emd_df = metrics_df.nsmallest(5, "EMD")
+    top_kl_df = metrics_df.nlargest(num_hists, "KL_Divergence")
+    bottom_kl_df = metrics_df.nsmallest(num_hists, "KL_Divergence")
+    top_emd_df = metrics_df.nlargest(num_hists, "EMD")
+    bottom_emd_df = metrics_df.nsmallest(num_hists, "EMD")
+    top_selec_df = metrics_df.nlargest(num_hists, "Selectivity")
+    bottom_selec_df = metrics_df.nsmallest(num_hists, "Selectivity")
 
     # Organize the plot data by category
     plot_data = []
 
-    # Row 1: Top 5 KL divergence
+    # Row 1: Top KL divergence
     for i, (_, row) in enumerate(top_kl_df.iterrows()):
         plot_data.append(
             {
                 "receptor": row["Receptor"],
                 "kl_val": row["KL_Divergence"],
                 "emd_val": row["EMD"],
+                "selec": row["Selectivity"],
                 "category": "Top KL",
                 "plot_idx": i,  # First row
             }
         )
 
-    # Row 2: Bottom 5 KL divergence
+    # Row 2: Bottom KL divergence
     for i, (_, row) in enumerate(bottom_kl_df.iterrows()):
         plot_data.append(
             {
                 "receptor": row["Receptor"],
                 "kl_val": row["KL_Divergence"],
                 "emd_val": row["EMD"],
+                "selec": row["Selectivity"],
                 "category": "Bottom KL",
-                "plot_idx": i + 5,  # Second row
+                "plot_idx": i + num_hists,  # Second row
             }
         )
 
-    # Row 3: Top 5 EMD
+    # Row 3: Top EMD
     for i, (_, row) in enumerate(top_emd_df.iterrows()):
         plot_data.append(
             {
                 "receptor": row["Receptor"],
                 "kl_val": row["KL_Divergence"],
                 "emd_val": row["EMD"],
+                "selec": row["Selectivity"],
                 "category": "Top EMD",
-                "plot_idx": i + 10,  # Third row
+                "plot_idx": i + 2 * num_hists,  # Third row
             }
         )
 
-    # Row 4: Bottom 5 EMD
+    # Row 4: Bottom EMD
     for i, (_, row) in enumerate(bottom_emd_df.iterrows()):
         plot_data.append(
             {
                 "receptor": row["Receptor"],
                 "kl_val": row["KL_Divergence"],
                 "emd_val": row["EMD"],
+                "selec": row["Selectivity"],
                 "category": "Bottom EMD",
-                "plot_idx": i + 15,  # Fourth row
+                "plot_idx": i + 3 * num_hists,  # Fourth row
+            }
+        )
+    # Row 5: Top Selectivity
+    for i, (_, row) in enumerate(top_selec_df.iterrows()):
+        plot_data.append(
+            {
+                "receptor": row["Receptor"],
+                "kl_val": row["KL_Divergence"],
+                "emd_val": row["EMD"],
+                "selec": row["Selectivity"],
+                "category": "Top Selectivity",
+                "plot_idx": i + 4 * num_hists,  # Fifth row
+            }
+        )
+    # Row 6: Bottom Selectivity
+    for i, (_, row) in enumerate(bottom_selec_df.iterrows()):
+        plot_data.append(
+            {
+                "receptor": row["Receptor"],
+                "kl_val": row["KL_Divergence"],
+                "emd_val": row["EMD"],
+                "selec": row["Selectivity"],
+                "category": "Bottom Selectivity",
+                "plot_idx": i + 5 * num_hists,  # Sixth row
             }
         )
 
@@ -159,6 +205,7 @@ def makeFigure():
         category = plot_info["category"]
         kl_val = plot_info["kl_val"]
         emd_val = plot_info["emd_val"]
+        selec_val = plot_info["selec"]
         i = plot_info["plot_idx"]
 
         # Extract receptor abundances and normalize
@@ -191,7 +238,7 @@ def makeFigure():
 
         # Add title and labels
         ax[i].set_title(
-            f"{receptor}\nKL: {kl_val:.2f}, EMD: {emd_val:.2f}", fontsize=10
+            f"{receptor}\nKL: {kl_val:.2f}, EMD: {emd_val:.2f}, Selectivity: {selec_val:.2f}", fontsize=10
         )
         ax[i].set_xlabel("Normalized Expression", fontsize=9)
         ax[i].set_ylabel("Density", fontsize=9)
@@ -199,7 +246,7 @@ def makeFigure():
         ax[i].set_xlim(0, 2)
 
         # Add legend only to first plot in each row
-        if i % 5 == 0:
+        if i % num_hists == 0:
             ax[i].legend(loc="upper right", fontsize=8)
 
         # Add category label as text in corner
@@ -208,6 +255,8 @@ def makeFigure():
             "Bottom KL": "brown",
             "Top EMD": "purple",
             "Bottom EMD": "orange",
+            "Top Selectivity": "darkblue",
+            "Bottom Selectivity": "red",
         }
 
         ax[i].text(
@@ -222,26 +271,6 @@ def makeFigure():
             bbox=dict(facecolor="white", alpha=0.7, edgecolor=label_color[category]),
         )
 
-    # Add row titles
-    row_titles = [
-        "Top 5 KL Divergence",
-        "Bottom 5 KL Divergence",
-        "Top 5 EMD",
-        "Bottom 5 EMD",
-    ]
-
-    for i, title in enumerate(row_titles):
-        # Adding a text label for each row in the figure margin
-        plt.figtext(
-            0.01,
-            0.87 - (i * 0.23),
-            title,
-            fontsize=12,
-            fontweight="bold",
-            rotation=90,
-            ha="center",
-        )
-
     # Add figure title with summary of metrics ranges
     kl_range = (
         f"KL div range: [{metrics_df['KL_Divergence'].min():.2f}, "
@@ -252,9 +281,14 @@ def makeFigure():
         f"EMD range: [{metrics_df['EMD'].min():.2f}, "
         f"{metrics_df['EMD'].mean():.2f}, {metrics_df['EMD'].max():.2f}]"
     )
+    selec_range = (
+        f"Selectivity range: [{metrics_df['Selectivity'].min():.2f}, "
+        f"{metrics_df['Selectivity'].mean():.2f}, "
+        f"{metrics_df['Selectivity'].max():.2f}]"
+    )
     plt.suptitle(
         f"Receptor Distribution Comparison: {targCell} vs Off-Target\n{kl_range}, "
-        f"{emd_range}",
+        f"{emd_range}, {selec_range}",
         fontsize=14,
     )
 
