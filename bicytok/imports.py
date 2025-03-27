@@ -242,6 +242,7 @@ def sample_receptor_abundances(
     targCellType: str,
     offTargCellTypes: list[str] = None,
     rand_state: int = 42,
+    balance: bool = False,
 ) -> pd.DataFrame:
     """
     Samples a subset of cells and converts unprocessed CITE-seq receptor values
@@ -277,6 +278,10 @@ def sample_receptor_abundances(
     #   cells, fill the rest with off-target cells
     num_target_cells = min(numCells // 2, target_cells.shape[0])
     num_off_target_cells = min(numCells - num_target_cells, off_target_cells.shape[0])
+
+    if balance:
+        num_target_cells = min(num_target_cells, num_off_target_cells)
+        num_off_target_cells = min(num_target_cells, num_off_target_cells)
 
     sampled_target_cells = target_cells.sample(
         num_target_cells, random_state=rand_state
