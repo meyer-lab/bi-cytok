@@ -42,12 +42,12 @@ def makeFigure():
     ax, f = getSetup((15, 5), (1, 4))
 
     # Parameters
-    sample_sizes = [50, 100, 200]
-    randomizations = 5
+    sample_sizes = [50, 100, 200, 500, 1000, 2000, 5000]
+    randomizations = 20
     targCell = "Treg"
     signal_receptor = "CD122"
-    valencies = np.array([[1, 1, 1]])
-    targets = ["CD25", "CD278"]
+    valencies = np.array([[2, 1, 1]])
+    targets = ["CD25", "CD4-1"]
     dose = 10e-2
     cell_categorization = "CellType2"
 

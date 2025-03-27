@@ -94,7 +94,7 @@ def makeFigure():
         offTargRecs = dfOffTargCell[[signal[0]] + targets]
 
         for dose in doseVec:
-            _, optParams = optimize_affs(
+            optSelec, optParams = optimize_affs(
                 targRecs=targRecs.to_numpy(),
                 offTargRecs=offTargRecs.to_numpy(),
                 dose=dose,
@@ -114,10 +114,10 @@ def makeFigure():
 
             data = {
                 "Dose": [dose],
-                "Selectivity": 1 / optParams[0],
+                "Selectivity": 1 / optSelec,
                 "Target Bound": cellBindDF["Receptor Bound"].loc[targCell],
                 "Ligand": " + ".join(naming),
-                "Affinities": optParams[1],
+                "Affinities": optParams,
             }
             df_temp = pd.DataFrame(
                 data, columns=["Dose", "Selectivity", "Target Bound", "Ligand"]
