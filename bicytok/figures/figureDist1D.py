@@ -33,12 +33,13 @@ path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
-    ax, f = getSetup((8, 8), (1, 2))
+    ax, f = getSetup((7, 3.5), (1, 2))
 
     targCell = "Treg"
     receptors_of_interest = None
-    sample_size = 200000
+    sample_size = 5000
     cell_categorization = "CellType2"
+    signal = "CD122"
 
     CITE_DF = importCITE()
 
@@ -74,27 +75,27 @@ def makeFigure():
 
     KL_values, EMD_values = KL_EMD_1D(rec_abundances, on_target_mask, off_target_mask)
 
-    top_5_KL_indices = np.argsort(np.nan_to_num(KL_values))[-5:]
-    top_5_EMD_indices = np.argsort(np.nan_to_num(EMD_values))[-5:]
+    top_5_KL_indices = np.argsort(np.nan_to_num(KL_values))[-10:]
+    top_5_EMD_indices = np.argsort(np.nan_to_num(EMD_values))[-10:]
 
     # Plot KL values
-    ax[0].barh(
+    ax[0].bar(
         filtered_sampleDF.columns[top_5_KL_indices],
         KL_values[top_5_KL_indices],
-        color="b",
+        color="r",
     )
-    ax[0].set_title("Top 5 KL Divergence Values")
+    ax[0].set_title("Top 10 KL Divergence Values")
     ax[0].set_xlabel("KL Divergence")
-    ax[0].invert_yaxis()
+    ax[0].set_xticklabels(ax[0].get_xticklabels(), rotation=45, ha="right")
 
     # Plot EMD values
-    ax[1].barh(
+    ax[1].bar(
         filtered_sampleDF.columns[top_5_EMD_indices],
         EMD_values[top_5_EMD_indices],
-        color="g",
+        color="b",
     )
-    ax[1].set_title("Top 5 EMD Values")
+    ax[1].set_title("Top 10 EMD Values")
     ax[1].set_xlabel("EMD Value")
-    ax[1].invert_yaxis()
+    ax[1].set_xticklabels(ax[1].get_xticklabels(), rotation=45, ha="right")
 
     return f
