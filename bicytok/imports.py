@@ -315,7 +315,7 @@ def filter_receptor_abundances(
     Filters receptor abundances by removing biologically irrelevant receptors and
         user specified epitopes and cell types. Biologically irrelevant receptors are
         defined as those with large enough mean abundance (can't target a receptor
-        with low overall expression) and those that have higher expression in target 
+        with low overall expression) and those that have higher expression in target
         cells compared to other cell types.
     Args:
         abundance_df: DataFrame containing receptor abundances for filtering
@@ -329,7 +329,6 @@ def filter_receptor_abundances(
 
     assert "Cell Type" in abundance_df.columns
 
-
     cell_type_df = abundance_df["Cell Type"]
     abundance_df = abundance_df.drop(columns=["Cell Type"])
 
@@ -337,12 +336,8 @@ def filter_receptor_abundances(
     mean_abundances = abundance_df.mean(axis=0)
     relevant_receptors = mean_abundances[mean_abundances > min_mean_abundance].index
     abundance_df = abundance_df[relevant_receptors]
-    mean_targ_abundances = abundance_df[cell_type_df == targ_cell_type].mean(
-        axis=0
-    )
-    mean_off_targ_abundances = abundance_df[
-        cell_type_df != targ_cell_type
-    ].mean(axis=0)
+    mean_targ_abundances = abundance_df[cell_type_df == targ_cell_type].mean(axis=0)
+    mean_off_targ_abundances = abundance_df[cell_type_df != targ_cell_type].mean(axis=0)
     relevant_receptors = mean_targ_abundances[
         mean_targ_abundances > mean_off_targ_abundances
     ].index
@@ -353,11 +348,11 @@ def filter_receptor_abundances(
         abundance_df = abundance_df[epitope_list]
     if cell_type_list is not None:
         abundance_df = abundance_df[cell_type_df.isin(cell_type_list)]
-    
-    # Re-add the cell type column
-    abundance_df["Cell Type"] = cell_type_df
-    abundance_df = abundance_df[[col for col in abundance_df.columns if col != "Cell Type"] + ["Cell Type"]]
+        cell_type_df = cell_type_df[cell_type_df.isin(cell_type_list)]
+
+    # Re-add the cell type column efficiently using pd.concat
+    epitope_cols = abundance_df.copy()
+    cell_type_df = pd.DataFrame(cell_type_df, columns=["Cell Type"])
+    abundance_df = pd.concat([epitope_cols, cell_type_df], axis=1)
 
     return abundance_df
-
-    

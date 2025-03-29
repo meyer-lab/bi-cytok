@@ -39,7 +39,7 @@ def makeFigure():
     ax = ax[0]
 
     receptor1 = "CD25"
-    receptor2 = "CD146"
+    receptor2 = "CD4-1"
     targCell = "Treg"
     sample_size = 5000
     cell_categorization = "CellType2"
@@ -94,33 +94,6 @@ def makeFigure():
             f"{receptor2}_norm": rec2_abundance / mean_rec2,
         }
     )
-
-    # Generate statistics for each cell type
-    stats_data = []
-    for cell_type in plot_cell_types:
-        if cell_type not in plot_df["Cell Type"].unique():
-            continue
-        cell_df = plot_df[plot_df["Cell Type"] == cell_type]
-
-        stats_data.append(
-            {
-                "Cell Type": cell_type,
-                f"{receptor1} Min": np.min(cell_df[f"{receptor1}_norm"]),
-                f"{receptor1} Max": np.max(cell_df[f"{receptor1}_norm"]),
-                f"{receptor1} Mean": np.mean(cell_df[f"{receptor1}_norm"]),
-                f"{receptor1} Std": np.std(cell_df[f"{receptor1}_norm"]),
-                f"{receptor2} Min": np.min(cell_df[f"{receptor2}_norm"]),
-                f"{receptor2} Max": np.max(cell_df[f"{receptor2}_norm"]),
-                f"{receptor2} Mean": np.mean(cell_df[f"{receptor2}_norm"]),
-                f"{receptor2} Std": np.std(cell_df[f"{receptor2}_norm"]),
-                "Count": len(cell_df),
-            }
-        )
-    stats_df = pd.DataFrame(stats_data)
-    print(
-        f"Statistics for {receptor1} and {receptor2} receptor abundance by cell type:"
-    )
-    print(stats_df.to_string(index=False))
 
     # Create the 2D visualizations with both scatter and KDE contours
     colors = sns.color_palette("husl", len(plot_cell_types))

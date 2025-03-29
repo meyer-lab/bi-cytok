@@ -40,9 +40,9 @@ def makeFigure():
     ax, f = getSetup((10, 6), (1, 1))
     ax = ax[0]
 
-    receptor = "CD146"
+    receptor = "CD25"
     targCell = "Treg"
-    sample_size = 100
+    sample_size = 5000
     cell_categorization = "CellType2"
     plot_cell_types = ["Treg", "other"]
 
