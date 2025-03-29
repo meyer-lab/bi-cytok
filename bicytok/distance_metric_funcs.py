@@ -69,7 +69,6 @@ def KL_EMD_1D(
     recAbundances: np.ndarray,
     targ: np.ndarray,
     offTarg: np.ndarray,
-    filter_recs: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 1D EMD and KL Divergence between target and off-target populations.
@@ -101,18 +100,7 @@ def KL_EMD_1D(
         targNorms.shape[0] != recAbundances.shape[0]
     )  # Check that not all cells are target cells
 
-    # Filter indices based on the conditions
-    if filter_recs:
-        valid_indices = [
-            rec
-            for rec in range(recAbundances.shape[1])
-            if np.mean(recAbundances[:, rec]) > 5
-            and np.mean(targNorms[:, rec]) > np.mean(offTargNorms[:, rec])
-        ]
-    else:
-        valid_indices = range(recAbundances.shape[1])
-
-    for rec in valid_indices:
+    for rec in range(recAbundances.shape[1]):
         targAbun = targNorms[:, rec]
         offTargAbun = offTargNorms[:, rec]
 
@@ -162,21 +150,11 @@ def KL_EMD_2D(
     assert targNorms.shape[0] == sum(targ)
     assert targNorms.shape[0] != recAbundances.shape[0]
 
-    # Filter indices based on the conditions
-    valid_indices = [
-        rec
-        for rec in range(recAbundances.shape[1])
-        if np.mean(recAbundances[:, rec]) > 5
-        and np.mean(targNorms[:, rec]) > np.mean(offTargNorms[:, rec])
-    ]
-
     row, col = np.tril_indices(
         recAbundances.shape[1], k=0
     )  # k=0 includes diagonals which are 1D distances
     for rec1, rec2 in zip(row, col, strict=False):
         if not calc_1D and rec1 == rec2:
-            continue
-        if rec1 not in valid_indices or rec2 not in valid_indices:
             continue
 
         targAbun1, targAbun2 = targNorms[:, rec1], targNorms[:, rec2]
@@ -316,15 +294,9 @@ def KL_EMD_3D(
     assert targNorms.shape[0] == sum(targ)
     assert targNorms.shape[0] != recAbundances.shape[0]
 
-    # Filter indices based on the conditions
-    valid_indices = [
-        rec
-        for rec in range(recAbundances.shape[1])
-        if np.mean(recAbundances[:, rec]) > 5
-        and np.mean(targNorms[:, rec]) > np.mean(offTargNorms[:, rec])
-    ]
-
-    for rec1, rec2, rec3 in combinations_with_replacement(valid_indices, 3):
+    for rec1, rec2, rec3 in combinations_with_replacement(
+        range(recAbundances.shape[1]), 3
+    ):
         if not calc_diags and (rec1 in (rec2, rec3) or rec2 == rec3):
             continue
 

@@ -302,3 +302,62 @@ def sample_receptor_abundances(
     sampleDF[epitopes] = sampleDF[epitopes] * convFacts
 
     return sampleDF
+
+
+def filter_receptor_abundances(
+    abundance_df: pd.DataFrame,
+    targ_cell_type: str,
+    min_mean_abundance: float = 5.0,
+    epitope_list: list[str] = None,
+    cell_type_list: list[str] = None,
+) -> pd.DataFrame:
+    """
+    Filters receptor abundances by removing biologically irrelevant receptors and
+        user specified epitopes and cell types. Biologically irrelevant receptors are
+        defined as those with large enough mean abundance (can't target a receptor
+        with low overall expression) and those that have higher expression in target 
+        cells compared to other cell types.
+    Args:
+        abundance_df: DataFrame containing receptor abundances for filtering
+        targ_cell_type: The cell type to determine biologically relevant receptors
+        min_mean_abundance: Minimum mean abundance threshold for receptors
+        epitope_list: List of specific epitopes to retain; if None, all are retained
+        cell_type_list: List of specific cell types to retain; if None, all are retained
+    Return:
+        A DataFrame containing filtered receptor abundances
+    """
+
+    assert "Cell Type" in abundance_df.columns
+
+
+    cell_type_df = abundance_df["Cell Type"]
+    abundance_df = abundance_df.drop(columns=["Cell Type"])
+
+    # Filter irrelevant receptors
+    mean_abundances = abundance_df.mean(axis=0)
+    relevant_receptors = mean_abundances[mean_abundances > min_mean_abundance].index
+    abundance_df = abundance_df[relevant_receptors]
+    mean_targ_abundances = abundance_df[cell_type_df == targ_cell_type].mean(
+        axis=0
+    )
+    mean_off_targ_abundances = abundance_df[
+        cell_type_df != targ_cell_type
+    ].mean(axis=0)
+    relevant_receptors = mean_targ_abundances[
+        mean_targ_abundances > mean_off_targ_abundances
+    ].index
+    abundance_df = abundance_df[relevant_receptors]
+
+    # Filter user-specified epitopes and cell types
+    if epitope_list is not None:
+        abundance_df = abundance_df[epitope_list]
+    if cell_type_list is not None:
+        abundance_df = abundance_df[cell_type_df.isin(cell_type_list)]
+    
+    # Re-add the cell type column
+    abundance_df["Cell Type"] = cell_type_df
+    abundance_df = abundance_df[[col for col in abundance_df.columns if col != "Cell Type"] + ["Cell Type"]]
+
+    return abundance_df
+
+    
