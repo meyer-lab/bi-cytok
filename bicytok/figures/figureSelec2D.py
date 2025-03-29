@@ -59,7 +59,6 @@ def makeFigure():
     signal_abun = sampleDF[signal].to_numpy()
 
     selectivities = np.full((len(receptors), len(receptors)), np.nan)
-
     row, col = np.tril_indices(len(receptors), k=0)
     for i, j in zip(row, col, strict=False):
         rec1 = receptors[i]

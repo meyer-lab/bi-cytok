@@ -22,7 +22,7 @@ import pandas as pd
 import seaborn as sns
 
 from ..distance_metric_funcs import KL_EMD_2D
-from ..imports import importCITE, sample_receptor_abundances
+from ..imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent
@@ -52,12 +52,12 @@ def makeFigure():
         numCells=min(sample_size, epitopesDF.shape[0]),
         targCellType=targCell,
     )
+    filtered_sampleDF = filter_receptor_abundances(sampleDF, targCell)
+    epitopes = list(filtered_sampleDF.columns[:-1])
 
-    on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    on_target_mask = (filtered_sampleDF["Cell Type"] == targCell).to_numpy()
     off_target_mask = ~on_target_mask
-
-    rec_abundances = sampleDF[epitopes].to_numpy()
-
+    rec_abundances = filtered_sampleDF[epitopes].to_numpy()
     KL_div_vals, EMD_vals = KL_EMD_2D(
         rec_abundances, on_target_mask, off_target_mask, calc_1D=True
     )

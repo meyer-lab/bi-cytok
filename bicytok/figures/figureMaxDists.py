@@ -16,13 +16,12 @@ Outputs:
     2. Top EMD values for each cell type with the corresponding receptor
 """
 
-import time
 from pathlib import Path
 
 import numpy as np
 
 from ..distance_metric_funcs import KL_EMD_1D
-from ..imports import importCITE, sample_receptor_abundances
+from ..imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent
@@ -68,7 +67,6 @@ def makeFigure():
     top_KL = []
     top_KL_rec = []
     for cell_type in cell_types:
-        time_start = time.time()
         targCell = cell_type
 
         sampleDF = sample_receptor_abundances(
@@ -77,13 +75,12 @@ def makeFigure():
             targCellType=targCell,
             balance=True,
         )
-        print(f"Sampled {sampleDF.shape[0]} cells for {targCell}")
+        filtered_sampleDF = filter_receptor_abundances(sampleDF, targCell)
+        epitopes = filtered_sampleDF.columns[:-1]
 
-        on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+        on_target_mask = (filtered_sampleDF["Cell Type"] == targCell).to_numpy()
         off_target_mask = ~on_target_mask
-
-        rec_abundances = sampleDF[epitopes].to_numpy()
-
+        rec_abundances = filtered_sampleDF[epitopes].to_numpy()
         KL_values, EMD_values = KL_EMD_1D(
             rec_abundances, on_target_mask, off_target_mask
         )
@@ -93,12 +90,10 @@ def makeFigure():
 
         top_EMD_ind = np.argsort(EMD_values)[-1]
         top_EMD.append(EMD_values[top_EMD_ind])
-        top_EMD_rec.append(sampleDF.columns[top_EMD_ind])
+        top_EMD_rec.append(filtered_sampleDF.columns[top_EMD_ind])
         top_KL_ind = np.argsort(KL_values)[-1]
         top_KL.append(KL_values[top_KL_ind])
-        top_KL_rec.append(sampleDF.columns[top_KL_ind])
-
-        print(f"Cell Type: {targCell} took {time.time() - time_start} seconds")
+        top_KL_rec.append(filtered_sampleDF.columns[top_KL_ind])
 
     EMD_labs = [
         f"{cell_type}: {rec}"
@@ -127,6 +122,7 @@ def makeFigure():
     )
     ax[0].set_title("Top KL Divergence Values")
     ax[0].set_xlabel("KL Divergence")
+    ax[0].set_xticks(KL_labs)
     ax[0].set_xticklabels(KL_labs, rotation=45, ha="right")
 
     # Plot EMD values
@@ -137,6 +133,7 @@ def makeFigure():
     )
     ax[1].set_title("Top EMD Values")
     ax[1].set_xlabel("EMD Value")
+    ax[1].set_xticks(EMD_labs)
     ax[1].set_xticklabels(EMD_labs, rotation=45, ha="right")
 
     return f

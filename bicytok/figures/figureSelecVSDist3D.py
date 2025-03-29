@@ -36,7 +36,7 @@ import pandas as pd
 import seaborn as sns
 
 from ..distance_metric_funcs import KL_EMD_2D
-from ..imports import importCITE, sample_receptor_abundances
+from ..imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from ..selectivity_funcs import optimize_affs
 from .common import getSetup
 
@@ -84,20 +84,21 @@ def makeFigure():
         numCells=min(sample_size, epitopesDF.shape[0]),
         targCellType=targCell,
     )
+    filtered_sampleDF = filter_receptor_abundances(sampleDF, targCell)
 
     # Define target and off-target cell masks (for distance metrics)
-    on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    on_target_mask = (filtered_sampleDF["Cell Type"] == targCell).to_numpy()
     off_target_mask = ~on_target_mask
 
     # Define target and off-target cell dataframes (for model)
-    dfTargCell = sampleDF.loc[on_target_mask]
-    dfOffTargCell = sampleDF.loc[off_target_mask]
+    dfTargCell = filtered_sampleDF.loc[on_target_mask]
+    dfOffTargCell = filtered_sampleDF.loc[off_target_mask]
 
     selectivity_vals = []
     KL_div_vals = []
     EMD_vals = []
     for receptor_pair in receptor_pairs:
-        rec_abundances = sampleDF[receptor_pair].to_numpy()
+        rec_abundances = filtered_sampleDF[receptor_pair].to_numpy()
 
         # Calculate the KL Divergence and EMD for the current receptor pair
         KL_div_mat, EMD_mat = KL_EMD_2D(

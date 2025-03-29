@@ -58,9 +58,7 @@ def makeFigure():
         )
         targ_mask = np.array([True] * n_samples + [False] * n_samples)
         off_targ_mask = ~targ_mask
-        KL_div, EMD = KL_EMD_1D(
-            combined_samples, targ_mask, off_targ_mask, filter_recs=False
-        )
+        KL_div, EMD = KL_EMD_1D(combined_samples, targ_mask, off_targ_mask)
 
         # Define x values for plotting the PDFs
         x = np.linspace(0, 2 * max(ref_mean, target_mean), 1000)

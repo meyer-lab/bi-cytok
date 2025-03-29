@@ -34,8 +34,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from ..distance_metric_funcs import KL_EMD_2D
-from ..imports import importCITE, sample_receptor_abundances
+from ..distance_metric_funcs import KL_EMD_1D
+from ..imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from ..selectivity_funcs import optimize_affs
 from .common import getSetup
 
@@ -46,7 +46,7 @@ def makeFigure():
     ax, f = getSetup((14, 7), (1, 2))
 
     signal_receptor = "CD122"
-    sample_size = 5000
+    sample_size = 100
     targCell = "Treg"
     test_valencies = [(1), (2)]
     dose = 10e-2
@@ -68,25 +68,25 @@ def makeFigure():
         numCells=min(sample_size, epitopesDF.shape[0]),
         targCellType=targCell,
     )
+    filtered_sampleDF = filter_receptor_abundances(sampleDF, targCell)
+    epitopes = filtered_sampleDF.columns[:-1]
 
     # Define target and off-target cell masks (for distance metrics)
-    on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    on_target_mask = (filtered_sampleDF["Cell Type"] == targCell).to_numpy()
     off_target_mask = ~on_target_mask
 
     # Define target and off-target cell dataframes (for model)
-    dfTargCell = sampleDF.loc[on_target_mask]
-    dfOffTargCell = sampleDF.loc[off_target_mask]
+    dfTargCell = filtered_sampleDF.loc[on_target_mask]
+    dfOffTargCell = filtered_sampleDF.loc[off_target_mask]
 
     selectivity_vals = []
     KL_div_vals = []
     EMD_vals = []
     for receptor in epitopes:
-        rec_abundances = sampleDF[receptor].to_numpy()
+        rec_abundances = filtered_sampleDF[receptor].to_numpy().reshape(-1, 1)
 
         # Calculate the KL Divergence and EMD for the current receptor
-        KL_div_mat, EMD_mat = KL_EMD_2D(
-            rec_abundances, on_target_mask, off_target_mask, calc_1D=True
-        )
+        KL_div_mat, EMD_mat = KL_EMD_1D(rec_abundances, on_target_mask, off_target_mask)
         KL_div = KL_div_mat[0]
         EMD = EMD_mat[0]
         KL_div_vals.append(KL_div)
@@ -99,8 +99,8 @@ def makeFigure():
                 continue
 
             model_valencies = np.array([[valency, valency]])
-            targRecs = dfTargCell[[signal_receptor] + receptor].to_numpy()
-            offTargRecs = dfOffTargCell[[signal_receptor] + receptor].to_numpy()
+            targRecs = dfTargCell[[signal_receptor] + [receptor]].to_numpy()
+            offTargRecs = dfOffTargCell[[signal_receptor] + [receptor]].to_numpy()
             optSelec, _ = optimize_affs(
                 targRecs=targRecs,
                 offTargRecs=offTargRecs,
@@ -127,8 +127,8 @@ def makeFigure():
     unique_receptors_df = pd.DataFrame(
         {
             "Receptor Pair": [str(receptor) for receptor in epitopes],
-            "KL Divergence": [KL_div_val[0] for KL_div_val in KL_div_vals],
-            "EMD": [EMD_val[0] for EMD_val in EMD_vals],
+            "KL Divergence": [KL_div_val for KL_div_val in KL_div_vals],
+            "EMD": [EMD_val for EMD_val in EMD_vals],
         }
     )
     unique_receptors_df = unique_receptors_df.fillna(0)

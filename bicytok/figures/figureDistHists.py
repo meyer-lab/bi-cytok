@@ -31,7 +31,7 @@ import pandas as pd
 import seaborn as sns
 
 from ..distance_metric_funcs import KL_EMD_1D
-from ..imports import importCITE, sample_receptor_abundances
+from ..imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from ..selectivity_funcs import optimize_affs
 from .common import getSetup
 
@@ -57,7 +57,7 @@ def makeFigure():
     epitopes = [
         col
         for col in CITE_DF.columns
-        if col not in ["CellType1", "CellType2", "CellType3"]
+        if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
     ]
     epitopesDF = CITE_DF[epitopes + [cell_categorization]]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
@@ -66,24 +66,21 @@ def makeFigure():
         numCells=min(sample_size, epitopesDF.shape[0]),
         targCellType=targCell,
     )
-    receptor_columns = sampleDF.columns
+    filtered_sampleDF = filter_receptor_abundances(sampleDF, targCell)
+    epitopes = list(filtered_sampleDF.columns[:-1])
 
-    # Create target and off-target masks
-    targ_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    # Calculate distance metrics
+    targ_mask = (filtered_sampleDF["Cell Type"] == targCell).to_numpy()
     off_targ_mask = ~targ_mask
     n_targ = np.sum(targ_mask)
     n_off_targ = np.sum(off_targ_mask)
-
-    # Get receptor abundances
-    rec_abundances = sampleDF[epitopes].to_numpy()
-
-    # Calculate KL divergence and EMD
+    rec_abundances = filtered_sampleDF[epitopes].to_numpy()
     KL_div_vals, EMD_vals = KL_EMD_1D(rec_abundances, targ_mask, off_targ_mask)
 
     # Calculate selectivities
     selectivities = []
-    for receptor in receptor_columns:
-        receptor_abun = sampleDF[[receptor]].to_numpy()
+    for receptor in epitopes:
+        receptor_abun = filtered_sampleDF[[receptor]].to_numpy()
 
         targ_abun = receptor_abun[targ_mask]
         off_targ_abun = receptor_abun[off_targ_mask]
@@ -95,7 +92,7 @@ def makeFigure():
 
     metrics_df = pd.DataFrame(
         {
-            "Receptor": receptor_columns,
+            "Receptor": epitopes,
             "KL_Divergence": KL_div_vals,
             "EMD": EMD_vals,
             "Selectivity": selectivities,
@@ -198,7 +195,7 @@ def makeFigure():
         i = plot_info["plot_idx"]
 
         # Extract receptor abundances and normalize
-        rec_abundance = sampleDF[receptor].values
+        rec_abundance = filtered_sampleDF[receptor].values
         mean_abundance = np.mean(rec_abundance)
         targ_abundances = rec_abundance[targ_mask] / mean_abundance
         off_targ_abundances = rec_abundance[off_targ_mask] / mean_abundance
@@ -275,8 +272,5 @@ def makeFigure():
         f"{emd_range}, {selec_range}",
         fontsize=14,
     )
-
-    plt.tight_layout()
-    plt.subplots_adjust(top=0.92, bottom=0.08, left=0.05, right=0.98)
 
     return f

@@ -25,7 +25,7 @@ import scipy.stats as stats
 from sklearn.linear_model import LinearRegression
 
 from ..distance_metric_funcs import KL_EMD_1D
-from ..imports import importCITE, sample_receptor_abundances
+from ..imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent
@@ -49,7 +49,7 @@ def makeFigure():
     epitopes = [
         col
         for col in CITE_DF.columns
-        if col not in ["CellType1", "CellType2", "CellType3"]
+        if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
     ]
     epitopesDF = CITE_DF[epitopes + [cell_categorization]]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
@@ -58,11 +58,12 @@ def makeFigure():
         numCells=min(sample_size, epitopesDF.shape[0]),
         targCellType=targCell,
     )
-    receptor_columns = sampleDF[epitopes].columns
+    filtered_sampleDF = filter_receptor_abundances(sampleDF, targCell)
+    receptor_columns = filtered_sampleDF.columns[:-1]
 
     # Calculate KL divergence and EMD
-    rec_abundances = sampleDF[epitopes].to_numpy()
-    targ_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    rec_abundances = filtered_sampleDF[receptor_columns].to_numpy()
+    targ_mask = (filtered_sampleDF["Cell Type"] == targCell).to_numpy()
     off_targ_mask = ~targ_mask
     KL_div_vals, EMD_vals = KL_EMD_1D(rec_abundances, targ_mask, off_targ_mask)
     results_df = pd.DataFrame(
