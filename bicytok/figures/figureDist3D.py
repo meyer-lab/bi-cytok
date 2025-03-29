@@ -57,7 +57,7 @@ def makeFigure():
 
     on_target_mask = (filtered_sampleDF["Cell Type"] == targCell).to_numpy()
     off_target_mask = ~on_target_mask
-    rec_abundances = filtered_sampleDF.to_numpy()
+    rec_abundances = filtered_sampleDF[receptors_of_interest].to_numpy()
     KL_div_vals, EMD_vals = KL_EMD_3D(
         rec_abundances,
         on_target_mask,
