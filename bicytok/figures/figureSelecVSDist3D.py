@@ -53,14 +53,12 @@ def makeFigure():
         ["CD25", "CD27"],
         ["CD25", "CD278"],
         ["CD25", "CD146"],
-        ["CD25", "CD235ab"],
         ["CD25", "CD338"],
         ["CD4-1", "CD4-1"],
         ["CD4-1", "CD4-2"],
         ["CD4-1", "CD27"],
         ["CD4-1", "CD278"],
         ["CD4-1", "CD146"],
-        ["CD235ab", "CD146"],
     ]
     signal_receptor = "CD122"
     sample_size = 100
@@ -85,6 +83,14 @@ def makeFigure():
         targCellType=targCell,
     )
     filtered_sampleDF = filter_receptor_abundances(sampleDF, targCell)
+
+    # Check if all receptors in receptor_pairs + signal_receptor exist in filtered dataset
+    all_receptors = set([r for pair in receptor_pairs for r in pair] + [signal_receptor])
+    missing_receptors = all_receptors - set(filtered_sampleDF.columns)
+    if missing_receptors:
+        raise ValueError(
+            f"Missing receptors in filtered dataset: {missing_receptors}"
+        )
 
     # Define target and off-target cell masks (for distance metrics)
     on_target_mask = (filtered_sampleDF["Cell Type"] == targCell).to_numpy()
