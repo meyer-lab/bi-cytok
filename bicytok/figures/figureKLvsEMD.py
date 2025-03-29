@@ -42,13 +42,10 @@ def makeFigure():
     sample_size = 100
     cell_categorization = "CellType2"
 
-    # Load and prepare data
     CITE_DF = importCITE()
 
-    # Ensure target cell exists in the dataset
     assert targCell in CITE_DF[cell_categorization].unique()
 
-    # Sample cells for analysis
     epitopes = [
         col
         for col in CITE_DF.columns
@@ -61,35 +58,18 @@ def makeFigure():
         numCells=min(sample_size, epitopesDF.shape[0]),
         targCellType=targCell,
     )
+    receptor_columns = sampleDF[epitopes].columns
 
-    # Create target and off-target masks
+    # Calculate KL divergence and EMD
+    rec_abundances = sampleDF[epitopes].to_numpy()
     targ_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
     off_targ_mask = ~targ_mask
-
-    # Filter out any columns with all zero values
-    filtered_sampleDF = sampleDF[
-        sampleDF.columns[~sampleDF.columns.isin(["Cell Type"])]
-    ]
-
-    # Filter columns with all zeros in off-target cells
-    off_target_zeros = filtered_sampleDF.loc[off_targ_mask].apply(
-        lambda col: (col == 0).all()
-    )
-    filtered_sampleDF = filtered_sampleDF.loc[:, ~off_target_zeros]
-    receptor_columns = filtered_sampleDF.columns
-
-    # Get receptor abundances
-    rec_abundances = filtered_sampleDF.to_numpy()
-
-    # Calculate KL divergence and EMD for all receptors
     KL_div_vals, EMD_vals = KL_EMD_1D(rec_abundances, targ_mask, off_targ_mask)
-
-    # Create DataFrame with results, removing NaN values
     results_df = pd.DataFrame(
         {"Receptor": receptor_columns, "KL_Divergence": KL_div_vals, "EMD": EMD_vals}
     ).dropna()
 
-    # Calculate correlation between KL divergence and EMD
+    # Calculate correlation
     correlation, _ = stats.pearsonr(results_df["KL_Divergence"], results_df["EMD"])
     print(f"Pearson correlation: {correlation:.4f}")
 
@@ -128,15 +108,13 @@ def makeFigure():
         results_df["Outlier_Type"] == "Low KL, High EMD"
     ].nlargest(5, "Abs_Residual")
 
-    # Create a color map for the scatter plot
+    # Plot the scatter plot
     color_map = {
         "Normal": "gray",
         "High KL, Low EMD": "red",
         "Low KL, High EMD": "blue",
     }
     colors = [color_map[t] for t in results_df["Outlier_Type"]]
-
-    # Plot the scatter plot
     ax.scatter(
         results_df["EMD"],
         results_df["KL_Divergence"],
@@ -178,7 +156,6 @@ def makeFigure():
     ]
     ax.legend(handles=handles, title="Receptor Categories", loc="lower right")
 
-    # Add a text box with correlation information
     stats_text = (
         f"Pearson correlation: {correlation:.4f}\n"
         f"R²: {r_squared:.4f}\n"
@@ -195,8 +172,6 @@ def makeFigure():
         bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
         fontsize=9,
     )
-
-    # Add summary of outliers at the bottom of the figure
     outlier_summary = (
         f"High KL, Low EMD outliers ({len(high_kl_outliers)} shown): "
         f"{', '.join(high_kl_outliers['Receptor'])}\n"
@@ -211,18 +186,12 @@ def makeFigure():
         fontsize=9,
         bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
     )
-
-    # Set titles and labels
     ax.set_title(
         f"KL Divergence vs EMD for {targCell} vs Off-target Cells", fontsize=12
     )
     ax.set_xlabel("Earth Mover's Distance (EMD)", fontsize=11)
     ax.set_ylabel("KL Divergence", fontsize=11)
-
-    # Set axis properties
     ax.grid(True, linestyle="--", alpha=0.7)
-
-    # Adjust layout
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.15)
 

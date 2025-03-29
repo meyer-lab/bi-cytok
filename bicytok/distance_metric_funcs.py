@@ -66,7 +66,10 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
 
 
 def KL_EMD_1D(
-    recAbundances: np.ndarray, targ: np.ndarray, offTarg: np.ndarray, filter_recs: bool = True
+    recAbundances: np.ndarray,
+    targ: np.ndarray,
+    offTarg: np.ndarray,
+    filter_recs: bool = True,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 1D EMD and KL Divergence between target and off-target populations.

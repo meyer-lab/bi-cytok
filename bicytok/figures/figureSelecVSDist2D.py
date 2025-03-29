@@ -1,13 +1,11 @@
 """
-Generates line plots to visualize the relationship between
-    KL Divergence/Earth Mover's Distance and Selectivity across
-    varying ligand valencies
+Generates a scatter plot comparing the selectivity of various receptors
+    against their KL Divergence and Earth Mover's Distance (EMD) metrics.
 
 Data Import:
 - The CITE-seq dataframe (`importCITE`)
 
 Parameters:
-- receptors: list of receptors to be analyzed
 - signal_receptor: receptor intended to bind to impart effects
 - sample_size: number of cells to sample for analysis
     (if greater than available cells, will use all)
@@ -28,8 +26,6 @@ Data Collection:
 Outputs:
 - Plots KL Divergence and EMD values against Selectivity for each receptor
     and valency combination
-- Includes Pearson correlation coefficients for each plot, indicating the
-    strength of the linear relationship between the distance metrics and selectivity
 """
 
 from pathlib import Path
@@ -37,14 +33,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from scipy.stats import pearsonr
 
 from ..distance_metric_funcs import KL_EMD_2D
 from ..imports import importCITE, sample_receptor_abundances
 from ..selectivity_funcs import optimize_affs
 from .common import getSetup
-
-import time
 
 path_here = Path(__file__).parent.parent
 
@@ -52,16 +45,6 @@ path_here = Path(__file__).parent.parent
 def makeFigure():
     ax, f = getSetup((14, 7), (1, 2))
 
-    receptors = [
-        ["CD25"],
-        ["CD278"],
-        ["CD4-1"],
-        ["CD27"],
-        ["CD45RB"],
-        ["CD28"],
-        ["TCR-2"],
-        ["TIGIT"],
-    ]
     signal_receptor = "CD122"
     sample_size = 5000
     targCell = "Treg"
@@ -69,19 +52,15 @@ def makeFigure():
     dose = 10e-2
     cell_categorization = "CellType2"
 
-    # Load data
     CITE_DF = importCITE()
 
     assert targCell in CITE_DF[cell_categorization].unique()
 
-    # Randomly sample a subset of rows
     epitopes = [
         col
         for col in CITE_DF.columns
         if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
     ]
-    receptors = [[epitope] for epitope in epitopes]
-
     epitopesDF = CITE_DF[epitopes + [cell_categorization]]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
     sampleDF = sample_receptor_abundances(
@@ -101,9 +80,10 @@ def makeFigure():
     selectivity_vals = []
     KL_div_vals = []
     EMD_vals = []
-    for receptor in receptors:
+    for receptor in epitopes:
         rec_abundances = sampleDF[receptor].to_numpy()
 
+        # Calculate the KL Divergence and EMD for the current receptor
         KL_div_mat, EMD_mat = KL_EMD_2D(
             rec_abundances, on_target_mask, off_target_mask, calc_1D=True
         )
@@ -130,11 +110,11 @@ def makeFigure():
             selectivity_vals.append(1 / optSelec)
 
     valency_map = {1: "Valency 2", 2: "Valency 4"}
-    valency_labels = [valency_map[v] for _ in receptors for v in test_valencies]
+    valency_labels = [valency_map[v] for _ in epitopes for v in test_valencies]
     metrics_df = pd.DataFrame(
         {
             "Receptor Pair": [
-                str(receptor) for receptor in receptors for _ in test_valencies
+                str(receptor) for receptor in epitopes for _ in test_valencies
             ],
             "Valency": valency_labels,
             "KL Divergence": np.repeat(KL_div_vals, len(test_valencies)),
@@ -144,30 +124,38 @@ def makeFigure():
     )
 
     # Create a dataframe with unique receptors and their distance metrics
-    unique_receptors_df = pd.DataFrame({
-        "Receptor Pair": [str(receptor) for receptor in receptors],
-        "KL Divergence": [KL_div_val[0] for KL_div_val in KL_div_vals],
-        "EMD": [EMD_val[0] for EMD_val in EMD_vals],
-    })
-    # Convert NaN values to 0 in the unique_receptors_df
+    unique_receptors_df = pd.DataFrame(
+        {
+            "Receptor Pair": [str(receptor) for receptor in epitopes],
+            "KL Divergence": [KL_div_val[0] for KL_div_val in KL_div_vals],
+            "EMD": [EMD_val[0] for EMD_val in EMD_vals],
+        }
+    )
     unique_receptors_df = unique_receptors_df.fillna(0)
-    print(unique_receptors_df)
-    
+
     # Get the indices of the top 10 receptors by KL Divergence
     top_kl_indices = unique_receptors_df["KL Divergence"].nlargest(10).index.tolist()
-    top_kl_receptors = unique_receptors_df.iloc[top_kl_indices]["Receptor Pair"].tolist()
-    
+    top_kl_receptors = unique_receptors_df.iloc[top_kl_indices][
+        "Receptor Pair"
+    ].tolist()
+
     # Get the indices of the top 10 receptors by EMD
     top_emd_indices = unique_receptors_df["EMD"].nlargest(10).index.tolist()
-    top_emd_receptors = unique_receptors_df.iloc[top_emd_indices]["Receptor Pair"].tolist()
-    
+    top_emd_receptors = unique_receptors_df.iloc[top_emd_indices][
+        "Receptor Pair"
+    ].tolist()
+
     # Create filtered dataframes for plotting
-    metrics_df_kl_filtered = metrics_df[metrics_df["Receptor Pair"].isin(top_kl_receptors)]
-    metrics_df_emd_filtered = metrics_df[metrics_df["Receptor Pair"].isin(top_emd_receptors)]
-    
+    metrics_df_kl_filtered = metrics_df[
+        metrics_df["Receptor Pair"].isin(top_kl_receptors)
+    ]
+    metrics_df_emd_filtered = metrics_df[
+        metrics_df["Receptor Pair"].isin(top_emd_receptors)
+    ]
+
     # Plot KL vs Selectivity with only top 10 KL receptors in legend
     sns.scatterplot(
-        data=metrics_df,  # Plot all data points
+        data=metrics_df,
         x="KL Divergence",
         y="Selectivity (Rbound)",
         hue="Receptor Pair",
@@ -175,9 +163,9 @@ def makeFigure():
         s=70,
         ax=ax[0],
         legend=False,
-        alpha=0.5,  # Make all points semi-transparent
+        alpha=0.5,
     )
-    
+
     # Overlay the top 10 with more visibility
     sns.scatterplot(
         data=metrics_df_kl_filtered,
@@ -189,11 +177,13 @@ def makeFigure():
         ax=ax[0],
         legend=True,
     )
-    ax[0].legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=True, title="Top 10 by KL Div")
+    ax[0].legend(
+        loc="upper left", bbox_to_anchor=(1, 1), frameon=True, title="Top 10 by KL Div"
+    )
 
     # Plot EMD vs Selectivity with only top 10 EMD receptors in legend
     sns.scatterplot(
-        data=metrics_df,  # Plot all data points
+        data=metrics_df,
         x="EMD",
         y="Selectivity (Rbound)",
         hue="Receptor Pair",
@@ -201,9 +191,9 @@ def makeFigure():
         s=70,
         ax=ax[1],
         legend=False,
-        alpha=0.5,  # Make all points semi-transparent
+        alpha=0.5,
     )
-    
+
     # Overlay the top 10 with more visibility
     sns.scatterplot(
         data=metrics_df_emd_filtered,
@@ -215,18 +205,17 @@ def makeFigure():
         ax=ax[1],
         legend=True,
     )
-    ax[1].legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=True, title="Top 10 by EMD")
+    ax[1].legend(
+        loc="upper left", bbox_to_anchor=(1, 1), frameon=True, title="Top 10 by EMD"
+    )
 
     ax[0].set_title(
-        (
-            f"KL Divergence vs Selectivity"
-        ),
+        ("KL Divergence vs Selectivity"),
         fontsize=13,
     )
     ax[1].set_title(
-        (
-            f"EMD vs Selectivity"
-        ),
+        ("EMD vs Selectivity"),
         fontsize=13,
     )
+
     return f

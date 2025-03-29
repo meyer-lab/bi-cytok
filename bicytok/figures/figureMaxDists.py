@@ -1,7 +1,22 @@
 """
+Generates barplots of the top KL Divergence and EMD values for different cell types.
 
+Data Import:
+- The CITE-seq dataframe (`importCITE`)
+
+Parameters:
+- sample_size: Number of cells to sample for each cell type
+- cell_categorization: Column name in CITE-seq dataframe for cell type categorization
+- cell_types: List of cell types to analyze (if None, will use all unique cell types in
+    the dataframe)
+
+Outputs:
+- Displays two bar plots:
+    1. Top KL Divergence values for each cell type with the corresponding receptor
+    2. Top EMD values for each cell type with the corresponding receptor
 """
 
+import time
 from pathlib import Path
 
 import numpy as np
@@ -10,16 +25,30 @@ from ..distance_metric_funcs import KL_EMD_1D
 from ..imports import importCITE, sample_receptor_abundances
 from .common import getSetup
 
-import time
-
 path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
     ax, f = getSetup((7, 3.5), (1, 2))
 
-    sample_size = 5000
+    sample_size = 100
     cell_categorization = "CellType2"
+    cell_types = [
+        "B memory",
+        "B naive",
+        "Treg",
+        "NK",
+        "CD8 Naive",
+        "CD4 Naive",
+        "CD8 TCM",
+        "CD4 TCM",
+        "CD14 Mono",
+        "cDC1",
+        "ILC",
+        "CD16 Mono",
+        "pDC",
+        "NK_CD56bright",
+    ]
 
     CITE_DF = importCITE()
 
@@ -31,9 +60,9 @@ def makeFigure():
     epitopesDF = CITE_DF[epitopes + [cell_categorization]]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
 
-    cell_types = epitopesDF["Cell Type"].unique()
-    print(cell_types)
-    cell_types = ["B memory", "B naive", "Treg", "NK", "CD8 Naive", "CD4 Naive", "CD8 TCM", "CD4 TCM", "CD14 Mono", "cDC1", "ILC", "CD16 Mono", "pDC", "NK_CD56bright"]
+    if cell_types is None:
+        cell_types = epitopesDF["Cell Type"].unique()
+
     top_EMD = []
     top_EMD_rec = []
     top_KL = []
@@ -55,7 +84,9 @@ def makeFigure():
 
         rec_abundances = sampleDF[epitopes].to_numpy()
 
-        KL_values, EMD_values = KL_EMD_1D(rec_abundances, on_target_mask, off_target_mask)
+        KL_values, EMD_values = KL_EMD_1D(
+            rec_abundances, on_target_mask, off_target_mask
+        )
 
         KL_values = np.nan_to_num(KL_values)
         EMD_values = np.nan_to_num(EMD_values)
@@ -66,11 +97,17 @@ def makeFigure():
         top_KL_ind = np.argsort(KL_values)[-1]
         top_KL.append(KL_values[top_KL_ind])
         top_KL_rec.append(sampleDF.columns[top_KL_ind])
-        
+
         print(f"Cell Type: {targCell} took {time.time() - time_start} seconds")
 
-    EMD_labs = [f"{cell_type}: {rec}" for cell_type, rec in zip(cell_types, top_EMD_rec)]
-    KL_labs = [f"{cell_type}: {rec}" for cell_type, rec in zip(cell_types, top_KL_rec)]
+    EMD_labs = [
+        f"{cell_type}: {rec}"
+        for cell_type, rec in zip(cell_types, top_EMD_rec, strict=False)
+    ]
+    KL_labs = [
+        f"{cell_type}: {rec}"
+        for cell_type, rec in zip(cell_types, top_KL_rec, strict=False)
+    ]
 
     # Sort by EMD values
     EMD_sort_ind = np.argsort(top_EMD)[::-1]

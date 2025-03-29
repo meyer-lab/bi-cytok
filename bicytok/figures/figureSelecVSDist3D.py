@@ -1,13 +1,12 @@
 """
-Generates line plots to visualize the relationship between
-    KL Divergence/Earth Mover's Distance and Selectivity across
-    varying ligand valencies
+Generates a scatter plot comparing the 3D selectivity of various receptors
+    against their 2D KL Divergence and Earth Mover's Distance (EMD) metrics.
 
 Data Import:
 - The CITE-seq dataframe (`importCITE`)
 
 Parameters:
-- receptors: list of receptors to be analyzed
+- receptor_pairs: list of receptors to be analyzed
 - signal_receptor: receptor intended to bind to impart effects
 - sample_size: number of cells to sample for analysis
     (if greater than available cells, will use all)
@@ -26,10 +25,8 @@ Data Collection:
     signal receptor
 
 Outputs:
-- Plots KL Divergence and EMD values against Selectivity for each receptor
+- Plots 2D KL Divergence and EMD values against 3D Selectivity for each receptor
     and valency combination
-- Includes Pearson correlation coefficients for each plot, indicating the
-    strength of the linear relationship between the distance metrics and selectivity
 """
 
 from pathlib import Path
@@ -38,7 +35,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from ..distance_metric_funcs import KL_EMD_2D, KL_EMD_3D
+from ..distance_metric_funcs import KL_EMD_2D
 from ..imports import importCITE, sample_receptor_abundances
 from ..selectivity_funcs import optimize_affs
 from .common import getSetup
@@ -49,7 +46,7 @@ path_here = Path(__file__).parent.parent
 def makeFigure():
     ax, f = getSetup((12, 6), (1, 2))
 
-    receptors = [
+    receptor_pairs = [
         ["CD25", "CD25"],
         ["CD25", "CD4-1"],
         ["CD25", "CD4-2"],
@@ -66,17 +63,15 @@ def makeFigure():
         ["CD235ab", "CD146"],
     ]
     signal_receptor = "CD122"
-    sample_size = 5000
+    sample_size = 100
     targCell = "Treg"
     dose = 10e-2
     cell_categorization = "CellType2"
 
-    # Load data
     CITE_DF = importCITE()
 
     assert targCell in CITE_DF[cell_categorization].unique()
 
-    # Randomly sample a subset of rows
     epitopes = [
         col
         for col in CITE_DF.columns
@@ -101,9 +96,10 @@ def makeFigure():
     selectivity_vals = []
     KL_div_vals = []
     EMD_vals = []
-    for receptor_pair in receptors:
+    for receptor_pair in receptor_pairs:
         rec_abundances = sampleDF[receptor_pair].to_numpy()
 
+        # Calculate the KL Divergence and EMD for the current receptor pair
         KL_div_mat, EMD_mat = KL_EMD_2D(
             rec_abundances, on_target_mask, off_target_mask, calc_1D=False
         )
@@ -111,16 +107,6 @@ def makeFigure():
         EMD = EMD_mat[1, 0]
         KL_div_vals.append(KL_div)
         EMD_vals.append(EMD)
-
-        # rec_abundances = sampleDF[[signal_receptor] + receptor_pair].to_numpy()
-
-        # KL_div_mat, EMD_mat = KL_EMD_3D(
-        #     rec_abundances, on_target_mask, off_target_mask, calc_diags=False
-        # )
-        # KL_div = KL_div_mat[1, 0, 0]
-        # EMD = EMD_mat[1, 0, 0]
-        # KL_div_vals.append(KL_div)
-        # EMD_vals.append(EMD)
 
         # Selectivity calculation for each valency
         model_valencies = np.array([[(2), (1), (1)]])
@@ -136,9 +122,7 @@ def makeFigure():
 
     metrics_df = pd.DataFrame(
         {
-            "Receptor Pair": [
-                str(receptor) for receptor in receptors
-            ],
+            "Receptor Pair": [str(receptor) for receptor in receptor_pairs],
             "KL Divergence": KL_div_vals,
             "EMD": EMD_vals,
             "Selectivity (Rbound)": selectivity_vals,
@@ -169,15 +153,11 @@ def makeFigure():
     ax[1].legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=True)
 
     ax[0].set_title(
-        (
-            f"KL Divergence vs Selectivity"
-        ),
+        ("KL Divergence vs Selectivity"),
         fontsize=13,
     )
     ax[1].set_title(
-        (
-            f"EMD vs Selectivity"
-        ),
+        ("EMD vs Selectivity"),
         fontsize=13,
     )
 

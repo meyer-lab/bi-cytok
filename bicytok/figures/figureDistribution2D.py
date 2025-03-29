@@ -11,6 +11,7 @@ Parameters:
 - targCell: cell type whose receptor distributions will be compared to off-target cells
 - sample_size: number of cells to sample for analysis
 - cell_categorization: column name for cell type classification
+- plot_cell_types: list of cell types to plot on the figure
 
 Outputs:
 - Single plot showing 2D distributions of receptor pairs:
@@ -32,17 +33,11 @@ from .common import getSetup
 
 path_here = Path(__file__).parent.parent
 
-plt.rcParams["svg.fonttype"] = "none"
-
 
 def makeFigure():
-    """
-    Generate figure showing 2D scatter plot with KDE contours of on and off target distributions
-    for a specified receptor pair.
-    """
     ax, f = getSetup((10, 8), (1, 1))
     ax = ax[0]
-    
+
     receptor1 = "CD25"
     receptor2 = "CD146"
     targCell = "Treg"
@@ -50,24 +45,22 @@ def makeFigure():
     cell_categorization = "CellType2"
     plot_cell_types = ["Treg", "other"]
 
-    # Load and prepare data
     CITE_DF = importCITE()
-    
-    # Ensure target cell exists in the dataset
+
     assert targCell in CITE_DF[cell_categorization].unique()
-    
-    # Sample cells for analysis
+
     epitopes = [
         col
         for col in CITE_DF.columns
         if col not in ["CellType1", "CellType2", "CellType3"]
     ]
-    
-    # Ensure the requested receptors exist
+
     for receptor in [receptor1, receptor2]:
         if receptor not in epitopes:
-            raise ValueError(f"Receptor '{receptor}' not found. Available receptors: {epitopes}")
-    
+            raise ValueError(
+                f"Receptor '{receptor}' not found. Available receptors: {epitopes}"
+            )
+
     epitopesDF = CITE_DF[epitopes + [cell_categorization]]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
     sampleDF = sample_receptor_abundances(
@@ -75,107 +68,102 @@ def makeFigure():
         numCells=min(sample_size, epitopesDF.shape[0]),
         targCellType=targCell,
     )
-    
-    # Create target and off-target masks
+
+    # Calculate KL divergence and EMD for the receptor pair
     targ_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
     off_targ_mask = ~targ_mask
-    
-    # Calculate KL divergence and EMD for the receptor pair
     rec_abundances = sampleDF[[receptor1, receptor2]].to_numpy()
-    KL_div_vals, EMD_vals = KL_EMD_2D(rec_abundances, targ_mask, off_targ_mask, calc_1D=False)
+    KL_div_vals, EMD_vals = KL_EMD_2D(
+        rec_abundances, targ_mask, off_targ_mask, calc_1D=False
+    )
     kl_val = KL_div_vals[1, 0]
     emd_val = EMD_vals[1, 0]
-    
     sampleDF.loc[sampleDF["Cell Type"] != targCell, "Cell Type"] = "other"
-    
+
     # Extract receptor abundances and normalize
     rec1_abundance = sampleDF[receptor1].values
     rec2_abundance = sampleDF[receptor2].values
     mean_rec1 = np.mean(rec1_abundance)
     mean_rec2 = np.mean(rec2_abundance)
-    
+
     # Create a dataframe with normalized values
-    plot_df = pd.DataFrame({
-        'Cell Type': sampleDF['Cell Type'],
-        f'{receptor1}_norm': rec1_abundance / mean_rec1,
-        f'{receptor2}_norm': rec2_abundance / mean_rec2
-    })
-    
+    plot_df = pd.DataFrame(
+        {
+            "Cell Type": sampleDF["Cell Type"],
+            f"{receptor1}_norm": rec1_abundance / mean_rec1,
+            f"{receptor2}_norm": rec2_abundance / mean_rec2,
+        }
+    )
+
     # Generate statistics for each cell type
     stats_data = []
     for cell_type in plot_cell_types:
         if cell_type not in plot_df["Cell Type"].unique():
             continue
         cell_df = plot_df[plot_df["Cell Type"] == cell_type]
-        
-        stats_data.append({
-            'Cell Type': cell_type,
-            f'{receptor1} Min': np.min(cell_df[f'{receptor1}_norm']),
-            f'{receptor1} Max': np.max(cell_df[f'{receptor1}_norm']),
-            f'{receptor1} Mean': np.mean(cell_df[f'{receptor1}_norm']),
-            f'{receptor1} Std': np.std(cell_df[f'{receptor1}_norm']),
-            f'{receptor2} Min': np.min(cell_df[f'{receptor2}_norm']),
-            f'{receptor2} Max': np.max(cell_df[f'{receptor2}_norm']),
-            f'{receptor2} Mean': np.mean(cell_df[f'{receptor2}_norm']),
-            f'{receptor2} Std': np.std(cell_df[f'{receptor2}_norm']),
-            'Count': len(cell_df)
-        })
 
-    # Create and display the statistics dataframe
+        stats_data.append(
+            {
+                "Cell Type": cell_type,
+                f"{receptor1} Min": np.min(cell_df[f"{receptor1}_norm"]),
+                f"{receptor1} Max": np.max(cell_df[f"{receptor1}_norm"]),
+                f"{receptor1} Mean": np.mean(cell_df[f"{receptor1}_norm"]),
+                f"{receptor1} Std": np.std(cell_df[f"{receptor1}_norm"]),
+                f"{receptor2} Min": np.min(cell_df[f"{receptor2}_norm"]),
+                f"{receptor2} Max": np.max(cell_df[f"{receptor2}_norm"]),
+                f"{receptor2} Mean": np.mean(cell_df[f"{receptor2}_norm"]),
+                f"{receptor2} Std": np.std(cell_df[f"{receptor2}_norm"]),
+                "Count": len(cell_df),
+            }
+        )
     stats_df = pd.DataFrame(stats_data)
-    print(f"\nStatistics for {receptor1} and {receptor2} receptor abundance by cell type:")
+    print(
+        f"Statistics for {receptor1} and {receptor2} receptor abundance by cell type:"
+    )
     print(stats_df.to_string(index=False))
-    
-    # Set plot colors
-    colors = sns.color_palette("husl", len(plot_cell_types))
-    
+
     # Create the 2D visualizations with both scatter and KDE contours
-    for i, cell_type in enumerate([t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]):
+    colors = sns.color_palette("husl", len(plot_cell_types))
+    for i, cell_type in enumerate(
+        [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
+    ):
         cell_df = plot_df[plot_df["Cell Type"] == cell_type]
-        
-        # Plot scatter with some transparency
+
         ax.scatter(
-            cell_df[f'{receptor1}_norm'],
-            cell_df[f'{receptor2}_norm'],
+            cell_df[f"{receptor1}_norm"],
+            cell_df[f"{receptor2}_norm"],
             alpha=0.3,
             color=colors[i],
             s=10,
-            label=f"{cell_type} (n={len(cell_df)})"
+            label=f"{cell_type} (n={len(cell_df)})",
         )
-        
-        # Add KDE contour lines
-        if len(cell_df) >= 10:  # Only add contours if there are enough points
-            sns.kdeplot(
-                x=cell_df[f'{receptor1}_norm'],
-                y=cell_df[f'{receptor2}_norm'],
-                ax=ax,
-                color=colors[i],
-                levels=5,
-                linewidths=1.5
-            )
-    
+
+        sns.kdeplot(
+            x=cell_df[f"{receptor1}_norm"],
+            y=cell_df[f"{receptor2}_norm"],
+            ax=ax,
+            color=colors[i],
+            levels=5,
+            linewidths=1.5,
+        )
+
     # Set reasonable axis limits based on 99th percentile
-    x_max = np.percentile(plot_df[f'{receptor1}_norm'], 99)
-    y_max = np.percentile(plot_df[f'{receptor2}_norm'], 99)
-    # ax.set_xlim(0, x_max * 1.1)
-    # ax.set_ylim(0, y_max * 1.1)
-    
+    x_max = np.percentile(plot_df[f"{receptor1}_norm"], 99)
+    y_max = np.percentile(plot_df[f"{receptor2}_norm"], 99)
+    ax.set_xlim(0, x_max * 1.1)
+    ax.set_ylim(0, y_max * 1.1)
+
     # Add title and labels
     ax.set_title(
-        f"{receptor1} vs {receptor2} Distribution\nKL: {kl_val:.2f}, EMD: {emd_val:.2f}", 
-        fontsize=14
+        f"{receptor1} vs {receptor2} Distribution\nKL: {kl_val:.2f}, "
+        f"EMD: {emd_val:.2f}",
+        fontsize=14,
     )
     ax.set_xlabel(f"{receptor1} Normalized Expression", fontsize=12)
     ax.set_ylabel(f"{receptor2} Normalized Expression", fontsize=12)
-    
-    # Add legend
     ax.legend(loc="upper right", fontsize=10)
-    
-    # Add reference grid
-    ax.grid(alpha=0.3, linestyle='--')
-    
-    # Adjust layout
+    ax.grid(alpha=0.3, linestyle="--")
     plt.tight_layout()
     plt.subplots_adjust(top=0.9)
-    
+
     return f

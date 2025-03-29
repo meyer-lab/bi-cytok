@@ -1,20 +1,18 @@
 """
-Generates heatmaps visualizing the 2D EMD and KL Divergence
-    of a given set of receptor scRNA-seq data
+Generates heatmaps visualizing the 2D EMD and KL Divergence of all receptor pairs
 
 Data Import:
 - The CITE-seq dataframe (`importCITE`)
 
 Parameters:
 - targCell: cell type whose selectivity will be maximized
-- receptors_of_interest: list of receptors to be analyzed
 - sample_size: number of cells to sample for analysis
     (if greater than available cells, will use all)
 - cell_categorization: column name in CITE-seq dataframe for cell type categorization
 
 Outputs:
 - Generates heatmaps of the EMD and KL divergences between all relevant receptor
-    pairs
+    pairs. Filters out receptors with low average values based on percentiles
 """
 
 from pathlib import Path
@@ -35,16 +33,7 @@ def makeFigure():
     np.random.seed(42)
 
     targCell = "Treg"
-    # receptors_of_interest = [
-    #     "CD25",
-    #     "CD4-1",
-    #     "CD27",
-    #     "CD4-2",
-    #     "CD278",
-    #     "CD28",
-    #     "CD45RB",
-    # ]
-    sample_size = 5000
+    sample_size = 100
     cell_categorization = "CellType2"
 
     CITE_DF = importCITE()
@@ -54,9 +43,8 @@ def makeFigure():
     epitopes = [
         col
         for col in CITE_DF.columns
-        if col not in ["CellType1", "CellType2", "CellType3"]
+        if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
     ]
-    receptors_of_interest = epitopes
     epitopesDF = CITE_DF[epitopes + [cell_categorization]]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
     sampleDF = sample_receptor_abundances(
@@ -64,16 +52,11 @@ def makeFigure():
         numCells=min(sample_size, epitopesDF.shape[0]),
         targCellType=targCell,
     )
-    filtered_sampleDF = sampleDF.loc[
-        :,
-        sampleDF.columns.str.fullmatch("|".join(receptors_of_interest), case=False),
-    ]
-    receptors_of_interest = filtered_sampleDF.columns
 
     on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
     off_target_mask = ~on_target_mask
 
-    rec_abundances = filtered_sampleDF.to_numpy()
+    rec_abundances = sampleDF[epitopes].to_numpy()
 
     KL_div_vals, EMD_vals = KL_EMD_2D(
         rec_abundances, on_target_mask, off_target_mask, calc_1D=True
@@ -84,16 +67,12 @@ def makeFigure():
     KL_matrix = np.tril(KL_div_vals, k=0)
     KL_matrix = KL_matrix + KL_matrix.T - np.diag(np.diag(KL_matrix))
 
-    df_EMD = pd.DataFrame(
-        EMD_matrix, index=receptors_of_interest, columns=receptors_of_interest
-    )
-    df_KL = pd.DataFrame(
-        KL_matrix, index=receptors_of_interest, columns=receptors_of_interest
-    )
+    df_EMD = pd.DataFrame(EMD_matrix, index=epitopes, columns=epitopes)
+    df_KL = pd.DataFrame(KL_matrix, index=epitopes, columns=epitopes)
 
     # Drop rows and columns with all NaN entries
-    df_EMD = df_EMD.dropna(how='all').dropna(how='all', axis=1)
-    df_KL = df_KL.dropna(how='all').dropna(how='all', axis=1)
+    df_EMD = df_EMD.dropna(how="all").dropna(how="all", axis=1)
+    df_KL = df_KL.dropna(how="all").dropna(how="all", axis=1)
 
     # Calculate average values for rows and columns
     emd_row_means = df_EMD.mean(axis=1)
@@ -121,11 +100,11 @@ def makeFigure():
     sns.heatmap(
         df_KL, cmap="bwr", ax=ax[1], cbar=True, xticklabels=True, yticklabels=True
     )
-    
+
     # Set smaller fontsize for tick labels on both axes
     for i in range(2):
-        ax[i].tick_params(axis='x', labelsize=5)
-        ax[i].tick_params(axis='y', labelsize=5)
+        ax[i].tick_params(axis="x", labelsize=5)
+        ax[i].tick_params(axis="y", labelsize=5)
 
     ax[0].set_title("EMD")
     ax[1].set_title("KL Divergence")

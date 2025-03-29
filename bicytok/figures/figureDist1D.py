@@ -1,5 +1,5 @@
 """
-Generates horizontal bar charts to visualize the top 5 markers
+Generates horizontal bar charts to visualize the top 10 markers
     with the highest 1D KL Divergence and Earth Mover's Distance (EMD) values,
     comparing target and off-target cell distributions using CITE-seq data.
 
@@ -9,14 +9,15 @@ Data Import:
 Parameters:
 - targCell: cell type whose selectivity will be maximized
 - receptors_of_interest: list of receptors to be analyzed
+    (if None, all receptors will be used)
 - sample_size: number of cells to sample for analysis
     (if greater than available cells, will use all)
 - cell_categorization: column name in CITE-seq dataframe for cell type categorization
 
 Outputs:
 - Plots horizontal bar charts for these top markers:
-    - KL Divergence Plot: Top 5 markers sorted by KL divergence
-    - EMD Plot: Top 5 markers sorted by EMD
+    - KL Divergence Plot: Top 10 markers sorted by KL divergence
+    - EMD Plot: Top 10 markers sorted by EMD
 - Each plot is labeled with marker names on the y-axis
     and their respective values (KL or EMD) on the x-axis
 """
@@ -37,9 +38,8 @@ def makeFigure():
 
     targCell = "Treg"
     receptors_of_interest = None
-    sample_size = 5000
+    sample_size = 100
     cell_categorization = "CellType2"
-    signal = "CD122"
 
     CITE_DF = importCITE()
 
@@ -75,13 +75,13 @@ def makeFigure():
 
     KL_values, EMD_values = KL_EMD_1D(rec_abundances, on_target_mask, off_target_mask)
 
-    top_5_KL_indices = np.argsort(np.nan_to_num(KL_values))[-10:]
-    top_5_EMD_indices = np.argsort(np.nan_to_num(EMD_values))[-10:]
+    top_KL_indices = np.argsort(np.nan_to_num(KL_values))[-10:]
+    top_EMD_indices = np.argsort(np.nan_to_num(EMD_values))[-10:]
 
     # Plot KL values
     ax[0].bar(
-        filtered_sampleDF.columns[top_5_KL_indices],
-        KL_values[top_5_KL_indices],
+        filtered_sampleDF.columns[top_KL_indices],
+        KL_values[top_KL_indices],
         color="r",
     )
     ax[0].set_title("Top 10 KL Divergence Values")
@@ -90,8 +90,8 @@ def makeFigure():
 
     # Plot EMD values
     ax[1].bar(
-        filtered_sampleDF.columns[top_5_EMD_indices],
-        EMD_values[top_5_EMD_indices],
+        filtered_sampleDF.columns[top_EMD_indices],
+        EMD_values[top_EMD_indices],
         color="b",
     )
     ax[1].set_title("Top 10 EMD Values")

@@ -4,14 +4,12 @@ Generates a figure that shows the receptor triplets that have the highest 3D KL
 
 Data Import:
 - The CITE-seq dataframe (`importCITE`)
-- Reads a list of epitopes from a CSV file (`epitopeList.csv`)
 
 Parameters:
 - targCell: cell type whose selectivity will be maximized
 - receptors_of_interest: list of receptors to be analyzed
 - sample_size: number of cells to sample for analysis
     (if greater than available cells, will use all)
-- cellTypes: Array of all relevant cell types
 - cell_categorization: column name in CITE-seq dataframe for cell type categorization
 
 Outputs:
@@ -21,7 +19,6 @@ Outputs:
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
 from ..distance_metric_funcs import KL_EMD_3D
 from ..imports import importCITE, sample_receptor_abundances
@@ -49,37 +46,24 @@ def makeFigure():
         "GP130",
         "CD109",
     ]
-    sample_size = 1000
-    cellTypes = np.array(
-        [
-            "CD8 Naive",
-            "NK",
-            "CD8 TEM",
-            "CD4 Naive",
-            "CD4 CTL",
-            "CD8 TCM",
-            "CD8 Proliferating",
-            "Treg",
-        ]
-    )
+    sample_size = 100
     cell_categorization = "CellType2"
 
-    offTargCells = cellTypes[cellTypes != targCell]
-
-    epitopesList = pd.read_csv(path_here / "data" / "epitopeList.csv")
-    epitopes = list(epitopesList["Epitope"].unique())
     CITE_DF = importCITE()
 
     assert targCell in CITE_DF[cell_categorization].unique()
 
+    epitopes = [
+        col
+        for col in CITE_DF.columns
+        if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
+    ]
     epitopesDF = CITE_DF[epitopes + [cell_categorization]]
-    epitopesDF = epitopesDF.loc[epitopesDF[cell_categorization].isin(cellTypes)]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
     sampleDF = sample_receptor_abundances(
         CITE_DF=epitopesDF,
         numCells=min(sample_size, epitopesDF.shape[0]),
         targCellType=targCell,
-        offTargCellTypes=offTargCells,
     )
     filtered_sampleDF = sampleDF.loc[
         :,
@@ -88,7 +72,7 @@ def makeFigure():
     receptors_of_interest = filtered_sampleDF.columns
 
     on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
-    off_target_mask = sampleDF["Cell Type"].isin(offTargCells).to_numpy()
+    off_target_mask = ~on_target_mask
 
     rec_abundances = filtered_sampleDF.to_numpy()
 
