@@ -243,6 +243,7 @@ def sample_receptor_abundances(
     offTargCellTypes: list[str] = None,
     rand_state: int = 42,
     balance: bool = False,
+    convert: bool = True,
 ) -> pd.DataFrame:
     """
     Samples a subset of cells and converts unprocessed CITE-seq receptor values
@@ -258,6 +259,10 @@ def sample_receptor_abundances(
         offTargCellTypes: list of cell types that are distinct from target cells.
             If None, all cell types except targCellType will be used.
         rand_state: random seed for reproducibility
+        balance: if True, forces sampling of an equal number of target and off-target
+            cells
+        convert: if True, converts CITE-seq signal into abundance values
+            using conversion factors
     Return:
         sampleDF: dataframe containing single cell abundances of
             receptors (column) for each individual cell (row).
@@ -296,10 +301,10 @@ def sample_receptor_abundances(
     convFactDict, defaultConvFact = calc_conv_facts()
 
     # Multiply the receptor counts of epitope by the conversion factor for that epitope
-    epitopes = CITE_DF.columns[CITE_DF.columns != "Cell Type"]
-    convFacts = [convFactDict.get(epitope, defaultConvFact) for epitope in epitopes]
-
-    sampleDF[epitopes] = sampleDF[epitopes] * convFacts
+    if convert:
+        epitopes = CITE_DF.columns[CITE_DF.columns != "Cell Type"]
+        convFacts = [convFactDict.get(epitope, defaultConvFact) for epitope in epitopes]
+        sampleDF[epitopes] = sampleDF[epitopes] * convFacts
 
     return sampleDF
 
