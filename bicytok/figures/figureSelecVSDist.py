@@ -48,6 +48,7 @@ path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
+    '''
     ax, f = getSetup((14, 7), (1, 2))
 
     receptors = [
@@ -57,7 +58,6 @@ def makeFigure():
         ["CD27"],
         ["CD45RB"],
         ["CD28"],
-        ["TCR-2"],
         ["TIGIT"],
     ]
     signal_receptor = "CD28"
@@ -205,4 +205,92 @@ def makeFigure():
         ),
         fontsize=10,
     )
+    '''
+    ax, f = getSetup((14, 7), (1, 2))
+
+    receptors_of_interest = ["CD25", "CD278", "CD4-1", "CD27", "CD45RB", "CD28", "TIGIT"]
+    sample_size = 5000
+    targCell = "Treg"
+    test_valencies = [(1), (2)]
+    dose = 10e-2
+    cell_categorization = "CellType2"
+
+    # Load data
+    CITE_DF = importCITE()
+
+    assert targCell in CITE_DF[cell_categorization].unique()
+
+    # Randomly sample a subset of rows
+    epitopes = [
+        col
+        for col in CITE_DF.columns
+        if col not in ["CellType1", "CellType2", "CellType3"]
+    ]
+    epitopesDF = CITE_DF[epitopes + [cell_categorization]]
+    epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
+    sampleDF = sample_receptor_abundances(
+        CITE_DF=epitopesDF,
+        numCells=min(sample_size, epitopesDF.shape[0]),
+        targCellType=targCell,
+    )
+
+    # Define target and off-target cell masks (for distance metrics)
+    on_target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    off_target_mask = ~on_target_mask
+
+    # Define target and off-target cell dataframes (for model)
+    dfTargCell = sampleDF.loc[on_target_mask]
+    dfOffTargCell = sampleDF.loc[off_target_mask]
+
+    colors = sns.color_palette('husl', len(receptors_of_interest))
+
+    for i, signal_receptor in enumerate(receptors_of_interest):
+        selectivity_vals = []
+        KL_div_vals = []
+        EMD_vals = []
+
+        for receptor in receptors_of_interest:
+            if receptor == signal_receptor:
+                continue
+
+            rec_abundances = sampleDF[[receptor]].to_numpy()
+
+            KL_div_mat, EMD_mat = KL_EMD_2D(
+                rec_abundances, on_target_mask, off_target_mask, calc_1D=True
+            )
+            KL_div = KL_div_mat[0]
+            EMD = EMD_mat[0]
+            KL_div_vals.append(KL_div)
+            EMD_vals.append(EMD)
+
+            # Selectivity calculation for each valency
+            for valency in test_valencies:
+                model_valencies = np.array([[valency, valency]])
+                targRecs = dfTargCell[[signal_receptor, receptor]].to_numpy()
+                offTargRecs = dfOffTargCell[[signal_receptor, receptor]].to_numpy()
+                optSelec, _ = optimize_affs(
+                    targRecs=targRecs,
+                    offTargRecs=offTargRecs,
+                    dose=dose,
+                    valencies=model_valencies,
+                )
+                selectivity_vals.append(1 / optSelec)
+
+        # Plot KL vs Selectivity
+        ax[0].scatter(KL_div_vals, selectivity_vals, color=colors[i], label=signal_receptor)
+
+        # Plot EMD vs Selectivity
+        ax[1].scatter(EMD_vals, selectivity_vals, color=colors[i], label=signal_receptor)
+
+    ax[0].set_title("KL Divergence vs Selectivity")
+    ax[0].set_xlabel("KL Divergence")
+    ax[0].set_ylabel("Selectivity (Rbound)")
+    ax[0].legend(loc="upper left", bbox_to_anchor=(1, 1))
+
+    ax[1].set_title("EMD vs Selectivity")
+    ax[1].set_xlabel("EMD")
+    ax[1].set_ylabel("Selectivity (Rbound)")
+    ax[1].legend(loc="upper left", bbox_to_anchor=(1, 1))
+
+    
     return f
