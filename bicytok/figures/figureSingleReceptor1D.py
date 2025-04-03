@@ -13,7 +13,8 @@ Parameters:
 - plot_cell_types: list of cell types to plot against the target cell type for
     comparison
 - stat: statistic to use for histogram ('count', 'density', or 'probability')
-- x_limit: whether or not to set x-axis limit to 99th percentile of target cell distribution
+- x_limit: whether or not to set x-axis limit to 99th percentile of target cell
+    distribution
 - normalize: whether or not to normalize receptor counts for comparison
 
 Outputs:
@@ -135,14 +136,14 @@ def makeFigure():
         ax.set_xlabel("Normalized receptor count", fontsize=12)
     else:
         ax.set_xlabel("Receptor count", fontsize=12)
-    
+
     if stat == "density":
         ax.set_ylabel("Density", fontsize=12)
     elif stat == "count":
         ax.set_ylabel("Number of cells", fontsize=12)
     elif stat == "probability":
         ax.set_ylabel("Proportion of cells", fontsize=12)
-    
+
     x_max = np.percentile(targ_abundances, 99)
     if x_limit:
         ax.set_xlim(0, x_max * 1.1)
