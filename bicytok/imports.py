@@ -285,8 +285,9 @@ def sample_receptor_abundances(
     num_off_target_cells = min(numCells - num_target_cells, off_target_cells.shape[0])
 
     if balance:
-        num_target_cells = min(num_target_cells, num_off_target_cells)
-        num_off_target_cells = min(num_target_cells, num_off_target_cells)
+        balanced_cell_count = min(num_target_cells, num_off_target_cells)
+        num_target_cells = balanced_cell_count
+        num_off_target_cells = balanced_cell_count
 
     sampled_target_cells = target_cells.sample(
         num_target_cells, random_state=rand_state
