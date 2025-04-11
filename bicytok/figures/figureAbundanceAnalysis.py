@@ -5,11 +5,13 @@ import pandas as pd
 from ..distance_metric_funcs import KL_EMD_2D, KL_EMD_1D
 from ..imports import importCITE, sample_receptor_abundances, calc_conv_facts
 from .common import getSetup
+from ..selectivity_funcs import optimize_affs
+
 
 path_here = Path(__file__).parent.parent
 
 def makeFigure():
-    ax, f = getSetup((15, 5), (1, 3))
+    ax, f = getSetup((5, 5), (1, 1))
 
     # Parameters
     targCell = "Treg"
@@ -24,8 +26,10 @@ def makeFigure():
         "TCR-2",
         "TIGIT",
     ]
-    sample_size = 5000
+    sample_size = 500
     cell_categorization = "CellType2"
+    test_valencies = [(1), (2)]
+    dose = 10e-2
 
     CITE_DF = importCITE()
 
@@ -58,11 +62,9 @@ def makeFigure():
     # Calculate conversion factors for each epitope
     convFactDict, defaultConvFact = calc_conv_facts()
 
-    # Multiply the receptor counts of epitope by the conversion factor for that epitope
     convFacts = [convFactDict.get(epitope, defaultConvFact) for epitope in epitopes]
 
     sampleDF[epitopes] = sampleDF[epitopes] * convFacts
-    ###
 
     filtered_sampleDF = sampleDF.loc[
         :,
@@ -74,8 +76,6 @@ def makeFigure():
     off_target_mask = ~on_target_mask
 
     rec_abundances = filtered_sampleDF.to_numpy()
-
-    print ("rec_abundances", rec_abundances)
     
     target_cells = epitopesDF[epitopesDF["Cell Type"] == targCell]
     num_target_cells = min(sample_size, target_cells.shape[0])
@@ -86,11 +86,60 @@ def makeFigure():
     ]
     
     rec_abundancesraw = filtered_sampleDFraw[receptors_of_interest].to_numpy()
+    avg_selectivity_raw = []
+    avg_selectivity_converted = []
+    receptor_labels = []
 
-    print ("rec_abundances raw", rec_abundancesraw)
-    print("on_target_mask sum:", sum(on_target_mask))
-    print("off_target_mask sum:", sum(off_target_mask))
+    for i, signal_receptor in enumerate(receptors_of_interest):
+        selectivity_vals_converted = []
+        selectivity_vals_raw = []
+
+        for receptor in receptors_of_interest:
+            if receptor == signal_receptor:
+                continue
+
+            for valency in test_valencies:
+                model_valencies = np.array([[valency, valency]])
+
+                # Converted
+                targRecs = sampleDF[[signal_receptor, receptor]].to_numpy()
+                offTargRecs = sampleDF[[signal_receptor, receptor]].to_numpy()
+                optSelec_converted, _ = optimize_affs(
+                    targRecs=targRecs[on_target_mask],
+                    offTargRecs=offTargRecs[off_target_mask],
+                    dose=dose,
+                    valencies=model_valencies,
+                )
+                selectivity_vals_converted.append(1 / optSelec_converted)
+
+                # Raw
+                targRecs_raw = raw_sampleDF[[signal_receptor, receptor]].to_numpy()
+                offTargRecs_raw = raw_sampleDF[[signal_receptor, receptor]].to_numpy()
+                optSelec_raw, _ = optimize_affs(
+                    targRecs=targRecs_raw[on_target_mask],
+                    offTargRecs=offTargRecs_raw[off_target_mask],
+                    dose=dose,
+                    valencies=model_valencies,
+                )
+                selectivity_vals_raw.append(1 / optSelec_raw)
+
+        avg_selectivity_converted.append(np.mean(selectivity_vals_converted))
+        avg_selectivity_raw.append(np.mean(selectivity_vals_raw))
+        receptor_labels.append(signal_receptor)
+
+    x = np.arange(len(receptor_labels))  
+    width = 0.35  
+
+    ax[0].bar(x - width/2, avg_selectivity_raw, width, label='Raw Selectivity')
+    ax[0].bar(x + width/2, avg_selectivity_converted, width, label='Converted Selectivity')
+
+    ax[0].set_ylabel('Average 1 / Selectivity')
+    ax[0].set_title('Raw vs Converted Selectivity per Signal Receptor')
+    ax[0].set_xticks(x)
+    ax[0].set_xticklabels(receptor_labels, rotation=45)
+    ax[0].legend()
     
+    '''
     
     KL_div_vals, EMD_vals = KL_EMD_2D(
         rec_abundances, on_target_mask, off_target_mask, calc_1D=True
@@ -153,5 +202,6 @@ def makeFigure():
     ax[2].set_xlabel("Receptor")
     ax[2].set_ylabel("Value")
     ax[2].legend(title="Metric")
+    '''
 
     return f 
