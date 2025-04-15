@@ -6,11 +6,13 @@ Data Import:
 - The CITE-seq dataframe (`importCITE`)
 
 Parameters:
-- receptors: list of receptors to be analyzed
+- receptors: list of receptors to calculate selectivities for
+- signal: receptor used as the signaling receptor in the binding model
 - cell_type: cell type whose selectivity will be maximized
 - dose: dose of ligand to be used in the selectivity calculation
 - valency: valency of the complex to be used in the selectivity calculation
 - cell_categorization: column name in CITE-seq dataframe for cell type categorization
+- sample_size: number of cells to sample for receptor abundances
 
 Outputs:
 - Displays the optimal selectivities of all relevant receptor pairs in a heatmap
@@ -30,13 +32,15 @@ path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
-    ax, f = getSetup((8, 8), (1, 1))
+    ax, f = getSetup((12, 6), (1, 1))
 
     receptors = ["CD25", "CD4-1", "CD27", "CD4-2", "CD278"]
+    signal = ["CD122"]
     cell_type = "Treg"
     dose = 10e-2
-    valency = np.array([[2, 2]])
+    valency = np.array([[2, 1, 1]])
     cell_categorization = "CellType2"
+    sample_size = 100
 
     CITE_DF = importCITE()
 
@@ -47,32 +51,51 @@ def makeFigure():
     ]
     epitopesDF = CITE_DF[epitopes + [cell_categorization]]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
-    sampleDF = sample_receptor_abundances(epitopesDF, 100, cell_type)
+    sampleDF = sample_receptor_abundances(epitopesDF, sample_size, cell_type)
 
     targ_mask = (sampleDF["Cell Type"] == cell_type).to_numpy()
     off_targ_mask = ~targ_mask
 
+    signal_abun = sampleDF[signal].to_numpy()
+
     selectivities = np.full((len(receptors), len(receptors)), np.nan)
-    for i, rec1 in enumerate(receptors):
-        for j, rec2 in enumerate(receptors):
-            rec1_abun = sampleDF[[rec1]].to_numpy()
-            rec2_abun = sampleDF[[rec2]].to_numpy()
+    row, col = np.tril_indices(len(receptors), k=0)
+    for i, j in zip(row, col, strict=False):
+        rec1 = receptors[i]
+        rec2 = receptors[j]
 
-            receptor_abuns = np.hstack((rec1_abun, rec2_abun))
+        rec1_abun = sampleDF[[rec1]].to_numpy()
+        rec2_abun = sampleDF[[rec2]].to_numpy()
 
-            targ_abun = receptor_abuns[targ_mask]
-            off_targ_abun = receptor_abuns[off_targ_mask]
+        receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
 
-            opt_selec, _ = optimize_affs(
-                targ_abun, off_targ_abun, dose, valencies=valency
-            )
-            selectivities[i, j] = 1 / opt_selec
+        targ_abun = receptor_abuns[targ_mask]
+        off_targ_abun = receptor_abuns[off_targ_mask]
 
+        opt_selec, _ = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
+        selectivities[i, j] = 1 / opt_selec
+
+    # Symmetrize the matrix by copying values from lower triangle to upper triangle
+    i_upper, j_upper = np.triu_indices(len(receptors), k=1)
+    selectivities[i_upper, j_upper] = selectivities[j_upper, i_upper]
     selecDF = pd.DataFrame(selectivities, index=receptors, columns=receptors)
 
-    sns.heatmap(
-        selecDF, cmap="bwr", annot=True, ax=ax[0], cbar=True, annot_kws={"fontsize": 16}
+    # Remove rows and columns with all NaN values
+    selecDF = selecDF.dropna(how="all").dropna(how="all", axis=1)
+    selecDF_row_means = selecDF.mean(axis=1)
+    selecDF_col_means = selecDF.mean(axis=0)
+    selec_thresh = np.percentile(
+        np.concatenate([selecDF_row_means, selecDF_col_means]), 25
     )
+    selecDF = selecDF.loc[
+        (selecDF_row_means >= selec_thresh) & (selecDF_col_means >= selec_thresh)
+    ]
+
+    sns.heatmap(
+        selecDF, cmap="bwr", ax=ax[0], cbar=True, xticklabels=True, yticklabels=True
+    )
+    ax[0].tick_params(axis="x", labelsize=5)
+    ax[0].tick_params(axis="y", labelsize=5)
     ax[0].set_title("Binding model selectivity")
 
     return f

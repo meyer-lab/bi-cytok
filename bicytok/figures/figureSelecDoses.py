@@ -77,7 +77,6 @@ def makeFigure():
     df = pd.DataFrame(columns=["Dose", "Selectivity", "Target Bound", "Ligand"])
 
     for targetPairs in allTargets:
-        print(targetPairs)
         valencies = [signal[1]]
         targets = []
         naming = []
@@ -94,7 +93,7 @@ def makeFigure():
         offTargRecs = dfOffTargCell[[signal[0]] + targets]
 
         for dose in doseVec:
-            _, optParams = optimize_affs(
+            optSelec, optParams = optimize_affs(
                 targRecs=targRecs.to_numpy(),
                 offTargRecs=offTargRecs.to_numpy(),
                 dose=dose,
@@ -114,17 +113,15 @@ def makeFigure():
 
             data = {
                 "Dose": [dose],
-                "Selectivity": 1 / optParams[0],
+                "Selectivity": 1 / optSelec,
                 "Target Bound": cellBindDF["Receptor Bound"].loc[targCell],
                 "Ligand": " + ".join(naming),
-                "Affinities": optParams[1],
+                "Affinities": optParams,
             }
             df_temp = pd.DataFrame(
                 data, columns=["Dose", "Selectivity", "Target Bound", "Ligand"]
             )
             df = df_temp if df.empty else pd.concat([df, df_temp], ignore_index=True)
-
-    print(df)
 
     sns.lineplot(data=df, x="Dose", y="Selectivity", hue="Ligand", ax=ax[0])
     sns.lineplot(data=df, x="Dose", y="Target Bound", hue="Ligand", ax=ax[1])

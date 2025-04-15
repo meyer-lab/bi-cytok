@@ -19,7 +19,7 @@ Outputs:
 import numpy as np
 
 from ..distance_metric_funcs import KL_EMD_1D, KL_EMD_2D
-from ..imports import importCITE, sample_receptor_abundances
+from ..imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from .common import getSetup
 
 
@@ -54,9 +54,9 @@ def makeFigure():
         numCells=sample_size,
         targCellType=targCell,
     )
-    rec_abundances = sampleDF[receptors_of_interest].to_numpy()
-
-    target_mask = (sampleDF["Cell Type"] == targCell).to_numpy()
+    filtered_sampleDF = filter_receptor_abundances(sampleDF, targCell)
+    rec_abundances = filtered_sampleDF[receptors_of_interest].to_numpy()
+    target_mask = (filtered_sampleDF["Cell Type"] == targCell).to_numpy()
     off_target_mask = ~target_mask
 
     KL_div_vals_1D, EMD_vals_1D = KL_EMD_1D(

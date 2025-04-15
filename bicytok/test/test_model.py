@@ -20,11 +20,11 @@ from ..selectivity_funcs import (
 path_here = Path(__file__).parent.parent
 
 
-def sample_data():
+def sample_data(n_obs=100, n_var=10):
     np.random.seed(0)
-    recAbundances = np.random.rand(100, 10) * 10
-    targ_ind = np.random.choice(100, size=50, replace=False)
-    targ = np.zeros(100, dtype=bool)
+    recAbundances = np.random.rand(n_obs, n_var) * 10
+    targ_ind = np.random.choice(n_obs, size=n_obs // 2, replace=False)
+    targ = np.zeros(n_obs, dtype=bool)
     targ[targ_ind] = True
     offTarg = ~targ
     return recAbundances, targ, offTarg
@@ -56,7 +56,7 @@ def test_KL_EMD_2D():
 
 
 def test_KL_EMD_3D():
-    recAbundances, targ, offTarg = sample_data()
+    recAbundances, targ, offTarg = sample_data(n_var=3)
     targ = np.array(targ, dtype=bool)
     offTarg = np.array(offTarg, dtype=bool)
 

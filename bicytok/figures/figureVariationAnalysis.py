@@ -42,16 +42,15 @@ def makeFigure():
     ax, f = getSetup((15, 5), (1, 4))
 
     # Parameters
-    sample_sizes = [50, 100, 200]
+    sample_sizes = [50, 100, 200, 500]
     randomizations = 5
     targCell = "Treg"
     signal_receptor = "CD122"
-    valencies = np.array([[1, 1, 1]])
-    targets = ["CD25", "CD278"]
+    valencies = np.array([[2, 1, 1]])
+    targets = ["CD25", "CD4-1"]
     dose = 10e-2
     cell_categorization = "CellType2"
 
-    # Imports
     CITE_DF = importCITE()
 
     assert targCell in CITE_DF[cell_categorization].unique()
@@ -126,8 +125,6 @@ def makeFigure():
             )
 
     metrics_df = pd.DataFrame(metrics)
-
-    print(metrics_df)
 
     # Plotting
     sns.boxplot(x="sample_size", y="KL_div", data=metrics_df, ax=ax[0])

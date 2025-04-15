@@ -242,6 +242,8 @@ def sample_receptor_abundances(
     targCellType: str,
     offTargCellTypes: list[str] = None,
     rand_state: int = 42,
+    balance: bool = False,
+    convert: bool = True,
 ) -> pd.DataFrame:
     """
     Samples a subset of cells and converts unprocessed CITE-seq receptor values
@@ -257,6 +259,10 @@ def sample_receptor_abundances(
         offTargCellTypes: list of cell types that are distinct from target cells.
             If None, all cell types except targCellType will be used.
         rand_state: random seed for reproducibility
+        balance: if True, forces sampling of an equal number of target and off-target
+            cells
+        convert: if True, converts CITE-seq signal into abundance values
+            using conversion factors
     Return:
         sampleDF: dataframe containing single cell abundances of
             receptors (column) for each individual cell (row).
@@ -278,6 +284,11 @@ def sample_receptor_abundances(
     num_target_cells = min(numCells // 2, target_cells.shape[0])
     num_off_target_cells = min(numCells - num_target_cells, off_target_cells.shape[0])
 
+    if balance:
+        balanced_cell_count = min(num_target_cells, num_off_target_cells)
+        num_target_cells = balanced_cell_count
+        num_off_target_cells = balanced_cell_count
+
     sampled_target_cells = target_cells.sample(
         num_target_cells, random_state=rand_state
     )
@@ -291,9 +302,63 @@ def sample_receptor_abundances(
     convFactDict, defaultConvFact = calc_conv_facts()
 
     # Multiply the receptor counts of epitope by the conversion factor for that epitope
-    epitopes = CITE_DF.columns[CITE_DF.columns != "Cell Type"]
-    convFacts = [convFactDict.get(epitope, defaultConvFact) for epitope in epitopes]
-
-    sampleDF[epitopes] = sampleDF[epitopes] * convFacts
+    if convert:
+        epitopes = CITE_DF.columns[CITE_DF.columns != "Cell Type"]
+        convFacts = [convFactDict.get(epitope, defaultConvFact) for epitope in epitopes]
+        sampleDF[epitopes] = sampleDF[epitopes] * convFacts
 
     return sampleDF
+
+
+def filter_receptor_abundances(
+    abundance_df: pd.DataFrame,
+    targ_cell_type: str,
+    min_mean_abundance: float = 5.0,
+    epitope_list: list[str] = None,
+    cell_type_list: list[str] = None,
+) -> pd.DataFrame:
+    """
+    Filters receptor abundances by removing biologically irrelevant receptors and
+        user specified epitopes and cell types. Biologically irrelevant receptors are
+        defined as those with large enough mean abundance (can't target a receptor
+        with low overall expression) and those that have higher expression in target
+        cells compared to other cell types.
+    Args:
+        abundance_df: DataFrame containing receptor abundances for filtering
+        targ_cell_type: The cell type to determine biologically relevant receptors
+        min_mean_abundance: Minimum mean abundance threshold for receptors
+        epitope_list: List of specific epitopes to retain; if None, all are retained
+        cell_type_list: List of specific cell types to retain; if None, all are retained
+    Return:
+        A DataFrame containing filtered receptor abundances
+    """
+
+    assert "Cell Type" in abundance_df.columns
+
+    cell_type_df = abundance_df["Cell Type"]
+    abundance_df = abundance_df.drop(columns=["Cell Type"])
+
+    # Filter irrelevant receptors
+    mean_abundances = abundance_df.mean(axis=0)
+    relevant_receptors = mean_abundances[mean_abundances > min_mean_abundance].index
+    abundance_df = abundance_df[relevant_receptors]
+    mean_targ_abundances = abundance_df[cell_type_df == targ_cell_type].mean(axis=0)
+    mean_off_targ_abundances = abundance_df[cell_type_df != targ_cell_type].mean(axis=0)
+    relevant_receptors = mean_targ_abundances[
+        mean_targ_abundances > mean_off_targ_abundances
+    ].index
+    abundance_df = abundance_df[relevant_receptors]
+
+    # Filter user-specified epitopes and cell types
+    if epitope_list is not None:
+        abundance_df = abundance_df[epitope_list]
+    if cell_type_list is not None:
+        abundance_df = abundance_df[cell_type_df.isin(cell_type_list)]
+        cell_type_df = cell_type_df[cell_type_df.isin(cell_type_list)]
+
+    # Re-add the cell type column efficiently using pd.concat
+    epitope_cols = abundance_df.copy()
+    cell_type_df = pd.DataFrame(cell_type_df, columns=["Cell Type"])
+    abundance_df = pd.concat([epitope_cols, cell_type_df], axis=1)
+
+    return abundance_df
