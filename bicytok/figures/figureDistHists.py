@@ -23,8 +23,6 @@ Outputs:
 - KL divergence and EMD values are displayed on each plot
 """
 
-from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -34,8 +32,6 @@ from ..distance_metric_funcs import KL_EMD_1D
 from ..imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from ..selectivity_funcs import optimize_affs
 from .common import getSetup
-
-path_here = Path(__file__).parent.parent
 
 plt.rcParams["svg.fonttype"] = "none"
 

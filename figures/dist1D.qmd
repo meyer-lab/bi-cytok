@@ -1,0 +1,101 @@
+---
+title: "1D Distribution Analysis"
+format: typst
+jupyter: python3
+execute:
+  echo: false
+---
+
+Generates horizontal bar charts to visualize the top 10 markers
+with the highest 1D KL Divergence and Earth Mover's Distance (EMD) values,
+comparing target and off-target cell distributions using CITE-seq data.
+
+Data Import:
+- The CITE-seq dataframe (`importCITE`)
+
+Parameters:
+- targCell: cell type whose selectivity will be maximized
+- receptors_of_interest: list of receptors to be analyzed
+    (if None, all receptors will be used)
+- sample_size: number of cells to sample for analysis
+    (if greater than available cells, will use all)
+- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+
+Outputs:
+- Plots horizontal bar charts for these top markers:
+    - KL Divergence Plot: Top 10 markers sorted by KL divergence
+    - EMD Plot: Top 10 markers sorted by EMD
+- Each plot is labeled with marker names on the y-axis
+    and their respective values (KL or EMD) on the x-axis
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+from bicytok.distance_metric_funcs import KL_EMD_1D
+from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+
+targCell = "Treg"
+receptors_of_interest = None
+sample_size = 100
+cell_categorization = "CellType2"
+
+CITE_DF = importCITE()
+
+assert targCell in CITE_DF[cell_categorization].unique()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
+]
+epitopesDF = CITE_DF[epitopes + [cell_categorization]]
+epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
+sampleDF = sample_receptor_abundances(
+    CITE_DF=epitopesDF,
+    numCells=min(sample_size, epitopesDF.shape[0]),
+    targCellType=targCell,
+)
+filtered_sampleDF = filter_receptor_abundances(
+    sampleDF, targ_cell_type=targCell, epitope_list=receptors_of_interest
+)
+receptors_of_interest = filtered_sampleDF.columns[
+    ~filtered_sampleDF.columns.isin(["Cell Type"])
+]
+
+on_target_mask = (filtered_sampleDF["Cell Type"] == targCell).to_numpy()
+off_target_mask = ~on_target_mask
+rec_abundances = filtered_sampleDF[receptors_of_interest].to_numpy()
+KL_values, EMD_values = KL_EMD_1D(rec_abundances, on_target_mask, off_target_mask)
+
+top_KL_indices = np.argsort(np.nan_to_num(KL_values))[-10:]
+top_EMD_indices = np.argsort(np.nan_to_num(EMD_values))[-10:]
+
+# Plot KL values
+plt.bar(
+    filtered_sampleDF.columns[top_KL_indices],
+    KL_values[top_KL_indices],
+    color="r",
+)
+plt.title("Top 10 KL Divergence Values")
+plt.xlabel("KL Divergence")
+plt.xticks(rotation=45)
+plt.show()
+```
+
+This will also plot the EMD values.
+
+```{python}
+# Plot EMD values
+plt.bar(
+    filtered_sampleDF.columns[top_EMD_indices],
+    EMD_values[top_EMD_indices],
+    color="b",
+)
+plt.title("Top 10 EMD Values")
+plt.xlabel("EMD Value")
+plt.xticks(rotation=45)
+plt.show()
+```

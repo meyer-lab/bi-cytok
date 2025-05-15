@@ -16,15 +16,11 @@ Outputs:
     2. Top EMD values for each cell type with the corresponding receptor
 """
 
-from pathlib import Path
-
 import numpy as np
 
 from ..distance_metric_funcs import KL_EMD_1D
 from ..imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from .common import getSetup
-
-path_here = Path(__file__).parent.parent
 
 
 def makeFigure():

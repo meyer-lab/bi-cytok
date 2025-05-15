@@ -22,8 +22,6 @@ Outputs:
     values (selectivity or target bound) on the x-axis
 """
 
-from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -35,8 +33,6 @@ from ..selectivity_funcs import (
     optimize_affs,
 )
 from .common import getSetup
-
-path_here = Path(__file__).parent.parent
 
 plt.rcParams["svg.fonttype"] = "none"
 

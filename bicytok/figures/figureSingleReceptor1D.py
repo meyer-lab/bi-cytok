@@ -25,8 +25,6 @@ Outputs:
 - Scott bandwidth method is used for KDE
 """
 
-from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -34,8 +32,6 @@ import seaborn as sns
 from ..distance_metric_funcs import KL_EMD_1D
 from ..imports import importCITE, sample_receptor_abundances
 from .common import getSetup
-
-path_here = Path(__file__).parent.parent
 
 plt.rcParams["svg.fonttype"] = "none"
 

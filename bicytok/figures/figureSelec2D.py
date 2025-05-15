@@ -18,8 +18,6 @@ Outputs:
 - Displays the optimal selectivities of all relevant receptor pairs in a heatmap
 """
 
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -27,8 +25,6 @@ import seaborn as sns
 from ..imports import importCITE, sample_receptor_abundances
 from ..selectivity_funcs import optimize_affs
 from .common import getSetup
-
-path_here = Path(__file__).parent.parent
 
 
 def makeFigure():

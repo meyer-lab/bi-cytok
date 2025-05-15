@@ -16,15 +16,11 @@ Outputs:
 - Two bar plots showing the top 10 KL divergence and EMD values
 """
 
-from pathlib import Path
-
 import numpy as np
 
 from ..distance_metric_funcs import KL_EMD_3D
 from ..imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from .common import getSetup
-
-path_here = Path(__file__).parent.parent
 
 
 def makeFigure():

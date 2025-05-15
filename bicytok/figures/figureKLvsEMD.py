@@ -16,8 +16,6 @@ Outputs:
 - Summary statistics on the correlation between these metrics
 """
 
-from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -27,8 +25,6 @@ from sklearn.linear_model import LinearRegression
 from ..distance_metric_funcs import KL_EMD_1D
 from ..imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from .common import getSetup
-
-path_here = Path(__file__).parent.parent
 
 plt.rcParams["svg.fonttype"] = "none"
 
