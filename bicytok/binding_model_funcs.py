@@ -3,7 +3,7 @@ Implementation of a simple multivalent binding model.
 """
 
 import numpy as np
-from scipy.optimize import fixed_point
+from scipy.optimize import least_squares
 
 
 def cyt_binding_model(
@@ -30,29 +30,33 @@ def cyt_binding_model(
     Rtot = recCounts
     Cplxsum = valencies.sum(axis=0)
 
-    log_Req = np.full_like(Rtot, 0.0)
+    Rbound = np.full_like(Rtot, 0.0)
 
     for i in range(recCounts.shape[0]):
-        log_Req[i] = fixed_point(
-            Req_from_Req,
-            x0=np.log(Rtot[i]) - 1.0,
+        opt = least_squares(
+            Rbound_from_Rbound,
+            x0=Rtot[i] / 2.0,
             xtol=1e-6,
+            jac="cs",
             args=(Cplxsum, L0_Ctheta_KxStar, Ka_KxStar, Rtot[i]),
         )
+        assert opt.cost < 1.0e-6
+        assert opt.success
+        Rbound[i] = opt.x
 
-    return Rtot - np.exp(log_Req)
+    return Rbound
 
 
-def Req_from_Req(
-    log_Req: np.ndarray,
+def Rbound_from_Rbound(
+    Rbound: np.ndarray,
     Cplxsum: np.ndarray,
     L0_Ctheta_KxStar: float,
     Ka_KxStar: np.ndarray,
     Rtot: np.ndarray,
 ) -> np.ndarray:
-    Req = np.exp(log_Req)
+    Req = Rtot - Rbound
     Psi = Req * Ka_KxStar
     Psirs = Psi.sum(axis=1) + 1
     Psinorm = Psi / Psirs[:, None]
     Rbound = L0_Ctheta_KxStar * np.prod(Psirs**Cplxsum) * np.dot(Cplxsum, Psinorm)
-    return np.log(Rtot - Rbound)
+    return Rtot - Rbound - Req
