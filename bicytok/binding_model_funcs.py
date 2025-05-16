@@ -3,7 +3,7 @@ Implementation of a simple multivalent binding model.
 """
 
 import numpy as np
-from scipy.optimize import least_squares
+from scipy.optimize import fixed_point
 
 
 def cyt_binding_model(
@@ -30,15 +30,20 @@ def cyt_binding_model(
     Rtot = recCounts
     Cplxsum = valencies.sum(axis=0)
 
-    Req = np.full_like(Rtot, 0.0)
+    log_Req = np.full_like(Rtot, 0.0)
 
     for i in range(recCounts.shape[0]):
-        Req[i] = infer_Req(Rtot[i], L0_Ctheta_KxStar, Ka_KxStar, Cplxsum)
+        log_Req[i] = fixed_point(
+            Req_from_Req,
+            x0=np.log(Rtot[i]) - 1.0,
+            xtol=1e-6,
+            args=(Cplxsum, L0_Ctheta_KxStar, Ka_KxStar, Rtot[i]),
+        )
 
-    return Rtot - Req
+    return Rtot - np.exp(log_Req)
 
 
-def infer_Rbound_from_Req(
+def Req_from_Req(
     log_Req: np.ndarray,
     Cplxsum: np.ndarray,
     L0_Ctheta_KxStar: float,
@@ -50,24 +55,4 @@ def infer_Rbound_from_Req(
     Psirs = Psi.sum(axis=1) + 1
     Psinorm = Psi / Psirs[:, None]
     Rbound = L0_Ctheta_KxStar * np.prod(Psirs**Cplxsum) * np.dot(Cplxsum, Psinorm)
-    return np.log(Rtot) - np.log(Req + Rbound)
-
-
-
-def infer_Req(
-    Rtot: np.ndarray,
-    L0_Ctheta_KxStar: float,
-    Ka_KxStar: np.ndarray,
-    Cplxsum: np.ndarray,
-) -> np.ndarray:
-    sol = least_squares(
-        infer_Rbound_from_Req,
-        x0=Rtot - 2.0,
-        method="lm",
-        xtol=1e-14,
-        args=(Cplxsum, L0_Ctheta_KxStar, Ka_KxStar, Rtot),
-    )
-    print(sol)
-
-    assert np.linalg.norm(sol.fun) < 1.0e-6
-    return np.exp(sol.x)
+    return np.log(Rtot - Rbound)
