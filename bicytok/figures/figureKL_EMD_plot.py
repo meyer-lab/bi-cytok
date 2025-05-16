@@ -15,16 +15,12 @@ Outputs:
 - Comparison of metrics across different distribution parameters
 """
 
-from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 
 from ..distance_metric_funcs import KL_EMD_1D
 from .common import getSetup
-
-path_here = Path(__file__).parent.parent
 
 
 def makeFigure():

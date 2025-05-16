@@ -23,7 +23,6 @@ Outputs:
 """
 
 import time
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -34,8 +33,6 @@ from ..distance_metric_funcs import KL_EMD_2D
 from ..imports import importCITE, sample_receptor_abundances
 from ..selectivity_funcs import optimize_affs
 from .common import getSetup
-
-path_here = Path(__file__).parent.parent
 
 
 def makeFigure():

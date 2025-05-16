@@ -11,7 +11,7 @@ jobs:
       uses: eifinger/setup-rye@v4
       with:
         enable-cache: true
-        version: '0.39.0'
+        version: '0.44.0'
     - name: Check linting
       run: rye lint bicytok
     - name: Check formatting

@@ -15,15 +15,11 @@ Outputs:
 - Displays the optimal selectivities of all relevant receptors in a bar plot
 """
 
-from pathlib import Path
-
 import numpy as np
 
 from ..imports import importCITE, sample_receptor_abundances
 from ..selectivity_funcs import optimize_affs
 from .common import getSetup
-
-path_here = Path(__file__).parent.parent
 
 
 def makeFigure():

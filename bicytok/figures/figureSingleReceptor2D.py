@@ -20,8 +20,6 @@ Outputs:
 - 2D KL divergence and EMD values are displayed on the plot
 """
 
-from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -30,8 +28,6 @@ import seaborn as sns
 from ..distance_metric_funcs import KL_EMD_2D
 from ..imports import importCITE, sample_receptor_abundances
 from .common import getSetup
-
-path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
