@@ -6,6 +6,21 @@ import numpy as np
 from scipy.optimize import least_squares
 
 
+def _Rbound_from_Rbound(
+    Rbound: np.ndarray,
+    Cplxsum: np.ndarray,
+    L0_Ctheta_KxStar: float,
+    Ka_KxStar: np.ndarray,
+    Rtot: np.ndarray,
+) -> np.ndarray:
+    Req = Rtot - Rbound
+    Psi = Req * Ka_KxStar
+    Psirs = Psi.sum(axis=1) + 1
+    Psinorm = Psi / Psirs[:, None]
+    Rbound = L0_Ctheta_KxStar * np.prod(Psirs**Cplxsum) * np.dot(Cplxsum, Psinorm)
+    return Rtot - Rbound - Req
+
+
 def cyt_binding_model(
     dose: float,
     recCounts: np.ndarray,
@@ -13,7 +28,29 @@ def cyt_binding_model(
     monomerAffs: np.ndarray,
 ) -> np.ndarray:
     """
-    Each system should have the same number of ligands, receptors, and complexes.
+    Calculate the amount of receptor bound to ligand at a given dose,
+    considering receptor counts, valencies, and monomer affinities.
+
+    This function models the binding of a ligand to receptors, taking into
+    account the number of receptors, the valency of the ligand, and the
+    affinity of the ligand for each receptor.  It assumes that each system
+    has the same number of ligands, receptors, and complexes.
+
+    Args:
+        dose (float): The concentration of the ligand in molar units.
+        recCounts (np.ndarray): A 2D array where each row represents a
+            system and each column represents the number of a specific
+            receptor type in that system.
+        valencies (np.ndarray): A 2D array (1 x number of complexes)
+            representing the valency of each complex.
+        monomerAffs (np.ndarray): A 2D array representing the affinity
+            of each monomer for each receptor. Rows correspond to complexes,
+            columns correspond to receptors.
+
+    Returns:
+        np.ndarray: A 2D array with the same shape as recCounts,
+            representing the amount of each receptor bound to the ligand
+            in each system.
     """
     assert recCounts.ndim == 2
     assert monomerAffs.ndim == 2
@@ -34,9 +71,10 @@ def cyt_binding_model(
 
     for i in range(recCounts.shape[0]):
         opt = least_squares(
-            Rbound_from_Rbound,
+            _Rbound_from_Rbound,
             x0=Rtot[i] / 2.0,
-            xtol=1e-6,
+            xtol=1e-12,
+            gtol=1e-12,
             jac="cs",
             args=(Cplxsum, L0_Ctheta_KxStar, Ka_KxStar, Rtot[i]),
         )
@@ -45,18 +83,3 @@ def cyt_binding_model(
         Rbound[i] = opt.x
 
     return Rbound
-
-
-def Rbound_from_Rbound(
-    Rbound: np.ndarray,
-    Cplxsum: np.ndarray,
-    L0_Ctheta_KxStar: float,
-    Ka_KxStar: np.ndarray,
-    Rtot: np.ndarray,
-) -> np.ndarray:
-    Req = Rtot - Rbound
-    Psi = Req * Ka_KxStar
-    Psirs = Psi.sum(axis=1) + 1
-    Psinorm = Psi / Psirs[:, None]
-    Rbound = L0_Ctheta_KxStar * np.prod(Psirs**Cplxsum) * np.dot(Cplxsum, Psinorm)
-    return Rtot - Rbound - Req
