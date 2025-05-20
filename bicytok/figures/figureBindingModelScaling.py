@@ -40,14 +40,14 @@ def makeFigure():
 
     # Parameters
     targCell = "Treg"
-    sample_size = 500
+    sample_size = 1000
     cell_categorization = "CellType2"
     model_valencies = np.array([[(2), (2)]])
     dose = 10e-2
     signal_receptor = "CD122"
     target_receptors = ["CD25", "CD4-1", "CD27", "TIGIT"]
-    affinity_bounds = (3, 13)
-    num_conv_factors = 5
+    affinity_bounds = (6, 13)
+    num_conv_factors = 20
 
     CITE_DF = importCITE()
 
@@ -75,7 +75,7 @@ def makeFigure():
         filterDF[receptor] = sampleDF[receptor]
 
     receptors_of_interest = [
-        col for col in filterDF.columns if col not in ["Cell Type"]
+        col for col in filterDF.columns if col not in ["Cell Type"] and col != signal_receptor
     ]
 
     on_target_mask = (filterDF["Cell Type"] == targCell).to_numpy()
@@ -111,6 +111,7 @@ def makeFigure():
         for conv_fact in conversion_factors:
             test_DF = filterDF.copy()
             test_DF[receptor] = test_DF[receptor] * conv_fact
+            test_DF[signal_receptor] = test_DF[signal_receptor] * conv_fact
             targRecs = test_DF[[signal_receptor, receptor]].to_numpy()
             offTargRecs = test_DF[[signal_receptor, receptor]].to_numpy()
             optSelec, optAffs = optimize_affs(
