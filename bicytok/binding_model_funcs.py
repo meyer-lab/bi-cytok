@@ -7,11 +7,11 @@ from scipy.optimize import least_squares
 
 
 def _Rbound_from_Rbound(
-    Rbound: np.ndarray,
-    Cplxsum: np.ndarray,
+    Rbound: np.ndarray, # R
+    Cplxsum: np.ndarray, # R
     L0_Ctheta_KxStar: float,
-    Ka_KxStar: np.ndarray,
-    Rtot: np.ndarray,
+    Ka_KxStar: np.ndarray, # R x L
+    Rtot: np.ndarray, # R
 ) -> np.ndarray:
     Req = Rtot - Rbound
     Psi = Req * Ka_KxStar
@@ -19,6 +19,51 @@ def _Rbound_from_Rbound(
     Psinorm = Psi / Psirs[:, None]
     Rbound = L0_Ctheta_KxStar * np.prod(Psirs**Cplxsum) * np.dot(Cplxsum, Psinorm)
     return Rtot - Rbound - Req
+
+
+def _jacobian_of_Rbound_from_Rbound_wrt_Ka_KxStar(
+    Rbound_arg: np.ndarray,  # R
+    Cplxsum: np.ndarray,  # L
+    L0_Ctheta_KxStar: float,
+    Ka_KxStar: np.ndarray,  # L x R
+    Rtot_arg: np.ndarray,  # R
+) -> np.ndarray:
+    """
+    Calculates the Jacobian of the output of `_Rbound_from_Rbound`
+    with respect to the Ka_KxStar parameter using einsum.
+
+    Args:
+        Rbound_arg (np.ndarray): Current estimate of bound receptors (N_REC,).
+        Cplxsum (np.ndarray): Sum of valencies for each complex type (N_LIG,).
+        L0_Ctheta_KxStar (float): Scaled ligand concentration / KxStar.
+        Ka_KxStar (np.ndarray): Product of monomer affinities and KxStar (N_LIG, N_REC).
+        Rtot_arg (np.ndarray): Total receptor counts for the system (N_REC,).
+
+    Returns:
+        np.ndarray: The Jacobian tensor of shape (N_REC, N_LIG, N_REC).
+                    jacobian[j, p, q] = d(Rbound_recalc[j]) / d(Ka_KxStar[p, q]).
+    """
+    _, N_REC = Ka_KxStar.shape
+
+    # Re-calculate intermediate terms from _Rbound_from_Rbound
+    Req = Rtot_arg - Rbound_arg  # (N_REC,)
+    Psi = Ka_KxStar * Req[np.newaxis, :]  # (N_LIG, N_REC)
+    Psirs = Psi.sum(axis=1) + 1.0  # (N_LIG,)
+    Psinorm = Psi / Psirs[:, np.newaxis]  # (N_LIG, N_REC)
+    prod_term = np.prod(Psirs**Cplxsum)  # scalar
+    term_dot = np.dot(Cplxsum, Psinorm)  # (N_REC,)
+
+    # Coeff_pq[p,q] = L0_Ctheta_KxStar * prod_term * (Cplxsum[p] * Req[q] / Psirs[p])
+    coeff_p_base = L0_Ctheta_KxStar * prod_term * (Cplxsum / Psirs)  # (N_LIG,)
+    coeff_pq = coeff_p_base[:, np.newaxis] * Req[np.newaxis, :]  # (N_LIG, N_REC)
+
+    # einsum implementation
+    delta = np.eye(N_REC)
+    jacobian = np.einsum(
+        "pq,j,jq->jpq", coeff_pq, np.ones(N_REC) + term_dot, delta - Psinorm.T
+    )
+
+    return jacobian
 
 
 def cyt_binding_model(
@@ -68,6 +113,7 @@ def cyt_binding_model(
     Cplxsum = valencies.sum(axis=0)
 
     Rbound = np.full_like(Rtot, 0.0)
+    jacs = np.empty((Rtot.shape[0], Rtot.shape[1], Rtot.shape[1]))
 
     for i in range(recCounts.shape[0]):
         opt = least_squares(
@@ -80,6 +126,7 @@ def cyt_binding_model(
         )
         assert opt.cost < 1.0e-6
         assert opt.success
+        jacs[i] = opt.jac
         Rbound[i] = opt.x
 
     return Rbound
