@@ -126,32 +126,30 @@ def makeTregSC():
     Treg_h5ad = an.AnnData()
     for i, stim in enumerate(SC_Stims):
         stim_an = an.AnnData()
-        barcodes = pd.read_csv(
-            gzip.open(
-                path_here
-                / "multi_output"
-                / "outs"
-                / "per_sample_outs"
-                / stim
-                / "count"
-                / "sample_filtered_feature_bc_matrix"
-                / "barcodes.tsv.gz"
-            ),
-            sep="\t",
-            header=None,
-        )
-        matrix = mmread(
-            gzip.open(
-                path_here
-                / "multi_output"
-                / "outs"
-                / "per_sample_outs"
-                / stim
-                / "count"
-                / "sample_filtered_feature_bc_matrix"
-                / "matrix.mtx.gz"
-            )
-        )
+        with gzip.open(
+            path_here
+            / "multi_output"
+            / "outs"
+            / "per_sample_outs"
+            / stim
+            / "count"
+            / "sample_filtered_feature_bc_matrix"
+            / "barcodes.tsv.gz"
+        ) as f:
+            barcodes = pd.read_csv(f, sep="\t", header=None)
+
+        with gzip.open(
+            path_here
+            / "multi_output"
+            / "outs"
+            / "per_sample_outs"
+            / stim
+            / "count"
+            / "sample_filtered_feature_bc_matrix"
+            / "matrix.mtx.gz"
+        ) as f:
+            matrix = mmread(f)
+
         barcodes.columns = ["barcode"]
         stim_an = an.AnnData(matrix.transpose())
         stim_an.obs.index = barcodes["barcode"].values
@@ -160,20 +158,17 @@ def makeTregSC():
         if i == 0:  # First condition - load features for later labeling
             # (all conditions have same genes)
             Treg_h5ad = stim_an
-            features = pd.read_csv(
-                gzip.open(
-                    path_here
-                    / "multi_output"
-                    / "outs"
-                    / "per_sample_outs"
-                    / stim
-                    / "count"
-                    / "sample_filtered_feature_bc_matrix"
-                    / "features.tsv.gz"
-                ),
-                sep="\t",
-                header=None,
-            )
+            with gzip.open(
+                path_here
+                / "multi_output"
+                / "outs"
+                / "per_sample_outs"
+                / stim
+                / "count"
+                / "sample_filtered_feature_bc_matrix"
+                / "features.tsv.gz"
+            ) as f:
+                features = pd.read_csv(f, sep="\t", header=None)
             features.columns = ["ENSEMBLE_ids", "gene_ids", "feature_type"]
         else:
             Treg_h5ad = an.concat([Treg_h5ad, stim_an])
