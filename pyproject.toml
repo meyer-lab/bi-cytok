@@ -10,8 +10,6 @@ dependencies = [
     "scikit-learn>=1.6",
     "matplotlib>=3.10",
     "seaborn>=0.13",
-    "jax>=0.5.0",
-    "jaxopt>=0.8.3",
     "pot>=0.9.5",
 ]
 readme = "README.md"
