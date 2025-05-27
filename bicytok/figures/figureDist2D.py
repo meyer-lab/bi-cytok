@@ -26,7 +26,6 @@ from .common import getSetup
 
 def makeFigure():
     ax, f = getSetup((10, 5), (1, 2))
-    np.random.seed(42)
 
     targCell = "Treg"
     sample_size = 100

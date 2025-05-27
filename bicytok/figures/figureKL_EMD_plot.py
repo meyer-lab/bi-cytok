@@ -25,7 +25,7 @@ from .common import getSetup
 
 def makeFigure():
     ax, f = getSetup((15, 10), (3, 3))
-    np.random.seed(42)  # For reproducibility
+    rng = np.random.default_rng(1)
 
     # Parmeters
     ref_mean = 10.0
@@ -45,8 +45,8 @@ def makeFigure():
 
     for i, (title, target_mean, target_sigma) in enumerate(off_target_configs):
         # Generate samples from both distributions
-        target_samples = np.random.normal(ref_mean, ref_sigma, n_samples)
-        off_target_samples = np.random.normal(target_mean, target_sigma, n_samples)
+        target_samples = rng.normal(ref_mean, ref_sigma, n_samples)
+        off_target_samples = rng.normal(target_mean, target_sigma, n_samples)
 
         # Calculate KL divergence and EMD using the project's function
         combined_samples = np.vstack([target_samples, off_target_samples]).reshape(

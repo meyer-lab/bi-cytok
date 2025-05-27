@@ -25,7 +25,6 @@ from .common import getSetup
 
 def makeFigure():
     ax, f = getSetup((12, 10), (2, 1))
-    np.random.seed(42)
 
     targCell = "Treg"
     receptors_of_interest = [

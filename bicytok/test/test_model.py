@@ -182,7 +182,9 @@ def test_invalid_model_function_inputs():
     # Assign default values for cytBindingModel and minOffTargSelec
     dose = 0.1
     recCounts1D = rng.uniform(size=3)  # for testing one cell, three receptors
-    recCounts2D = rng.uniform(size=(100, 3))  # for testing multiple cells, three receptors
+    recCounts2D = rng.uniform(
+        size=(100, 3)
+    )  # for testing multiple cells, three receptors
     valencies = np.array([[1, 1, 1]])
     monomerAffs = np.array([8.0, 8.0, 8.0])
     modelAffs = restructure_affs(monomerAffs)
