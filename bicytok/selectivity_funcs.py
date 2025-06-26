@@ -13,7 +13,7 @@ def restructure_affs(affs: np.ndarray) -> np.ndarray:
     """
     Structures array of receptor affinities to be compatible with the binding model
     Args:
-        affs: receptor affinities in ? units
+        affs: receptor affinities in log10(M)
     Return:
         restructuredAffs: restructured receptor affinities in L/mol (1/M)
     """
@@ -25,7 +25,7 @@ def restructure_affs(affs: np.ndarray) -> np.ndarray:
     exponentialAffs = np.power(10, affs)
 
     # Set off-diagonals to values that won't affect optimization
-    restructuredAffs = np.full((affs.size, affs.size), 1e2)
+    restructuredAffs = np.full((affs.size, affs.size), 0.0)
     np.fill_diagonal(restructuredAffs, exponentialAffs)
 
     return restructuredAffs
@@ -65,8 +65,7 @@ def min_off_targ_selec(
     # Reformat input affinities
     modelAffs = restructure_affs(monomerAffs)
 
-    # Use the binding model to calculate bound receptors
-    #   for target and off-target cell types
+    # Use binding model to calculate bound receptors for target and off-target cells
     targRbound = cyt_binding_model(
         dose=dose, recCounts=targRecs, valencies=valencies, monomerAffs=modelAffs
     )
@@ -74,8 +73,7 @@ def min_off_targ_selec(
         dose=dose, recCounts=offTargRecs, valencies=valencies, monomerAffs=modelAffs
     )
 
-    # Calculate total bound receptors for target and off-target
-    #   cell types, normalized by number of cells
+    # Calculate mean bound receptors for target and off-target cell types
     targetBound = np.sum(targRbound[:, 0]) / targRbound.shape[0]
     offTargetBound = np.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
 
@@ -116,8 +114,6 @@ def optimize_affs(
     assert offTargRecs.size > 0
 
     # Choose initial affinities and set bounds for optimization
-    # minAffs and maxAffs chosen based on biologically realistic affinities
-    #   for engineered ligands
     minAffs = [bounds[0]] * (targRecs.shape[1])
     maxAffs = [bounds[1]] * (targRecs.shape[1])
 
@@ -125,6 +121,16 @@ def optimize_affs(
     initAffs = np.full_like(valencies[0], minAffs[0] + (maxAffs[0] - minAffs[0]) / 2)
     optBnds = Bounds(np.full_like(initAffs, minAffs), np.full_like(initAffs, maxAffs))
 
+    # Normalize all target receptor counts to the mean signal receptor count
+    if targRecs.shape[1] > 1:
+        fullRecs = np.concatenate((targRecs, offTargRecs), axis=0)
+        signalMean = np.mean(fullRecs[:, 0])
+        for i in range(1, targRecs.shape[1]):
+            receptorMean = np.mean(fullRecs[:, i])
+            targRecs[:, i] = targRecs[:, i] * (signalMean / receptorMean)
+            offTargRecs[:, i] = offTargRecs[:, i] * (signalMean / receptorMean)
+
+    # Set zero counts to a small value to avoid division by zero
     targRecs[targRecs == 0] = 1e-9
     offTargRecs[offTargRecs == 0] = 1e-9
 
@@ -163,6 +169,8 @@ def get_cell_bindings(
 
     # Reformat input affinities to 10^aff and diagonalize
     modelAffs = restructure_affs(monomerAffs)
+
+    recCounts[recCounts == 0] = 1e-9
 
     # Use the binding model to calculate bound receptors for each cell
     Rbound = cyt_binding_model(
