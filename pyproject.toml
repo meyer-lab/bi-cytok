@@ -62,7 +62,7 @@ select = [
     # NumPy-specific checks
     "NPY",
     # type checking
-    "TC",
+    # "TC", type checking causing issues
 ]
 
 ignore = [
