@@ -1,2 +1,14 @@
+title: "Bivalent Cytokine Analysis"
+
 project:
   output-dir: _output
+
+format: typst
+jupyter: python3
+
+execute:
+  echo: false
+  warning: true
+  error: true
+
+margin: {left: 2cm, right: 2cm}

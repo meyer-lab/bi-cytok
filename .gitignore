@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 
 # Quarto stuff
-.quarto/
+/.quarto/
 _output/
 
 .vscode
