@@ -128,11 +128,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Quarto outputs
-.figures/
-*_files
-*.html
-*.pdf
+# Quarto stuff
+.quarto/
+_output/
 
 .vscode
 output
