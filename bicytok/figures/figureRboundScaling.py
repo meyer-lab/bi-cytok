@@ -36,21 +36,21 @@ path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
-    ax, f = getSetup((15, 5), (2, 3))
+    ax, f = getSetup((18, 5), (2, 3))  # Increased width to accommodate 6 subplots
 
     # Parameters
     targCell = "Treg"
-    sample_size = 500
+    sample_size = 100
     cell_categorization = "CellType2"
     model_valencies = np.array([[(2), (2)]])
-    dose = 10e-2
+    dose = 100
     signal_receptor = "CD122"
     # target_receptors = ["CD25", "CD4-1", "CD27", "TIGIT"]
     # target_receptors = ["CD25", "TIGIT"]
     target_receptors = ["CD25", "CD4-1", "TIGIT"]
-    # target_receptors = ["CD25"]
+    # target_receptors = ["TIGIT"]
     affinity_bounds = (2, 19)
-    num_conv_factors = 20
+    num_conv_factors = 15
 
     CITE_DF = importCITE()
 
@@ -138,6 +138,8 @@ def makeFigure():
     optimal_selectivities = []
     optimal_target_affinities = []  # Store target receptor affinities
     optimal_signal_affinities = []  # Store signal receptor affinities
+    target_mean_losses = []  # Store mean losses for target cells
+    off_target_mean_losses = []  # Store mean losses for off-target cells
     
     for receptor in receptors_of_interest:
         per_rec_targ_bound_sigR = []
@@ -147,13 +149,15 @@ def makeFigure():
         per_rec_selectivities = []
         per_rec_target_affinities = []  # Store target receptor affinities for this receptor
         per_rec_signal_affinities = []  # Store signal receptor affinities for this receptor
+        per_rec_targ_losses = []  # Store target cell losses for this receptor
+        per_rec_off_targ_losses = []  # Store off-target cell losses for this receptor
         
         for conv_fact in conversion_factors:
             test_DF = filterDF.copy()
 
             # print(f"Unconverted mean: {np.mean(test_DF[receptor])}, {np.mean(test_DF[signal_receptor])}")
 
-            # test_DF[receptor] = test_DF[receptor] * conv_fact
+            test_DF[receptor] = test_DF[receptor] * conv_fact
             test_DF[signal_receptor] = test_DF[signal_receptor] * conv_fact
             rec_mat = test_DF[[signal_receptor, receptor]].to_numpy()
 
@@ -174,12 +178,19 @@ def makeFigure():
             per_rec_signal_affinities.append(optAffs[0])  # Signal receptor affinity
             per_rec_target_affinities.append(optAffs[1])  # Target receptor affinity
             
-            Rbound = get_cell_bindings(
+            Rbound, losses = get_cell_bindings(
                 recCounts=rec_mat,
                 monomerAffs=optAffs,
                 dose=dose,
                 valencies=model_valencies,
             )
+            
+            # Calculate mean losses for target and off-target cells
+            targ_losses = losses[on_target_mask]
+            off_targ_losses = losses[off_target_mask]
+            per_rec_targ_losses.append(np.mean(targ_losses))
+            per_rec_off_targ_losses.append(np.mean(off_targ_losses))
+            
             targ_bound = Rbound[on_target_mask]
             off_targ_bound = Rbound[off_target_mask]
 
@@ -187,9 +198,6 @@ def makeFigure():
             off_targ_bound = np.sum(off_targ_bound, axis=0) / off_targ_bound.shape[0]
 
             print(f"Conversion factor: {conv_fact}, {receptor}: {targ_bound[0] / off_targ_bound[0]}")
-
-            # targ_bound = targ_bound / conv_fact
-            # off_targ_bound = off_targ_bound / conv_fact
 
             per_rec_targ_bound_sigR.append(targ_bound[0])
             per_rec_off_targ_bound_sigR.append(off_targ_bound[0])
@@ -205,6 +213,8 @@ def makeFigure():
         optimal_selectivities.append(per_rec_selectivities)
         optimal_target_affinities.append(per_rec_target_affinities)
         optimal_signal_affinities.append(per_rec_signal_affinities)
+        target_mean_losses.append(per_rec_targ_losses)
+        off_target_mean_losses.append(per_rec_off_targ_losses)
 
     # Plotting
     palette = sns.color_palette("colorblind", n_colors=len(receptors_of_interest))
@@ -312,9 +322,34 @@ def makeFigure():
     ax[4].set_title(f"Signal Receptor ({signal_receptor}) Optimal Affinity vs Conversion Factor")
     ax[4].legend(title="Target Receptor")
 
+    # Plot 6: Binding model losses
+    for i, receptor in enumerate(receptors_of_interest):
+        ax[5].plot(
+            conversion_factors,
+            target_mean_losses[i],
+            marker="o",
+            ls="-",
+            label=f"{targCell}: {receptor}",
+            color=palette[i],
+        )
+        ax[5].plot(
+            conversion_factors,
+            off_target_mean_losses[i],
+            marker="x",
+            ls="--",
+            label=f"Non-{targCell}: {receptor}",
+            color=palette[i],
+        )
+    ax[5].axvline(x=10**0, linestyle="--", color="black", alpha=0.5)
+    ax[5].set_xscale("log")
+    ax[5].set_yscale("log")
+    ax[5].set_xlabel("Conversion Factor")
+    ax[5].set_ylabel("Mean Binding Model Loss")
+    ax[5].set_title("Binding Model Loss vs Conversion Factor")
+    ax[5].legend(title="Cell Type: Target Receptor")
+
     return f
 
 
 
-    
-    
+

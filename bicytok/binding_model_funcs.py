@@ -15,24 +15,25 @@ def cyt_binding_model(
     recCounts: np.ndarray,
     valencies: np.ndarray,
     monomerAffs: np.ndarray,
-) -> np.ndarray:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Each system should have the same number of ligands, receptors, and complexes.
+    Returns both bound receptors and optimization losses for each cell.
     """
     L0, KxStar, Rtot, Cplx, Ctheta, Ka = reformat_parameters(
         dose, recCounts, valencies, monomerAffs
     )
 
-    return np.array(
-        infer_Rbound_batched_jax(
-            jnp.array(L0, dtype=jnp.float64),
-            jnp.array(KxStar, dtype=jnp.float64),
-            jnp.array(Rtot, dtype=jnp.float64),
-            jnp.array(Cplx, dtype=jnp.float64),
-            jnp.array(Ctheta, dtype=jnp.float64),
-            jnp.array(Ka, dtype=jnp.float64),
-        )
+    Rbound, losses = infer_Rbound_batched_jax(
+        jnp.array(L0, dtype=jnp.float64),
+        jnp.array(KxStar, dtype=jnp.float64),
+        jnp.array(Rtot, dtype=jnp.float64),
+        jnp.array(Cplx, dtype=jnp.float64),
+        jnp.array(Ctheta, dtype=jnp.float64),
+        jnp.array(Ka, dtype=jnp.float64),
     )
+
+    return np.array(Rbound), np.array(losses)
 
 
 @jax.jit
@@ -43,7 +44,7 @@ def infer_Rbound_batched_jax(
     Cplx: jnp.ndarray,  # n_samples x n_cplx x n_L
     Ctheta: jnp.ndarray,  # n_samples x n_cplx
     Ka: jnp.ndarray,  # n_samples x n_L x n_R
-) -> jnp.ndarray:
+) -> tuple[jnp.ndarray, jnp.ndarray]:
     def process_sample(i):
         return infer_Req(Rtot[i], L0[i], KxStar[i], Cplx[i], Ctheta[i], Ka[i])
 
@@ -58,7 +59,7 @@ def infer_Rbound_batched_jax(
         operand=None,
     )
 
-    return Rtot - Req
+    return Rtot - Req, losses
 
 
 def infer_Req(
