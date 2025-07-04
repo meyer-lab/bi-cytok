@@ -98,7 +98,7 @@ def optimize_affs(
     dose: float,
     valencies: np.ndarray,
     bounds: tuple[float, float] = (7.0, 9.0),
-) -> tuple[float, list]:
+) -> tuple[float, list, bool]:
     """
     An optimizer that maximizes the selectivity for a target cell type
         by varying the affinities of each receptor-ligand pair.
@@ -119,6 +119,7 @@ def optimize_affs(
     Return:
         optSelec: optimized selectivity value
         optAffs: optimized affinity values that yield the optimized selectivity
+        converged: whether the optimization converged successfully
     """
 
     assert targRecs.size > 0
@@ -148,11 +149,19 @@ def optimize_affs(
             valencies,
         ),
         jac="3-point",
+        options={"disp": True}
     )
     optSelect = optimizer.fun
     optAffs = optimizer.x
+    converged = optimizer.success
 
-    return optSelect, optAffs
+    if not converged:
+        print(
+            f"Optimization did not converge: {optimizer.message}. "
+            f"Final selectivity: {optSelect}, Affinities: {optAffs}"
+        )
+
+    return optSelect, optAffs, converged
 
 
 def get_cell_bindings(
