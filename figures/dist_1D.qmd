@@ -48,7 +48,7 @@ epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
 sampleDF = sample_receptor_abundances(
     CITE_DF=epitopesDF,
     numCells=min(sample_size, epitopesDF.shape[0]),
-    targ_cellType=targ_cell,
+    targCellType=targ_cell,
 )
 filtered_sampleDF = filter_receptor_abundances(
     sampleDF, targ_cell_type=targ_cell, epitope_list=receptors_of_interest
@@ -75,7 +75,8 @@ plt.bar(
     KL_values[top_KL_indices],
     color="r",
 )
-plt.xlabel("KL Divergence")
+
+plt.ylabel("KL Divergence")
 plt.xticks(rotation=45)
 plt.show()
 ```
@@ -89,7 +90,8 @@ plt.bar(
     EMD_values[top_EMD_indices],
     color="b",
 )
-plt.xlabel("EMD Value")
+
+plt.ylabel("EMD Value")
 plt.xticks(rotation=45)
 plt.show()
 ```

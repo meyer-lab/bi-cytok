@@ -122,9 +122,9 @@ plt.title(
     f"EMD: {emd_val:.2f}",
     fontsize=14,
 )
-plt.xlabel(f"{receptor1} Normalized Expression", fontsize=12)
-plt.ylabel(f"{receptor2} Normalized Expression", fontsize=12)
-plt.legend(loc="upper right", fontsize=10)
+plt.xlabel(f"{receptor1} Normalized Count", fontsize=12)
+plt.ylabel(f"{receptor2} Normalized Count", fontsize=12)
+plt.legend(loc="best", fontsize=10, title="Cell Types")
 plt.grid(alpha=0.3, linestyle="--")
 plt.tight_layout()
 plt.show()

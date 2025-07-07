@@ -32,15 +32,15 @@ rng = np.random.default_rng(1)
 ref_mean = 10.0
 ref_sigma = 2.0
 off_target_configs = [
-    ("Same Mean, Same Sigma", ref_mean, ref_sigma),
-    ("Same Mean, Larger Sigma", ref_mean, 3.0),
-    ("Same Mean, Even Larger Sigma", ref_mean, 4.0),
-    ("Same Mean, Same Sigma", ref_mean, ref_sigma),
-    ("Larger Mean, Same Sigma", 15.0, ref_sigma),
-    ("Even Larger Mean, Same Sigma", 20.0, ref_sigma),
-    ("Larger Mean, Same Sigma", 15.0, ref_sigma),
-    ("Larger Mean, Larger Sigma", 15.0, 3.0),
-    ("Larger Mean, Even Larger Sigma", 15.0, 4.0),
+    ("Same Mean, Same Std.", ref_mean, ref_sigma),
+    ("Same Mean, Larger Std.", ref_mean, 3.0),
+    ("Same Mean, Even Larger Std.", ref_mean, 4.0),
+    ("Same Mean, Same Std.", ref_mean, ref_sigma),
+    ("Larger Mean, Same Std.", 15.0, ref_sigma),
+    ("Even Larger Mean, Same Std.", 20.0, ref_sigma),
+    ("Larger Mean, Same Std.", 15.0, ref_sigma),
+    ("Larger Mean, Larger Std.", 15.0, 3.0),
+    ("Larger Mean, Even Larger Std.", 15.0, 4.0),
 ]
 n_samples = 1500
 ```
@@ -64,9 +64,16 @@ for i, (title, target_mean, target_sigma) in enumerate(off_target_configs):
     ref_pdf = stats.norm.pdf(x, ref_mean, ref_sigma)
     target_pdf = stats.norm.pdf(x, target_mean, target_sigma)
 
-    axs[i].plot(x, ref_pdf, label=f"Reference N({ref_mean},{ref_sigma})", color="blue", linewidth=2)
-    axs[i].plot(x, target_pdf, label=f"Target N({target_mean},{target_sigma})", color="red", linewidth=2)
-    axs[i].fill_between(x, np.minimum(ref_pdf, target_pdf), color="purple", alpha=0.3, label="Overlapping Area")
+    axs[i].plot(x, ref_pdf, color="blue", linewidth=2)
+    axs[i].plot(x, target_pdf, color="red", linewidth=2)
+    axs[i].fill_between(x, np.minimum(ref_pdf, target_pdf), color="purple", alpha=0.3)
+
+    # Only show legend in the first panel
+    if i == 0:
+        axs[i].legend([f"Reference", 
+                      f"Target",
+                      "Overlapping Area"],
+                      loc="upper right")
 
     kl_value = KL_div[0] if not np.isnan(KL_div[0]) else float("nan")
     emd_value = EMD[0] if not np.isnan(EMD[0]) else float("nan")
@@ -78,13 +85,12 @@ for i, (title, target_mean, target_sigma) in enumerate(off_target_configs):
         va="top",
         bbox=dict(boxstyle="round", fc="w", alpha=0.8),
     )
-    axs[i].set_title(title)
+    # Updated title format with mean and standard deviation
+    axs[i].set_title(f"{title}\n(μ={target_mean:.1f}, σ={target_sigma:.1f})")
     axs[i].set_xlabel("Value")
     axs[i].set_ylabel("Density")
-    axs[i].legend()
     axs[i].grid(True, linestyle="--", alpha=0.7)
 
-plt.suptitle("Comparing KL Divergence and EMD for Gaussian Distributions", fontsize=16)
 plt.tight_layout()
 plt.show()
 ```

@@ -33,16 +33,16 @@ from bicytok.selectivity_funcs import optimize_affs
 receptor_pairs = [
     ["CD25", "CD25"],
     ["CD25", "CD4-1"],
-    # ["CD25", "CD4-2"],
-    # ["CD25", "CD27"],
-    # ["CD25", "CD278"],
-    # ["CD25", "CD146"],
-    # ["CD25", "CD338"],
-    # ["CD4-1", "CD4-1"],
-    # ["CD4-1", "CD4-2"],
-    # ["CD4-1", "CD27"],
-    # ["CD4-1", "CD278"],
-    # ["CD4-1", "CD146"],
+    ["CD25", "CD4-2"],
+    ["CD25", "CD27"],
+    ["CD25", "CD278"],
+    ["CD25", "CD146"],
+    ["CD25", "CD338"],
+    ["CD4-1", "CD4-1"],
+    ["CD4-1", "CD4-2"],
+    ["CD4-1", "CD27"],
+    ["CD4-1", "CD278"],
+    ["CD4-1", "CD146"],
 ]
 signal_receptor = "CD122"
 sample_size = 100
@@ -110,7 +110,7 @@ metrics_df = pd.DataFrame(
         "Receptor Pair": [str(receptor) for receptor in receptor_pairs],
         "KL Divergence": KL_div_vals,
         "EMD": EMD_vals,
-        "Selectivity (Rbound)": selectivity_vals,
+        "Selectivity": selectivity_vals,
     }
 )
 ```
@@ -121,12 +121,14 @@ metrics_df = pd.DataFrame(
 sns.scatterplot(
     data=metrics_df,
     x="KL Divergence",
-    y="Selectivity (Rbound)",
+    y="Selectivity",
     hue="Receptor Pair",
     s=70,
-    legend=False,
+    legend=True,
 )
-plt.title("KL Divergence vs Selectivity", fontsize=13)
+
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.legend(bbox_to_anchor=(1.05, 1), title="Receptor Pair")
 plt.show()
 ```
 
@@ -136,12 +138,14 @@ plt.show()
 sns.scatterplot(
     data=metrics_df,
     x="EMD",
-    y="Selectivity (Rbound)",
+    y="Selectivity",
     hue="Receptor Pair",
     s=70,
     legend=True,
 )
-plt.title("EMD vs Selectivity", fontsize=13)
-plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.legend(loc="upper left", title="Receptor Pair")
+plt.legend(bbox_to_anchor=(1.05, 1), title="Receptor Pair")
 plt.show()
 ```

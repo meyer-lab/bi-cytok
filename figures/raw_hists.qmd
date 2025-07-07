@@ -1,6 +1,14 @@
 ---
 title: "Distribution Histograms"
+
+format:
+  pdf:
+    geometry:
+      - left=1in
+      - right=1in
+      - paperwidth=30in
 ---
+## Run this file in an interactive window (cell by cell); it is not optimized for rendering.
 
 # Summary
 Figure file to visualize receptor distributions with the highest and lowest distance values between target and off-target cell populations.

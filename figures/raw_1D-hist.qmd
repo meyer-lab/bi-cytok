@@ -58,6 +58,8 @@ if receptor not in epitopes:
     raise ValueError(
         f"Receptor '{receptor}' not found. Available receptors: {epitopes}"
     )
+
+# Use converted receptor abundances to calculate metric values
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
 sample_df = sample_receptor_abundances(
@@ -66,8 +68,8 @@ sample_df = sample_receptor_abundances(
     targCellType=targ_cell,
     balance=True,
     rand_state=42,
+    convert=True
 )
-
 targ_mask = (sample_df["Cell Type"] == targ_cell).to_numpy()
 off_targ_mask = ~targ_mask
 rec_abundances = sample_df[[receptor]].to_numpy()
@@ -75,6 +77,7 @@ KL_div_vals, EMD_vals = KL_EMD_1D(rec_abundances, targ_mask, off_targ_mask)
 kl_val = KL_div_vals[0]
 emd_val = EMD_vals[0]
 
+# Use raw receptor counts for plotting
 sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,
     numCells=min(sample_size, epitopes_df.shape[0]),
@@ -99,8 +102,6 @@ for cell_type in plot_cell_types:
         all_cell_abundances.append(rec_abundance[mask] / mean_abundance)
     else:
         all_cell_abundances.append(rec_abundance[mask])
-
-    print(np.mean(rec_abundance[mask]), np.std(rec_abundance[mask]))
 ```
 
 ```{python}
@@ -138,7 +139,7 @@ elif stat == "probability":
 x_max = np.percentile(targ_abundances, 99)
 if x_limit:
     plt.xlim(0, x_max * 1.1)
-plt.legend(loc="upper right", fontsize=10)
+plt.legend(loc="upper right", fontsize=10, title="Cell Types")
 plt.tight_layout()
 plt.show()
 ```

@@ -139,29 +139,23 @@ handles = [
     )
     for label, color in color_map.items()
 ]
-plt.legend(handles=handles, title="Receptor Categories", loc="lower right")
+plt.legend(handles=handles, title="Epitope Categories", bbox_to_anchor=(1.05, 1))
+
+plt.xlabel("EMD", fontsize=11)
+plt.ylabel("KL Divergence", fontsize=11)
+plt.grid(True, linestyle="--", alpha=0.7)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
 
 stats_text = (
     f"Pearson correlation: {correlation:.4f}\n"
     f"R²: {r_squared:.4f}\n"
     f"Slope: {slope:.4f}\n"
-    f"# Receptors: {len(results_df)}"
-)
-plt.text(
-    0.02,
-    0.98,
-    stats_text,
-    transform=plt.gca().transAxes,
-    verticalalignment="top",
-    horizontalalignment="left",
-    bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
-    fontsize=9,
+    f"Number of Epitopes: {len(results_df)}"
 )
 
-plt.title(f"KL Divergence vs EMD for {targ_cell} vs Off-target Cells", fontsize=12)
-plt.xlabel("Earth Mover's Distance (EMD)", fontsize=11)
-plt.ylabel("KL Divergence", fontsize=11)
-plt.grid(True, linestyle="--", alpha=0.7)
-plt.tight_layout()
-plt.show()
+print(stats_text)
 ```

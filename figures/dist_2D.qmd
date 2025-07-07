@@ -91,7 +91,8 @@ sns.heatmap(
 )
 plt.tick_params(axis="x", labelsize=5)
 plt.tick_params(axis="y", labelsize=5)
-plt.title("EMD")
+cbar = plt.gcf().axes[-1]
+cbar.set_title("EMD", fontsize=8)
 plt.show()
 ```
 
@@ -103,6 +104,7 @@ sns.heatmap(
 )
 plt.tick_params(axis="x", labelsize=5)
 plt.tick_params(axis="y", labelsize=5)
-plt.title("KL Divergence")
+cbar = plt.gcf().axes[-1]
+cbar.set_title("KL Divergence", fontsize=8)
 plt.show()
 ```

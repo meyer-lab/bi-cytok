@@ -107,19 +107,21 @@ KL_labs = np.array(KL_labs)[KL_sort_ind]
 ```
 
 ```{python}
-#| fig-cap: "Top KL Divergence values by cell type"
+#| fig-cap: "Epitopes with the top KL Divergence values for each cell type"
 
-plt.bar(KL_labs, top_KL, color="r")
-plt.xlabel("KL Divergence")
+plt.bar(KL_labs, top_KL, color="k")
+plt.xlabel("Cell Type: Epitope")
+plt.ylabel("KL Divergence")
 plt.xticks(rotation=45, ha="right")
 plt.show()
 ```
 
 ```{python}
-#| fig-cap: "Top EMD values by cell type"
+#| fig-cap: "Epitopes with the top EMD values for each cell type"
 
-plt.bar(EMD_labs, top_EMD, color="b")
-plt.xlabel("EMD Value")
+plt.bar(EMD_labs, top_EMD, color="k")
+plt.xlabel("Cell Type: Epitope")
+plt.ylabel("EMD")
 plt.xticks(rotation=45, ha="right")
 plt.show()
 ```

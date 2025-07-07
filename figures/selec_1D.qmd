@@ -61,15 +61,15 @@ sort_indices = np.argsort(selectivities)
 ```
 
 ```{python}
-#| fig-cap: "Selectivity of receptors in target cells"
+#| fig-cap: "Optimal selectivity of various epitopes"
 
 plt.barh(
     np.array(receptors)[sort_indices],
     np.array(selectivities)[sort_indices],
-    color="b",
+    color="k",
 )
+plt.title(f"Cell type: {cell_type}", fontsize=16)
 plt.xlabel("Selectivity")
-plt.title("Selectivity of Receptors in Treg Cells")
 plt.gca().invert_yaxis()
 plt.show()
 ```

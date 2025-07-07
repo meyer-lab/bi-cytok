@@ -54,7 +54,7 @@ sample_df = sample_receptor_abundances(
 )
 filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
 # epitopes = filtered_sample_df.columns[:-1]
-epitopes = filtered_sample_df.columns[1:10]
+epitopes = filtered_sample_df.columns[1:15]
 
 on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
 off_target_mask = ~on_target_mask
@@ -100,7 +100,7 @@ metrics_df = pd.DataFrame(
         "Valency": valency_labels,
         "KL Divergence": np.repeat(KL_div_vals, len(test_valencies)),
         "EMD": np.repeat(EMD_vals, len(test_valencies)),
-        "Selectivity (Rbound)": selectivity_vals,
+        "Selectivity": selectivity_vals,
     }
 )
 
@@ -137,7 +137,7 @@ metrics_df_emd_filtered = metrics_df[
 sns.scatterplot(
     data=metrics_df,
     x="KL Divergence",
-    y="Selectivity (Rbound)",
+    y="Selectivity",
     hue="Receptor Pair",
     style="Valency",
     s=70,
@@ -148,14 +148,15 @@ sns.scatterplot(
 sns.scatterplot(
     data=metrics_df_kl_filtered,
     x="KL Divergence",
-    y="Selectivity (Rbound)",
+    y="Selectivity",
     hue="Receptor Pair",
     style="Valency",
     s=70,
     legend=True,
 )
-plt.title("KL Divergence vs Selectivity", fontsize=13)
-plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title="Top 10 by KL Div")
+
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.legend(bbox_to_anchor=(1.05, 1), title="Top 10 by KL Div.")
 plt.show()
 ```
 
@@ -165,7 +166,7 @@ plt.show()
 sns.scatterplot(
     data=metrics_df,
     x="EMD",
-    y="Selectivity (Rbound)",
+    y="Selectivity",
     hue="Receptor Pair",
     style="Valency",
     s=70,
@@ -176,13 +177,14 @@ sns.scatterplot(
 sns.scatterplot(
     data=metrics_df_emd_filtered,
     x="EMD",
-    y="Selectivity (Rbound)",
+    y="Selectivity",
     hue="Receptor Pair",
     style="Valency",
     s=70,
     legend=True,
 )
-plt.title("EMD vs Selectivity", fontsize=13)
-plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title="Top 10 by EMD")
+
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.legend(bbox_to_anchor=(1.05, 1) title="Top 10 by EMD")
 plt.show()
 ```

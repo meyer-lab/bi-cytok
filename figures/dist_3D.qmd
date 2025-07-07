@@ -83,9 +83,8 @@ top_EMD_receptors = [
 plt.barh(
     top_KL_receptors,
     KL_flat[top_KL_indices],
-    color="b",
+    color="k",
 )
-plt.title("Top 5 KL Divergence Values")
 plt.xlabel("KL Divergence")
 plt.gca().invert_yaxis()
 plt.show()
@@ -97,9 +96,8 @@ plt.show()
 plt.barh(
     top_EMD_receptors,
     EMD_flat[top_EMD_indices],
-    color="g",
+    color="k",
 )
-plt.title("Top 5 EMD Values")
 plt.xlabel("EMD Value")
 plt.gca().invert_yaxis()
 plt.show()
