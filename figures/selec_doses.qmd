@@ -1,0 +1,125 @@
+---
+title: "Selectivity Doses"
+---
+
+# Summary
+Figure file to generate dose response curves for any combination of multivalent and multispecific ligands. Outputs dose vs. selectivity for the target cell and amount of target cell bound at indicated signal receptor.
+
+# Imports:
+- The CITE-seq dataframe (`importCITE`)
+
+# Parameters:
+- signal: Receptor that the ligand is delivering signal to
+- all_targets: List of paired [(target receptor, valency)] combinations for each targeting receptor
+- targ_cell: cell type whose selectivity will be maximized
+
+# Outputs:
+- Plots dose vs. selectivity and dose vs. target bound for each combination of targeting receptors
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import get_cell_bindings, optimize_affs
+
+plt.rcParams["svg.fonttype"] = "none"
+
+signal = ["CD122", 1]
+all_targets = [
+    [("CD25", 1)],
+    [("CD25", 4)],
+    # [("CD25", 1), ("CD278", 1)],
+    # [("CD25", 4), ("CD278", 4)],
+    # [("CD25", 1), ("CD27", 1)],
+    # [("CD25", 4), ("CD27", 4)],
+    # [("CD25", 1), ("CD278", 1), ("CD27", 1)],
+    # [("CD25", 4), ("CD278", 4), ("CD27", 4)],
+]
+targ_cell = "Treg"
+
+CITE_DF = importCITE()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + ["CellType2"]]
+epitopes_df = epitopes_df.rename(columns={"CellType2": "Cell Type"})
+
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=100,
+    targCellType=targ_cell,
+)
+
+dose_vec = np.logspace(-2, 2, num=10)
+df = pd.DataFrame(columns=["Dose", "Selectivity", "Target Bound", "Ligand"])
+
+for target_pairs in all_targets:
+    valencies = [signal[1]]
+    targets = []
+    naming = []
+    for target, valency in target_pairs:
+        targets.append(target)
+        valencies.append(valency)
+        naming.append(f"{target} ({valency})")
+
+    valencies = np.array([valencies])
+
+    df_targ_cell = sample_df.loc[sample_df["Cell Type"] == targ_cell]
+    targ_recs = df_targ_cell[[signal[0]] + targets]
+    df_off_targ_cell = sample_df.loc[sample_df["Cell Type"] != targ_cell]
+    off_targ_recs = df_off_targ_cell[[signal[0]] + targets]
+
+    for dose in dose_vec:
+        opt_selec, opt_params = optimize_affs(
+            targRecs=targ_recs.to_numpy(),
+            offTargRecs=off_targ_recs.to_numpy(),
+            dose=dose,
+            valencies=valencies,
+        )
+
+        r_bound = get_cell_bindings(
+            recCounts=sample_df[[signal[0]] + targets].to_numpy(),
+            monomerAffs=opt_params,
+            dose=dose,
+            valencies=valencies,
+        )
+
+        cell_bind_df = sample_df[[signal[0]] + ["Cell Type"]]
+        cell_bind_df.insert(0, "Receptor Bound", r_bound[:, 0], True)
+        cell_bind_df = cell_bind_df.groupby(["Cell Type"]).mean(0)
+
+        data = {
+            "Dose": [dose],
+            "Selectivity": 1 / opt_selec,
+            "Target Bound": cell_bind_df["Receptor Bound"].loc[targ_cell],
+            "Ligand": " + ".join(naming),
+            "Affinities": opt_params,
+        }
+        df_temp = pd.DataFrame(
+            data, columns=["Dose", "Selectivity", "Target Bound", "Ligand"]
+        )
+        df = df_temp if df.empty else pd.concat([df, df_temp], ignore_index=True)
+```
+
+```{python}
+#| fig-cap: "Dose vs Selectivity for different ligand combinations"
+
+sns.lineplot(data=df, x="Dose", y="Selectivity", hue="Ligand")
+plt.xscale("log")
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Dose vs Target Bound for different ligand combinations"
+
+sns.lineplot(data=df, x="Dose", y="Target Bound", hue="Ligand")
+plt.xscale("log")
+plt.show()
+```

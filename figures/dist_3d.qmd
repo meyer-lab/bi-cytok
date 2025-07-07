@@ -1,0 +1,106 @@
+---
+title: "3D Distribution"
+---
+
+# Summary
+Generates a figure that shows the receptor triplets that have the highest 3D KL divergence and EMD values.
+
+# Imports:
+- The CITE-seq dataframe (`importCITE`)
+
+# Parameters:
+- targ_cell: cell type whose selectivity will be maximized
+- receptors_of_interest: list of receptors to be analyzed
+- sample_size: number of cells to sample for analysis
+- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+
+# Outputs:
+- Two bar plots showing the top 5 KL divergence and EMD values for receptor triplets
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import matplotlib.pyplot as plt
+from bicytok.distance_metric_funcs import KL_EMD_3D
+from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+
+targ_cell = "Treg"
+receptors_of_interest = [
+    "CD25",
+    "CD4-1",
+    # "CD27",
+    # "CD4-2",
+    # "CD278",
+]
+sample_size = 100
+cell_categorization = "CellType2"
+
+CITE_DF = importCITE()
+assert targ_cell in CITE_DF[cell_categorization].unique()
+
+epitopes_df = CITE_DF[receptors_of_interest + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=min(sample_size, epitopes_df.shape[0]),
+    targCellType=targ_cell,
+)
+filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
+
+on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
+off_target_mask = ~on_target_mask
+rec_abundances = filtered_sample_df[receptors_of_interest].to_numpy()
+KL_div_vals, EMD_vals = KL_EMD_3D(
+    rec_abundances,
+    on_target_mask,
+    off_target_mask,
+    calc_diags=True,
+)
+
+KL_flat = KL_div_vals.flatten()
+EMD_flat = EMD_vals.flatten()
+
+top_KL_indices = np.argsort(np.nan_to_num(KL_flat))[-5:]
+top_EMD_indices = np.argsort(np.nan_to_num(EMD_flat))[-5:]
+
+top_KL_combinations = np.unravel_index(top_KL_indices, KL_div_vals.shape)
+top_EMD_combinations = np.unravel_index(top_EMD_indices, EMD_vals.shape)
+
+top_KL_receptors = [
+    f"{receptors_of_interest[i]}-{receptors_of_interest[j]}-{receptors_of_interest[k]}"
+    for i, j, k in zip(*top_KL_combinations, strict=False)
+]
+top_EMD_receptors = [
+    f"{receptors_of_interest[i]}-{receptors_of_interest[j]}-{receptors_of_interest[k]}"
+    for i, j, k in zip(*top_EMD_combinations, strict=False)
+]
+```
+
+```{python}
+#| fig-cap: "Top 5 KL Divergence values for receptor triplets"
+
+plt.barh(
+    top_KL_receptors,
+    KL_flat[top_KL_indices],
+    color="b",
+)
+plt.title("Top 5 KL Divergence Values")
+plt.xlabel("KL Divergence")
+plt.gca().invert_yaxis()
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Top 5 EMD values for receptor triplets"
+
+plt.barh(
+    top_EMD_receptors,
+    EMD_flat[top_EMD_indices],
+    color="g",
+)
+plt.title("Top 5 EMD Values")
+plt.xlabel("EMD Value")
+plt.gca().invert_yaxis()
+plt.show()
+```

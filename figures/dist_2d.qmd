@@ -1,0 +1,108 @@
+---
+title: "2D Distribution"
+---
+
+# Summary
+Generates heatmaps visualizing the 2D EMD and KL Divergence of all receptor pairs.
+
+# Imports:
+- The CITE-seq dataframe (`importCITE`)
+
+# Parameters:
+- targ_cell: cell type whose selectivity will be maximized
+- sample_size: number of cells to sample for analysis
+- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+
+# Outputs:
+- Generates heatmaps of the EMD and KL divergences between all relevant receptor pairs
+- Filters out receptors with low average values based on percentiles
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from bicytok.distance_metric_funcs import KL_EMD_2D
+from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+
+targ_cell = "Treg"
+sample_size = 100
+cell_categorization = "CellType2"
+
+CITE_DF = importCITE()
+assert targ_cell in CITE_DF[cell_categorization].unique()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=min(sample_size, epitopes_df.shape[0]),
+    targCellType=targ_cell,
+)
+filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
+epitopes = list(filtered_sample_df.columns[:-1])
+
+on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
+off_target_mask = ~on_target_mask
+rec_abundances = filtered_sample_df[epitopes].to_numpy()
+KL_div_vals, EMD_vals = KL_EMD_2D(
+    rec_abundances, on_target_mask, off_target_mask, calc_1D=True
+)
+
+EMD_matrix = np.tril(EMD_vals, k=0)
+EMD_matrix = EMD_matrix + EMD_matrix.T - np.diag(np.diag(EMD_matrix))
+KL_matrix = np.tril(KL_div_vals, k=0)
+KL_matrix = KL_matrix + KL_matrix.T - np.diag(np.diag(KL_matrix))
+
+df_EMD = pd.DataFrame(EMD_matrix, index=epitopes, columns=epitopes)
+df_KL = pd.DataFrame(KL_matrix, index=epitopes, columns=epitopes)
+
+df_EMD = df_EMD.dropna(how="all").dropna(how="all", axis=1)
+df_KL = df_KL.dropna(how="all").dropna(how="all", axis=1)
+
+emd_row_means = df_EMD.mean(axis=1)
+emd_col_means = df_EMD.mean(axis=0)
+kl_row_means = df_KL.mean(axis=1)
+kl_col_means = df_KL.mean(axis=0)
+
+emd_threshold = np.percentile(np.concatenate([emd_row_means, emd_col_means]), 25)
+kl_threshold = np.percentile(np.concatenate([kl_row_means, kl_col_means]), 25)
+
+df_EMD = df_EMD.loc[emd_row_means >= emd_threshold, emd_col_means >= emd_threshold]
+df_KL = df_KL.loc[kl_row_means >= kl_threshold, kl_col_means >= kl_threshold]
+
+common_receptors = sorted(set(df_EMD.index) & set(df_KL.index))
+df_EMD = df_EMD.loc[common_receptors, common_receptors]
+df_KL = df_KL.loc[common_receptors, common_receptors]
+```
+
+```{python}
+#| fig-cap: "EMD heatmap for receptor pairs"
+
+sns.heatmap(
+    df_EMD, cmap="bwr", cbar=True, xticklabels=True, yticklabels=True
+)
+plt.tick_params(axis="x", labelsize=5)
+plt.tick_params(axis="y", labelsize=5)
+plt.title("EMD")
+plt.show()
+```
+
+```{python}
+#| fig-cap: "KL Divergence heatmap for receptor pairs"
+
+sns.heatmap(
+    df_KL, cmap="bwr", cbar=True, xticklabels=True, yticklabels=True
+)
+plt.tick_params(axis="x", labelsize=5)
+plt.tick_params(axis="y", labelsize=5)
+plt.title("KL Divergence")
+plt.show()
+```

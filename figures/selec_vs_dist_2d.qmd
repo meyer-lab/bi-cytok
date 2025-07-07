@@ -1,0 +1,188 @@
+---
+title: "Selectivity vs Distance 2D"
+---
+
+# Summary
+Generates a scatter plot comparing the selectivity of various receptors against their KL Divergence and Earth Mover's Distance (EMD) metrics.
+
+# Imports:
+- The CITE-seq dataframe (`importCITE`)
+
+# Parameters:
+- signal_receptor: receptor intended to bind to impart effects
+- sample_size: number of cells to sample for analysis
+- targ_cell: cell type whose selectivity will be maximized
+- test_valencies: list of valencies to be analyzed
+- dose: dose of ligand to be used
+- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+
+# Outputs:
+- Plots KL Divergence and EMD values against Selectivity for each receptor and valency combination
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from bicytok.distance_metric_funcs import KL_EMD_1D
+from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+signal_receptor = "CD122"
+sample_size = 100
+targ_cell = "Treg"
+test_valencies = [(1), (2)]
+dose = 10e-2
+cell_categorization = "CellType2"
+
+CITE_DF = importCITE()
+assert targ_cell in CITE_DF[cell_categorization].unique()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=min(sample_size, epitopes_df.shape[0]),
+    targCellType=targ_cell,
+)
+filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
+# epitopes = filtered_sample_df.columns[:-1]
+epitopes = filtered_sample_df.columns[1:10]
+
+on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
+off_target_mask = ~on_target_mask
+
+df_targ_cell = filtered_sample_df.loc[on_target_mask]
+df_off_targ_cell = filtered_sample_df.loc[off_target_mask]
+
+selectivity_vals = []
+KL_div_vals = []
+EMD_vals = []
+for receptor in epitopes:
+    rec_abundances = filtered_sample_df[receptor].to_numpy().reshape(-1, 1)
+
+    KL_div_mat, EMD_mat = KL_EMD_1D(rec_abundances, on_target_mask, off_target_mask)
+    KL_div = KL_div_mat[0]
+    EMD = EMD_mat[0]
+    KL_div_vals.append(KL_div)
+    EMD_vals.append(EMD)
+
+    for valency in test_valencies:
+        if np.isnan(KL_div) or np.isnan(EMD):
+            selectivity_vals.append(np.nan)
+            continue
+
+        model_valencies = np.array([[valency, valency]])
+        targ_recs = df_targ_cell[[signal_receptor] + [receptor]].to_numpy()
+        off_targ_recs = df_off_targ_cell[[signal_receptor] + [receptor]].to_numpy()
+        opt_selec, _ = optimize_affs(
+            targRecs=targ_recs,
+            offTargRecs=off_targ_recs,
+            dose=dose,
+            valencies=model_valencies,
+        )
+        selectivity_vals.append(1 / opt_selec)
+
+valency_map = {1: "Valency 2", 2: "Valency 4"}
+valency_labels = [valency_map[v] for _ in epitopes for v in test_valencies]
+metrics_df = pd.DataFrame(
+    {
+        "Receptor Pair": [
+            str(receptor) for receptor in epitopes for _ in test_valencies
+        ],
+        "Valency": valency_labels,
+        "KL Divergence": np.repeat(KL_div_vals, len(test_valencies)),
+        "EMD": np.repeat(EMD_vals, len(test_valencies)),
+        "Selectivity (Rbound)": selectivity_vals,
+    }
+)
+
+unique_receptors_df = pd.DataFrame(
+    {
+        "Receptor Pair": [str(receptor) for receptor in epitopes],
+        "KL Divergence": [KL_div_val for KL_div_val in KL_div_vals],
+        "EMD": [EMD_val for EMD_val in EMD_vals],
+    }
+)
+unique_receptors_df = unique_receptors_df.fillna(0)
+
+top_kl_indices = unique_receptors_df["KL Divergence"].nlargest(10).index.tolist()
+top_kl_receptors = unique_receptors_df.iloc[top_kl_indices][
+    "Receptor Pair"
+].tolist()
+
+top_emd_indices = unique_receptors_df["EMD"].nlargest(10).index.tolist()
+top_emd_receptors = unique_receptors_df.iloc[top_emd_indices][
+    "Receptor Pair"
+].tolist()
+
+metrics_df_kl_filtered = metrics_df[
+    metrics_df["Receptor Pair"].isin(top_kl_receptors)
+]
+metrics_df_emd_filtered = metrics_df[
+    metrics_df["Receptor Pair"].isin(top_emd_receptors)
+]
+```
+
+```{python}
+#| fig-cap: "KL Divergence vs Selectivity with top 10 receptors highlighted"
+
+sns.scatterplot(
+    data=metrics_df,
+    x="KL Divergence",
+    y="Selectivity (Rbound)",
+    hue="Receptor Pair",
+    style="Valency",
+    s=70,
+    legend=False,
+    alpha=0.5,
+)
+
+sns.scatterplot(
+    data=metrics_df_kl_filtered,
+    x="KL Divergence",
+    y="Selectivity (Rbound)",
+    hue="Receptor Pair",
+    style="Valency",
+    s=70,
+    legend=True,
+)
+plt.title("KL Divergence vs Selectivity", fontsize=13)
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title="Top 10 by KL Div")
+plt.show()
+```
+
+```{python}
+#| fig-cap: "EMD vs Selectivity with top 10 receptors highlighted"
+
+sns.scatterplot(
+    data=metrics_df,
+    x="EMD",
+    y="Selectivity (Rbound)",
+    hue="Receptor Pair",
+    style="Valency",
+    s=70,
+    legend=False,
+    alpha=0.5,
+)
+
+sns.scatterplot(
+    data=metrics_df_emd_filtered,
+    x="EMD",
+    y="Selectivity (Rbound)",
+    hue="Receptor Pair",
+    style="Valency",
+    s=70,
+    legend=True,
+)
+plt.title("EMD vs Selectivity", fontsize=13)
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title="Top 10 by EMD")
+plt.show()
+```

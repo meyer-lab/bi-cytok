@@ -1,0 +1,147 @@
+---
+title: "Selectivity vs Distance 3D"
+---
+
+# Summary
+Generates a scatter plot comparing the 3D selectivity of various receptors against their 2D KL Divergence and Earth Mover's Distance (EMD) metrics.
+
+# Imports:
+- The CITE-seq dataframe (`importCITE`)
+
+# Parameters:
+- receptor_pairs: list of receptors to be analyzed
+- signal_receptor: receptor intended to bind to impart effects
+- sample_size: number of cells to sample for analysis
+- targ_cell: cell type whose selectivity will be maximized
+- dose: dose of ligand to be used
+- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+
+# Outputs:
+- Plots 2D KL Divergence and EMD values against 3D Selectivity for each receptor and valency combination
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from bicytok.distance_metric_funcs import KL_EMD_2D
+from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+receptor_pairs = [
+    ["CD25", "CD25"],
+    ["CD25", "CD4-1"],
+    # ["CD25", "CD4-2"],
+    # ["CD25", "CD27"],
+    # ["CD25", "CD278"],
+    # ["CD25", "CD146"],
+    # ["CD25", "CD338"],
+    # ["CD4-1", "CD4-1"],
+    # ["CD4-1", "CD4-2"],
+    # ["CD4-1", "CD27"],
+    # ["CD4-1", "CD278"],
+    # ["CD4-1", "CD146"],
+]
+signal_receptor = "CD122"
+sample_size = 100
+targ_cell = "Treg"
+dose = 10e-2
+cell_categorization = "CellType2"
+
+CITE_DF = importCITE()
+assert targ_cell in CITE_DF[cell_categorization].unique()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=min(sample_size, epitopes_df.shape[0]),
+    targCellType=targ_cell,
+)
+filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
+
+all_receptors = set(
+    [r for pair in receptor_pairs for r in pair] + [signal_receptor]
+)
+missing_receptors = all_receptors - set(filtered_sample_df.columns)
+if missing_receptors:
+    raise ValueError(f"Missing receptors in filtered dataset: {missing_receptors}")
+
+on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
+off_target_mask = ~on_target_mask
+
+df_targ_cell = filtered_sample_df.loc[on_target_mask]
+df_off_targ_cell = filtered_sample_df.loc[off_target_mask]
+
+selectivity_vals = []
+KL_div_vals = []
+EMD_vals = []
+for receptor_pair in receptor_pairs:
+    rec_abundances = filtered_sample_df[receptor_pair].to_numpy()
+
+    KL_div_mat, EMD_mat = KL_EMD_2D(
+        rec_abundances, on_target_mask, off_target_mask, calc_1D=False
+    )
+    KL_div = KL_div_mat[1, 0]
+    EMD = EMD_mat[1, 0]
+    KL_div_vals.append(KL_div)
+    EMD_vals.append(EMD)
+
+    model_valencies = np.array([[(2), (1), (1)]])
+    targ_recs = df_targ_cell[[signal_receptor] + receptor_pair].to_numpy()
+    off_targ_recs = df_off_targ_cell[[signal_receptor] + receptor_pair].to_numpy()
+    opt_selec, _ = optimize_affs(
+        targRecs=targ_recs,
+        offTargRecs=off_targ_recs,
+        dose=dose,
+        valencies=model_valencies,
+    )
+    selectivity_vals.append(1 / opt_selec)
+
+metrics_df = pd.DataFrame(
+    {
+        "Receptor Pair": [str(receptor) for receptor in receptor_pairs],
+        "KL Divergence": KL_div_vals,
+        "EMD": EMD_vals,
+        "Selectivity (Rbound)": selectivity_vals,
+    }
+)
+```
+
+```{python}
+#| fig-cap: "KL Divergence vs Selectivity for receptor pairs"
+
+sns.scatterplot(
+    data=metrics_df,
+    x="KL Divergence",
+    y="Selectivity (Rbound)",
+    hue="Receptor Pair",
+    s=70,
+    legend=False,
+)
+plt.title("KL Divergence vs Selectivity", fontsize=13)
+plt.show()
+```
+
+```{python}
+#| fig-cap: "EMD vs Selectivity for receptor pairs"
+
+sns.scatterplot(
+    data=metrics_df,
+    x="EMD",
+    y="Selectivity (Rbound)",
+    hue="Receptor Pair",
+    s=70,
+    legend=True,
+)
+plt.title("EMD vs Selectivity", fontsize=13)
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.show()
+```

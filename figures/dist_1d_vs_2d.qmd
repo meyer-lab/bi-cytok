@@ -1,0 +1,99 @@
+---
+title: "1D vs 2D Distribution Comparison"
+---
+
+# Summary
+Generate plots to compare 1D and 2D distance metrics, which should match.
+
+# Imports:
+- The CITE-seq dataframe (`importCITE`)
+
+# Parameters:
+- targ_cell: cell type whose selectivity will be maximized
+- receptors_of_interest: list of receptors to be analyzed
+- sample_size: number of cells to sample for analysis
+- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+
+# Outputs:
+- Plots scatter plots comparing 1D and 2D distance metrics
+- Each plot is labeled with the R² value of the comparison
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import matplotlib.pyplot as plt
+from bicytok.distance_metric_funcs import KL_EMD_1D, KL_EMD_2D
+from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+
+targ_cell = "Treg"
+receptors_of_interest = [
+    "CD25",
+    "CD4-1",
+    "CD27",
+    "CD4-2",
+    "CD278",
+    "CD122",
+    "CD28",
+    "TCR-2",
+    "TIGIT",
+    "TSLPR",
+]
+sample_size = 100
+cell_categorization = "CellType2"
+
+CITE_DF = importCITE()
+assert targ_cell in CITE_DF[cell_categorization].unique()
+
+epitopes_df = CITE_DF[receptors_of_interest + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=sample_size,
+    targCellType=targ_cell,
+)
+filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
+rec_abundances = filtered_sample_df[receptors_of_interest].to_numpy()
+target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
+off_target_mask = ~target_mask
+
+KL_div_vals_1D, EMD_vals_1D = KL_EMD_1D(
+    rec_abundances, target_mask, off_target_mask
+)
+
+KL_div_vals_2D, EMD_vals_2D = KL_EMD_2D(
+    rec_abundances, target_mask, off_target_mask, calc_1D=True
+)
+KL_div_vals_2D = np.diag(KL_div_vals_2D)
+EMD_vals_2D = np.diag(EMD_vals_2D)
+
+EMD_vals_2D_scaled = EMD_vals_2D * 2**0.5 / 2
+KL_div_vals_2D_scaled = KL_div_vals_2D * 2**0.5 / 2
+
+EMD_r2 = 1 - np.sum((EMD_vals_1D - EMD_vals_2D_scaled) ** 2) / np.sum(
+    (EMD_vals_1D - np.mean(EMD_vals_1D)) ** 2
+)
+KL_div_r2 = 1 - np.sum((KL_div_vals_1D - KL_div_vals_2D_scaled) ** 2) / np.sum(
+    (KL_div_vals_1D - np.mean(KL_div_vals_1D)) ** 2
+)
+```
+
+```{python}
+#| fig-cap: "Comparison of 1D vs 2D KL Divergence values"
+
+plt.scatter(KL_div_vals_2D, KL_div_vals_1D, color="b")
+plt.title(f"KL Divergence Values\nR²: {KL_div_r2:.2f}")
+plt.xlabel("2D KL Divergence")
+plt.ylabel("1D KL Divergence")
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Comparison of 1D vs 2D EMD values"
+
+plt.scatter(EMD_vals_2D_scaled, EMD_vals_1D, color="g")
+plt.title(f"EMD Values\nR²: {EMD_r2:.2f}")
+plt.xlabel("2D EMD")
+plt.ylabel("1D EMD")
+plt.show()
+```

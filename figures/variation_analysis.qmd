@@ -1,0 +1,175 @@
+---
+title: "Variation Analysis"
+---
+
+# Summary
+Generates box plots to visualize the relationship between sample size and the variation in the KL Divergence, EMD, and selectivity.
+
+# Imports:
+- The CITE-seq dataframe (`importCITE`)
+
+# Parameters:
+- sample_sizes: list of sample sizes to be tested
+- randomizations: number of randomizations to be performed for each sample size
+- targ_cell: cell type whose selectivity will be maximized
+- signal_receptor: receptor to be analyzed
+- valencies: valency of the complex
+- targets: receptor pair on which the variation will be tested
+- dose: dose of ligand to be used in the selectivity calculation
+- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+
+# Outputs:
+- Displays box plots for KL Divergence, EMD, selectivity, and affinities, visualizing the variation within each metric across sample sizes
+- Prints the average run times for each sample size (model time and distance metric time)
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import time
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from bicytok.distance_metric_funcs import KL_EMD_2D
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+sample_sizes = [50, 100]
+randomizations = 3
+targ_cell = "Treg"
+signal_receptor = "CD122"
+valencies = np.array([[2, 1, 1]])
+targets = ["CD25", "CD4-1"]
+dose = 10e-2
+cell_categorization = "CellType2"
+
+CITE_DF = importCITE()
+assert targ_cell in CITE_DF[cell_categorization].unique()
+
+epitopes_df = CITE_DF[[signal_receptor] + targets + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=epitopes_df.shape[0],
+    targCellType=targ_cell,
+)
+
+metrics = []
+for sample_size in sample_sizes:
+    target_cells = sample_df[sample_df["Cell Type"] == targ_cell]
+    off_target_cells = sample_df[sample_df["Cell Type"] != targ_cell]
+
+    num_target_cells = sample_size // 2
+    num_off_target_cells = sample_size - num_target_cells
+
+    for _ in range(randomizations):
+        sampled_target_cells = target_cells.sample(
+            min(num_target_cells, target_cells.shape[0]), replace=True
+        )
+        sampled_off_target_cells = off_target_cells.sample(
+            min(num_off_target_cells, off_target_cells.shape[0]), replace=True
+        )
+        rand_samples = pd.concat([sampled_target_cells, sampled_off_target_cells])
+
+        target_mask = (rand_samples["Cell Type"] == targ_cell).to_numpy()
+        off_target_mask = ~target_mask
+
+        rec_abundances = rand_samples[targets].to_numpy()
+        time_start_dist = time.time()
+        KL_div_mat, EMD_mat = KL_EMD_2D(
+            rec_abundances, target_mask, off_target_mask, calc_1D=False
+        )
+        time_ellapsed_dist = time.time() - time_start_dist
+        KL_div = KL_div_mat[1, 0]
+        EMD = EMD_mat[1, 0]
+
+        targ_df = rand_samples.loc[target_mask]
+        off_targ_df = rand_samples.loc[off_target_mask]
+        targ_recs = targ_df[[signal_receptor] + targets].to_numpy()
+        off_targ_recs = off_targ_df[[signal_receptor] + targets].to_numpy()
+
+        time_start_mod = time.time()
+        opt_selec, opt_affs = optimize_affs(
+            targRecs=targ_recs,
+            offTargRecs=off_targ_recs,
+            dose=dose,
+            valencies=valencies,
+        )
+        time_ellapsed_mod = time.time() - time_start_mod
+
+        metrics.append(
+            {
+                "sample_size": sample_size,
+                "KL_div": KL_div,
+                "EMD": EMD,
+                "selectivity": 1 / opt_selec,
+                "affinities": opt_affs,
+                "model_time": time_ellapsed_mod,
+                "distance_metric_time": time_ellapsed_dist,
+            }
+        )
+
+metrics_df = pd.DataFrame(metrics)
+
+affinities_df = pd.DataFrame(
+    metrics_df["affinities"].tolist(), columns=["aff1", "aff2", "aff3"]
+)
+affinities_df["sample_size"] = metrics_df["sample_size"]
+
+affinities_melted = affinities_df.melt(
+    id_vars=["sample_size"],
+    value_vars=["aff1", "aff2", "aff3"],
+    var_name="Affinity",
+    value_name="Value",
+)
+```
+
+```{python}
+#| fig-cap: "KL Divergence variation across sample sizes"
+
+sns.boxplot(x="sample_size", y="KL_div", data=metrics_df)
+plt.title("KL Divergence")
+plt.xlabel("Sample Size")
+plt.ylabel("KL Divergence")
+plt.show()
+```
+
+```{python}
+#| fig-cap: "EMD variation across sample sizes"
+
+sns.boxplot(x="sample_size", y="EMD", data=metrics_df)
+plt.title("Earth Mover's Distance")
+plt.xlabel("Sample Size")
+plt.ylabel("EMD")
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Selectivity variation across sample sizes"
+
+sns.boxplot(x="sample_size", y="selectivity", data=metrics_df)
+plt.title("Selectivity")
+plt.xlabel("Sample Size")
+plt.ylabel("Selectivity")
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Affinity variation across sample sizes"
+
+sns.boxplot(x="sample_size", y="Value", hue="Affinity", data=affinities_melted)
+plt.title("Affinities")
+plt.xlabel("Sample Size")
+plt.ylabel("Affinity Value")
+plt.legend(title="Affinity")
+plt.show()
+```
+
+```{python}
+avg_times = (
+    metrics_df.groupby("sample_size")[["model_time", "distance_metric_time"]]
+    .mean()
+    .reset_index()
+)
+print(avg_times.to_string(index=False))
+```

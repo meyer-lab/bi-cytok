@@ -1,0 +1,75 @@
+---
+title: "Selectivity 1D"
+---
+
+# Summary
+Generates a bar plot of optimal selectivities achieved by monovalent complexes of ligands for a various set of relevant receptors.
+
+# Imports:
+- The CITE-seq dataframe (`importCITE`)
+
+# Parameters:
+- receptors: list of receptors to be analyzed
+- cell_type: cell type whose selectivity will be maximized
+- dose: dose of ligand to be used in the selectivity calculation
+- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+
+# Outputs:
+- Displays the optimal selectivities of all relevant receptors in a bar plot
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import matplotlib.pyplot as plt
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+receptors = ["CD25", "CD4-1", "CD27", "CD4-2", "CD278"]
+cell_type = "Treg"
+dose = 10e-2
+cell_categorization = "CellType2"
+
+CITE_DF = importCITE()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+
+sample_df = sample_receptor_abundances(epitopes_df, 100, cell_type)
+
+targ_mask = (sample_df["Cell Type"] == cell_type).to_numpy()
+off_targ_mask = ~targ_mask
+
+selectivities = []
+for receptor in receptors:
+    receptor_abun = sample_df[[receptor]].to_numpy()
+
+    targ_abun = receptor_abun[targ_mask]
+    off_targ_abun = receptor_abun[off_targ_mask]
+
+    opt_selec, _ = optimize_affs(
+        targ_abun, off_targ_abun, dose, valencies=np.array([[1]])
+    )
+    selectivities.append(1 / opt_selec)
+
+sort_indices = np.argsort(selectivities)
+```
+
+```{python}
+#| fig-cap: "Selectivity of receptors in target cells"
+
+plt.barh(
+    np.array(receptors)[sort_indices],
+    np.array(selectivities)[sort_indices],
+    color="b",
+)
+plt.xlabel("Selectivity")
+plt.title("Selectivity of Receptors in Treg Cells")
+plt.gca().invert_yaxis()
+plt.show()
+```
