@@ -149,16 +149,17 @@ def optimize_affs(
             valencies,
         ),
         jac="3-point",
-        options={"disp": True}
+        options={"disp": False}
     )
     optSelect = optimizer.fun
     optAffs = optimizer.x
     converged = optimizer.success
 
-    if not converged:
+    if not converged or optSelect < 0:
         print(
-            f"Optimization did not converge: {optimizer.message}. "
-            f"Final selectivity: {optSelect}, Affinities: {optAffs}"
+            f"Optimization warning: {optimizer.message}, "
+            f"Selectivity: {optSelect:.3f}, affinity values: {optAffs}, "
+            f"Convergence: {converged}, "
         )
 
     return optSelect, optAffs, converged
