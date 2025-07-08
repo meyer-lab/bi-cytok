@@ -2,6 +2,8 @@ title: "Bivalent Cytokine Analysis Project"
 
 project:
   output-dir: _output
+  preview:
+    port: 7777
 
 format: typst
 jupyter: python3
