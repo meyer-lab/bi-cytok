@@ -1,6 +1,6 @@
 """
-Generates a scatter plot that shows the effect of varying the scaling factor of raw
-    receptor counts on the optimal selectivity of different receptors.
+Generates a comprehensive analysis of how scaling factors applied to raw receptor counts
+    affect multiple aspects of receptor selectivity optimization.
 
 Data Import:
 - The CITE-seq dataframe (`importCITE`)
@@ -14,12 +14,18 @@ Parameters:
 - signal_receptor: receptor that is the target of the model molecule
 - target_receptors: list of receptors to be tested for selectivity
 - affinity_bounds: optimization bounds for the affinities of the receptors
+- num_conv_factors: number of conversion factors to test (logspace from 0.01 to 1e8)
 
 Outputs:
-- A plot showing the selectivity of each receptor as a function of the scaling factor
-    applied to its raw counts
-- The plot includes a dashed line indicating the selectivity of the receptor
-    without any scaling
+- A 6-panel figure showing:
+  1. Target receptor binding vs conversion factor (on-target vs off-target)
+  2. Signal receptor binding vs conversion factor (on-target vs off-target)  
+  3. Optimal selectivity vs conversion factor
+  4. Optimal target receptor affinity vs conversion factor
+  5. Optimal signal receptor affinity vs conversion factor
+  6. Binding model loss vs conversion factor (on-target vs off-target)
+- Red vertical lines indicate conversion factors where optimization failed to converge
+- Black dashed vertical line at conversion factor = 1 (no scaling reference)
 """
 
 from pathlib import Path
@@ -29,25 +35,25 @@ import pandas as pd
 import seaborn as sns
 
 from ..imports import importCITE, sample_receptor_abundances
-from ..selectivity_funcs import optimize_affs
+from ..selectivity_funcs import optimize_affs, get_cell_bindings
 from .common import getSetup
 
 path_here = Path(__file__).parent.parent
 
 
 def makeFigure():
-    ax, f = getSetup((15, 5), (1, 3))
+    ax, f = getSetup((18, 5), (2, 3))  # Increased width to accommodate 6 subplots
 
     # Parameters
     targCell = "Treg"
-    sample_size = 1000
+    sample_size = 100
     cell_categorization = "CellType2"
     model_valencies = np.array([[(2), (2)]])
     dose = 10e-2
     signal_receptor = "CD122"
-    target_receptors = ["CD25", "CD4-1", "CD27", "TIGIT"]
-    affinity_bounds = (6, 13)
-    num_conv_factors = 20
+    target_receptors = ["CD25", "CD4-1"]
+    affinity_bounds = (-10, 25)
+    num_conv_factors = 1000
 
     CITE_DF = importCITE()
 
@@ -58,6 +64,8 @@ def makeFigure():
     ]
     epitopesDF = CITE_DF[epitopes_all + [cell_categorization]]
     epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
+
+
     sampleDF = sample_receptor_abundances(
         CITE_DF=epitopesDF,
         numCells=sample_size,
@@ -74,6 +82,8 @@ def makeFigure():
     for receptor in target_receptors:
         filterDF[receptor] = sampleDF[receptor]
 
+    print(np.mean(filterDF[signal_receptor]))
+
     receptors_of_interest = [
         col for col in filterDF.columns if col not in ["Cell Type"] and col != signal_receptor
     ]
@@ -81,108 +91,131 @@ def makeFigure():
     on_target_mask = (filterDF["Cell Type"] == targCell).to_numpy()
     off_target_mask = ~on_target_mask
 
-    # Calculate raw selectivity baseline
-    raw_selectivities = []
-    raw_signal_affs = []
-    raw_target_affs = []
-    for receptor in receptors_of_interest:
-        targRecs = filterDF[[signal_receptor, receptor]].to_numpy()
-        offTargRecs = filterDF[[signal_receptor, receptor]].to_numpy()
-        optSelec, optAffs = optimize_affs(
-            targRecs=targRecs[on_target_mask],
-            offTargRecs=offTargRecs[off_target_mask],
-            dose=dose,
-            valencies=model_valencies,
-            bounds=affinity_bounds,
-        )
-        raw_selectivities.append(1 / optSelec)
-        raw_signal_affs.append(optAffs[0])
-        raw_target_affs.append(optAffs[1])
-
     # Calculate selectivity for each conversion factor
     conversion_factors = np.logspace(-2, 8, num=num_conv_factors)
-    full_selectivities = []
-    full_signal_affs = []
-    full_target_affs = []
+    
+    # Structured data storage
+    results = {
+        'targ_bound_sigR': [],
+        'off_targ_bound_sigR': [],
+        'targ_bound_tarR': [],
+        'off_targ_bound_tarR': [],
+        'selectivities': [],
+        'target_affinities': [],
+        'signal_affinities': [],
+        'targ_losses': [],
+        'off_targ_losses': [],
+        'convergence_issues': []
+    }
+    
     for receptor in receptors_of_interest:
-        per_rec_selectivities = []
-        per_rec_signal_affs = []
-        per_rec_target_affs = []
+        # Initialize per-receptor results
+        per_rec_results = {key: [] for key in results.keys()}
+        
         for conv_fact in conversion_factors:
             test_DF = filterDF.copy()
             test_DF[receptor] = test_DF[receptor] * conv_fact
-            test_DF[signal_receptor] = test_DF[signal_receptor] * conv_fact
-            targRecs = test_DF[[signal_receptor, receptor]].to_numpy()
-            offTargRecs = test_DF[[signal_receptor, receptor]].to_numpy()
-            optSelec, optAffs = optimize_affs(
-                targRecs=targRecs[on_target_mask],
-                offTargRecs=offTargRecs[off_target_mask],
+            rec_mat = test_DF[[signal_receptor, receptor]].to_numpy()
+
+            optSelec, optAffs, converged = optimize_affs(
+                targRecs=rec_mat[on_target_mask],
+                offTargRecs=rec_mat[off_target_mask],
                 dose=dose,
                 valencies=model_valencies,
                 bounds=affinity_bounds,
             )
-            selectivity = 1 / optSelec
-            per_rec_selectivities.append(selectivity)
-            per_rec_signal_affs.append(optAffs[0])
-            per_rec_target_affs.append(optAffs[1])
-        full_selectivities.append(per_rec_selectivities)
-        full_signal_affs.append(per_rec_signal_affs)
-        full_target_affs.append(per_rec_target_affs)
+            
+            # Track convergence issues
+            if not converged:
+                per_rec_results['convergence_issues'].append(conv_fact)
+            
+            per_rec_results['selectivities'].append(1 / optSelec)
+            per_rec_results['signal_affinities'].append(optAffs[0])
+            per_rec_results['target_affinities'].append(optAffs[1])
+            
+            Rbound, losses = get_cell_bindings(
+                recCounts=rec_mat,
+                monomerAffs=optAffs,
+                dose=dose,
+                valencies=model_valencies,
+            )
+            
+            # Calculate mean losses for target and off-target cells
+            targ_losses = losses[on_target_mask]
+            off_targ_losses = losses[off_target_mask]
+            per_rec_results['targ_losses'].append(np.max(targ_losses))
+            per_rec_results['off_targ_losses'].append(np.max(off_targ_losses))
+            
+            targ_bound = Rbound[on_target_mask]
+            off_targ_bound = Rbound[off_target_mask]
 
-    # Plot selectivities against conversion factors
-    palette = sns.color_palette("colorblind", n_colors=len(receptors_of_interest))
-    for i, receptor in enumerate(receptors_of_interest):
-        ax[0].plot(
-            conversion_factors,
-            full_selectivities[i],
-            marker="o",
-            label=receptor,
-            color=palette[i],
-        )
-        ax[0].axhline(
-            y=raw_selectivities[i], linestyle="--", color=palette[i], alpha=0.7
-        )
-    ax[0].axvline(x=10**0, linestyle="--", color="black", alpha=0.5)
-    ax[0].set_xscale("log")
-    ax[0].set_xlabel("Conversion Factor")
-    ax[0].set_ylabel("Selectivity")
-    ax[0].set_title("Receptor Selectivity vs Conversion Factor")
-    ax[0].legend(title="Receptor")
+            targ_bound = np.sum(targ_bound, axis=0) / targ_bound.shape[0]
+            off_targ_bound = np.sum(off_targ_bound, axis=0) / off_targ_bound.shape[0]
 
-    # Plot the signal affinities against conversion factors
-    palette = sns.color_palette("colorblind", n_colors=len(receptors_of_interest))
-    for i, receptor in enumerate(receptors_of_interest):
-        ax[1].plot(
-            conversion_factors,
-            full_signal_affs[i],
-            marker="o",
-            label=receptor,
-            color=palette[i],
-        )
-        ax[1].axhline(y=raw_signal_affs[i], linestyle="--", color=palette[i], alpha=0.7)
-    ax[1].axvline(x=10**0, linestyle="--", color="black", alpha=0.5)
-    ax[1].set_xscale("log")
-    ax[1].set_xlabel("Conversion Factor")
-    ax[1].set_ylabel("Signal Receptor Affinity")
-    ax[1].set_title("Signal Receptor Affinity vs Conversion Factor")
-    ax[1].legend(title="Receptor")
+            per_rec_results['targ_bound_sigR'].append(targ_bound[0])
+            per_rec_results['off_targ_bound_sigR'].append(off_targ_bound[0])
+            per_rec_results['targ_bound_tarR'].append(targ_bound[1])
+            per_rec_results['off_targ_bound_tarR'].append(off_targ_bound[1])
 
-    # Plot the target affinities against conversion factors
+        # Store results for this receptor
+        for key in results.keys():
+            results[key].append(per_rec_results[key])
+
+    # Plotting
     palette = sns.color_palette("colorblind", n_colors=len(receptors_of_interest))
-    for i, receptor in enumerate(receptors_of_interest):
-        ax[2].plot(
-            conversion_factors,
-            full_target_affs[i],
-            marker="o",
-            label=receptor,
-            color=palette[i],
-        )
-        ax[2].axhline(y=raw_target_affs[i], linestyle="--", color=palette[i], alpha=0.7)
-    ax[2].axvline(x=10**0, linestyle="--", color="black", alpha=0.5)
-    ax[2].set_xscale("log")
-    ax[2].set_xlabel("Conversion Factor")
-    ax[2].set_ylabel("Target Receptor Affinity")
-    ax[2].set_title("Target Receptor Affinity vs Conversion Factor")
-    ax[2].legend(title="Receptor")
+    
+    # Define plot configurations
+    plot_configs = [
+        {'data_key': 'targ_bound_tarR', 'off_data_key': 'off_targ_bound_tarR', 
+         'ylabel': 'Average Bound Target Receptors', 'title': 'Target Receptor Binding vs Conversion Factor'},
+        {'data_key': 'targ_bound_sigR', 'off_data_key': 'off_targ_bound_sigR', 
+         'ylabel': 'Average Bound Signal Receptors', 'title': f'Signal Receptor ({signal_receptor}) Binding vs Conversion Factor'},
+        {'data_key': 'selectivities', 'ylabel': 'Optimal Selectivity', 'title': 'Selectivity vs Conversion Factor'},
+        {'data_key': 'target_affinities', 'ylabel': 'Optimal Affinity (log10 Ka)', 'title': 'Target Receptor Optimal Affinity vs Conversion Factor'},
+        {'data_key': 'signal_affinities', 'ylabel': 'Optimal Affinity (log10 Ka)', 'title': f'Signal Receptor ({signal_receptor}) Optimal Affinity vs Conversion Factor'},
+        {'data_key': 'targ_losses', 'off_data_key': 'off_targ_losses', 
+         'ylabel': 'Mean Binding Model Loss', 'title': 'Binding Model Loss vs Conversion Factor'}
+    ]
+    
+    for plot_idx, config in enumerate(plot_configs):
+        for i, receptor in enumerate(receptors_of_interest):
+            # Plot main data
+            ax[plot_idx].plot(
+                conversion_factors,
+                results[config['data_key']][i],
+                marker="o",
+                ls="-",
+                label=f"{targCell}: {receptor}" if 'off_data_key' in config else receptor,
+                color=palette[i],
+            )
+            
+            # Plot off-target data if applicable
+            if 'off_data_key' in config:
+                ax[plot_idx].plot(
+                    conversion_factors,
+                    results[config['off_data_key']][i],
+                    marker="x",
+                    ls="--",
+                    label=f"Non-{targCell}: {receptor}",
+                    color=palette[i],
+                )
+            
+            # Add vertical red lines for convergence issues
+            for conv_issue in results['convergence_issues'][i]:
+                ax[plot_idx].axvline(x=conv_issue, color="red", alpha=0.7, linewidth=1)
+        
+        # Configure axes
+        ax[plot_idx].axvline(x=10**0, linestyle="--", color="black", alpha=0.5)
+        ax[plot_idx].set_xscale("log")
+        if plot_idx in [0, 1, 5]:  # Log scale for binding and loss plots
+            ax[plot_idx].set_yscale("log")
+        ax[plot_idx].set_xlabel("Conversion Factor")
+        ax[plot_idx].set_ylabel(config['ylabel'])
+        ax[plot_idx].set_title(config['title'])
+        
+        # Add legend for specific plots
+        if plot_idx in [1, 2, 3, 4, 5]:
+            legend_title = "Cell Type: Target Receptor" if 'off_data_key' in config else "Target Receptor"
+            ax[plot_idx].legend(title=legend_title)
 
     return f

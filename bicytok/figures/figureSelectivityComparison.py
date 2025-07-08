@@ -31,7 +31,7 @@ import seaborn as sns
 from scipy.optimize import Bounds, minimize
 
 from ..imports import importCITE, sample_receptor_abundances
-from ..selectivity_funcs import restructure_affs, optimize_affs, get_cell_bindings
+from ..selectivity_funcs import restructure_affs
 from ..binding_model_funcs import cyt_binding_model
 from .common import getSetup
 

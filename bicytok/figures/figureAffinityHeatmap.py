@@ -95,8 +95,7 @@ def makeFigure():
     for plot_idx, conv_factor in enumerate(conversion_factors):
         # Apply conversion factor to target receptor
         rec_mat = rec_mat_original.copy()
-        # rec_mat[:, 1] = rec_mat[:, 1] * conv_factor  # Scale target receptor
-        rec_mat[:, 0] = rec_mat[:, 0] * conv_factor  # Scale signal receptor
+        rec_mat[:, 1] = rec_mat[:, 1] * conv_factor  # Scale target receptor
         
         # Initialize result array for signal receptor selectivity
         signal_selectivity = np.zeros_like(Signal_Affs)
@@ -115,14 +114,13 @@ def makeFigure():
                 
                 # Calculate averages for target and off-target cells
                 targ_bound = Rbound[on_target_mask]
-                off_targ_bound = Rbound[off_target_mask]
                 
                 # Calculate mean bound signal receptors for each cell type
                 targ_bound_signal_mean = np.mean(targ_bound[:, 0])  # Signal receptor
-                off_targ_bound_signal_mean = np.mean(off_targ_bound[:, 0])  # Signal receptor
+                full_bound_signal_mean = np.mean(Rbound[:, 0])  # Signal receptor
                 
                 # Calculate selectivity (target / off-target binding ratio)
-                signal_selectivity[j, i] = targ_bound_signal_mean / (off_targ_bound_signal_mean + 1e-12)
+                signal_selectivity[j, i] = targ_bound_signal_mean / full_bound_signal_mean
 
         # Create contour plot for this conversion factor
         cs = ax[plot_idx].contourf(Signal_Affs, Target_Affs, signal_selectivity, 

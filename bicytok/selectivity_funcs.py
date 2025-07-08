@@ -25,7 +25,7 @@ def restructure_affs(affs: np.ndarray) -> np.ndarray:
     exponentialAffs = np.power(10, affs)
 
     # Set off-diagonals to values that won't affect optimization
-    restructuredAffs = np.full((affs.size, affs.size), 1e-9)
+    restructuredAffs = np.full((affs.size, affs.size), 0.0)
     np.fill_diagonal(restructuredAffs, exponentialAffs)
 
     return restructuredAffs
@@ -61,7 +61,6 @@ def min_off_targ_selec(
     """
 
     assert targRecs.shape[1] == offTargRecs.shape[1]
-    assert targRecs.shape[1] >= 2  # Need at least signal and target receptors
 
     # Reformat input affinities
     modelAffs = restructure_affs(monomerAffs)
@@ -78,18 +77,9 @@ def min_off_targ_selec(
 
     # Calculate mean bound receptors for signal receptor (column 0)
     targetBoundSignal = np.sum(targRbound[:, 0]) / targRbound.shape[0]
-    fullBoundSignal = np.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
+    fullBoundSignal = np.sum(fullRbound[:, 0]) / fullRbound.shape[0]
 
-    # Calculate mean bound receptors for target receptor (column 1)
-    targetBoundTarget = np.sum(targRbound[:, 1]) / targRbound.shape[0]
-    fullBoundTarget = np.sum(offTargRbound[:, 1]) / offTargRbound.shape[0]
-
-    # Calculate selectivity for each receptor
-    signalSelectivity = fullBoundSignal / targetBoundSignal
-    targetSelectivity = fullBoundTarget / targetBoundTarget
-
-    # Return average selectivity ratio
-    return (1*signalSelectivity + 1*targetSelectivity) / 2
+    return fullBoundSignal / targetBoundSignal # The loss for affinity optimization is the inverse of selectivity, which is minimized.
 
 
 def optimize_affs(
