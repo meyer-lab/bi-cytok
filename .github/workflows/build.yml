@@ -7,18 +7,58 @@ jobs:
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Setup Quarto
+      uses: quarto-dev/quarto-actions/setup@v2
+      with:
+        version: pre-release
+    
     - name: Setup rye
       uses: eifinger/setup-rye@v4
       with:
         enable-cache: true
         version: '0.39.0'
-    - name: Setup environment
+    
+    - name: Setup Python environment
       run: make .venv
-    - name: Build figures
-      run: make all -j 2
-    - name: Upload files
+    
+    - name: Render Quarto figures
+      run: |
+        # Create output directory
+        mkdir -p _output/figures
+        
+        # Track rendering results
+        FAILED_FILES=()
+        
+        # Render each Quarto document in the figures directory
+        for qmd_file in figures/*.qmd; do
+          if [ -f "$qmd_file" ]; then
+            echo "Rendering $qmd_file..."
+            if ! quarto render "$qmd_file" --to typst; then
+              echo "❌ Failed to render $qmd_file"
+              FAILED_FILES+=("$qmd_file")
+            else
+              echo "✅ Successfully rendered $qmd_file"
+            fi
+          fi
+        done
+        
+        # Report results
+        if [ ${#FAILED_FILES[@]} -eq 0 ]; then
+          echo "🎉 All figures rendered successfully!"
+        else
+          echo "💥 Failed to render ${#FAILED_FILES[@]} figure(s):"
+          for file in "${FAILED_FILES[@]}"; do
+            echo "  - $file"
+          done
+          exit 1
+        fi
+    
+    - name: Upload figure files
       uses: actions/upload-artifact@v4
       with:
-        name: files
+        name: figures
         path: |
-          output/*.svg
+          _output/figures/*.pdf
+          _output/figures/*.svg
+          _output/figures/*.png
