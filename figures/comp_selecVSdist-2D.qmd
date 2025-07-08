@@ -188,3 +188,16 @@ plt.grid(True, linestyle='--', alpha=0.7)
 plt.legend(bbox_to_anchor=(1.05, 1) title="Top 10 by EMD")
 plt.show()
 ```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Visualized the relationship between 1D distance metrics (KL Divergence and EMD) and 2D selectivity. Target cells were **{targ_cell}**s, compared against all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+For selectivity optimization, the signal receptor was **{signal_receptor}**, with bivalent and tetravalent complexes at a dose of **{dose}**. The epitopes analyzed were **{', '.join(epitopes)}**, which served as the target receptors for selectivity optimization and as the single receptor distributions for 1D EMD and KL div. calculations.
+"""
+
+print(text)
+```

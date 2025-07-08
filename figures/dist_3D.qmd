@@ -102,3 +102,16 @@ plt.xlabel("EMD Value")
 plt.gca().invert_yaxis()
 plt.show()
 ```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Calculated the 3D KL Divergence and EMD for receptor triplets between **{targ_cell}**s and all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The receptors analyzed were **{', '.join(receptors_of_interest)}**.
+"""
+
+print(text)
+```

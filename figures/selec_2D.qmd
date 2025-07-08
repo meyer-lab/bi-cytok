@@ -100,3 +100,16 @@ cbar = plt.gcf().axes[-1]
 cbar.set_title("Selectivity", fontsize=8)
 plt.show()
 ```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Compared the optimal selectivities achieved by tetravalent complexes composed of ligands for various relevant receptors in the target cell type **{cell_type}** at doses of **{dose}**. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The signal receptor used was **{signal}**. The target receptors analyzed were **{', '.join(receptors)}**. The valencies of each complex were as follows: 2x signal receptor ligand, 1x ligand for each target receptor.
+"""
+
+print(text)
+```

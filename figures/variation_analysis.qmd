@@ -169,3 +169,14 @@ avg_times = (
 )
 print(avg_times.to_string(index=False))
 ```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Analyzed various metrics and their variability with sample size. The metrics were calculated for the target cell type **{targ_cell}** using the signal receptor **{signal_receptor}** and target receptors **{target_receptors}** at a dose of **{dose}**. The analyses were performed on **{randomizations}** bootstrapped samplings for each sample size, with a total of **{sample_sizes}** sample sizes.
+"""
+
+print(text)
+```

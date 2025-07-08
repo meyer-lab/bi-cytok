@@ -149,3 +149,16 @@ plt.legend(loc="upper left", title="Receptor Pair")
 plt.legend(bbox_to_anchor=(1.05, 1), title="Receptor Pair")
 plt.show()
 ```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Visualized the relationship between 2D distance metrics (KL Divergence and EMD) and 3D selectivity. Target cells were **{targ_cell}**s, compared against all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+For selectivity optimization, the signal receptor was **{signal_receptor}**, with tetravalent complexes at a dose of **{dose}**. Tetravalent complexes consisted of two signal receptor ligands, and one ligand each for the two target receptors. The epitope pairs that were analyzed were **{', '.join(map(str, receptor_pairs))}**, which served as the target receptors for selectivity optimization and as the double receptor distributions for 2D EMD and KL div. calculations.
+"""
+
+print(text)
+```

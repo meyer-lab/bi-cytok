@@ -143,3 +143,14 @@ plt.legend(loc="upper right", fontsize=10, title="Cell Types")
 plt.tight_layout()
 plt.show()
 ```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Analyzed the distribution of the receptor **{receptor}** between target cell type **{targ_cell}** and all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset. The histogram statistic used was '**{stat}**' and the epitope counts were {'**normalized**' if normalize else '**not normalized**'} for comparison
+"""
+
+print(text)
+```

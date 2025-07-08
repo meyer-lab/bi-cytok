@@ -29,6 +29,7 @@ receptors = ["CD25", "CD4-1", "CD27", "CD4-2", "CD278"]
 cell_type = "Treg"
 dose = 10e-2
 cell_categorization = "CellType2"
+sample_size = 100
 
 CITE_DF = importCITE()
 
@@ -40,7 +41,7 @@ epitopes = [
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
 
-sample_df = sample_receptor_abundances(epitopes_df, 100, cell_type)
+sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
 
 targ_mask = (sample_df["Cell Type"] == cell_type).to_numpy()
 off_targ_mask = ~targ_mask
@@ -73,4 +74,17 @@ plt.xlabel("Selectivity")
 ply.ylabel("Epitope")
 plt.gca().invert_yaxis()
 plt.show()
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Analyzed the optimal selectivities of monovalent complexes of ligands for receptors in the target cell type **{cell_type}** at a dose of **{dose}**. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The receptors analyzed were **{', '.join(receptors)}**.
+"""
+
+print(text)
 ```

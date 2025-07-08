@@ -159,3 +159,16 @@ stats_text = (
 
 print(stats_text)
 ```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Visualized the relationship between KL Divergence and EMD between **{targ_cell}** and all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The receptors analyzed were **{', '.join(receptor_columns)}**.
+"""
+
+print(text)
+```

@@ -129,3 +129,14 @@ plt.grid(alpha=0.3, linestyle="--")
 plt.tight_layout()
 plt.show()
 ```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Visualized the 2D joint distribution of receptor pairs **{receptor1}** and **{receptor2}** across target cell type **{targ_cell}** and off-target cells. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+"""
+
+print(text)
+```

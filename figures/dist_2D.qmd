@@ -108,3 +108,16 @@ cbar = plt.gcf().axes[-1]
 cbar.set_title("KL Divergence", fontsize=8)
 plt.show()
 ```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Generated heatmaps visualizing the 2D EMD and KL Divergence of all receptor pairs that pass filtering criteria. The distance values were calculated between **{targ_cell}**s and all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The receptors analyzed were **{', '.join(epitopes)}**.
+"""
+
+print(text)
+```

@@ -125,3 +125,18 @@ plt.ylabel("EMD")
 plt.xticks(rotation=45, ha="right")
 plt.show()
 ```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Identified epitopes with the top 1D KL Divergence and EMD values for each cell type compared to all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The cell types considered were **{', '.join(cell_types)}**.
+\n\n
+The receptors included were **{', '.join(epitopes)}**.
+"""
+
+print(text)
+```

@@ -3,7 +3,7 @@ title: "1D vs 2D Distribution Comparison"
 ---
 
 # Summary
-Generate plots to compare 1D and 2D distance metrics, which should match.
+Generate plots to compare 1D and 2D distance metrics. The 1D distribution of a single epitope should match the 2D distribution of that epitope compared to itself.
 
 # Imports:
 - The CITE-seq dataframe (`importCITE`)
@@ -105,4 +105,17 @@ plt.title(f"R²: {EMD_r2:.2f}")
 plt.xlabel("2D EMD")
 plt.ylabel("1D EMD")
 plt.show()
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Compared 1D and 2D distance metrics (KL Divergence and EMD) for the target cell type **{targ_cell}**. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The receptors analyzed were **{', '.join(receptors_of_interest)}**.
+"""
+
+print(text)
 ```

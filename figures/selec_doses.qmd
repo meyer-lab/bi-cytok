@@ -123,3 +123,16 @@ sns.lineplot(data=df, x="Dose", y="Target Bound", hue="Ligand")
 plt.xscale("log")
 plt.show()
 ```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Compared the selectivity of complexes of varying valencies and doses for the target cell type **{targ_cell}**. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The signal receptor used was **{signal[0]}** at a valency of {signal[1]}. The target receptors analyzed were **{', '.join([f'{target[0]} ({target[1]})' for target in all_targets[0]])}**, with valencies of {', '.join([str(target[1]) for target in all_targets[0]])}.
+"""
+
+print(text)
+```
