@@ -125,40 +125,36 @@ affinities_melted = affinities_df.melt(
 ```
 
 ```{python}
-#| fig-cap: "KL Divergence variation across sample sizes"
+#| fig-cap: "Bootstrap variation in KL Divergence across sample sizes"
 
 sns.boxplot(x="sample_size", y="KL_div", data=metrics_df)
-plt.title("KL Divergence")
 plt.xlabel("Sample Size")
 plt.ylabel("KL Divergence")
 plt.show()
 ```
 
 ```{python}
-#| fig-cap: "EMD variation across sample sizes"
+#| fig-cap: "Bootstrap variation in EMD across sample sizes"
 
 sns.boxplot(x="sample_size", y="EMD", data=metrics_df)
-plt.title("Earth Mover's Distance")
 plt.xlabel("Sample Size")
 plt.ylabel("EMD")
 plt.show()
 ```
 
 ```{python}
-#| fig-cap: "Selectivity variation across sample sizes"
+#| fig-cap: "Bootstrap variation in selectivity across sample sizes"
 
 sns.boxplot(x="sample_size", y="selectivity", data=metrics_df)
-plt.title("Selectivity")
 plt.xlabel("Sample Size")
 plt.ylabel("Selectivity")
 plt.show()
 ```
 
 ```{python}
-#| fig-cap: "Affinity variation across sample sizes"
+#| fig-cap: "Bootstrap variation in optimal affinities across sample sizes"
 
 sns.boxplot(x="sample_size", y="Value", hue="Affinity", data=affinities_melted)
-plt.title("Affinities")
 plt.xlabel("Sample Size")
 plt.ylabel("Affinity Value")
 plt.legend(title="Affinity")

@@ -68,8 +68,9 @@ plt.barh(
     np.array(selectivities)[sort_indices],
     color="k",
 )
-plt.title(f"Cell type: {cell_type}", fontsize=16)
+
 plt.xlabel("Selectivity")
+ply.ylabel("Epitope")
 plt.gca().invert_yaxis()
 plt.show()
 ```

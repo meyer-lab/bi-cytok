@@ -25,8 +25,8 @@ Figure file to visualize receptor distributions with the highest and lowest dist
 
 # Outputs:
 - Subplots showing histograms of receptor distributions for top and bottom receptors by KL divergence, EMD, and selectivity
-- Each plot shows target and off-target distributions
-- KL divergence, EMD, and selectivity values are displayed on each plot
+  - Each plot shows target and off-target distributions
+  - KL divergence, EMD, and selectivity values are displayed on each plot
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']

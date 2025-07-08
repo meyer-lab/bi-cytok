@@ -109,7 +109,7 @@ for target_pairs in all_targets:
 ```
 
 ```{python}
-#| fig-cap: "Dose vs Selectivity for different ligand combinations"
+#| fig-cap: "Dose vs Selectivity for different ligand combinations and doses"
 
 sns.lineplot(data=df, x="Dose", y="Selectivity", hue="Ligand")
 plt.xscale("log")
@@ -117,7 +117,7 @@ plt.show()
 ```
 
 ```{python}
-#| fig-cap: "Dose vs Target Bound for different ligand combinations"
+#| fig-cap: "Dose vs Target Bound for different ligand combinations and doses"
 
 sns.lineplot(data=df, x="Dose", y="Target Bound", hue="Ligand")
 plt.xscale("log")
