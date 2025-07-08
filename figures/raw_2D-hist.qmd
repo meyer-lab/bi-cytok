@@ -1,5 +1,5 @@
 ---
-title: "Single Receptor 2D Distribution"
+title: "2D distribution analysis for receptor pairs"
 ---
 
 # Summary

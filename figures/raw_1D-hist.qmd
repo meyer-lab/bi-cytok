@@ -1,5 +1,5 @@
 ---
-title: "Single Receptor 1D Distribution"
+title: "1D receptor distribution analysis"
 ---
 
 # Summary

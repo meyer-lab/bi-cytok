@@ -1,5 +1,5 @@
 ---
-title: "Selectivity 1D"
+title: "Optimal selectivities of monovalent complexes"
 ---
 
 # Summary

@@ -1,5 +1,5 @@
 ---
-title: "3D Distribution"
+title: "3D distance metric analysis for receptor triplets"
 ---
 
 # Summary

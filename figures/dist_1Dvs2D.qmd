@@ -1,5 +1,5 @@
 ---
-title: "1D vs 2D Distribution Comparison"
+title: "Relationship between 1D and 2D distance metrics"
 ---
 
 # Summary

@@ -1,5 +1,5 @@
 ---
-title: "Variation Analysis"
+title: "Bootstrap variability analysis of various metrics"
 ---
 
 # Summary

@@ -1,5 +1,5 @@
 ---
-title: "Selectivity 2D"
+title: "Optimal selectivities of multivalent complexes"
 ---
 
 # Summary

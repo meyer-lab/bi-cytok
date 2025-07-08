@@ -1,5 +1,5 @@
 ---
-title: "KL vs EMD"
+title: "Relationship between KL Divergence and EMD metrics"
 ---
 
 # Summary

@@ -1,5 +1,5 @@
 ---
-title: "Selectivity vs Distance 3D"
+title: "Relationship between 2D distance metrics and 3D selectivity"
 ---
 
 # Summary

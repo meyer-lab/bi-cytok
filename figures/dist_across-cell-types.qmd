@@ -1,5 +1,5 @@
 ---
-title: "Maximum Distances"
+title: "Top distance metrics across cell types"
 ---
 
 # Summary
