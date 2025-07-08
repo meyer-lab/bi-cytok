@@ -3,25 +3,28 @@ title: "Optimal selectivities of monovalent complexes"
 ---
 
 # Summary
-Generates a bar plot of optimal selectivities achieved by monovalent complexes of ligands for a various set of relevant receptors.
+Generates a  bar plot ranking individual receptors by their optimal selectivity values when targeted by monovalent ligand complexes. Performs affinity optimization for each receptor independently and sorts results by selectivity performance.
 
-# Imports:
-- The CITE-seq dataframe (`importCITE`)
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- Selectivity optimization functions (`optimize_affs`)
 
-# Parameters:
-- receptors: list of receptors to be analyzed
-- cell_type: cell type whose selectivity will be maximized
-- dose: dose of ligand to be used in the selectivity calculation
-- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+# Parameters
+- `receptors`: List of strings naming individual receptors for selectivity analysis
+- `cell_type`: String identifier for target cell type in selectivity optimization
+- `dose`: Float concentration of ligand complex in binding model
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
 
-# Outputs:
-- Displays the optimal selectivities of all relevant receptors in a bar plot
+# Outputs
+- **Horizontal Bar Plot**: Receptors ranked by optimal selectivity values (1/optimization_result), with receptor names on y-axis and selectivity values on x-axis
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
 
 import numpy as np
 import matplotlib.pyplot as plt
+
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 

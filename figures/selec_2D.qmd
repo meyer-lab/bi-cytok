@@ -3,22 +3,23 @@ title: "Optimal selectivities of multivalent complexes"
 ---
 
 # Summary
-Generates a heatmap of optimal selectivities achieved by multivalent complexes composed of ligands for various relevant receptors.
+Generates a symmetric heatmap showing optimal selectivity values achieved by multivalent complexes targeting all pairwise combinations of relevant receptors. Performs affinity optimization for each receptor pair and filters results to highlight the most promising combinations.
 
-# Imports:
-- The CITE-seq dataframe (`importCITE`)
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- Selectivity optimization functions (`optimize_affs`)
 
-# Parameters:
-- receptors: list of receptors to calculate selectivities for
-- signal: receptor used as the signaling receptor in the binding model
-- cell_type: cell type whose selectivity will be maximized
-- dose: dose of ligand to be used in the selectivity calculation
-- valency: valency of the complex to be used in the selectivity calculation
-- cell_categorization: column name in CITE-seq dataframe for cell type categorization
-- sample_size: number of cells to sample for receptor abundances
+# Parameters
+- `receptors`: List of strings naming target receptors for pairwise selectivity analysis
+- `signal`: List of string name of receptor used for signal delivery in binding model
+- `cell_type`: String identifier for target cell type in selectivity optimization
+- `dose`: Float concentration of ligand complex in binding model
+- `valency`: 2D numpy array specifying ligand valencies [[signal, target1, target2]]
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
 
-# Outputs:
-- Displays the optimal selectivities of all relevant receptor pairs in a heatmap
+# Outputs
+- **Heatmap**: Symmetric matrix showing optimal selectivity values for all receptor pairs, with color-coded selectivity values, filtered to show only receptor pairs above 25th percentile of mean selectivity
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -27,6 +28,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 

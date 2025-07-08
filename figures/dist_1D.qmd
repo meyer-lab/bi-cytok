@@ -3,22 +3,23 @@ title: "Top epitopes for 1D distance metrics"
 ---
 
 # Summary
-Generates horizontal bar charts to visualize the top 10 markers with the highest 1D KL Divergence and Earth Mover's Distance (EMD) values, comparing target and off-target cell distributions using CITE-seq data.
+Generates horizontal bar charts ranking the top 10 receptors by 1D KL Divergence and EMD values. Identifies the most discriminative individual receptors for distinguishing target from off-target cell populations using single-receptor expression distributions.
 
-# Imports:
-- The CITE-seq dataframe (`importCITE`)
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 1D distance metric calculation functions (`KL_EMD_1D`)
 
-# Parameters:
-- targ_cell: cell type whose selectivity will be maximized
-- receptors_of_interest: list of receptors to be analyzed (if None, all receptors will be used)
-- sample_size: number of cells to sample for analysis (if greater than available cells, will use all)
-- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+# Parameters
+- `targ_cell`: String identifier for target cell type in distance metric comparison
+- `receptors_of_interest`: List of strings naming specific receptors to analyze, or None for all filtered receptors
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
 
-# Outputs:
-- Plots horizontal bar charts for these top markers:
-    - KL Divergence Plot: Top 10 markers sorted by KL divergence
-    - EMD Plot: Top 10 markers sorted by EMD
-- Each plot is labeled with marker names on the y-axis and their respective values (KL or EMD) on the x-axis
+# Outputs
+- **Bar Chart 1**: Top 10 KL Divergence receptors showing:
+  - KL Divergence values on y-axis
+  - Red bars indicating discriminative performance
+- **Bar Chart 2**: Top 10 EMD receptors with identical formatting using blue bars
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']

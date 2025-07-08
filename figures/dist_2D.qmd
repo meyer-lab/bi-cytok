@@ -3,19 +3,25 @@ title: "2D distance metric analysis for receptor pairs"
 ---
 
 # Summary
-Generates heatmaps visualizing the 2D EMD and KL Divergence of all receptor pairs.
+Generates symmetric heatmaps visualizing 2D KL Divergence and EMD values for all pairwise combinations of filtered receptors. Applies percentile-based filtering to focus on the most discriminative receptor pairs for target versus off-target cell populations.
 
-# Imports:
-- The CITE-seq dataframe (`importCITE`)
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 2D distance metric calculation functions (`KL_EMD_2D`)
 
-# Parameters:
-- targ_cell: cell type whose selectivity will be maximized
-- sample_size: number of cells to sample for analysis
-- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+# Parameters
+- `targ_cell`: String identifier for target cell type in distance metric comparison
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
 
-# Outputs:
-- Generates heatmaps of the EMD and KL divergences between all relevant receptor pairs
-- Filters out receptors with low average values based on percentiles
+# Outputs
+- **Heatmap 1**: 2D EMD values for receptor pairs showing:
+  - Symmetric matrix with receptors on both axes
+  - Color-coded EMD values using blue-white-red colormap
+  - Filtered to include only receptors above 25th percentile threshold
+  - Color bar indicating EMD scale
+- **Heatmap 2**: 2D KL Divergence values with identical formatting
+- Both heatmaps include 1D values along diagonal elements
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -24,6 +30,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+
 from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 

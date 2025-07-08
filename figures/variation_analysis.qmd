@@ -3,24 +3,29 @@ title: "Bootstrap variability analysis of various metrics"
 ---
 
 # Summary
-Generates box plots to visualize the relationship between sample size and the variation in the KL Divergence, EMD, and selectivity.
+Performs bootstrap analysis to quantify variability in KL Divergence, EMD, and selectivity metrics across different sample sizes. Generates box plots showing the distribution of metric values and reports average computation times for model optimization and distance metric calculations.
 
-# Imports:
-- The CITE-seq dataframe (`importCITE`)
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 2D distance metric calculation functions (`KL_EMD_2D`)
+- Selectivity optimization functions (`optimize_affs`)
 
-# Parameters:
-- sample_sizes: list of sample sizes to be tested
-- randomizations: number of randomizations to be performed for each sample size
-- targ_cell: cell type whose selectivity will be maximized
-- signal_receptor: receptor to be analyzed
-- valencies: valency of the complex
-- targets: receptor pair on which the variation will be tested
-- dose: dose of ligand to be used in the selectivity calculation
-- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+# Parameters
+- `sample_sizes`: List of integers specifying cell counts for bootstrap sampling
+- `randomizations`: Integer number of bootstrap iterations per sample size
+- `targ_cell`: String identifier for target cell type in selectivity optimization
+- `signal_receptor`: String name of receptor used for signal delivery in binding model
+- `valencies`: 2D numpy array specifying ligand valencies [[signal, target1, target2]]
+- `targets`: List of strings naming target receptors for multivalent complex design
+- `dose`: Float concentration of ligand complex in binding model
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
 
-# Outputs:
-- Displays box plots for KL Divergence, EMD, selectivity, and affinities, visualizing the variation within each metric across sample sizes
-- Prints the average run times for each sample size (model time and distance metric time)
+# Outputs
+- **Box Plot 1**: Bootstrap distribution of KL Divergence values across sample sizes
+- **Box Plot 2**: Bootstrap distribution of EMD values across sample sizes  
+- **Box Plot 3**: Bootstrap distribution of selectivity values (1/optimization_result) across sample sizes
+- **Box Plot 4**: Bootstrap distribution of optimal affinity parameters across sample sizes, grouped by affinity type
+- **Summary Table**: Average computation times for binding model optimization and distance metric calculations per sample size
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -30,6 +35,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
 from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs

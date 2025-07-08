@@ -3,26 +3,33 @@ title: "Relationship between 1D and 2D distance metrics"
 ---
 
 # Summary
-Generate plots to compare 1D and 2D distance metrics. The 1D distribution of a single epitope should match the 2D distribution of that epitope compared to itself.
+Generates scatter plots comparing 1D and 2D distance metrics for individual receptors to validate dimensional consistency. Applies theoretical scaling corrections and calculates R^2^ values to assess the mathematical relationship between single-receptor and diagonal 2D distance calculations.
 
-# Imports:
-- The CITE-seq dataframe (`importCITE`)
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 1D and 2D distance metric calculation functions (`KL_EMD_1D`, `KL_EMD_2D`)
 
-# Parameters:
-- targ_cell: cell type whose selectivity will be maximized
-- receptors_of_interest: list of receptors to be analyzed
-- sample_size: number of cells to sample for analysis
-- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+# Parameters
+- `targ_cell`: String identifier for target cell type in distance metric comparison
+- `receptors_of_interest`: List of strings naming receptors for 1D vs 2D analysis
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `scaling_factor`: Float correction factor for 2D to 1D comparison
 
-# Outputs:
-- Plots scatter plots comparing 1D and 2D distance metrics
-- Each plot is labeled with the R² value of the comparison
+# Outputs
+- **Scatter Plot 1**: 1D vs 2D KL Divergence comparison showing:
+  - Scaled 2D diagonal values on x-axis
+  - Corresponding 1D values on y-axis
+  - Perfect correlation reference line (red dashed)
+  - R² value displayed in plot title
+- **Scatter Plot 2**: 1D vs 2D EMD comparison with identical formatting
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
 
 import numpy as np
 import matplotlib.pyplot as plt
+
 from bicytok.distance_metric_funcs import KL_EMD_1D, KL_EMD_2D
 from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 
@@ -41,6 +48,7 @@ receptors_of_interest = [
 ]
 sample_size = 100
 cell_categorization = "CellType2"
+scaling_factor = 2**0.5 / 2
 
 CITE_DF = importCITE()
 assert targ_cell in CITE_DF[cell_categorization].unique()
@@ -67,8 +75,8 @@ KL_div_vals_2D, EMD_vals_2D = KL_EMD_2D(
 KL_div_vals_2D = np.diag(KL_div_vals_2D)
 EMD_vals_2D = np.diag(EMD_vals_2D)
 
-EMD_vals_2D_scaled = EMD_vals_2D * 2**0.5 / 2
-KL_div_vals_2D_scaled = KL_div_vals_2D * 2**0.5 / 2
+EMD_vals_2D_scaled = EMD_vals_2D * scaling_factor
+KL_div_vals_2D_scaled = KL_div_vals_2D * scaling_factor
 
 EMD_r2 = 1 - np.sum((EMD_vals_1D - EMD_vals_2D_scaled) ** 2) / np.sum(
     (EMD_vals_1D - np.mean(EMD_vals_1D)) ** 2

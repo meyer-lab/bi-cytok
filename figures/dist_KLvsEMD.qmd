@@ -3,20 +3,26 @@ title: "Relationship between KL Divergence and EMD metrics"
 ---
 
 # Summary
-Figure file to visualize the relationship between KL divergence and EMD metrics across all receptors, highlighting outliers where metrics significantly disagree.
+Generates a scatter plot analyzing the correlation between KL Divergence and EMD distance metrics across all filtered receptors. Identifies and highlights outlier receptors where the two metrics significantly disagree, providing insights into the complementary nature of these distance measures.
 
-# Imports:
-- The CITE-seq dataframe (`importCITE`)
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 1D distance metric calculation functions (`KL_EMD_1D`)
 
-# Parameters:
-- targ_cell: cell type whose receptor distributions will be compared to off-target cells
-- sample_size: number of cells to sample for analysis
-- cell_categorization: column name for cell type classification
+# Parameters
+- `targ_cell`: String identifier for target cell type in distance metric comparison
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `residual_threshold`: Float multiplier for standard deviation to identify outliers
 
-# Outputs:
-- Scatter plot of KL divergence vs EMD for all receptors
-- Highlighted and labeled outlier receptors
-- Summary statistics on the correlation between these metrics
+# Outputs
+- **Scatter Plot**: KL Divergence vs EMD correlation analysis showing:
+  - All receptors as scatter points colored by outlier classification
+  - Linear regression fit line with R² value
+  - Outlier receptors labeled by name (top 5 in each category)
+  - Three categories: Normal (gray), High KL/Low EMD (red), Low KL/High EMD (blue)
+  - Grid lines for visual reference
+- **Statistical Summary**: Pearson correlation coefficient, R² value, regression slope, and total receptor count
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -25,6 +31,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
+
 from sklearn.linear_model import LinearRegression
 from bicytok.distance_metric_funcs import KL_EMD_1D
 from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances

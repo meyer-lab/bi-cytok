@@ -8,25 +8,34 @@ format:
       - right=1in
       - paperwidth=30in
 ---
-## Run this file in an interactive window (cell by cell); it is not optimized for rendering.
+## Run this file in an interactive window (cell by cell); it is not optimized for full rendering.
 
 # Summary
-Figure file to visualize receptor distributions with the highest and lowest distance values between target and off-target cell populations.
+Generates a comprehensive grid of histogram plots comparing CITE-seq epitope count distributions between target and off-target cell populations. Identifies and visualizes the top and bottom performing epitopes for each distance metric (KL Divergence, EMD) and selectivity measure.
 
-# Imports:
-- The CITE-seq dataframe (`importCITE`)
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 1D distance metric calculation functions (`KL_EMD_1D`)
+- Selectivity optimization functions (`optimize_affs`)
 
-# Parameters:
-- num_hists: number of histograms to display in each row
-- targ_cell: cell type whose receptor distributions will be compared to off-target cells
-- sample_size: number of cells to sample for analysis
-- cell_categorization: column name for cell type classification
-- dose: dosing parameter for selectivity optimization
+# Parameters
+- `num_hists`: Integer number of receptors to display per metric category
+- `targ_cell`: String identifier for target cell type in distribution comparison
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `dose`: Float concentration used in selectivity optimization
 
-# Outputs:
-- Subplots showing histograms of receptor distributions for top and bottom receptors by KL divergence, EMD, and selectivity
-  - Each plot shows target and off-target distributions
-  - KL divergence, EMD, and selectivity values are displayed on each plot
+# Outputs
+- **Grid Plot (6 rows × num_hists columns)**: Histogram comparisons organized by metric performance:
+  - Row 1: Top KL Divergence receptors
+  - Row 2: Bottom KL Divergence receptors
+  - Row 3: Top EMD receptors  
+  - Row 4: Bottom EMD receptors
+  - Row 5: Top Selectivity receptors
+  - Row 6: Bottom Selectivity receptors
+- Each histogram shows normalized expression density with overlaid target (blue) and off-target (red) distributions
+- Metric values (KL, EMD, Selectivity) displayed on each subplot title
+- Color-coded category labels identifying metric ranking
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -35,6 +44,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
 from bicytok.distance_metric_funcs import KL_EMD_1D
 from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs

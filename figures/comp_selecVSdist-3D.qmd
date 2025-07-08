@@ -3,21 +3,29 @@ title: "Relationship between 2D distance metrics and 3D selectivity"
 ---
 
 # Summary
-Generates a scatter plot comparing the 3D selectivity of various receptors against their 2D KL Divergence and Earth Mover's Distance (EMD) metrics.
+Generates scatter plots examining the correlation between 2D distance metrics (KL Divergence and EMD) and 3D selectivity optimization results for receptor pairs. Evaluates whether pairwise receptor distribution differences predict multivalent complex selectivity performance.
 
-# Imports:
-- The CITE-seq dataframe (`importCITE`)
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 2D distance metric calculation functions (`KL_EMD_2D`)
+- Selectivity optimization functions (`optimize_affs`)
 
-# Parameters:
-- receptor_pairs: list of receptors to be analyzed
-- signal_receptor: receptor intended to bind to impart effects
-- sample_size: number of cells to sample for analysis
-- targ_cell: cell type whose selectivity will be maximized
-- dose: dose of ligand to be used
-- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+# Parameters
+- `receptor_pairs`: List of 2-element lists specifying receptor pairs for distance metric calculations and to be used as target receptors in selectivity optimization
+- `signal_receptor`: String name of receptor used for signal delivery in binding model
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `targ_cell`: String identifier for target cell type in selectivity optimization
+- `dose`: Float concentration of ligand complex in binding model
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `model_valencies`: 2D numpy array specifying tetravalent complex design [[signal, target1, target2]]
 
-# Outputs:
-- Plots 2D KL Divergence and EMD values against 3D Selectivity for each receptor and valency combination
+# Outputs
+- **Scatter Plot 1**: 2D KL Divergence vs 3D selectivity showing:
+  - KL Divergence values on x-axis
+  - Selectivity values (1/optimization_result) on y-axis
+  - Color-coded points by receptor pair combination
+  - Legend identifying each receptor pair
+- **Scatter Plot 2**: 2D EMD vs 3D selectivity with identical formatting
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -26,6 +34,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+
 from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
@@ -49,6 +58,7 @@ sample_size = 100
 targ_cell = "Treg"
 dose = 10e-2
 cell_categorization = "CellType2"
+model_valencies = np.array([[(2), (1), (1)]])
 
 CITE_DF = importCITE()
 assert targ_cell in CITE_DF[cell_categorization].unique()
@@ -94,7 +104,6 @@ for receptor_pair in receptor_pairs:
     KL_div_vals.append(KL_div)
     EMD_vals.append(EMD)
 
-    model_valencies = np.array([[(2), (1), (1)]])
     targ_recs = df_targ_cell[[signal_receptor] + receptor_pair].to_numpy()
     off_targ_recs = df_off_targ_cell[[signal_receptor] + receptor_pair].to_numpy()
     opt_selec, _ = optimize_affs(

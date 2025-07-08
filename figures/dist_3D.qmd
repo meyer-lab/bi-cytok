@@ -3,25 +3,31 @@ title: "3D distance metric analysis for receptor triplets"
 ---
 
 # Summary
-Generates a figure that shows the receptor triplets that have the highest 3D KL divergence and EMD values.
+Generates horizontal bar plots showing the receptor triplets with the highest 3D KL Divergence and EMD values. Analyzes all possible combinations of three receptors to identify the most discriminative receptor sets for distinguishing target from off-target cell populations.
 
-# Imports:
-- The CITE-seq dataframe (`importCITE`)
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 3D distance metric calculation functions (`KL_EMD_3D`)
 
-# Parameters:
-- targ_cell: cell type whose selectivity will be maximized
-- receptors_of_interest: list of receptors to be analyzed
-- sample_size: number of cells to sample for analysis
-- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+# Parameters
+- `targ_cell`: String identifier for target cell type in distance metric comparison
+- `receptors_of_interest`: List of strings naming receptors for triplet analysis
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
 
-# Outputs:
-- Two bar plots showing the top 5 KL divergence and EMD values for receptor triplets
+# Outputs
+- **Horizontal Bar Plot 1**: Top 5 KL Divergence receptor triplets showing:
+  - Receptor triplet combinations on y-axis (format: "Rec1-Rec2-Rec3")
+  - KL Divergence values on x-axis
+  - Bars sorted in ascending order (highest values at top)
+- **Horizontal Bar Plot 2**: Top 5 EMD receptor triplets with identical formatting
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
 
 import numpy as np
 import matplotlib.pyplot as plt
+
 from bicytok.distance_metric_funcs import KL_EMD_3D
 from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 

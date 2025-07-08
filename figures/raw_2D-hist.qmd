@@ -3,24 +3,27 @@ title: "2D distribution analysis for receptor pairs"
 ---
 
 # Summary
-Figure file to visualize the 2D joint distribution of receptor pairs across target and off-target cell populations with scatter plots and KDE contours.
+Generates a 2D scatter plot with kernel density estimation (KDE) contours to visualize the joint distribution of expression levels for two specified receptors across target and off-target cell populations. Calculates and displays 2D distance metrics to quantify distributional differences.
 
-# Imports:
-- The CITE-seq dataframe (`importCITE`)
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 2D distance metric calculation functions (`KL_EMD_2D`)
 
-# Parameters:
-- receptor1: first receptor whose distribution will be analyzed
-- receptor2: second receptor whose distribution will be analyzed
-- targ_cell: cell type whose receptor distributions will be compared to off-target cells
-- sample_size: number of cells to sample for analysis
-- cell_categorization: column name for cell type classification
-- plot_cell_types: list of cell types to plot on the figure
+# Parameters
+- `receptor1`: String name of first receptor for 2D distribution analysis
+- `receptor2`: String name of second receptor for 2D distribution analysis
+- `targ_cell`: String identifier for target cell type in distribution comparison
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `plot_cell_types`: List of strings specifying cell type labels for plotting
 
-# Outputs:
-- Single plot showing 2D distributions of receptor pairs:
-  - Target cell distribution (with KDE contours)
-  - Off-target cell distribution (with KDE contours)
-- 2D KL divergence and EMD values are displayed on the plot
+# Outputs
+- **2D Scatter Plot**: Joint distribution of receptor pairs with:
+  - Scatter points colored by cell type (target vs off-target)
+  - KDE contour lines overlaid for each cell population
+  - Normalized receptor expression on both axes
+  - 2D KL Divergence and EMD values displayed in plot title
+  - Axes limited to 99th percentile of expression values for clarity
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -29,6 +32,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
 from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import importCITE, sample_receptor_abundances
 

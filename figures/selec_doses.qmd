@@ -3,18 +3,22 @@ title: "Dose response curves for multivalent ligands"
 ---
 
 # Summary
-Figure file to generate dose response curves for any combination of multivalent and multispecific ligands. Outputs dose vs. selectivity for the target cell and amount of target cell bound at indicated signal receptor.
+Generates dose-response curves for multivalent ligand complexes by optimizing receptor affinities across a range of ligand concentrations. Analyzes how selectivity and target cell binding vary with dose for different valency combinations of targeting receptors.
 
-# Imports:
-- The CITE-seq dataframe (`importCITE`)
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- Selectivity optimization and binding calculation functions (`optimize_affs`, `get_cell_bindings`)
 
-# Parameters:
-- signal: Receptor that the ligand is delivering signal to
-- all_targets: List of paired [(target receptor, valency)] combinations for each targeting receptor
-- targ_cell: cell type whose selectivity will be maximized
+# Parameters
+- `signal`: List containing signal receptor name and valency [receptor_name, valency]
+- `all_targets`: Nested list of targeting receptor configurations, each containing tuples of (receptor_name, valency)
+- `targ_cell`: String identifier for target cell type in selectivity optimization
+- `dose_vec`: Numpy array of ligand concentrations in log space for dose-response analysis
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
 
-# Outputs:
-- Plots dose vs. selectivity and dose vs. target bound for each combination of targeting receptors
+# Outputs
+- **Line Plot 1**: Dose vs. selectivity curves for each ligand valency combination, with logarithmic x-axis scaling
+- **Line Plot 2**: Dose vs. target cell receptor binding curves for each ligand valency combination, with logarithmic x-axis scaling
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -23,6 +27,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import get_cell_bindings, optimize_affs
 
@@ -40,6 +45,7 @@ all_targets = [
     # [("CD25", 4), ("CD278", 4), ("CD27", 4)],
 ]
 targ_cell = "Treg"
+dose_vec = np.logspace(-2, 2, num=10)
 
 CITE_DF = importCITE()
 
@@ -57,7 +63,6 @@ sample_df = sample_receptor_abundances(
     targCellType=targ_cell,
 )
 
-dose_vec = np.logspace(-2, 2, num=10)
 df = pd.DataFrame(columns=["Dose", "Selectivity", "Target Bound", "Ligand"])
 
 for target_pairs in all_targets:

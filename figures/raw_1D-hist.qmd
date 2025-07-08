@@ -3,27 +3,29 @@ title: "1D receptor distribution analysis"
 ---
 
 # Summary
-Figure file to visualize the distribution of a single receptor across target and off-target cell populations with histogram and KDE overlays.
+Generates a histogram with kernel density estimation (KDE) overlay to visualize the expression distribution of a single receptor across target and off-target cell populations. Calculates and displays 1D distance metrics to quantify distributional differences between cell types.
 
-# Imports:
-- The CITE-seq dataframe (`importCITE`)
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 1D distance metric calculation functions (`KL_EMD_1D`)
 
-# Parameters:
-- receptor: specific receptor whose distribution will be analyzed
-- targ_cell: cell type whose receptor distributions will be compared to off-target cells
-- sample_size: number of cells to sample for analysis
-- cell_categorization: column name for cell type classification
-- plot_cell_types: list of cell types to plot against the target cell type for comparison
-- stat: statistic to use for histogram ('count', 'density', or 'probability')
-- x_limit: whether or not to set x-axis limit to 99th percentile of target cell distribution
-- normalize: whether or not to normalize receptor counts for comparison
+# Parameters
+- `receptor`: String name of receptor for distribution analysis
+- `targ_cell`: String identifier for target cell type in distribution comparison
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `plot_cell_types`: List of strings specifying cell type labels for plotting
+- `stat`: String specifying histogram statistic ('count', 'density', 'probability')
+- `x_limit`: Boolean flag to limit x-axis to 99th percentile of target cell distribution
+- `normalize`: Boolean flag to normalize receptor counts by mean expression
 
-# Outputs:
-- Single plot showing histogram with KDE overlay of receptor distributions:
-  - Target cell distribution (with KDE)
-  - Off-target cell distribution (with KDE)
-- KL divergence and EMD values are displayed on the plot
-- Scott bandwidth method is used for KDE
+# Outputs
+- **Histogram with KDE**: Single receptor expression distribution showing:
+  - Overlaid histograms for target and off-target cell populations
+  - KDE curves using Scott bandwidth method
+  - Color-coded cell type populations
+  - 1D KL Divergence and EMD values displayed in plot title
+  - Configurable normalization and axis limits
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -31,6 +33,7 @@ Figure file to visualize the distribution of a single receptor across target and
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+
 from bicytok.distance_metric_funcs import KL_EMD_1D
 from bicytok.imports import importCITE, sample_receptor_abundances
 

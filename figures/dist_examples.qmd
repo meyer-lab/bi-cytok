@@ -3,27 +3,35 @@ title: "Comparison of KL Divergence and EMD for various Gaussian distributions"
 ---
 
 # Summary
-Figure file to visualize KL divergence and EMD between different Gaussian distributions.
+Generates a 3×3 grid of plots comparing KL Divergence and EMD metrics for systematically varied Gaussian distributions. Demonstrates how these distance metrics respond to changes in distribution mean and variance, providing theoretical context for interpreting empirical results.
 
-# Imports:
-- Statistical distributions from scipy
+# Imports
+- Statistical distribution functions from scipy.stats
+- Distance metric calculation functions (`KL_EMD_1D`)
 
-# Parameters:
-- ref_mean: mean of reference distribution
-- ref_sigma: standard deviation of reference distribution
-- off_target_configs: List of tuples with target distribution parameters to compare against the reference distribution
-- n_samples: Number of samples to generate for each distribution
+# Parameters
+- `ref_mean`: Float mean of reference Gaussian distribution
+- `ref_sigma`: Float standard deviation of reference Gaussian distribution
+- `off_target_configs`: List of tuples specifying target distribution parameters (title, mean, sigma) for systematic comparison
+- `n_samples`: Integer number of samples generated for each distribution in metric calculations
+- `rng_seed`: Integer random seed for reproducible sampling
 
-# Outputs:
-- Plots of reference and target Gaussian distributions
-- KL divergence and EMD metrics calculated from sample data
-- Comparison of metrics across different distribution parameters
+# Outputs
+- **Grid Plot (3×3)**: Gaussian distribution comparisons showing:
+  - Reference distribution (blue line) vs target distribution (red line)
+  - Purple shaded area indicating distributional overlap
+  - Calculated KL Divergence and EMD values annotated on each subplot
+  - Distribution parameters (μ, σ) displayed in subplot titles
+  - Systematic progression from identical distributions to increasingly different ones
+- Legend shown only in first panel to avoid clutter
+- Grid lines for visual reference across all subplots
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
 
 import matplotlib.pyplot as plt
 import numpy as np
+
 from scipy import stats
 from bicytok.distance_metric_funcs import KL_EMD_1D
 

@@ -3,21 +3,29 @@ title: "Relationship between 1D distance metrics and 2D selectivity"
 ---
 
 # Summary
-Generates a scatter plot comparing the selectivity of various receptors against their KL Divergence and Earth Mover's Distance (EMD) metrics.
+Generates scatter plots examining the correlation between 1D distance metrics (KL Divergence and EMD) and 2D selectivity optimization results for individual receptors. Evaluates whether single-receptor expression differences predict bivalent and tetravalent complex selectivity performance across different valency configurations.
 
-# Imports:
-- The CITE-seq dataframe (`importCITE`)
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 1D distance metric calculation functions (`KL_EMD_1D`)
+- Selectivity optimization functions (`optimize_affs`)
 
-# Parameters:
-- signal_receptor: receptor intended to bind to impart effects
-- sample_size: number of cells to sample for analysis
-- targ_cell: cell type whose selectivity will be maximized
-- test_valencies: list of valencies to be analyzed
-- dose: dose of ligand to be used
-- cell_categorization: column name in CITE-seq dataframe for cell type categorization
+# Parameters
+- `signal_receptor`: String name of receptor used for signal delivery in binding model
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `targ_cell`: String identifier for target cell type in selectivity optimization
+- `test_valencies`: List of integers specifying ligand valencies to test
+- `dose`: Float concentration of ligand complex in binding model
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
 
-# Outputs:
-- Plots KL Divergence and EMD values against Selectivity for each receptor and valency combination
+# Outputs
+- **Scatter Plot 1**: 1D KL Divergence vs 2D selectivity showing:
+  - KL Divergence values on x-axis
+  - Selectivity values (1/optimization_result) on y-axis
+  - Points colored by receptor name and styled by valency configuration
+  - Top 10 receptors by KL Divergence highlighted with full opacity and labeled in legend
+  - All other receptors shown with reduced opacity
+- **Scatter Plot 2**: 1D EMD vs 2D selectivity with identical formatting for top 10 EMD receptors
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -26,6 +34,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+
 from bicytok.distance_metric_funcs import KL_EMD_1D
 from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
@@ -53,8 +62,7 @@ sample_df = sample_receptor_abundances(
     targCellType=targ_cell,
 )
 filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
-# epitopes = filtered_sample_df.columns[:-1]
-epitopes = filtered_sample_df.columns[1:15]
+epitopes = filtered_sample_df.columns[:-1]
 
 on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
 off_target_mask = ~on_target_mask
