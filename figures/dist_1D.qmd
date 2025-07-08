@@ -91,7 +91,19 @@ plt.bar(
     color="b",
 )
 
-plt.ylabel("EMD Value")
+plt.ylabel("EMD")
 plt.xticks(rotation=45)
 plt.show()
+```
+
+## Parameter Summaries
+```{python}
+#| output: asis
+
+text = f"""
+Looked at epitopes with the top ten KL divergence and EMD between **{targ_cell}**s and other cell types. Used **{sample_size}** cells sampled from the CITE-seq data.
+"""
+text += f"\n\nAnalyzed only the following receptors: **{', '.join(receptors_of_interest)}**."
+
+print(text)
 ```
