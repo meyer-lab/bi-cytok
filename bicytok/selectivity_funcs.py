@@ -79,7 +79,9 @@ def min_off_targ_selec(
     targetBoundSignal = np.sum(targRbound[:, 0]) / targRbound.shape[0]
     fullBoundSignal = np.sum(fullRbound[:, 0]) / fullRbound.shape[0]
 
-    return fullBoundSignal / targetBoundSignal # The loss for affinity optimization is the inverse of selectivity, which is minimized.
+    return (
+        fullBoundSignal / targetBoundSignal
+    )  # The loss is the inverse of selectivity, which is minimized
 
 
 def optimize_affs(
@@ -139,7 +141,7 @@ def optimize_affs(
             valencies,
         ),
         jac="3-point",
-        options={"disp": False}
+        options={"disp": False},
     )
     optSelect = optimizer.fun
     optAffs = optimizer.x

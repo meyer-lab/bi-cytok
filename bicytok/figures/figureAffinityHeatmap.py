@@ -22,15 +22,15 @@ Outputs:
 - Contour plots showing signal receptor selectivity as a function
   of signal and target receptor affinities
 - Separate plots for different conversion factors applied to target receptor
-- Selectivity is defined as target cell binding / off-target cell binding for signal receptor
+- Selectivity is defined as target cell binding / off-target cell binding for signal
+  receptor
 """
 
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from ..imports import importCITE, sample_receptor_abundances
 from ..selectivity_funcs import get_cell_bindings
@@ -80,7 +80,6 @@ def makeFigure():
     )
 
     on_target_mask = (filterDF["Cell Type"] == targCell).to_numpy()
-    off_target_mask = ~on_target_mask
 
     # Create affinity grids
     signal_affs = np.linspace(affinity_range[0], affinity_range[1], num_points)
@@ -91,44 +90,53 @@ def makeFigure():
 
     # Create contour plots for each conversion factor
     contour_levels = 20
-    
+
     for plot_idx, conv_factor in enumerate(conversion_factors):
         # Apply conversion factor to target receptor
         rec_mat = rec_mat_original.copy()
         rec_mat[:, 1] = rec_mat[:, 1] * conv_factor  # Scale target receptor
-        
+
         # Initialize result array for signal receptor selectivity
         signal_selectivity = np.zeros_like(Signal_Affs)
-        
+
         # Calculate selectivity for each affinity combination
         for i, sig_aff in enumerate(signal_affs):
             for j, targ_aff in enumerate(target_affs):
                 affs = np.array([sig_aff, targ_aff])
-                
+
                 Rbound, _ = get_cell_bindings(
                     recCounts=rec_mat,
                     monomerAffs=affs,
                     dose=dose,
                     valencies=model_valencies,
                 )
-                
+
                 # Calculate averages for target and off-target cells
                 targ_bound = Rbound[on_target_mask]
-                
+
                 # Calculate mean bound signal receptors for each cell type
                 targ_bound_signal_mean = np.mean(targ_bound[:, 0])  # Signal receptor
                 full_bound_signal_mean = np.mean(Rbound[:, 0])  # Signal receptor
-                
+
                 # Calculate selectivity (target / off-target binding ratio)
-                signal_selectivity[j, i] = targ_bound_signal_mean / full_bound_signal_mean
+                signal_selectivity[j, i] = (
+                    targ_bound_signal_mean / full_bound_signal_mean
+                )
 
         # Create contour plot for this conversion factor
-        cs = ax[plot_idx].contourf(Signal_Affs, Target_Affs, signal_selectivity, 
-                                  levels=contour_levels, cmap='viridis')
-        ax[plot_idx].set_xlabel(f'{signal_receptor} Affinity (log10 Ka)')
-        ax[plot_idx].set_ylabel(f'{target_receptor} Affinity (log10 Ka)')
-        ax[plot_idx].set_title(f'{signal_receptor} Selectivity\n{target_receptor} {conv_factor:.0f}x')
+        cs = ax[plot_idx].contourf(
+            Signal_Affs,
+            Target_Affs,
+            signal_selectivity,
+            levels=contour_levels,
+            cmap="viridis",
+        )
+        ax[plot_idx].set_xlabel(f"{signal_receptor} Affinity (log10 Ka)")
+        ax[plot_idx].set_ylabel(f"{target_receptor} Affinity (log10 Ka)")
+        ax[plot_idx].set_title(
+            f"{signal_receptor} Selectivity\n{target_receptor} {conv_factor:.0f}x"
+        )
         cbar = plt.colorbar(cs, ax=ax[plot_idx])
-        cbar.set_label('Selectivity Ratio')
+        cbar.set_label("Selectivity Ratio")
 
     return f
