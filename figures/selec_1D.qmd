@@ -1,0 +1,93 @@
+---
+title: "Optimal selectivities of monovalent complexes"
+---
+
+# Summary
+Generates a  bar plot ranking individual receptors by their optimal selectivity values when targeted by monovalent ligand complexes. Performs affinity optimization for each receptor independently and sorts results by selectivity performance.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- Selectivity optimization functions (`optimize_affs`)
+
+# Parameters
+- `receptors`: List of strings naming individual receptors for selectivity analysis
+- `cell_type`: String identifier for target cell type in selectivity optimization
+- `dose`: Float concentration of ligand complex in binding model
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+
+# Outputs
+- **Horizontal Bar Plot**: Receptors ranked by optimal selectivity values (1/optimization_result), with receptor names on y-axis and selectivity values on x-axis
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+receptors = ["CD25", "CD4-1", "CD27", "CD4-2", "CD278"]
+cell_type = "Treg"
+dose = 10e-2
+cell_categorization = "CellType2"
+sample_size = 100
+
+CITE_DF = importCITE()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+
+sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
+
+targ_mask = (sample_df["Cell Type"] == cell_type).to_numpy()
+off_targ_mask = ~targ_mask
+
+selectivities = []
+for receptor in receptors:
+    receptor_abun = sample_df[[receptor]].to_numpy()
+
+    targ_abun = receptor_abun[targ_mask]
+    off_targ_abun = receptor_abun[off_targ_mask]
+
+    opt_selec, _ = optimize_affs(
+        targ_abun, off_targ_abun, dose, valencies=np.array([[1]])
+    )
+    selectivities.append(1 / opt_selec)
+
+sort_indices = np.argsort(selectivities)
+```
+
+```{python}
+#| fig-cap: "Optimal selectivity of various epitopes"
+
+plt.barh(
+    np.array(receptors)[sort_indices],
+    np.array(selectivities)[sort_indices],
+    color="k",
+)
+
+plt.xlabel("Selectivity")
+ply.ylabel("Epitope")
+plt.gca().invert_yaxis()
+plt.show()
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Analyzed the optimal selectivities of monovalent complexes of ligands for receptors in the target cell type **{cell_type}** at a dose of **{dose}**. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The receptors analyzed were **{', '.join(receptors)}**.
+"""
+
+print(text)
+```

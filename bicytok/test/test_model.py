@@ -21,9 +21,9 @@ path_here = Path(__file__).parent.parent
 
 
 def sample_data(n_obs=100, n_var=10):
-    np.random.seed(0)
-    recAbundances = np.random.rand(n_obs, n_var) * 10
-    targ_ind = np.random.choice(n_obs, size=n_obs // 2, replace=False)
+    rng = np.random.default_rng(1)
+    recAbundances = rng.uniform(size=(n_obs, n_var)) * 10
+    targ_ind = rng.choice(n_obs, size=n_obs // 2, replace=False)
     targ = np.zeros(n_obs, dtype=bool)
     targ[targ_ind] = True
     offTarg = ~targ
@@ -135,7 +135,8 @@ def test_optimize_affs():
 
 
 def test_binding_model():
-    np.random.seed(0)
+    rng = np.random.default_rng(1)
+
     num_receptors = 3
     num_cells = 1000
 
@@ -154,10 +155,10 @@ def test_binding_model():
     samples = sample_DF.to_numpy()
     rec_mean = samples.mean()
     rec_std = samples.std()
-    affs = np.random.uniform(7, 9, num_receptors)
+    affs = rng.uniform(7, 9, num_receptors)
 
     dose = 0.1
-    recCounts = np.abs(np.random.normal(rec_mean, rec_std, (num_cells, num_receptors)))
+    recCounts = np.abs(rng.normal(rec_mean, rec_std, (num_cells, num_receptors)))
     valencies = np.array([[1, 1, 1]])
     monomerAffs = restructure_affs(affs)
 
@@ -169,6 +170,8 @@ def test_binding_model():
 
 
 def test_invalid_model_function_inputs():
+    rng = np.random.default_rng(1)
+
     # Test invalid inputs for restructuringAffs
     with pytest.raises(AssertionError):
         restructure_affs(np.array([[8.0, 8.0], [8.0, 8.0]]))  # 2D receptor affinities
@@ -178,8 +181,10 @@ def test_invalid_model_function_inputs():
 
     # Assign default values for cytBindingModel and minOffTargSelec
     dose = 0.1
-    recCounts1D = np.random.rand(3)  # for testing one cell, three receptors
-    recCounts2D = np.random.rand(100, 3)  # for testing multiple cells, three receptors
+    recCounts1D = rng.uniform(size=3)  # for testing one cell, three receptors
+    recCounts2D = rng.uniform(
+        size=(100, 3)
+    )  # for testing multiple cells, three receptors
     valencies = np.array([[1, 1, 1]])
     monomerAffs = np.array([8.0, 8.0, 8.0])
     modelAffs = restructure_affs(monomerAffs)
@@ -188,7 +193,7 @@ def test_invalid_model_function_inputs():
     with pytest.raises(AssertionError):
         cyt_binding_model(
             dose=dose,
-            recCounts=np.random.rand(100, 3, 3),
+            recCounts=rng.uniform(size=(100, 3, 3)),
             valencies=valencies,
             monomerAffs=modelAffs,
         )  # 3D receptor counts
@@ -230,7 +235,7 @@ def test_invalid_model_function_inputs():
         min_off_targ_selec(
             monomerAffs=modelAffs,
             targRecs=recCounts2D,
-            offTargRecs=np.random.rand(100, 4),
+            offTargRecs=rng.uniform(size=(100, 4)),
             dose=dose,
             valencies=valencies,
         )  # mismatched number of receptors
@@ -248,8 +253,8 @@ def test_invalid_model_function_inputs():
     df = pd.DataFrame(
         {
             "Cell Type": ["Treg"] * 100,
-            "CD122": np.random.rand(100),
-            "CD25": np.random.rand(100),
+            "CD122": rng.uniform(size=100),
+            "CD25": rng.uniform(size=100),
         }
     )
     numCells = 50

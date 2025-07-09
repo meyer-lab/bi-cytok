@@ -1,0 +1,212 @@
+---
+title: "Distribution histograms of top and bottom epitopes by various metrics"
+
+format:
+  pdf:
+    geometry:
+      - left=1in
+      - right=1in
+      - paperwidth=30in
+---
+## Run this file in an interactive window (cell by cell); it is not optimized for full rendering.
+
+# Summary
+Generates a comprehensive grid of histogram plots comparing CITE-seq epitope count distributions between target and off-target cell populations. Identifies and visualizes the top and bottom performing epitopes for each distance metric (KL Divergence, EMD) and selectivity measure.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 1D distance metric calculation functions (`KL_EMD_1D`)
+- Selectivity optimization functions (`optimize_affs`)
+
+# Parameters
+- `num_hists`: Integer number of receptors to display per metric category
+- `targ_cell`: String identifier for target cell type in distribution comparison
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `dose`: Float concentration used in selectivity optimization
+
+# Outputs
+- **Grid Plot (6 rows × num_hists columns)**: Histogram comparisons organized by metric performance:
+  - Row 1: Top KL Divergence receptors
+  - Row 2: Bottom KL Divergence receptors
+  - Row 3: Top EMD receptors  
+  - Row 4: Bottom EMD receptors
+  - Row 5: Top Selectivity receptors
+  - Row 6: Bottom Selectivity receptors
+- Each histogram shows normalized expression density with overlaid target (blue) and off-target (red) distributions
+- Metric values (KL, EMD, Selectivity) displayed on each subplot title
+- Color-coded category labels identifying metric ranking
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+from bicytok.distance_metric_funcs import KL_EMD_1D
+from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+plt.rcParams["svg.fonttype"] = "none"
+
+num_hists = 10
+targ_cell = "Treg"
+sample_size = 100
+cell_categorization = "CellType2"
+dose = 10e-2
+
+CITE_DF = importCITE()
+assert targ_cell in CITE_DF[cell_categorization].unique()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=min(sample_size, epitopes_df.shape[0]),
+    targCellType=targ_cell,
+)
+filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
+epitopes = list(filtered_sample_df.columns[:-1])
+
+targ_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
+off_targ_mask = ~targ_mask
+n_targ = np.sum(targ_mask)
+n_off_targ = np.sum(off_targ_mask)
+rec_abundances = filtered_sample_df[epitopes].to_numpy()
+KL_div_vals, EMD_vals = KL_EMD_1D(rec_abundances, targ_mask, off_targ_mask)
+
+selectivities = []
+for receptor in epitopes:
+    receptor_abun = filtered_sample_df[[receptor]].to_numpy()
+
+    targ_abun = receptor_abun[targ_mask]
+    off_targ_abun = receptor_abun[off_targ_mask]
+
+    opt_selec, _ = optimize_affs(
+        targ_abun, off_targ_abun, dose, valencies=np.array([[1]])
+    )
+    selectivities.append(1 / opt_selec)
+
+metrics_df = pd.DataFrame(
+    {
+        "Receptor": epitopes,
+        "KL_Divergence": KL_div_vals,
+        "EMD": EMD_vals,
+        "Selectivity": selectivities,
+    },
+)
+metrics_df = metrics_df.dropna()
+
+top_kl_df = metrics_df.nlargest(num_hists, "KL_Divergence")
+bottom_kl_df = metrics_df.nsmallest(num_hists, "KL_Divergence")
+top_emd_df = metrics_df.nlargest(num_hists, "EMD")
+bottom_emd_df = metrics_df.nsmallest(num_hists, "EMD")
+top_selec_df = metrics_df.nlargest(num_hists, "Selectivity")
+bottom_selec_df = metrics_df.nsmallest(num_hists, "Selectivity")
+
+plot_data = []
+for i, (_, row) in enumerate(top_kl_df.iterrows()):
+    plot_data.append((row["Receptor"], row["KL_Divergence"], row["EMD"], row["Selectivity"], "Top KL", i))
+for i, (_, row) in enumerate(bottom_kl_df.iterrows()):
+    plot_data.append((row["Receptor"], row["KL_Divergence"], row["EMD"], row["Selectivity"], "Bottom KL", i + num_hists))
+for i, (_, row) in enumerate(top_emd_df.iterrows()):
+    plot_data.append((row["Receptor"], row["KL_Divergence"], row["EMD"], row["Selectivity"], "Top EMD", i + 2 * num_hists))
+for i, (_, row) in enumerate(bottom_emd_df.iterrows()):
+    plot_data.append((row["Receptor"], row["KL_Divergence"], row["EMD"], row["Selectivity"], "Bottom EMD", i + 3 * num_hists))
+for i, (_, row) in enumerate(top_selec_df.iterrows()):
+    plot_data.append((row["Receptor"], row["KL_Divergence"], row["EMD"], row["Selectivity"], "Top Selectivity", i + 4 * num_hists))
+for i, (_, row) in enumerate(bottom_selec_df.iterrows()):
+    plot_data.append((row["Receptor"], row["KL_Divergence"], row["EMD"], row["Selectivity"], "Bottom Selectivity", i + 5 * num_hists))
+```
+
+```{python}
+#| fig-cap: "Receptor distribution comparison showing target vs off-target distributions"
+
+fig, ax = plt.subplots(6, num_hists, figsize=(num_hists * 4, 20))
+
+for receptor, kl_val, emd_val, selec_val, category, plot_idx in plot_data:
+    rec_abundance = filtered_sample_df[receptor].values
+    mean_abundance = np.mean(rec_abundance)
+    targ_abundances = rec_abundance[targ_mask] / mean_abundance
+    off_targ_abundances = rec_abundance[off_targ_mask] / mean_abundance
+    
+    i = plot_idx
+    
+    sns.histplot(
+        targ_abundances,
+        ax=ax[i // num_hists, i % num_hists],
+        color="blue",
+        alpha=0.5,
+        label=f"{targ_cell} (n={n_targ})",
+        stat="density",
+        kde=False,
+    )
+    sns.histplot(
+        off_targ_abundances,
+        ax=ax[i // num_hists, i % num_hists],
+        color="red",
+        alpha=0.5,
+        label=f"Off-target (n={n_off_targ})",
+        stat="density",
+        kde=False,
+    )
+    ax[i // num_hists, i % num_hists].set_title(
+        f"{receptor}\nKL: {kl_val:.2f}, EMD: {emd_val:.2f}, "
+        f"Selectivity: {selec_val:.2f}",
+        fontsize=10,
+    )
+    ax[i // num_hists, i % num_hists].set_xlabel("Normalized Expression", fontsize=9)
+    ax[i // num_hists, i % num_hists].set_ylabel("Density", fontsize=9)
+
+    if i % num_hists == 0:
+        ax[i // num_hists, i % num_hists].legend(loc="upper right", fontsize=8)
+
+    label_color = {
+        "Top KL": "darkgreen",
+        "Bottom KL": "brown",
+        "Top EMD": "purple",
+        "Bottom EMD": "orange",
+        "Top Selectivity": "darkblue",
+        "Bottom Selectivity": "red",
+    }
+    ax[i // num_hists, i % num_hists].text(
+        0.05,
+        0.95,
+        category,
+        transform=ax[i // num_hists, i % num_hists].transAxes,
+        fontsize=9,
+        fontweight="bold",
+        color=label_color[category],
+        verticalalignment="top",
+        bbox=dict(facecolor="white", alpha=0.7, edgecolor=label_color[category]),
+    )
+
+kl_range = (
+    f"KL div range: [{metrics_df['KL_Divergence'].min():.2f}, "
+    f"{metrics_df['KL_Divergence'].mean():.2f}, "
+    f"{metrics_df['KL_Divergence'].max():.2f}]"
+)
+emd_range = (
+    f"EMD range: [{metrics_df['EMD'].min():.2f}, "
+    f"{metrics_df['EMD'].mean():.2f}, {metrics_df['EMD'].max():.2f}]"
+)
+selec_range = (
+    f"Selectivity range: [{metrics_df['Selectivity'].min():.2f}, "
+    f"{metrics_df['Selectivity'].mean():.2f}, "
+    f"{metrics_df['Selectivity'].max():.2f}]"
+)
+plt.suptitle(
+    f"Receptor Distribution Comparison: {targ_cell} vs Off-Target\n{kl_range}, "
+    f"{emd_range}, {selec_range}",
+    fontsize=14,
+)
+plt.tight_layout()
+plt.show()
+```

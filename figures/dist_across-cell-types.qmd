@@ -1,0 +1,147 @@
+---
+title: "Top distance metrics across cell types"
+---
+
+# Summary
+Generates comparative bar plots showing the highest-performing receptor for each cell type based on KL Divergence and EMD distance metrics. Identifies cell-type-specific biomarkers by comparing target populations against all other cell types in the dataset.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 1D distance metric calculation functions (`KL_EMD_1D`)
+
+# Parameters
+- `sample_size`: Integer number of cells sampled per cell type for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `cell_types`: List of strings naming cell types for cross-comparison analysis
+- `balance`: Boolean flag to ensure equal sampling of target and off-target cells
+
+# Outputs
+- **Bar Plot 1**: Top KL Divergence receptors ranked by cell type, showing:
+  - Cell type and corresponding best-performing receptor on x-axis
+  - KL Divergence values on y-axis
+  - Bars sorted in descending order by metric value
+- **Bar Plot 2**: Top EMD receptors ranked by cell type with identical formatting
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+from bicytok.distance_metric_funcs import KL_EMD_1D
+from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+
+sample_size = 100
+cell_categorization = "CellType2"
+cell_types = [
+    "B memory",
+    "B naive",
+    # "Treg",
+    # "NK",
+    # "CD8 Naive",
+    # "CD4 Naive",
+    # "CD8 TCM",
+    # "CD4 TCM",
+    # "CD14 Mono",
+    # "cDC1",
+    # "ILC",
+    # "CD16 Mono",
+    # "pDC",
+    # "NK_CD56bright",
+]
+
+CITE_DF = importCITE()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+
+top_EMD = []
+top_EMD_rec = []
+top_KL = []
+top_KL_rec = []
+for cell_type in cell_types:
+    targ_cell = cell_type
+
+    sample_df = sample_receptor_abundances(
+        CITE_DF=epitopes_df,
+        numCells=min(sample_size, epitopes_df.shape[0]),
+        targCellType=targ_cell,
+        balance=True,
+    )
+    filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
+    epitopes = filtered_sample_df.columns[:-1]
+
+    on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
+    off_target_mask = ~on_target_mask
+    rec_abundances = filtered_sample_df[epitopes].to_numpy()
+    KL_values, EMD_values = KL_EMD_1D(
+        rec_abundances, on_target_mask, off_target_mask
+    )
+
+    KL_values = np.nan_to_num(KL_values)
+    EMD_values = np.nan_to_num(EMD_values)
+
+    top_EMD_ind = np.argsort(EMD_values)[-1]
+    top_EMD.append(EMD_values[top_EMD_ind])
+    top_EMD_rec.append(filtered_sample_df.columns[top_EMD_ind])
+    top_KL_ind = np.argsort(KL_values)[-1]
+    top_KL.append(KL_values[top_KL_ind])
+    top_KL_rec.append(filtered_sample_df.columns[top_KL_ind])
+
+EMD_labs = [
+    f"{cell_type}: {rec}"
+    for cell_type, rec in zip(cell_types, top_EMD_rec, strict=False)
+]
+KL_labs = [
+    f"{cell_type}: {rec}"
+    for cell_type, rec in zip(cell_types, top_KL_rec, strict=False)
+]
+
+EMD_sort_ind = np.argsort(top_EMD)[::-1]
+top_EMD = np.array(top_EMD)[EMD_sort_ind]
+EMD_labs = np.array(EMD_labs)[EMD_sort_ind]
+
+KL_sort_ind = np.argsort(top_KL)[::-1]
+top_KL = np.array(top_KL)[KL_sort_ind]
+KL_labs = np.array(KL_labs)[KL_sort_ind]
+```
+
+```{python}
+#| fig-cap: "Epitopes with the top KL Divergence values for each cell type"
+
+plt.bar(KL_labs, top_KL, color="k")
+plt.xlabel("Cell Type: Epitope")
+plt.ylabel("KL Divergence")
+plt.xticks(rotation=45, ha="right")
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Epitopes with the top EMD values for each cell type"
+
+plt.bar(EMD_labs, top_EMD, color="k")
+plt.xlabel("Cell Type: Epitope")
+plt.ylabel("EMD")
+plt.xticks(rotation=45, ha="right")
+plt.show()
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Identified epitopes with the top 1D KL Divergence and EMD values for each cell type compared to all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The cell types considered were **{', '.join(cell_types)}**.
+\n\n
+The receptors included were **{', '.join(epitopes)}**.
+"""
+
+print(text)
+```

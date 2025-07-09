@@ -1,0 +1,117 @@
+---
+title: "Optimal selectivities of multivalent complexes"
+---
+
+# Summary
+Generates a symmetric heatmap showing optimal selectivity values achieved by multivalent complexes targeting all pairwise combinations of relevant receptors. Performs affinity optimization for each receptor pair and filters results to highlight the most promising combinations.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- Selectivity optimization functions (`optimize_affs`)
+
+# Parameters
+- `receptors`: List of strings naming target receptors for pairwise selectivity analysis
+- `signal`: List of string name of receptor used for signal delivery in binding model
+- `cell_type`: String identifier for target cell type in selectivity optimization
+- `dose`: Float concentration of ligand complex in binding model
+- `valency`: 2D numpy array specifying ligand valencies [[signal, target1, target2]]
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+
+# Outputs
+- **Heatmap**: Symmetric matrix showing optimal selectivity values for all receptor pairs, with color-coded selectivity values, filtered to show only receptor pairs above 25th percentile of mean selectivity
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+# receptors = ["CD25", "CD4-1", "CD27", "CD4-2", "CD278"]
+receptors = ["CD25", "CD4-1"]
+signal = ["CD122"]
+cell_type = "Treg"
+dose = 10e-2
+valency = np.array([[2, 1, 1]])
+cell_categorization = "CellType2"
+sample_size = 100
+
+CITE_DF = importCITE()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
+
+targ_mask = (sample_df["Cell Type"] == cell_type).to_numpy()
+off_targ_mask = ~targ_mask
+
+signal_abun = sample_df[signal].to_numpy()
+
+selectivities = np.full((len(receptors), len(receptors)), np.nan)
+row, col = np.tril_indices(len(receptors), k=0)
+for i, j in zip(row, col, strict=False):
+    rec1 = receptors[i]
+    rec2 = receptors[j]
+
+    rec1_abun = sample_df[[rec1]].to_numpy()
+    rec2_abun = sample_df[[rec2]].to_numpy()
+
+    receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+
+    targ_abun = receptor_abuns[targ_mask]
+    off_targ_abun = receptor_abuns[off_targ_mask]
+
+    opt_selec, _ = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
+    selectivities[i, j] = 1 / opt_selec
+
+i_upper, j_upper = np.triu_indices(len(receptors), k=1)
+selectivities[i_upper, j_upper] = selectivities[j_upper, i_upper]
+selec_df = pd.DataFrame(selectivities, index=receptors, columns=receptors)
+
+selec_df = selec_df.dropna(how="all").dropna(how="all", axis=1)
+selec_df_row_means = selec_df.mean(axis=1)
+selec_df_col_means = selec_df.mean(axis=0)
+selec_thresh = np.percentile(
+    np.concatenate([selec_df_row_means, selec_df_col_means]), 25
+)
+selec_df = selec_df.loc[
+    (selec_df_row_means >= selec_thresh) & (selec_df_col_means >= selec_thresh)
+]
+```
+
+```{python}
+#| fig-cap: "Heatmap of binding model selectivity for receptor pairs"
+
+sns.heatmap(
+    selec_df, cmap="bwr", cbar=True, xticklabels=True, yticklabels=True
+)
+
+plt.tick_params(axis="x", labelsize=5)
+plt.tick_params(axis="y", labelsize=5)
+cbar = plt.gcf().axes[-1]
+cbar.set_title("Selectivity", fontsize=8)
+plt.show()
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Compared the optimal selectivities achieved by tetravalent complexes composed of ligands for various relevant receptors in the target cell type **{cell_type}** at doses of **{dose}**. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The signal receptor used was **{signal}**. The target receptors analyzed were **{', '.join(receptors)}**. The valencies of each complex were as follows: 2x signal receptor ligand, 1x ligand for each target receptor.
+"""
+
+print(text)
+```

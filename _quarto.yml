@@ -1,0 +1,19 @@
+title: "Bivalent Cytokine Analysis Project"
+
+project:
+  output-dir: _output
+  preview:
+    port: 7777
+
+format:
+  typst:
+    mainfont: "Times New Roman"
+    monofont: "Times New Roman"
+jupyter: python3
+
+execute:
+  echo: false
+  warning: true
+  error: true
+
+margin: {left: 2cm, right: 2cm}

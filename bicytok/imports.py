@@ -1,13 +1,10 @@
 """File that deals with everything about importing and sampling."""
 
-import gzip
 from pathlib import Path
 from zipfile import ZipFile
 
-import anndata as an
 import numpy as np
 import pandas as pd
-from scipy.io import mmread
 
 path_here = Path(__file__).parent.parent
 
@@ -112,79 +109,9 @@ def importCITE():
 
 def importRNACITE():
     """Downloads all surface markers and cell types"""
-    RNAsurfDF = pd.read_csv(
-        ZipFile(path_here / "bicytok" / "data" / "RNAseqSurface.csv.zip").open(
-            "RNAseqSurface.csv"
-        )
-    )
+    with ZipFile(path_here / "bicytok" / "data" / "RNAseqSurface.csv.zip") as zip_file:
+        RNAsurfDF = pd.read_csv(zip_file.open("RNAseqSurface.csv"))
     return RNAsurfDF
-
-
-# Sam: function not called anywhere, purpose unclear
-def makeTregSC():
-    """Constructs .h5ad file for PBMC stimulation experiment"""
-    Treg_h5ad = an.AnnData()
-    for i, stim in enumerate(SC_Stims):
-        stim_an = an.AnnData()
-        barcodes = pd.read_csv(
-            gzip.open(
-                path_here
-                / "multi_output"
-                / "outs"
-                / "per_sample_outs"
-                / stim
-                / "count"
-                / "sample_filtered_feature_bc_matrix"
-                / "barcodes.tsv.gz"
-            ),
-            sep="\t",
-            header=None,
-        )
-        matrix = mmread(
-            gzip.open(
-                path_here
-                / "multi_output"
-                / "outs"
-                / "per_sample_outs"
-                / stim
-                / "count"
-                / "sample_filtered_feature_bc_matrix"
-                / "matrix.mtx.gz"
-            )
-        )
-        barcodes.columns = ["barcode"]
-        stim_an = an.AnnData(matrix.transpose())
-        stim_an.obs.index = barcodes["barcode"].values
-        stim_an.obs["Condition"] = stim
-
-        if i == 0:  # First condition - load features for later labeling
-            # (all conditions have same genes)
-            Treg_h5ad = stim_an
-            features = pd.read_csv(
-                gzip.open(
-                    path_here
-                    / "multi_output"
-                    / "outs"
-                    / "per_sample_outs"
-                    / stim
-                    / "count"
-                    / "sample_filtered_feature_bc_matrix"
-                    / "features.tsv.gz"
-                ),
-                sep="\t",
-                header=None,
-            )
-            features.columns = ["ENSEMBLE_ids", "gene_ids", "feature_type"]
-        else:
-            Treg_h5ad = an.concat([Treg_h5ad, stim_an])
-
-    Treg_h5ad.var.index = features["gene_ids"].values
-    Treg_h5ad.var["ENSEMBLE_ids"] = features["ENSEMBLE_ids"].values
-    Treg_h5ad.var["feature_type"] = features["feature_type"].values
-
-    Treg_h5ad.write_h5ad(path_here / "Treg_h5ads" / "Treg_raw.h5ad")
-
-    return
 
 
 # Sam: reimplement this function when we have a clearer idea

@@ -1,0 +1,129 @@
+---
+title: "Relationship between 1D and 2D distance metrics"
+---
+
+# Summary
+Generates scatter plots comparing 1D and 2D distance metrics for individual receptors to validate dimensional consistency. Applies theoretical scaling corrections and calculates R^2^ values to assess the mathematical relationship between single-receptor and diagonal 2D distance calculations.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 1D and 2D distance metric calculation functions (`KL_EMD_1D`, `KL_EMD_2D`)
+
+# Parameters
+- `targ_cell`: String identifier for target cell type in distance metric comparison
+- `receptors_of_interest`: List of strings naming receptors for 1D vs 2D analysis
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `scaling_factor`: Float correction factor for 2D to 1D comparison
+
+# Outputs
+- **Scatter Plot 1**: 1D vs 2D KL Divergence comparison showing:
+  - Scaled 2D diagonal values on x-axis
+  - Corresponding 1D values on y-axis
+  - Perfect correlation reference line (red dashed)
+  - R² value displayed in plot title
+- **Scatter Plot 2**: 1D vs 2D EMD comparison with identical formatting
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+from bicytok.distance_metric_funcs import KL_EMD_1D, KL_EMD_2D
+from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+
+targ_cell = "Treg"
+receptors_of_interest = [
+    "CD25",
+    "CD4-1",
+    "CD27",
+    "CD4-2",
+    "CD278",
+    "CD122",
+    "CD28",
+    "TCR-2",
+    "TIGIT",
+    "TSLPR",
+]
+sample_size = 100
+cell_categorization = "CellType2"
+scaling_factor = 2**0.5 / 2
+
+CITE_DF = importCITE()
+assert targ_cell in CITE_DF[cell_categorization].unique()
+
+epitopes_df = CITE_DF[receptors_of_interest + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=sample_size,
+    targCellType=targ_cell,
+)
+filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
+rec_abundances = filtered_sample_df[receptors_of_interest].to_numpy()
+target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
+off_target_mask = ~target_mask
+
+KL_div_vals_1D, EMD_vals_1D = KL_EMD_1D(
+    rec_abundances, target_mask, off_target_mask
+)
+
+KL_div_vals_2D, EMD_vals_2D = KL_EMD_2D(
+    rec_abundances, target_mask, off_target_mask, calc_1D=True
+)
+KL_div_vals_2D = np.diag(KL_div_vals_2D)
+EMD_vals_2D = np.diag(EMD_vals_2D)
+
+EMD_vals_2D_scaled = EMD_vals_2D * scaling_factor
+KL_div_vals_2D_scaled = KL_div_vals_2D * scaling_factor
+
+EMD_r2 = 1 - np.sum((EMD_vals_1D - EMD_vals_2D_scaled) ** 2) / np.sum(
+    (EMD_vals_1D - np.mean(EMD_vals_1D)) ** 2
+)
+KL_div_r2 = 1 - np.sum((KL_div_vals_1D - KL_div_vals_2D_scaled) ** 2) / np.sum(
+    (KL_div_vals_1D - np.mean(KL_div_vals_1D)) ** 2
+)
+```
+
+```{python}
+#| fig-cap: "Comparison of 1D vs 2D KL Divergence values after scaling correction"
+
+plt.scatter(KL_div_vals_2D_scaled, KL_div_vals_1D, color="k")
+max_val = max(max(KL_div_vals_1D), max(KL_div_vals_2D_scaled))
+min_val = min(min(KL_div_vals_1D), min(KL_div_vals_2D_scaled))
+plt.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.7)
+
+plt.title(f"R²: {KL_div_r2:.2f}")
+plt.xlabel("2D KL Divergence")
+plt.ylabel("1D KL Divergence")
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Comparison of 1D vs 2D EMD values after scaling correction"
+
+plt.scatter(EMD_vals_2D_scaled, EMD_vals_1D, color="k")
+max_val = max(max(KL_div_vals_1D), max(KL_div_vals_2D_scaled))
+min_val = min(min(KL_div_vals_1D), min(KL_div_vals_2D_scaled))
+plt.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.7)
+
+plt.title(f"R²: {EMD_r2:.2f}")
+plt.xlabel("2D EMD")
+plt.ylabel("1D EMD")
+plt.show()
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Compared 1D and 2D distance metrics (KL Divergence and EMD) for the target cell type **{targ_cell}**. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The receptors analyzed were **{', '.join(receptors_of_interest)}**.
+"""
+
+print(text)
+```

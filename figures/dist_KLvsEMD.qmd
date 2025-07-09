@@ -1,0 +1,181 @@
+---
+title: "Relationship between KL Divergence and EMD metrics"
+---
+
+# Summary
+Generates a scatter plot analyzing the correlation between KL Divergence and EMD distance metrics across all filtered receptors. Identifies and highlights outlier receptors where the two metrics significantly disagree, providing insights into the complementary nature of these distance measures.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 1D distance metric calculation functions (`KL_EMD_1D`)
+
+# Parameters
+- `targ_cell`: String identifier for target cell type in distance metric comparison
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `residual_threshold`: Float multiplier for standard deviation to identify outliers
+
+# Outputs
+- **Scatter Plot**: KL Divergence vs EMD correlation analysis showing:
+  - All receptors as scatter points colored by outlier classification
+  - Linear regression fit line with R² value
+  - Outlier receptors labeled by name (top 5 in each category)
+  - Three categories: Normal (gray), High KL/Low EMD (red), Low KL/High EMD (blue)
+  - Grid lines for visual reference
+- **Statistical Summary**: Pearson correlation coefficient, R² value, regression slope, and total receptor count
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import scipy.stats as stats
+
+from sklearn.linear_model import LinearRegression
+from bicytok.distance_metric_funcs import KL_EMD_1D
+from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+
+plt.rcParams["svg.fonttype"] = "none"
+
+targ_cell = "Treg"
+sample_size = 100
+cell_categorization = "CellType2"
+
+CITE_DF = importCITE()
+assert targ_cell in CITE_DF[cell_categorization].unique()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=min(sample_size, epitopes_df.shape[0]),
+    targCellType=targ_cell,
+)
+filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
+receptor_columns = filtered_sample_df.columns[:-1]
+
+rec_abundances = filtered_sample_df[receptor_columns].to_numpy()
+targ_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
+off_targ_mask = ~targ_mask
+KL_div_vals, EMD_vals = KL_EMD_1D(rec_abundances, targ_mask, off_targ_mask)
+results_df = pd.DataFrame(
+    {"Receptor": receptor_columns, "KL_Divergence": KL_div_vals, "EMD": EMD_vals}
+).dropna()
+
+correlation, _ = stats.pearsonr(results_df["KL_Divergence"], results_df["EMD"])
+print(f"Pearson correlation: {correlation:.4f}")
+
+reg_model = LinearRegression()
+X = results_df["EMD"].values.reshape(-1, 1)
+y = results_df["KL_Divergence"].values
+reg_model.fit(X, y)
+r_squared = reg_model.score(X, y)
+slope = reg_model.coef_[0]
+intercept = reg_model.intercept_
+
+results_df["Predicted_KL"] = intercept + slope * results_df["EMD"]
+results_df["Residual"] = results_df["KL_Divergence"] - results_df["Predicted_KL"]
+results_df["Abs_Residual"] = np.abs(results_df["Residual"])
+
+residual_threshold = 1.5 * np.std(results_df["Residual"])
+
+results_df["Outlier_Type"] = "Normal"
+results_df.loc[results_df["Residual"] > residual_threshold, "Outlier_Type"] = (
+    "High KL, Low EMD"
+)
+results_df.loc[results_df["Residual"] < -residual_threshold, "Outlier_Type"] = (
+    "Low KL, High EMD"
+)
+
+high_kl_outliers = results_df[
+    results_df["Outlier_Type"] == "High KL, Low EMD"
+].nlargest(5, "Abs_Residual")
+low_kl_outliers = results_df[
+    results_df["Outlier_Type"] == "Low KL, High EMD"
+].nlargest(5, "Abs_Residual")
+```
+
+```{python}
+#| fig-cap: "KL Divergence vs EMD scatter plot with outlier analysis"
+
+color_map = {
+    "Normal": "gray",
+    "High KL, Low EMD": "red",
+    "Low KL, High EMD": "blue",
+}
+colors = [color_map[t] for t in results_df["Outlier_Type"]]
+plt.scatter(
+    results_df["EMD"],
+    results_df["KL_Divergence"],
+    alpha=0.6,
+    c=colors,
+    s=30,
+    edgecolors="k",
+    linewidths=0.5,
+)
+
+x_range = np.linspace(min(results_df["EMD"]), max(results_df["EMD"]), 100)
+y_pred = intercept + slope * x_range
+plt.plot(x_range, y_pred, "k--", label=f"Linear fit (R²={r_squared:.2f})")
+
+for _, row in pd.concat([high_kl_outliers, low_kl_outliers]).iterrows():
+    plt.annotate(
+        row["Receptor"],
+        xy=(row["EMD"], row["KL_Divergence"]),
+        xytext=(5, 5),
+        textcoords="offset points",
+        fontsize=9,
+        bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8),
+    )
+
+handles = [
+    plt.Line2D(
+        [0],
+        [0],
+        marker="o",
+        color="w",
+        markerfacecolor=color,
+        markersize=10,
+        label=label,
+    )
+    for label, color in color_map.items()
+]
+plt.legend(handles=handles, title="Epitope Categories", bbox_to_anchor=(1.05, 1))
+
+plt.xlabel("EMD", fontsize=11)
+plt.ylabel("KL Divergence", fontsize=11)
+plt.grid(True, linestyle="--", alpha=0.7)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+
+stats_text = (
+    f"Pearson correlation: {correlation:.4f}\n"
+    f"R²: {r_squared:.4f}\n"
+    f"Slope: {slope:.4f}\n"
+    f"Number of Epitopes: {len(results_df)}"
+)
+
+print(stats_text)
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Visualized the relationship between KL Divergence and EMD between **{targ_cell}** and all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The receptors analyzed were **{', '.join(receptor_columns)}**.
+"""
+
+print(text)
+```

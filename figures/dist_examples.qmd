@@ -1,0 +1,104 @@
+---
+title: "Comparison of KL Divergence and EMD for various Gaussian distributions"
+---
+
+# Summary
+Generates a 3×3 grid of plots comparing KL Divergence and EMD metrics for systematically varied Gaussian distributions. Demonstrates how these distance metrics respond to changes in distribution mean and variance, providing theoretical context for interpreting empirical results.
+
+# Imports
+- Statistical distribution functions from scipy.stats
+- Distance metric calculation functions (`KL_EMD_1D`)
+
+# Parameters
+- `ref_mean`: Float mean of reference Gaussian distribution
+- `ref_sigma`: Float standard deviation of reference Gaussian distribution
+- `off_target_configs`: List of tuples specifying target distribution parameters (title, mean, sigma) for systematic comparison
+- `n_samples`: Integer number of samples generated for each distribution in metric calculations
+- `rng_seed`: Integer random seed for reproducible sampling
+
+# Outputs
+- **Grid Plot (3×3)**: Gaussian distribution comparisons showing:
+  - Reference distribution (blue line) vs target distribution (red line)
+  - Purple shaded area indicating distributional overlap
+  - Calculated KL Divergence and EMD values annotated on each subplot
+  - Distribution parameters (μ, σ) displayed in subplot titles
+  - Systematic progression from identical distributions to increasingly different ones
+- Legend shown only in first panel to avoid clutter
+- Grid lines for visual reference across all subplots
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+from scipy import stats
+from bicytok.distance_metric_funcs import KL_EMD_1D
+
+rng = np.random.default_rng(1)
+
+ref_mean = 10.0
+ref_sigma = 2.0
+off_target_configs = [
+    ("Same Mean, Same Std.", ref_mean, ref_sigma),
+    ("Same Mean, Larger Std.", ref_mean, 3.0),
+    ("Same Mean, Even Larger Std.", ref_mean, 4.0),
+    ("Same Mean, Same Std.", ref_mean, ref_sigma),
+    ("Larger Mean, Same Std.", 15.0, ref_sigma),
+    ("Even Larger Mean, Same Std.", 20.0, ref_sigma),
+    ("Larger Mean, Same Std.", 15.0, ref_sigma),
+    ("Larger Mean, Larger Std.", 15.0, 3.0),
+    ("Larger Mean, Even Larger Std.", 15.0, 4.0),
+]
+n_samples = 1500
+```
+
+```{python}
+#| fig-cap: "Comparison of KL divergence and EMD for different Gaussian distributions"
+
+fig, axs = plt.subplots(3, 3, figsize=(15, 10))
+axs = axs.flatten()
+
+for i, (title, target_mean, target_sigma) in enumerate(off_target_configs):
+    target_samples = rng.normal(ref_mean, ref_sigma, n_samples)
+    off_target_samples = rng.normal(target_mean, target_sigma, n_samples)
+
+    combined_samples = np.vstack([target_samples, off_target_samples]).reshape(-1, 1)
+    targ_mask = np.array([True] * n_samples + [False] * n_samples)
+    off_targ_mask = ~targ_mask
+    KL_div, EMD = KL_EMD_1D(combined_samples, targ_mask, off_targ_mask)
+
+    x = np.linspace(0, 2 * max(ref_mean, target_mean), 1000)
+    ref_pdf = stats.norm.pdf(x, ref_mean, ref_sigma)
+    target_pdf = stats.norm.pdf(x, target_mean, target_sigma)
+
+    axs[i].plot(x, ref_pdf, color="blue", linewidth=2)
+    axs[i].plot(x, target_pdf, color="red", linewidth=2)
+    axs[i].fill_between(x, np.minimum(ref_pdf, target_pdf), color="purple", alpha=0.3)
+
+    # Only show legend in the first panel
+    if i == 0:
+        axs[i].legend([f"Reference", 
+                      f"Target",
+                      "Overlapping Area"],
+                      loc="upper right")
+
+    kl_value = KL_div[0] if not np.isnan(KL_div[0]) else float("nan")
+    emd_value = EMD[0] if not np.isnan(EMD[0]) else float("nan")
+
+    axs[i].annotate(
+        f"KL: {kl_value:.4f}\nEMD: {emd_value:.4f}",
+        xy=(0.05, 0.95),
+        xycoords="axes fraction",
+        va="top",
+        bbox=dict(boxstyle="round", fc="w", alpha=0.8),
+    )
+    # Updated title format with mean and standard deviation
+    axs[i].set_title(f"{title}\n(μ={target_mean:.1f}, σ={target_sigma:.1f})")
+    axs[i].set_xlabel("Value")
+    axs[i].set_ylabel("Density")
+    axs[i].grid(True, linestyle="--", alpha=0.7)
+
+plt.tight_layout()
+plt.show()
+```

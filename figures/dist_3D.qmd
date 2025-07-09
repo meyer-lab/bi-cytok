@@ -1,0 +1,123 @@
+---
+title: "3D distance metric analysis for receptor triplets"
+---
+
+# Summary
+Generates horizontal bar plots showing the receptor triplets with the highest 3D KL Divergence and EMD values. Analyzes all possible combinations of three receptors to identify the most discriminative receptor sets for distinguishing target from off-target cell populations.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 3D distance metric calculation functions (`KL_EMD_3D`)
+
+# Parameters
+- `targ_cell`: String identifier for target cell type in distance metric comparison
+- `receptors_of_interest`: List of strings naming receptors for triplet analysis
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+
+# Outputs
+- **Horizontal Bar Plot 1**: Top 5 KL Divergence receptor triplets showing:
+  - Receptor triplet combinations on y-axis (format: "Rec1-Rec2-Rec3")
+  - KL Divergence values on x-axis
+  - Bars sorted in ascending order (highest values at top)
+- **Horizontal Bar Plot 2**: Top 5 EMD receptor triplets with identical formatting
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+from bicytok.distance_metric_funcs import KL_EMD_3D
+from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+
+targ_cell = "Treg"
+receptors_of_interest = [
+    "CD25",
+    "CD4-1",
+    # "CD27",
+    # "CD4-2",
+    # "CD278",
+]
+sample_size = 100
+cell_categorization = "CellType2"
+
+CITE_DF = importCITE()
+assert targ_cell in CITE_DF[cell_categorization].unique()
+
+epitopes_df = CITE_DF[receptors_of_interest + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=min(sample_size, epitopes_df.shape[0]),
+    targCellType=targ_cell,
+)
+filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
+
+on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
+off_target_mask = ~on_target_mask
+rec_abundances = filtered_sample_df[receptors_of_interest].to_numpy()
+KL_div_vals, EMD_vals = KL_EMD_3D(
+    rec_abundances,
+    on_target_mask,
+    off_target_mask,
+    calc_diags=True,
+)
+
+KL_flat = KL_div_vals.flatten()
+EMD_flat = EMD_vals.flatten()
+
+top_KL_indices = np.argsort(np.nan_to_num(KL_flat))[-5:]
+top_EMD_indices = np.argsort(np.nan_to_num(EMD_flat))[-5:]
+
+top_KL_combinations = np.unravel_index(top_KL_indices, KL_div_vals.shape)
+top_EMD_combinations = np.unravel_index(top_EMD_indices, EMD_vals.shape)
+
+top_KL_receptors = [
+    f"{receptors_of_interest[i]}-{receptors_of_interest[j]}-{receptors_of_interest[k]}"
+    for i, j, k in zip(*top_KL_combinations, strict=False)
+]
+top_EMD_receptors = [
+    f"{receptors_of_interest[i]}-{receptors_of_interest[j]}-{receptors_of_interest[k]}"
+    for i, j, k in zip(*top_EMD_combinations, strict=False)
+]
+```
+
+```{python}
+#| fig-cap: "Top 5 KL Divergence values for receptor triplets"
+
+plt.barh(
+    top_KL_receptors,
+    KL_flat[top_KL_indices],
+    color="k",
+)
+plt.xlabel("KL Divergence")
+plt.gca().invert_yaxis()
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Top 5 EMD values for receptor triplets"
+
+plt.barh(
+    top_EMD_receptors,
+    EMD_flat[top_EMD_indices],
+    color="k",
+)
+plt.xlabel("EMD Value")
+plt.gca().invert_yaxis()
+plt.show()
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Calculated the 3D KL Divergence and EMD for receptor triplets between **{targ_cell}**s and all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The receptors analyzed were **{', '.join(receptors_of_interest)}**.
+"""
+
+print(text)
+```

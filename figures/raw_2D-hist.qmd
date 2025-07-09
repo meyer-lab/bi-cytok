@@ -1,0 +1,146 @@
+---
+title: "2D distribution analysis for receptor pairs"
+---
+
+# Summary
+Generates a 2D scatter plot with kernel density estimation (KDE) contours to visualize the joint distribution of expression levels for two specified receptors across target and off-target cell populations. Calculates and displays 2D distance metrics to quantify distributional differences.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 2D distance metric calculation functions (`KL_EMD_2D`)
+
+# Parameters
+- `receptor1`: String name of first receptor for 2D distribution analysis
+- `receptor2`: String name of second receptor for 2D distribution analysis
+- `targ_cell`: String identifier for target cell type in distribution comparison
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `plot_cell_types`: List of strings specifying cell type labels for plotting
+
+# Outputs
+- **2D Scatter Plot**: Joint distribution of receptor pairs with:
+  - Scatter points colored by cell type (target vs off-target)
+  - KDE contour lines overlaid for each cell population
+  - Normalized receptor expression on both axes
+  - 2D KL Divergence and EMD values displayed in plot title
+  - Axes limited to 99th percentile of expression values for clarity
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+from bicytok.distance_metric_funcs import KL_EMD_2D
+from bicytok.imports import importCITE, sample_receptor_abundances
+
+receptor1 = "CD25"
+receptor2 = "CD4-1"
+targ_cell = "Treg"
+sample_size = 5000
+cell_categorization = "CellType2"
+plot_cell_types = ["Treg", "other"]
+
+CITE_DF = importCITE()
+assert targ_cell in CITE_DF[cell_categorization].unique()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["CellType1", "CellType2", "CellType3"]
+]
+
+for receptor in [receptor1, receptor2]:
+    if receptor not in epitopes:
+        raise ValueError(
+            f"Receptor '{receptor}' not found. Available receptors: {epitopes}"
+        )
+
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=min(sample_size, epitopes_df.shape[0]),
+    targCellType=targ_cell,
+)
+
+targ_mask = (sample_df["Cell Type"] == targ_cell).to_numpy()
+off_targ_mask = ~targ_mask
+rec_abundances = sample_df[[receptor1, receptor2]].to_numpy()
+KL_div_vals, EMD_vals = KL_EMD_2D(
+    rec_abundances, targ_mask, off_targ_mask, calc_1D=False
+)
+kl_val = KL_div_vals[1, 0]
+emd_val = EMD_vals[1, 0]
+sample_df.loc[sample_df["Cell Type"] != targ_cell, "Cell Type"] = "other"
+
+rec1_abundance = sample_df[receptor1].values
+rec2_abundance = sample_df[receptor2].values
+mean_rec1 = np.mean(rec1_abundance)
+mean_rec2 = np.mean(rec2_abundance)
+
+plot_df = pd.DataFrame(
+    {
+        "Cell Type": sample_df["Cell Type"],
+        f"{receptor1}_norm": rec1_abundance / mean_rec1,
+        f"{receptor2}_norm": rec2_abundance / mean_rec2,
+    }
+)
+```
+
+```{python}
+#| fig-cap: "2D distribution of receptor pairs with scatter plots and KDE contours"
+
+colors = sns.color_palette("husl", len(plot_cell_types))
+for i, cell_type in enumerate(
+    [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
+):
+    cell_df = plot_df[plot_df["Cell Type"] == cell_type]
+
+    plt.scatter(
+        cell_df[f"{receptor1}_norm"],
+        cell_df[f"{receptor2}_norm"],
+        alpha=0.3,
+        color=colors[i],
+        s=10,
+        label=f"{cell_type} (n={len(cell_df)})",
+    )
+
+    sns.kdeplot(
+        x=cell_df[f"{receptor1}_norm"],
+        y=cell_df[f"{receptor2}_norm"],
+        color=colors[i],
+        levels=5,
+        linewidths=1.5,
+    )
+
+x_max = np.percentile(plot_df[f"{receptor1}_norm"], 99)
+y_max = np.percentile(plot_df[f"{receptor2}_norm"], 99)
+plt.xlim(0, x_max * 1.1)
+plt.ylim(0, y_max * 1.1)
+
+plt.title(
+    f"{receptor1} vs {receptor2} Distribution\nKL: {kl_val:.2f}, "
+    f"EMD: {emd_val:.2f}",
+    fontsize=14,
+)
+plt.xlabel(f"{receptor1} Normalized Count", fontsize=12)
+plt.ylabel(f"{receptor2} Normalized Count", fontsize=12)
+plt.legend(loc="best", fontsize=10, title="Cell Types")
+plt.grid(alpha=0.3, linestyle="--")
+plt.tight_layout()
+plt.show()
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Visualized the 2D joint distribution of receptor pairs **{receptor1}** and **{receptor2}** across target cell type **{targ_cell}** and off-target cells. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+"""
+
+print(text)
+```

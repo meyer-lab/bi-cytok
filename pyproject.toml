@@ -6,11 +6,10 @@ authors = [
     { name = "Aaron Meyer", email = "git@ameyer.me" }
 ]
 dependencies = [
-    "scipy>=1.14.1",
+    "scipy>=1.15",
     "scikit-learn>=1.6",
-    "anndata>=0.10.9",
-    "matplotlib>=3.9.2",
-    "seaborn>=0.13.2",
+    "matplotlib>=3.10",
+    "seaborn>=0.13",
     "pot>=0.9.5",
 ]
 readme = "README.md"
@@ -28,8 +27,12 @@ build-backend = "hatchling.build"
 managed = true
 dev-dependencies = [
     "pytest>=8.3",
-    "pytest-cov>=6.0.0",
+    "pytest-cov>=6.0",
     "pyright>=1.1.384",
+    "ipykernel>=6.29.5",
+    "pyyaml>=6.0.2",
+    "nbformat>=5.10.4",
+    "nbclient>=0.10.2",
 ]
 
 [tool.hatch.metadata]
@@ -42,7 +45,6 @@ packages = ["bicytok"]
 select = [
     # pycodestyle
     "E",
-    # Pyflakes
     "F",
     # pyupgrade
     "UP",
@@ -54,4 +56,19 @@ select = [
     "I",
     # Unused arguments
     "ARG",
+    "W",
+    # "D", enable this later
+    "Q",
+    # NumPy-specific checks
+    "NPY",
+    # type checking
+    # "TC", type checking causing issues
+]
+
+ignore = [
+    "E501", # Ignore line length violations
+    "F722", # This is buggy
+    "F821", # This is buggy
+    "D213", # incompatible with D212
+    "D203", # incompatible with D211
 ]

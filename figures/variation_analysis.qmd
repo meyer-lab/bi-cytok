@@ -1,0 +1,188 @@
+---
+title: "Bootstrap variability analysis of various metrics"
+---
+
+# Summary
+Performs bootstrap analysis to quantify variability in KL Divergence, EMD, and selectivity metrics across different sample sizes. Generates box plots showing the distribution of metric values and reports average computation times for model optimization and distance metric calculations.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 2D distance metric calculation functions (`KL_EMD_2D`)
+- Selectivity optimization functions (`optimize_affs`)
+
+# Parameters
+- `sample_sizes`: List of integers specifying cell counts for bootstrap sampling
+- `randomizations`: Integer number of bootstrap iterations per sample size
+- `targ_cell`: String identifier for target cell type in selectivity optimization
+- `signal_receptor`: String name of receptor used for signal delivery in binding model
+- `valencies`: 2D numpy array specifying ligand valencies [[signal, target1, target2]]
+- `targets`: List of strings naming target receptors for multivalent complex design
+- `dose`: Float concentration of ligand complex in binding model
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+
+# Outputs
+- **Box Plot 1**: Bootstrap distribution of KL Divergence values across sample sizes
+- **Box Plot 2**: Bootstrap distribution of EMD values across sample sizes  
+- **Box Plot 3**: Bootstrap distribution of selectivity values (1/optimization_result) across sample sizes
+- **Box Plot 4**: Bootstrap distribution of optimal affinity parameters across sample sizes, grouped by affinity type
+- **Summary Table**: Average computation times for binding model optimization and distance metric calculations per sample size
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import time
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+from bicytok.distance_metric_funcs import KL_EMD_2D
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+sample_sizes = [50, 100]
+randomizations = 3
+targ_cell = "Treg"
+signal_receptor = "CD122"
+valencies = np.array([[2, 1, 1]])
+targets = ["CD25", "CD4-1"]
+dose = 10e-2
+cell_categorization = "CellType2"
+
+CITE_DF = importCITE()
+assert targ_cell in CITE_DF[cell_categorization].unique()
+
+epitopes_df = CITE_DF[[signal_receptor] + targets + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=epitopes_df.shape[0],
+    targCellType=targ_cell,
+)
+
+metrics = []
+for sample_size in sample_sizes:
+    target_cells = sample_df[sample_df["Cell Type"] == targ_cell]
+    off_target_cells = sample_df[sample_df["Cell Type"] != targ_cell]
+
+    num_target_cells = sample_size // 2
+    num_off_target_cells = sample_size - num_target_cells
+
+    for _ in range(randomizations):
+        sampled_target_cells = target_cells.sample(
+            min(num_target_cells, target_cells.shape[0]), replace=True
+        )
+        sampled_off_target_cells = off_target_cells.sample(
+            min(num_off_target_cells, off_target_cells.shape[0]), replace=True
+        )
+        rand_samples = pd.concat([sampled_target_cells, sampled_off_target_cells])
+
+        target_mask = (rand_samples["Cell Type"] == targ_cell).to_numpy()
+        off_target_mask = ~target_mask
+
+        rec_abundances = rand_samples[targets].to_numpy()
+        time_start_dist = time.time()
+        KL_div_mat, EMD_mat = KL_EMD_2D(
+            rec_abundances, target_mask, off_target_mask, calc_1D=False
+        )
+        time_ellapsed_dist = time.time() - time_start_dist
+        KL_div = KL_div_mat[1, 0]
+        EMD = EMD_mat[1, 0]
+
+        targ_df = rand_samples.loc[target_mask]
+        off_targ_df = rand_samples.loc[off_target_mask]
+        targ_recs = targ_df[[signal_receptor] + targets].to_numpy()
+        off_targ_recs = off_targ_df[[signal_receptor] + targets].to_numpy()
+
+        time_start_mod = time.time()
+        opt_selec, opt_affs = optimize_affs(
+            targRecs=targ_recs,
+            offTargRecs=off_targ_recs,
+            dose=dose,
+            valencies=valencies,
+        )
+        time_ellapsed_mod = time.time() - time_start_mod
+
+        metrics.append(
+            {
+                "sample_size": sample_size,
+                "KL_div": KL_div,
+                "EMD": EMD,
+                "selectivity": 1 / opt_selec,
+                "affinities": opt_affs,
+                "model_time": time_ellapsed_mod,
+                "distance_metric_time": time_ellapsed_dist,
+            }
+        )
+
+metrics_df = pd.DataFrame(metrics)
+
+affinities_df = pd.DataFrame(
+    metrics_df["affinities"].tolist(), columns=["aff1", "aff2", "aff3"]
+)
+affinities_df["sample_size"] = metrics_df["sample_size"]
+
+affinities_melted = affinities_df.melt(
+    id_vars=["sample_size"],
+    value_vars=["aff1", "aff2", "aff3"],
+    var_name="Affinity",
+    value_name="Value",
+)
+```
+
+```{python}
+#| fig-cap: "Bootstrap variation in KL Divergence across sample sizes"
+
+sns.boxplot(x="sample_size", y="KL_div", data=metrics_df)
+plt.xlabel("Sample Size")
+plt.ylabel("KL Divergence")
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Bootstrap variation in EMD across sample sizes"
+
+sns.boxplot(x="sample_size", y="EMD", data=metrics_df)
+plt.xlabel("Sample Size")
+plt.ylabel("EMD")
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Bootstrap variation in selectivity across sample sizes"
+
+sns.boxplot(x="sample_size", y="selectivity", data=metrics_df)
+plt.xlabel("Sample Size")
+plt.ylabel("Selectivity")
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Bootstrap variation in optimal affinities across sample sizes"
+
+sns.boxplot(x="sample_size", y="Value", hue="Affinity", data=affinities_melted)
+plt.xlabel("Sample Size")
+plt.ylabel("Affinity Value")
+plt.legend(title="Affinity")
+plt.show()
+```
+
+```{python}
+avg_times = (
+    metrics_df.groupby("sample_size")[["model_time", "distance_metric_time"]]
+    .mean()
+    .reset_index()
+)
+print(avg_times.to_string(index=False))
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Analyzed various metrics and their variability with sample size. The metrics were calculated for the target cell type **{targ_cell}** using the signal receptor **{signal_receptor}** and target receptors **{target_receptors}** at a dose of **{dose}**. The analyses were performed on **{randomizations}** bootstrapped samplings for each sample size, with a total of **{sample_sizes}** sample sizes.
+"""
+
+print(text)
+```
