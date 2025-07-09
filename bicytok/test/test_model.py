@@ -124,7 +124,7 @@ def test_optimize_affs():
     dose = 0.1
     valencies = np.array([[1, 1, 1]])
 
-    optSelec, optParams = optimize_affs(
+    optSelec, optParams, _ = optimize_affs(
         targRecs=targRecs, offTargRecs=offTargRecs, dose=dose, valencies=valencies
     )
 
@@ -161,7 +161,7 @@ def test_binding_model():
     valencies = np.array([[1, 1, 1]])
     monomerAffs = restructure_affs(affs)
 
-    R_bound = cyt_binding_model(
+    R_bound, _ = cyt_binding_model(
         dose=dose, recCounts=recCounts, valencies=valencies, monomerAffs=monomerAffs
     )
 
