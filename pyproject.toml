@@ -12,7 +12,7 @@ dependencies = [
     "matplotlib>=3.9.2",
     "seaborn>=0.13.2",
     "jax>=0.5.0",
-    "jaxopt>=0.8.3",
+    "optimistix>=0.0.10",
     "pot>=0.9.5",
 ]
 readme = "README.md"
