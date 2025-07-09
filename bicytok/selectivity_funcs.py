@@ -2,6 +2,8 @@
 Functions used in binding and selectivity analysis
 """
 
+import jax
+import jax.numpy as jnp
 import numpy as np
 from scipy.optimize import Bounds, minimize
 
@@ -9,7 +11,7 @@ from .binding_model_funcs import cyt_binding_model
 
 
 # Called in minOffTargSelec and get_cell_bindings
-def restructure_affs(affs: np.ndarray) -> np.ndarray:
+def restructure_affs(affs: jnp.ndarray) -> jnp.ndarray:
     """
     Structures array of receptor affinities to be compatible with the binding model
     Args:
@@ -22,23 +24,25 @@ def restructure_affs(affs: np.ndarray) -> np.ndarray:
     assert affs.size > 0
 
     # Convert affinities to 10th order values
-    exponentialAffs = np.power(10, affs)
+    exponentialAffs = jnp.power(10, affs)
 
     # Set off-diagonals to values that won't affect optimization
-    restructuredAffs = np.full((affs.size, affs.size), 0.0)
-    np.fill_diagonal(restructuredAffs, exponentialAffs)
+    restructuredAffs = jnp.full((affs.size, affs.size), 0.0)
+    restructuredAffs = jnp.fill_diagonal(
+        restructuredAffs, exponentialAffs, inplace=False
+    )
 
     return restructuredAffs
 
 
 # Called in optimizeDesign
 def min_off_targ_selec(
-    monomerAffs: np.ndarray,
-    targRecs: np.ndarray,
-    offTargRecs: np.ndarray,
+    monomerAffs: jnp.ndarray,
+    targRecs: jnp.ndarray,
+    offTargRecs: jnp.ndarray,
     dose: float,
-    valencies: np.ndarray,
-) -> float:
+    valencies: jnp.ndarray,
+):
     """
     Serves as the function which will have its return value
         minimized to get optimal selectivity.
@@ -73,15 +77,20 @@ def min_off_targ_selec(
         dose=dose, recCounts=offTargRecs, valencies=valencies, monomerAffs=modelAffs
     )
 
-    fullRbound = np.concatenate((targRbound, offTargRbound), axis=0)
+    fullRbound = jnp.concatenate((targRbound, offTargRbound), axis=0)
 
     # Calculate mean bound receptors for signal receptor (column 0)
-    targetBoundSignal = np.sum(targRbound[:, 0]) / targRbound.shape[0]
-    fullBoundSignal = np.sum(fullRbound[:, 0]) / fullRbound.shape[0]
+    targetBoundSignal = jnp.sum(targRbound[:, 0]) / targRbound.shape[0]
+    fullBoundSignal = jnp.sum(fullRbound[:, 0]) / fullRbound.shape[0]
 
     return (
         fullBoundSignal / targetBoundSignal
     )  # The loss is the inverse of selectivity, which is minimized
+
+
+# Define the function to minimize, which is the selectivity
+min_off_targ_selec_jax = jax.jit(jax.value_and_grad(min_off_targ_selec))
+min_off_targ_selec_jax_hess = jax.hessian(min_off_targ_selec)
 
 
 def optimize_affs(
@@ -131,7 +140,9 @@ def optimize_affs(
 
     # Run optimization to minimize off-target selectivity by changing affinities
     optimizer = minimize(
-        fun=min_off_targ_selec,
+        fun=min_off_targ_selec_jax,
+        hess=min_off_targ_selec_jax_hess,
+        method="trust-constr",
         x0=initAffs,
         bounds=optBnds,
         args=(
@@ -140,8 +151,8 @@ def optimize_affs(
             dose,
             valencies,
         ),
-        jac="3-point",
-        options={"disp": False},
+        jac=True,
+        options={"disp": False, "xtol": 1e-12, "gtol": 1e-12},
     )
     optSelect = optimizer.fun
     optAffs = optimizer.x

@@ -20,6 +20,9 @@ coverage==7.6.8
     # via pytest-cov
 cycler==0.12.1
     # via matplotlib
+equinox==0.13.0
+    # via lineax
+    # via optimistix
 fonttools==4.54.1
     # via matplotlib
 h5py==3.12.1
@@ -28,16 +31,21 @@ iniconfig==2.0.0
     # via pytest
 jax==0.5.0
     # via bi-cytok
-    # via jaxopt
+    # via equinox
+    # via lineax
+    # via optimistix
 jaxlib==0.5.0
     # via jax
-    # via jaxopt
-jaxopt==0.8.3
-    # via bi-cytok
+jaxtyping==0.3.2
+    # via equinox
+    # via lineax
+    # via optimistix
 joblib==1.4.2
     # via scikit-learn
 kiwisolver==1.4.7
     # via matplotlib
+lineax==0.0.8
+    # via optimistix
 matplotlib==3.9.2
     # via bi-cytok
     # via seaborn
@@ -54,7 +62,6 @@ numpy==2.0.1
     # via h5py
     # via jax
     # via jaxlib
-    # via jaxopt
     # via matplotlib
     # via ml-dtypes
     # via pandas
@@ -64,6 +71,8 @@ numpy==2.0.1
     # via seaborn
 opt-einsum==3.4.0
     # via jax
+optimistix==0.0.10
+    # via bi-cytok
 packaging==24.1
     # via anndata
     # via matplotlib
@@ -95,7 +104,6 @@ scipy==1.14.1
     # via bi-cytok
     # via jax
     # via jaxlib
-    # via jaxopt
     # via pot
     # via scikit-learn
 seaborn==0.13.2
@@ -105,6 +113,12 @@ six==1.16.0
 threadpoolctl==3.5.0
     # via scikit-learn
 typing-extensions==4.12.2
+    # via equinox
+    # via lineax
+    # via optimistix
     # via pyright
 tzdata==2024.2
     # via pandas
+wadler-lindig==0.1.7
+    # via equinox
+    # via jaxtyping
