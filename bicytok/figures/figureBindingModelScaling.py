@@ -46,14 +46,15 @@ def makeFigure():
 
     # Parameters
     targCell = "Treg"
-    sample_size = 100
+    sample_size = 1000
     cell_categorization = "CellType2"
-    model_valencies = np.array([[(2), (2)]])
     dose = 10e-2
     signal_receptor = "CD122"
-    target_receptors = ["CD25", "CD4-1"]
+    receptors_of_interest = [("CD25", 1), ("CD25", 2), ("CD4-1", 1), ("CD4-1", 2)]
     affinity_bounds = (-10, 25)
-    num_conv_factors = 1000
+    num_conv_factors = 20
+    conversion_factors = np.logspace(-1, 6, num=num_conv_factors)
+    # conversion_factors = [21544.346900318866]
 
     CITE_DF = importCITE()
 
@@ -78,22 +79,18 @@ def makeFigure():
             "Cell Type": sampleDF["Cell Type"],
         }
     )
-    for receptor in target_receptors:
+    for receptor_valency in receptors_of_interest:
+        receptor = receptor_valency[0]
         filterDF[receptor] = sampleDF[receptor]
 
-    print(np.mean(filterDF[signal_receptor]))
-
-    receptors_of_interest = [
-        col
-        for col in filterDF.columns
-        if col not in ["Cell Type"] and col != signal_receptor
-    ]
+    # receptors_of_interest = [
+    #     col
+    #     for col in filterDF.columns
+    #     if col not in ["Cell Type"] and col != signal_receptor
+    # ]
 
     on_target_mask = (filterDF["Cell Type"] == targCell).to_numpy()
-    off_target_mask = ~on_target_mask
-
-    # Calculate selectivity for each conversion factor
-    conversion_factors = np.logspace(-2, 8, num=num_conv_factors)
+    off_target_mask = ~on_target_mask    
 
     # Structured data storage
     results = {
@@ -109,13 +106,17 @@ def makeFigure():
         "convergence_issues": [],
     }
 
-    for receptor in receptors_of_interest:
+    for receptor_valency in receptors_of_interest:
         # Initialize per-receptor results
         per_rec_results = {key: [] for key in results}
+
+        receptor = receptor_valency[0]
+        model_valencies = np.array([[(receptor_valency[1]), (receptor_valency[1])]])
 
         for conv_fact in conversion_factors:
             test_DF = filterDF.copy()
             test_DF[receptor] = test_DF[receptor] * conv_fact
+            # test_DF[signal_receptor] = test_DF[signal_receptor] * 332
             rec_mat = test_DF[[signal_receptor, receptor]].to_numpy()
 
             optSelec, optAffs, converged = optimize_affs(
@@ -203,16 +204,18 @@ def makeFigure():
     ]
 
     for plot_idx, config in enumerate(plot_configs):
-        for i, receptor in enumerate(receptors_of_interest):
+        for i, receptor_valency in enumerate(receptors_of_interest):
+            receptor = receptor_valency[0]
+            valency = receptor_valency[1]
             # Plot main data
             ax[plot_idx].plot(
                 conversion_factors,
                 results[config["data_key"]][i],
                 marker="o",
                 ls="-",
-                label=f"{targCell}: {receptor}"
+                label=f"{targCell}: {receptor} (Valency: {valency*2})"
                 if "off_data_key" in config
-                else receptor,
+                else f"{receptor} (Valency: {valency*2})",
                 color=palette[i],
             )
 
@@ -234,7 +237,7 @@ def makeFigure():
         # Configure axes
         ax[plot_idx].axvline(x=10**0, linestyle="--", color="black", alpha=0.5)
         ax[plot_idx].set_xscale("log")
-        if plot_idx in [0, 1, 5]:  # Log scale for binding and loss plots
+        if plot_idx in [0, 1, 2]:  # Log scale for binding and loss plots
             ax[plot_idx].set_yscale("log")
         ax[plot_idx].set_xlabel("Conversion Factor")
         ax[plot_idx].set_ylabel(config["ylabel"])
