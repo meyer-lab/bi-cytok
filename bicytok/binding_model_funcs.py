@@ -14,13 +14,14 @@ def cyt_binding_model(
     recCounts: jnp.ndarray,
     valencies: jnp.ndarray,
     monomerAffs: jnp.ndarray,
+    Kx_star: float = 2.24e-12,
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
     """
     Each system should have the same number of ligands, receptors, and complexes.
     Returns both bound receptors and optimization losses for each cell.
     """
     L0, KxStar, Rtot, Cplx, Ctheta, Ka = reformat_parameters(
-        dose, recCounts, valencies, monomerAffs
+        dose, recCounts, valencies, monomerAffs, Kx_star
     )
 
     Rbound = infer_Rbound_batched_jax(
@@ -97,6 +98,7 @@ def reformat_parameters(
     recCounts: jnp.ndarray,
     valencies: jnp.ndarray,
     monomerAffs: jnp.ndarray,
+    Kx_star: float = 2.24e-12,
 ) -> tuple[
     jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray
 ]:
@@ -115,23 +117,23 @@ def reformat_parameters(
 
     ligand_conc = dose / (valencies[0][0] * 1e9)
     L0 = jnp.full(num_cells, ligand_conc)
-    Kx_star = jnp.full(num_cells, 2.24e-12)
+    Kx_star_array = jnp.full(num_cells, Kx_star)
     Cplx = jnp.full((num_cells, 1, num_receptors), valencies)
     Ctheta = jnp.full((num_cells, 1), 1.0)
     Ka = jnp.full((num_cells, num_receptors, num_receptors), monomerAffs)
 
     assert L0.dtype == jnp.float64
-    assert Kx_star.dtype == jnp.float64
+    assert Kx_star_array.dtype == jnp.float64
     assert recCounts.dtype == jnp.float64
     assert Ka.dtype == jnp.float64
     assert Ctheta.dtype == jnp.float64
     assert L0.ndim == 1
-    assert Kx_star.ndim == 1
+    assert Kx_star_array.ndim == 1
     assert Ka.ndim == 3
-    assert L0.shape[0] == Kx_star.shape[0]
+    assert L0.shape[0] == Kx_star_array.shape[0]
     assert L0.shape[0] == recCounts.shape[0]
     assert Ctheta.shape == (L0.shape[0], Cplx.shape[1])
     assert Cplx.shape == (L0.shape[0], Ctheta.shape[1], Ka.shape[1])
     assert L0.shape[0] == Ka.shape[0]
 
-    return L0, Kx_star, recCounts, Cplx, Ctheta, Ka
+    return L0, Kx_star_array, recCounts, Cplx, Ctheta, Ka

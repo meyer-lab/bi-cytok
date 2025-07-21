@@ -14,6 +14,7 @@ Parameters:
 - signal_receptor: receptor that is the target of the model molecule
 - target_receptors: list of receptors to be tested for selectivity
 - affinity_bounds: optimization bounds for the affinities of the receptors
+- Kx_star_bounds: optimization bounds for Kx_star parameter
 - num_conv_factors: number of conversion factors to test (logspace from 0.01 to 1e8)
 
 Outputs:
@@ -23,7 +24,7 @@ Outputs:
   3. Optimal selectivity vs conversion factor
   4. Optimal target receptor affinity vs conversion factor
   5. Optimal signal receptor affinity vs conversion factor
-  6. Binding model loss vs conversion factor (on-target vs off-target)
+  6. Optimal Kx_star vs conversion factor
 - Red vertical lines indicate conversion factors where optimization failed to converge
 - Black dashed vertical line at conversion factor = 1 (no scaling reference)
 """
@@ -50,10 +51,13 @@ def makeFigure():
     cell_categorization = "CellType2"
     dose = 10e-2
     signal_receptor = "CD122"
-    receptors_of_interest = [("CD25", 1), ("CD25", 2), ("CD4-1", 1), ("CD4-1", 2)]
-    affinity_bounds = (-10, 25)
-    num_conv_factors = 20
-    conversion_factors = np.logspace(-1, 6, num=num_conv_factors)
+    # receptors_of_interest = [("CD25", 1), ("CD25", 2), ("CD4-1", 1), ("CD4-1", 2)]
+    receptors_of_interest = [("CD25", 2), ("CD4-1", 2), ("CD27", 2)]
+    affinity_bounds = (6, 12)
+    Kx_star_bounds = (2.24e-15, 2.24e-3)
+    num_conv_factors = 10
+    conversion_factors = np.logspace(-1, 8, num=num_conv_factors)
+    # conversion_factors = np.logspace(-5, 2, num=num_conv_factors)
     # conversion_factors = [21544.346900318866]
 
     CITE_DF = importCITE()
@@ -101,8 +105,7 @@ def makeFigure():
         "selectivities": [],
         "target_affinities": [],
         "signal_affinities": [],
-        "targ_losses": [],
-        "off_targ_losses": [],
+        "optimal_Kx_stars": [],
         "convergence_issues": [],
     }
 
@@ -116,15 +119,17 @@ def makeFigure():
         for conv_fact in conversion_factors:
             test_DF = filterDF.copy()
             test_DF[receptor] = test_DF[receptor] * conv_fact
+            # effective_dose = 10**conv_fact
             # test_DF[signal_receptor] = test_DF[signal_receptor] * 332
             rec_mat = test_DF[[signal_receptor, receptor]].to_numpy()
 
-            optSelec, optAffs, converged = optimize_affs(
+            optSelec, optAffs, optKxStar, converged = optimize_affs(
                 targRecs=rec_mat[on_target_mask],
                 offTargRecs=rec_mat[off_target_mask],
                 dose=dose,
                 valencies=model_valencies,
                 bounds=affinity_bounds,
+                Kx_star_bounds=Kx_star_bounds,
             )
 
             # Track convergence issues
@@ -134,19 +139,15 @@ def makeFigure():
             per_rec_results["selectivities"].append(1 / optSelec)
             per_rec_results["signal_affinities"].append(optAffs[0])
             per_rec_results["target_affinities"].append(optAffs[1])
+            per_rec_results["optimal_Kx_stars"].append(optKxStar)
 
             Rbound, losses = get_cell_bindings(
                 recCounts=rec_mat,
                 monomerAffs=optAffs,
                 dose=dose,
                 valencies=model_valencies,
+                Kx_star=optKxStar,
             )
-
-            # Calculate mean losses for target and off-target cells
-            targ_losses = losses[on_target_mask]
-            off_targ_losses = losses[off_target_mask]
-            per_rec_results["targ_losses"].append(np.max(targ_losses))
-            per_rec_results["off_targ_losses"].append(np.max(off_targ_losses))
 
             targ_bound = Rbound[on_target_mask]
             off_targ_bound = Rbound[off_target_mask]
@@ -196,10 +197,9 @@ def makeFigure():
             "title": f"Signal Receptor ({signal_receptor}) Affinity vs Scaling Factor",
         },
         {
-            "data_key": "targ_losses",
-            "off_data_key": "off_targ_losses",
-            "ylabel": "Mean Binding Model Loss",
-            "title": "Binding Model Loss vs Conversion Factor",
+            "data_key": "optimal_Kx_stars",
+            "ylabel": "Optimal Kx_star",
+            "title": "Optimal Kx_star vs Conversion Factor",
         },
     ]
 
@@ -237,7 +237,7 @@ def makeFigure():
         # Configure axes
         ax[plot_idx].axvline(x=10**0, linestyle="--", color="black", alpha=0.5)
         ax[plot_idx].set_xscale("log")
-        if plot_idx in [0, 1, 2]:  # Log scale for binding and loss plots
+        if plot_idx in [0, 1, 2, 5]:  # Log scale for binding, selectivity, and Kx_star plots
             ax[plot_idx].set_yscale("log")
         ax[plot_idx].set_xlabel("Conversion Factor")
         ax[plot_idx].set_ylabel(config["ylabel"])
