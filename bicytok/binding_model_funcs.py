@@ -2,31 +2,19 @@
 Implementation of a simple multivalent binding model.
 """
 
-import numpy as np
-from scipy.optimize import least_squares
+import jax
+import jax.numpy as jnp
+import optimistix as opt
 
-
-def _Rbound_from_Rbound(
-    Rbound: np.ndarray,
-    Cplxsum: np.ndarray,
-    L0_Ctheta_KxStar: float,
-    Ka_KxStar: np.ndarray,
-    Rtot: np.ndarray,
-) -> np.ndarray:
-    Req = Rtot - Rbound
-    Psi = Req * Ka_KxStar
-    Psirs = Psi.sum(axis=1) + 1
-    Psinorm = Psi / Psirs[:, None]
-    Rbound = L0_Ctheta_KxStar * np.prod(Psirs**Cplxsum) * np.dot(Cplxsum, Psinorm)
-    return Rtot - Rbound - Req
+jax.config.update("jax_enable_x64", True)
 
 
 def cyt_binding_model(
     dose: float,
-    recCounts: np.ndarray,
-    valencies: np.ndarray,
-    monomerAffs: np.ndarray,
-) -> np.ndarray:
+    recCounts: jnp.ndarray,
+    valencies: jnp.ndarray,
+    monomerAffs: jnp.ndarray,
+) -> jnp.ndarray:
     """
     Calculate the amount of receptor bound to ligand at a given dose,
     considering receptor counts, valencies, and monomer affinities.
@@ -52,6 +40,90 @@ def cyt_binding_model(
             representing the amount of each receptor bound to the ligand
             in each system.
     """
+    L0, KxStar, Rtot, Cplx, Ctheta, Ka = reformat_parameters(
+        dose, recCounts, valencies, monomerAffs
+    )
+
+    Rbound = infer_Rbound_batched_jax(
+        L0,
+        KxStar,
+        Rtot,
+        Cplx,
+        Ctheta,
+        Ka,
+    )
+
+    return Rbound
+
+
+@jax.jit
+def infer_Rbound_batched_jax(
+    L0: jnp.ndarray,  # n_samples
+    KxStar: jnp.ndarray,  # n_samples
+    Rtot: jnp.ndarray,  # n_samples x n_R
+    Cplx: jnp.ndarray,  # n_samples x n_cplx x n_L
+    Ctheta: jnp.ndarray,  # n_samples x n_cplx
+    Ka: jnp.ndarray,  # n_samples x n_L x n_R
+) -> jnp.ndarray:
+    def process_sample(i):
+        return infer_Req(Rtot[i], L0[i], KxStar[i], Cplx[i], Ctheta[i], Ka[i])
+
+    Req = jax.vmap(process_sample)(jnp.arange(Ka.shape[0]))
+    return Rtot - Req
+
+
+def infer_Req(
+    Rtot: jnp.ndarray,
+    L0: jnp.ndarray,
+    KxStar: jnp.ndarray,
+    Cplx: jnp.ndarray,
+    Ctheta: jnp.ndarray,
+    Ka: jnp.ndarray,
+) -> jnp.ndarray:
+    L0_Ctheta_KxStar = L0 * jnp.sum(Ctheta) / KxStar
+    Ka_KxStar = Ka * KxStar
+    Cplxsum = Cplx.sum(axis=0)
+
+    def residual_log(log_Req: jnp.ndarray, _args) -> jnp.ndarray:
+        Req = jnp.exp(log_Req)
+        Rbound = infer_Rbound_from_Req(Req, Cplxsum, L0_Ctheta_KxStar, Ka_KxStar)
+        return jnp.log(Rtot) - jnp.log(Req + Rbound)
+
+    solver = opt.LevenbergMarquardt(rtol=1e-9, atol=1e-9)
+    solution = opt.least_squares(
+        residual_log,
+        solver,
+        y0=jnp.log(Rtot / 100.0),
+        throw=False,
+    )
+
+    Req_opt = jnp.exp(solution.value)
+    return Req_opt
+
+
+def infer_Rbound_from_Req(
+    Req: jnp.ndarray,
+    Cplxsum: jnp.ndarray,
+    L0_Ctheta_KxStar: jnp.ndarray,
+    Ka_KxStar: jnp.ndarray,
+) -> jnp.ndarray:
+    Psi = Req * Ka_KxStar
+    Psirs = Psi.sum(axis=1) + 1
+    Psinorm = Psi / Psirs[:, None]
+    return L0_Ctheta_KxStar * jnp.prod(Psirs**Cplxsum) * jnp.dot(Cplxsum, Psinorm)
+
+
+def reformat_parameters(
+    dose: float,
+    recCounts: jnp.ndarray,
+    valencies: jnp.ndarray,
+    monomerAffs: jnp.ndarray,
+    Kx_star: float = 2.24e-12,
+) -> tuple[
+    jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray
+]:
+    """Reformats parameters to be compatible with the batched binding model."""
+
     assert recCounts.ndim == 2
     assert monomerAffs.ndim == 2
     assert valencies.ndim == 2
@@ -60,26 +132,28 @@ def cyt_binding_model(
     assert recCounts.shape[1] == monomerAffs.shape[1]
     assert valencies.shape[0] == 1
 
-    L0 = dose / (valencies[0][0] * 1e9)
-    KxStar = 2.24e-12
-    L0_Ctheta_KxStar = float(L0 / KxStar)
-    Ka_KxStar = monomerAffs * KxStar
-    Rtot = recCounts
-    Cplxsum = valencies.sum(axis=0)
+    num_cells = recCounts.shape[0]
+    num_receptors = recCounts.shape[1]
 
-    Rbound = np.full_like(Rtot, 0.0)
+    ligand_conc = dose / (valencies[0][0] * 1e9)
+    L0 = jnp.full(num_cells, ligand_conc)
+    Kx_star_array = jnp.full(num_cells, 2.24e-12)
+    Cplx = jnp.full((num_cells, 1, num_receptors), valencies)
+    Ctheta = jnp.full((num_cells, 1), 1.0)
+    Ka = jnp.full((num_cells, num_receptors, num_receptors), monomerAffs)
 
-    for i in range(recCounts.shape[0]):
-        opt = least_squares(
-            _Rbound_from_Rbound,
-            x0=Rtot[i] / 2.0,
-            xtol=1e-12,
-            gtol=1e-12,
-            jac="cs",
-            args=(Cplxsum, L0_Ctheta_KxStar, Ka_KxStar, Rtot[i]),
-        )
-        assert opt.cost < 1.0e-6
-        assert opt.success
-        Rbound[i] = opt.x
+    assert L0.dtype == jnp.float64
+    assert Kx_star_array.dtype == jnp.float64
+    assert recCounts.dtype == jnp.float64
+    assert Ka.dtype == jnp.float64
+    assert Ctheta.dtype == jnp.float64
+    assert L0.ndim == 1
+    assert Kx_star_array.ndim == 1
+    assert Ka.ndim == 3
+    assert L0.shape[0] == Kx_star_array.shape[0]
+    assert L0.shape[0] == recCounts.shape[0]
+    assert Ctheta.shape == (L0.shape[0], Cplx.shape[1])
+    assert Cplx.shape == (L0.shape[0], Ctheta.shape[1], Ka.shape[1])
+    assert L0.shape[0] == Ka.shape[0]
 
-    return Rbound
+    return L0, Kx_star_array, recCounts, Cplx, Ctheta, Ka
