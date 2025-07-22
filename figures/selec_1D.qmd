@@ -10,7 +10,7 @@ Generates a  bar plot ranking individual receptors by their optimal selectivity 
 - Selectivity optimization functions (`optimize_affs`)
 
 # Parameters
-- `receptors`: List of strings naming individunial receptors for selectivity analysis
+- `receptors`: List of strings naming individual receptors for selectivity analysis
 - `cell_type`: String identifier for target cell type in selectivity optimization
 - `dose`: Float concentration of ligand complex in binding model
 - `cell_categorization`: String column name for cell type classification in CITE-seq data
