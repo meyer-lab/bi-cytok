@@ -67,7 +67,6 @@ sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,
     numCells=sample_size,
     targCellType=targ_cell,
-    convert=False,
 )
 
 filter_df = pd.DataFrame(
