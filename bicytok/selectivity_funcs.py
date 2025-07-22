@@ -37,7 +37,7 @@ def restructure_affs(affs: jnp.ndarray) -> jnp.ndarray:
 
 # Called in optimizeDesign
 def min_off_targ_selec(
-    monomerAffs: jnp.ndarray,
+    params: jnp.ndarray,
     targRecs: jnp.ndarray,
     offTargRecs: np.ndarray,
     dose: float,
@@ -52,7 +52,7 @@ def min_off_targ_selec(
         the receptor abundance arrays.
     Args:
         monomerAffs: monomer ligand-receptor affinities
-            Modulated in optimization
+        params: combined array of [monomer affinities, log10(Kx_star)]
         targRecs: receptor counts of target cell type
         offTargRecs: receptors count of off-target cell types
         dose: ligand concentration/dose that is being modeled
@@ -66,16 +66,19 @@ def min_off_targ_selec(
 
     assert targRecs.shape[1] == offTargRecs.shape[1]
 
+    monomerAffs = params[:-1]
+    Kx_star = jnp.power(10, params[-1])
+
     # Reformat input affinities
     modelAffs = restructure_affs(monomerAffs)
 
     # Use the binding model to calculate bound receptors
     #   for target and off-target cell types
     targRbound = cyt_binding_model(
-        dose=dose, recCounts=targRecs, valencies=valencies, monomerAffs=modelAffs
+        dose=dose, recCounts=targRecs, valencies=valencies, monomerAffs=modelAffs, Kx_star=Kx_star
     )
     offTargRbound = cyt_binding_model(
-        dose=dose, recCounts=offTargRecs, valencies=valencies, monomerAffs=modelAffs
+        dose=dose, recCounts=offTargRecs, valencies=valencies, monomerAffs=modelAffs, Kx_star=Kx_star
     )
 
     # Calculate total bound receptors for target and off-target
@@ -97,11 +100,13 @@ def optimize_affs(
     offTargRecs: np.ndarray,
     dose: float,
     valencies: np.ndarray,
-    bounds: tuple[float, float] = (7.0, 9.0),
+    affinity_bounds: tuple[float, float] = (7.0, 9.0),
+    Kx_star_bounds: tuple[float, float] = (2.24e-13, 2.24e-11)
 ) -> tuple[float, list]:
     """
     An optimizer that maximizes the selectivity for a target cell type
-        by varying the affinities of each receptor-ligand pair.
+        by varying the affinities of each receptor-ligand pair and the 
+        cross-linking constant Kx_star.
     Args:
         targRecs: receptor counts of each receptor (columns) on
             different cells (rows) of a target cell type. The
@@ -115,34 +120,39 @@ def optimize_affs(
             Only set up for single complex modeling. Valencies
             must be a nested array, such as [[1, 1]] for a bivalent
             complex with two different ligands.
-        bounds: minimum and maximum optimization bounds for affinity values
+        affinity_bounds: minimum and maximum optimization bounds for affinity values
+        Kx_star_bounds: minimum and maximum optimization bounds for Kx_star
     Return:
         optSelec: optimized selectivity value
         optAffs: optimized affinity values that yield the optimized selectivity
+        optKx_star: optimized Kx_star value
     """
 
     assert targRecs.size > 0
     assert offTargRecs.size > 0
 
-    # Choose initial affinities and set bounds for optimization
-    # minAffs and maxAffs chosen based on biologically realistic affinities
-    #   for engineered ligands
-    minAffs = [bounds[0]] * (targRecs.shape[1])
-    maxAffs = [bounds[1]] * (targRecs.shape[1])
+    minAffs = [affinity_bounds[0]] * (targRecs.shape[1])
+    maxAffs = [affinity_bounds[1]] * (targRecs.shape[1])
 
     # Start at midpoint between min and max bounds
     initAffs = np.full_like(valencies[0], minAffs[0] + (maxAffs[0] - minAffs[0]) / 2)
-    optBnds = Bounds(np.full_like(initAffs, minAffs), np.full_like(initAffs, maxAffs))
+    initKx_star = np.log10(Kx_star_bounds[0] + (Kx_star_bounds[1] - Kx_star_bounds[0]) / 2)
+    initParams = np.concatenate((initAffs, [initKx_star]))
+
+    # Set bounds for optimization
+    minBounds = np.concatenate([minAffs, [np.log10(Kx_star_bounds[0])]])
+    maxBounds = np.concatenate([maxAffs, [np.log10(Kx_star_bounds[1])]])
+    optBnds = Bounds(minBounds, maxBounds)
 
     targRecs[targRecs == 0] = 1e-9
     offTargRecs[offTargRecs == 0] = 1e-9
 
-    # Run optimization to minimize off-target selectivity by changing affinities
+    # Run optimization to minimize off-target selectivity by changing affinities and Kx_star
     optimizer = minimize(
         fun=min_off_targ_selec_jax,
         hess=min_off_targ_selec_jax_hess,
         method="trust-constr",
-        x0=initAffs,
+        x0=initParams,
         bounds=optBnds,
         args=(
             targRecs,
@@ -154,13 +164,14 @@ def optimize_affs(
         options={"disp": False, "xtol": 1e-12, "gtol": 1e-12},
     )
     optSelect = optimizer.fun
-    optAffs = optimizer.x
+    optAffs = optimizer.x[:-1]
+    optKx_star = np.power(10, optimizer.x[-1])
 
-    return optSelect, optAffs
+    return optSelect, optAffs, optKx_star
 
 
 def get_cell_bindings(
-    recCounts: np.ndarray, monomerAffs: np.ndarray, dose: float, valencies: np.ndarray
+    recCounts: np.ndarray, monomerAffs: np.ndarray, dose: float, valencies: np.ndarray, Kx_star: float = 2.24e-12
 ) -> np.ndarray:
     """
     Returns amount of receptor bound to each cell
@@ -169,6 +180,7 @@ def get_cell_bindings(
         monomerAffs: monomer ligand-receptor affinities
         dose: ligand concentration/dose that is being modeled
         valencies: array of valencies of each ligand epitope
+        Kx_star: cross-linking constant for the binding model
     Return:
         Rbound: number of bound receptors for each cell
     """
@@ -178,7 +190,7 @@ def get_cell_bindings(
 
     # Use the binding model to calculate bound receptors for each cell
     Rbound = cyt_binding_model(
-        dose=dose, recCounts=recCounts, valencies=valencies, monomerAffs=modelAffs
+        dose=dose, recCounts=recCounts, valencies=valencies, monomerAffs=modelAffs, Kx_star=Kx_star
     )
 
     return Rbound

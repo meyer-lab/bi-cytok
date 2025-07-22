@@ -14,6 +14,7 @@ def cyt_binding_model(
     recCounts: jnp.ndarray,
     valencies: jnp.ndarray,
     monomerAffs: jnp.ndarray,
+    Kx_star: float = 2.24e-12,
 ) -> jnp.ndarray:
     """
     Calculate the amount of receptor bound to ligand at a given dose,
@@ -34,6 +35,8 @@ def cyt_binding_model(
         monomerAffs (np.ndarray): A 2D array representing the affinity
             of each monomer for each receptor. Rows correspond to complexes,
             columns correspond to receptors.
+        Kx_star (float, optional): A float representing the cross-linking
+            constant which describes all secondary binding events.
 
     Returns:
         np.ndarray: A 2D array with the same shape as recCounts,
@@ -41,7 +44,7 @@ def cyt_binding_model(
             in each system.
     """
     L0, KxStar, Rtot, Cplx, Ctheta, Ka = reformat_parameters(
-        dose, recCounts, valencies, monomerAffs
+        dose, recCounts, valencies, monomerAffs, Kx_star
     )
 
     Rbound = infer_Rbound_batched_jax(
@@ -137,7 +140,7 @@ def reformat_parameters(
 
     ligand_conc = dose / (valencies[0][0] * 1e9)
     L0 = jnp.full(num_cells, ligand_conc)
-    Kx_star_array = jnp.full(num_cells, 2.24e-12)
+    Kx_star_array = jnp.full(num_cells, Kx_star)
     Cplx = jnp.full((num_cells, 1, num_receptors), valencies)
     Ctheta = jnp.full((num_cells, 1), 1.0)
     Ka = jnp.full((num_cells, num_receptors, num_receptors), monomerAffs)
