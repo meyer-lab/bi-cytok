@@ -71,7 +71,7 @@ for i, j in zip(row, col, strict=False):
     targ_abun = receptor_abuns[targ_mask]
     off_targ_abun = receptor_abuns[off_targ_mask]
 
-    opt_selec, _ = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
+    opt_selec, _, _ = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
     selectivities[i, j] = 1 / opt_selec
 
 i_upper, j_upper = np.triu_indices(len(receptors), k=1)

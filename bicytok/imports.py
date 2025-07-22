@@ -3,7 +3,6 @@
 from pathlib import Path
 from zipfile import ZipFile
 
-import numpy as np
 import pandas as pd
 
 path_here = Path(__file__).parent.parent
@@ -114,55 +113,6 @@ def importRNACITE():
     return RNAsurfDF
 
 
-# Sam: reimplement this function when we have a clearer idea
-#   of how to calculate conversion factors
-def calc_conv_facts() -> tuple[dict, float]:
-    """
-    Returns conversion factors by marker for converting CITEseq signal into abundance
-    """
-
-    # cellTypes = [
-    #     "CD4 TCM",
-    #     "CD8 Naive",
-    #     "NK",
-    #     "CD8 TEM",
-    #     "CD4 Naive",
-    #     "CD4 CTL",
-    #     "CD8 TCM",
-    #     "Treg",
-    #     "CD4 TEM",
-    # ]
-    # markers = ["CD122", "CD127", "CD25"]
-    # markDict = {
-    #     "CD25": "IL2Ra",
-    #     "CD122": "IL2Rb",
-    #     "CD127": "IL7Ra",
-    #     "CD132": "gc"
-    # }
-    # cellDict = {
-    #     "CD4 Naive": "Thelper",
-    #     "CD4 CTL": "Thelper",
-    #     "CD4 TCM": "Thelper",
-    #     "CD4 TEM": "Thelper",
-    #     "NK": "NK",
-    #     "CD8 Naive": "CD8",
-    #     "CD8 TCM": "CD8",
-    #     "CD8 TEM": "CD8",
-    #     "Treg": "Treg",
-    # }
-
-    # Sam: calculation of these conversion factors was unclear, should be revised
-    origConvFactDict = {
-        "CD25": 77.136987,
-        "CD122": 332.680090,
-        "CD127": 594.379215,
-    }
-    convFactDict = origConvFactDict.copy()
-    defaultConvFact = np.mean(list(origConvFactDict.values()))
-
-    return convFactDict, defaultConvFact
-
-
 def sample_receptor_abundances(
     CITE_DF: pd.DataFrame,
     numCells: int,
@@ -170,7 +120,6 @@ def sample_receptor_abundances(
     offTargCellTypes: list[str] = None,
     rand_state: int = 42,
     balance: bool = False,
-    convert: bool = True,
 ) -> pd.DataFrame:
     """
     Samples a subset of cells and converts unprocessed CITE-seq receptor values
@@ -188,8 +137,6 @@ def sample_receptor_abundances(
         rand_state: random seed for reproducibility
         balance: if True, forces sampling of an equal number of target and off-target
             cells
-        convert: if True, converts CITE-seq signal into abundance values
-            using conversion factors
     Return:
         sampleDF: dataframe containing single cell abundances of
             receptors (column) for each individual cell (row).
@@ -224,15 +171,6 @@ def sample_receptor_abundances(
     )
 
     sampleDF = pd.concat([sampled_target_cells, sampled_off_target_cells])
-
-    # Calculate conversion factors for each epitope
-    convFactDict, defaultConvFact = calc_conv_facts()
-
-    # Multiply the receptor counts of epitope by the conversion factor for that epitope
-    if convert:
-        epitopes = CITE_DF.columns[CITE_DF.columns != "Cell Type"]
-        convFacts = [convFactDict.get(epitope, defaultConvFact) for epitope in epitopes]
-        sampleDF[epitopes] = sampleDF[epitopes] * convFacts
 
     return sampleDF
 

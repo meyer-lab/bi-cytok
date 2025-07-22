@@ -82,7 +82,7 @@ for target_pairs in all_targets:
     off_targ_recs = df_off_targ_cell[[signal[0]] + targets]
 
     for dose in dose_vec:
-        opt_selec, opt_params = optimize_affs(
+        opt_selec, opt_params, _ = optimize_affs(
             targRecs=targ_recs.to_numpy(),
             offTargRecs=off_targ_recs.to_numpy(),
             dose=dose,

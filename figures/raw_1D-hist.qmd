@@ -71,7 +71,6 @@ sample_df = sample_receptor_abundances(
     targCellType=targ_cell,
     balance=True,
     rand_state=42,
-    convert=True
 )
 targ_mask = (sample_df["Cell Type"] == targ_cell).to_numpy()
 off_targ_mask = ~targ_mask
@@ -87,7 +86,6 @@ sample_df = sample_receptor_abundances(
     targCellType=targ_cell,
     balance=False,
     rand_state=42,
-    convert=False,
 )
 targ_mask = (sample_df["Cell Type"] == targ_cell).to_numpy()
 sample_df.loc[sample_df["Cell Type"] != targ_cell, "Cell Type"] = "other"

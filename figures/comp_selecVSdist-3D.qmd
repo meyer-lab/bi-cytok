@@ -106,7 +106,7 @@ for receptor_pair in receptor_pairs:
 
     targ_recs = df_targ_cell[[signal_receptor] + receptor_pair].to_numpy()
     off_targ_recs = df_off_targ_cell[[signal_receptor] + receptor_pair].to_numpy()
-    opt_selec, _ = optimize_affs(
+    opt_selec, _, _ = optimize_affs(
         targRecs=targ_recs,
         offTargRecs=off_targ_recs,
         dose=dose,

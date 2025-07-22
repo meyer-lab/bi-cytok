@@ -124,14 +124,16 @@ def test_optimize_affs():
     dose = 0.1
     valencies = np.array([[1, 1, 1]])
 
-    optSelec, optParams = optimize_affs(
+    optSelec, optAffs, optKx_star = optimize_affs(
         targRecs=targRecs, offTargRecs=offTargRecs, dose=dose, valencies=valencies
     )
 
     assert isinstance(optSelec, float)
     assert optSelec >= 0
-    assert optParams.shape == valencies[0].shape
-    assert all(optParams >= 0)
+    assert optAffs.shape == valencies[0].shape
+    assert all(optAffs >= 0)
+    assert isinstance(optKx_star, float)
+    assert optKx_star > 0
 
 
 def test_binding_model():
@@ -161,9 +163,14 @@ def test_binding_model():
     recCounts = np.abs(rng.normal(rec_mean, rec_std, (num_cells, num_receptors)))
     valencies = np.array([[1, 1, 1]])
     monomerAffs = restructure_affs(affs)
+    Kx_star = 2.24e-12
 
     R_bound = cyt_binding_model(
-        dose=dose, recCounts=recCounts, valencies=valencies, monomerAffs=monomerAffs
+        dose=dose,
+        recCounts=recCounts,
+        valencies=valencies,
+        monomerAffs=monomerAffs,
+        Kx_star=Kx_star,
     )
 
     assert R_bound.shape == recCounts.shape
@@ -196,6 +203,7 @@ def test_invalid_model_function_inputs():
             recCounts=rng.uniform(size=(100, 3, 3)),
             valencies=valencies,
             monomerAffs=modelAffs,
+            Kx_star=2.24e-12,
         )  # 3D receptor counts
 
     with pytest.raises(AssertionError):
@@ -204,6 +212,7 @@ def test_invalid_model_function_inputs():
             recCounts=recCounts2D,
             valencies=np.array([[1, 1, 1, 1]]),
             monomerAffs=modelAffs,
+            Kx_star=2.24e-12,
         )  # wrong number of valencies
 
     with pytest.raises(AssertionError):
@@ -212,6 +221,7 @@ def test_invalid_model_function_inputs():
             recCounts=recCounts2D,
             valencies=valencies,
             monomerAffs=restructure_affs(np.array([8.0, 8.0, 8.0, 8.0])),
+            Kx_star=2.24e-12,
         )  # wrong number of complexes
 
     with pytest.raises(AssertionError):
@@ -220,6 +230,7 @@ def test_invalid_model_function_inputs():
             recCounts=recCounts1D,
             valencies=np.array([[1, 1]]),
             monomerAffs=restructure_affs(np.array([8.0, 8.0])),
+            Kx_star=2.24e-12,
         )  # 1D mismatched number of receptors
 
     with pytest.raises(AssertionError):
@@ -228,12 +239,14 @@ def test_invalid_model_function_inputs():
             recCounts=recCounts2D,
             valencies=np.array([[1, 1]]),
             monomerAffs=restructure_affs(np.array([8.0, 8.0])),
+            Kx_star=2.24e-12,
         )  # 2D mismatched number of receptors
 
     # Test invalid inputs for minOffTargSelec
     with pytest.raises(AssertionError):
+        params = np.concatenate([monomerAffs, [np.log10(2.24e-12)]])
         min_off_targ_selec(
-            monomerAffs=modelAffs,
+            params=params,
             targRecs=recCounts2D,
             offTargRecs=rng.uniform(size=(100, 4)),
             dose=dose,
