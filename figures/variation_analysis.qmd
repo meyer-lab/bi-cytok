@@ -95,7 +95,7 @@ for sample_size in sample_sizes:
         off_targ_recs = off_targ_df[[signal_receptor] + targets].to_numpy()
 
         time_start_mod = time.time()
-        opt_selec, opt_affs = optimize_affs(
+        opt_selec, opt_affs, _ = optimize_affs(
             targRecs=targ_recs,
             offTargRecs=off_targ_recs,
             dose=dose,

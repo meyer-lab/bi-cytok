@@ -10,7 +10,7 @@ Generates a  bar plot ranking individual receptors by their optimal selectivity 
 - Selectivity optimization functions (`optimize_affs`)
 
 # Parameters
-- `receptors`: List of strings naming individual receptors for selectivity analysis
+- `receptors`: List of strings naming individunial receptors for selectivity analysis
 - `cell_type`: String identifier for target cell type in selectivity optimization
 - `dose`: Float concentration of ligand complex in binding model
 - `cell_categorization`: String column name for cell type classification in CITE-seq data
@@ -56,7 +56,7 @@ for receptor in receptors:
     targ_abun = receptor_abun[targ_mask]
     off_targ_abun = receptor_abun[off_targ_mask]
 
-    opt_selec, _ = optimize_affs(
+    opt_selec, _, _ = optimize_affs(
         targ_abun, off_targ_abun, dose, valencies=np.array([[1]])
     )
     selectivities.append(1 / opt_selec)
@@ -74,7 +74,7 @@ plt.barh(
 )
 
 plt.xlabel("Selectivity")
-ply.ylabel("Epitope")
+plt.ylabel("Epitope")
 plt.gca().invert_yaxis()
 plt.show()
 ```
