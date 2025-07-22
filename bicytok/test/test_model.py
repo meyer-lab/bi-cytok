@@ -166,7 +166,11 @@ def test_binding_model():
     Kx_star = 2.24e-12
 
     R_bound = cyt_binding_model(
-        dose=dose, recCounts=recCounts, valencies=valencies, monomerAffs=monomerAffs, Kx_star=Kx_star
+        dose=dose,
+        recCounts=recCounts,
+        valencies=valencies,
+        monomerAffs=monomerAffs,
+        Kx_star=Kx_star,
     )
 
     assert R_bound.shape == recCounts.shape
