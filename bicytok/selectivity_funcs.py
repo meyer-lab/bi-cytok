@@ -141,10 +141,11 @@ def optimize_affs(
     minAffs = [affinity_bounds[0]] * (targRecs.shape[1])
     maxAffs = [affinity_bounds[1]] * (targRecs.shape[1])
 
-    # Start at midpoint between min and max bounds
-    initAffs = np.full_like(valencies[0], minAffs[0] + (maxAffs[0] - minAffs[0]) / 2)
-    initKx_star = np.log10(
-        Kx_star_bounds[0] + (Kx_star_bounds[1] - Kx_star_bounds[0]) / 2
+    # Start optimization at random values between min and max bounds
+    rng = np.random.default_rng()
+    initAffs = rng.uniform(low=minAffs, high=maxAffs, size=len(minAffs))
+    initKx_star = rng.uniform(
+        low=np.log10(Kx_star_bounds[0]), high=np.log10(Kx_star_bounds[1])
     )
     initParams = np.concatenate((initAffs, [initKx_star]))
 
@@ -177,7 +178,7 @@ def optimize_affs(
     optKx_star = np.power(10, optimizer.x[-1])
     convergence = optimizer.success
 
-    if not convergence or optSelect < 0 or optSelect > 1:
+    if not convergence or (1 / optSelect) < 0 or (1 / optSelect) > 1:
         print(
             f"Optimization warning: {optimizer.message}, "
             f"Selectivity: {optSelect:.3f}, affinity values: {optAffs}, "
