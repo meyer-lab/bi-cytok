@@ -49,12 +49,12 @@ ipython==9.2.0
     # via ipykernel
 ipython-pygments-lexers==1.1.1
     # via ipython
-jax==0.5.0
+jax==0.6.2
     # via bi-cytok
     # via equinox
     # via lineax
     # via optimistix
-jaxlib==0.5.0
+jaxlib==0.6.2
     # via jax
 jaxtyping==0.3.2
     # via equinox

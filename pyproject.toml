@@ -11,7 +11,7 @@ dependencies = [
     "anndata>=0.10.9",
     "matplotlib>=3.10",
     "seaborn>=0.13",
-    "jax>=0.5.0",
+    "jax>=0.6",
     "optimistix>=0.0.10",
     "pot>=0.9.5",
 ]
