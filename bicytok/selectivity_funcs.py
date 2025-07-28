@@ -153,7 +153,7 @@ def optimize_affs(
     # Set bounds for optimization
     minBounds = np.concatenate([minAffs, [np.log10(Kx_star_bounds[0])]])
     maxBounds = np.concatenate([maxAffs, [np.log10(Kx_star_bounds[1])]])
-    optBnds = Bounds(minBounds, maxBounds) # type: ignore
+    optBnds = Bounds(minBounds, maxBounds)  # type: ignore
 
     targRecs[targRecs == 0] = 1e-9
     offTargRecs[offTargRecs == 0] = 1e-9
