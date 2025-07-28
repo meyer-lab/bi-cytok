@@ -56,7 +56,7 @@ for receptor in receptors:
     targ_abun = receptor_abun[targ_mask]
     off_targ_abun = receptor_abun[off_targ_mask]
 
-    opt_selec, _ = optimize_affs(
+    opt_selec, _, _ = optimize_affs(
         targ_abun, off_targ_abun, dose, valencies=np.array([[1]])
     )
     selectivities.append(1 / opt_selec)
@@ -74,7 +74,7 @@ plt.barh(
 )
 
 plt.xlabel("Selectivity")
-ply.ylabel("Epitope")
+plt.ylabel("Epitope")
 plt.gca().invert_yaxis()
 plt.show()
 ```

@@ -10,30 +10,68 @@
 #   universal: false
 
 -e file:.
+anndata==0.10.9
+    # via bi-cytok
+array-api-compat==1.9
+    # via anndata
 contourpy==1.3.0
     # via matplotlib
 cycler==0.12.1
     # via matplotlib
+equinox==0.13.0
+    # via lineax
+    # via optimistix
 fonttools==4.54.1
     # via matplotlib
+h5py==3.12.1
+    # via anndata
+jax==0.6.2
+    # via bi-cytok
+    # via equinox
+    # via lineax
+    # via optimistix
+jaxlib==0.6.2
+    # via jax
+jaxtyping==0.3.2
+    # via equinox
+    # via lineax
+    # via optimistix
 joblib==1.4.2
     # via scikit-learn
 kiwisolver==1.4.7
     # via matplotlib
+lineax==0.0.8
+    # via optimistix
 matplotlib==3.10.3
     # via bi-cytok
     # via seaborn
+ml-dtypes==0.5.1
+    # via jax
+    # via jaxlib
+natsort==8.4.0
+    # via anndata
 numpy==2.0.1
+    # via anndata
     # via contourpy
+    # via h5py
+    # via jax
+    # via jaxlib
     # via matplotlib
+    # via ml-dtypes
     # via pandas
     # via pot
     # via scikit-learn
     # via scipy
     # via seaborn
+opt-einsum==3.4.0
+    # via jax
+optimistix==0.0.10
+    # via bi-cytok
 packaging==24.1
+    # via anndata
     # via matplotlib
 pandas==2.2.3
+    # via anndata
     # via seaborn
 pillow==10.4.0
     # via matplotlib
@@ -49,7 +87,10 @@ pytz==2024.2
 scikit-learn==1.6.1
     # via bi-cytok
 scipy==1.15.3
+    # via anndata
     # via bi-cytok
+    # via jax
+    # via jaxlib
     # via pot
     # via scikit-learn
 seaborn==0.13.2
@@ -58,5 +99,12 @@ six==1.16.0
     # via python-dateutil
 threadpoolctl==3.5.0
     # via scikit-learn
+typing-extensions==4.14.1
+    # via equinox
+    # via lineax
+    # via optimistix
 tzdata==2024.2
     # via pandas
+wadler-lindig==0.1.7
+    # via equinox
+    # via jaxtyping
