@@ -5,8 +5,8 @@ Functions used in binding and selectivity analysis
 import jax
 import jax.numpy as jnp
 import numpy as np
+from jaxtyping import Array, Float64, Scalar
 from scipy.optimize import Bounds, minimize
-from jaxtyping import Scalar, Float64, Array
 
 from .binding_model_funcs import cyt_binding_model
 
