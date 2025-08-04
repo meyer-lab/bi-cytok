@@ -49,8 +49,10 @@ def cyt_binding_model(
 
     infer_Req_vmap = jax.vmap(infer_Req, in_axes=(0, None, None, None, None))
 
+    ligand_conc = dose * 1e-9
+
     recCounts = jnp.array(recCounts)
-    Req = infer_Req_vmap(recCounts, dose, Kx_star, valencies, monomerAffs)
+    Req = infer_Req_vmap(recCounts, ligand_conc, Kx_star, valencies, monomerAffs)
 
     return recCounts - Req
 
