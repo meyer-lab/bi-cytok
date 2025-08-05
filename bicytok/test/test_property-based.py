@@ -64,7 +64,6 @@ def model_parameters(draw):
 @st.composite
 def scaling_factors_near_one(draw):
     """Generate scaling factors close to 1.0 for instability testing."""
-    # Focus on values near 1.0 where instability is most likely
     base_range = st.floats(
         min_value=0.5, max_value=2.0, allow_nan=False, allow_infinity=False
     )
@@ -79,7 +78,7 @@ class TestModelInstability:
         off_targ_recs=receptor_count_matrix(),
         params=model_parameters(),
     )
-    @settings(max_examples=5, deadline=None)
+    @settings(max_examples=10, deadline=None)
     def test_model_outputs(self, targ_recs, off_targ_recs, params):
         """Test that the model returns logical values when changing receptor counts, valencies, and doses."""
         assume(np.all(targ_recs > 0) and np.all(off_targ_recs > 0))
@@ -107,27 +106,27 @@ class TestModelInstability:
             # Test Rbound mass balance
             assert np.all(
                 Rbound <= targ_recs
-            ), f"Bound receptors exceed total receptors for dose {params['dose']:.6e}, valencies {params['valencies']}, and receptor counts {targ_recs}, {off_targ_recs}"
+            ), f"Bound receptors exceed total receptors"
 
             # Test selectivity bounds violation
             assert (
                 0 <= selectivity <= 1
-            ), f"Selectivity {selectivity:.6f} out of bounds [0, 1] for dose {params['dose']:.6e}, valencies {params['valencies']}, and receptor counts {targ_recs}, {off_targ_recs}"
+            ), f"Selectivity {selectivity:.6f} out of bounds [0, 1]"
 
             # Test for NaN or infinite values
             assert np.isfinite(
                 selectivity
-            ), f"Non-finite selectivity {selectivity} for dose {params['dose']:.6e}, valencies {params['valencies']}, and receptor counts {targ_recs}, {off_targ_recs}"
+            ), f"Non-finite selectivity {selectivity}"
             assert np.all(
                 np.isfinite(opt_affs)
-            ), f"Non-finite affinities for dose {params['dose']:.6e}, valencies {params['valencies']}, and receptor counts {targ_recs}, {off_targ_recs}"
+            ), f"Non-finite affinities {opt_affs}"
             assert np.isfinite(
                 opt_kx_star
-            ), f"Non-finite Kx_star for dose {params['dose']:.6e}, valencies {params['valencies']}, and receptor counts {targ_recs}, {off_targ_recs}"
+            ), f"Non-finite Kx_star {opt_kx_star}"
 
         except Exception as e:
             pytest.fail(
-                f"Optimization failed with error: {e}, dose: {params['dose']:.6e}, valencies: {params['valencies']}, receptor counts: {targ_recs}, {off_targ_recs}"
+                f"Optimization failed with error: {e}"
             )
 
     @given(
@@ -137,7 +136,7 @@ class TestModelInstability:
         off_targ_recs=receptor_count_matrix(),
         params=model_parameters(),
     )
-    @settings(max_examples=5, deadline=None)
+    @settings(max_examples=10, deadline=None)
     def test_selectivity_continuity_near_one(
         self, base_scale_factor, perturbation, targ_recs, off_targ_recs, params
     ):
@@ -170,7 +169,7 @@ class TestModelInstability:
 
             except Exception as e:
                 pytest.fail(
-                    f"Optimization failed with scale factor {scale_factor:.6f}: {e}"
+                    f"Optimization failed with error: {e}"
                 )
 
         # Check for discontinuity/instability
@@ -184,5 +183,5 @@ class TestModelInstability:
                 f"Potential instability detected: "
                 f"Scale factors {scale_factor_1:.6f} -> {scale_factor_2:.6f} "
                 f"caused selectivity change {selectivities[0]:.6f} -> {selectivities[1]:.6f} "
-                f"(relative change: {relative_change:.3f})"
+                f"(relative change: {relative_change:.12f})"
             )
