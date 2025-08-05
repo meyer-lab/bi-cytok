@@ -6,14 +6,15 @@ authors = [
     { name = "Aaron Meyer", email = "git@ameyer.me" }
 ]
 dependencies = [
-    "scipy>=1.15",
+    "scipy>=1.16",
     "scikit-learn>=1.6",
-    "anndata>=0.10.9",
+    "anndata>=0.11",
     "matplotlib>=3.10",
     "seaborn>=0.13",
-    "jax>=0.6",
+    "jax[cuda12]>=0.6",
     "optimistix>=0.0.10",
     "pot>=0.9.5",
+    "jaxtyping>=0.3.2",
 ]
 readme = "README.md"
 requires-python = ">= 3.12"
@@ -36,6 +37,7 @@ dev-dependencies = [
     "pyyaml>=6.0.2",
     "nbformat>=5.10.4",
     "nbclient>=0.10.2",
+    "py-spy>=0.4.0",
 ]
 
 [tool.hatch.metadata]

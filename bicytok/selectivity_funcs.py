@@ -5,6 +5,7 @@ Functions used in binding and selectivity analysis
 import jax
 import jax.numpy as jnp
 import numpy as np
+from jaxtyping import Array, Float64, Scalar
 from scipy.optimize import Bounds, minimize
 
 from .binding_model_funcs import cyt_binding_model
@@ -38,9 +39,9 @@ def restructure_affs(affs: jnp.ndarray) -> jnp.ndarray:
 # Called in optimizeDesign
 def min_off_targ_selec(
     params: jnp.ndarray,
-    targRecs: jnp.ndarray,
-    offTargRecs: np.ndarray,
-    dose: float,
+    targRecs: Float64[Array, "cells receptors"],
+    offTargRecs: Float64[Array, "cells receptors"],
+    dose: Scalar,
     valencies: jnp.ndarray,
 ):
     """
@@ -99,7 +100,7 @@ def min_off_targ_selec(
 
 # Define the function to minimize, which is the selectivity
 min_off_targ_selec_jax = jax.jit(jax.value_and_grad(min_off_targ_selec))
-min_off_targ_selec_jax_hess = jax.hessian(min_off_targ_selec)
+min_off_targ_selec_jax_hess = jax.jit(jax.hessian(min_off_targ_selec))
 
 
 def optimize_affs(
@@ -152,7 +153,7 @@ def optimize_affs(
     # Set bounds for optimization
     minBounds = np.concatenate([minAffs, [np.log10(Kx_star_bounds[0])]])
     maxBounds = np.concatenate([maxAffs, [np.log10(Kx_star_bounds[1])]])
-    optBnds = Bounds(minBounds, maxBounds)
+    optBnds = Bounds(minBounds, maxBounds)  # type: ignore
 
     targRecs[targRecs == 0] = 1e-9
     offTargRecs[offTargRecs == 0] = 1e-9
@@ -165,10 +166,10 @@ def optimize_affs(
         x0=initParams,
         bounds=optBnds,
         args=(
-            targRecs,
-            offTargRecs,
-            dose,
-            valencies,
+            jnp.array(targRecs, dtype=jnp.float64),
+            jnp.array(offTargRecs, dtype=jnp.float64),
+            jnp.array(dose, dtype=jnp.float64),
+            jnp.array(valencies, dtype=jnp.float64),
         ),
         jac=True,
         options={"disp": False, "xtol": 1e-12, "gtol": 1e-12},
@@ -186,6 +187,9 @@ def optimize_affs(
         )
 
     return optSelect, optAffs, optKx_star
+
+
+cyt_binding_model_jit = jax.jit(cyt_binding_model)
 
 
 def get_cell_bindings(
@@ -211,7 +215,7 @@ def get_cell_bindings(
     modelAffs = restructure_affs(monomerAffs)
 
     # Use the binding model to calculate bound receptors for each cell
-    Rbound = cyt_binding_model(
+    Rbound = cyt_binding_model_jit(
         dose=dose,
         recCounts=recCounts,
         valencies=valencies,
