@@ -56,7 +56,7 @@ receptor_pairs = [
 signal_receptor = "CD122"
 sample_size = 100
 targ_cell = "Treg"
-dose = 10e-2
+dose = 1e-10
 cell_categorization = "CellType2"
 model_valencies = np.array([[(2), (1), (1)]])
 

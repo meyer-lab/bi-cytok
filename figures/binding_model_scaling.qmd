@@ -36,6 +36,7 @@ Generates a comprehensive analysis of how scaling factors applied to raw recepto
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import time
 import matplotlib.pyplot as plt
 
 from bicytok.imports import importCITE, sample_receptor_abundances
@@ -43,9 +44,9 @@ from bicytok.selectivity_funcs import get_cell_bindings, optimize_affs
 
 # Parameters
 targ_cell = "Treg"
-sample_size = 200
+sample_size = 1000
 cell_categorization = "CellType2"
-dose = 10e-2
+dose = 1e-10
 signal_receptor = "CD122"
 receptors_of_interest = [("CD25", 2), ("CD4-1", 2)]
 affinity_bounds = (6, 12)
@@ -102,6 +103,8 @@ for receptor_valency in receptors_of_interest:
     model_valencies = np.array([[(receptor_valency[1]), (receptor_valency[1])]])
 
     for conv_fact in conversion_factors:
+        time_start = time.time()
+
         test_df = filter_df.copy()
         test_df[receptor] = test_df[receptor] * conv_fact
         rec_mat = test_df[[signal_receptor, receptor]].to_numpy()
@@ -138,6 +141,11 @@ for receptor_valency in receptors_of_interest:
         per_rec_results["off_targ_bound_sig_r"].append(off_targ_bound[0])
         per_rec_results["targ_bound_tar_r"].append(targ_bound[1])
         per_rec_results["off_targ_bound_tar_r"].append(off_targ_bound[1])
+
+        time_stop = time.time()
+        print(
+            f"Receptor: {receptor}, Conversion Factor: {conv_fact:.2e}, Time: {time_stop - time_start:.2f}s"
+        )
 
     # Store results for this receptor
     for key in results:

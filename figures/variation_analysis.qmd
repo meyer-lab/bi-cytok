@@ -46,7 +46,7 @@ targ_cell = "Treg"
 signal_receptor = "CD122"
 valencies = np.array([[2, 1, 1]])
 targets = ["CD25", "CD4-1"]
-dose = 10e-2
+dose = 1e-10
 cell_categorization = "CellType2"
 
 CITE_DF = importCITE()
