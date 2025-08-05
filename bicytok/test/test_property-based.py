@@ -8,7 +8,7 @@ from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
 
-from ..selectivity_funcs import optimize_affs, get_cell_bindings
+from ..selectivity_funcs import get_cell_bindings, optimize_affs
 
 # Constants for testing
 instability_threshold = 0.01  # Relative change threshold for instability detection
@@ -104,9 +104,7 @@ class TestModelInstability:
             )
 
             # Test Rbound mass balance
-            assert np.all(
-                Rbound <= targ_recs
-            ), f"Bound receptors exceed total receptors"
+            assert np.all(Rbound <= targ_recs), "Bound receptors exceed total receptors"
 
             # Test selectivity bounds violation
             assert (
@@ -114,20 +112,12 @@ class TestModelInstability:
             ), f"Selectivity {selectivity:.6f} out of bounds [0, 1]"
 
             # Test for NaN or infinite values
-            assert np.isfinite(
-                selectivity
-            ), f"Non-finite selectivity {selectivity}"
-            assert np.all(
-                np.isfinite(opt_affs)
-            ), f"Non-finite affinities {opt_affs}"
-            assert np.isfinite(
-                opt_kx_star
-            ), f"Non-finite Kx_star {opt_kx_star}"
+            assert np.isfinite(selectivity), f"Non-finite selectivity {selectivity}"
+            assert np.all(np.isfinite(opt_affs)), f"Non-finite affinities {opt_affs}"
+            assert np.isfinite(opt_kx_star), f"Non-finite Kx_star {opt_kx_star}"
 
         except Exception as e:
-            pytest.fail(
-                f"Optimization failed with error: {e}"
-            )
+            pytest.fail(f"Optimization failed with error: {e}")
 
     @given(
         base_scale_factor=st.floats(min_value=0.9, max_value=1.1, allow_nan=False),
@@ -168,9 +158,7 @@ class TestModelInstability:
                 selectivities.append(selectivity)
 
             except Exception as e:
-                pytest.fail(
-                    f"Optimization failed with error: {e}"
-                )
+                pytest.fail(f"Optimization failed with error: {e}")
 
         # Check for discontinuity/instability
         relative_change = abs(selectivities[1] - selectivities[0]) / max(
