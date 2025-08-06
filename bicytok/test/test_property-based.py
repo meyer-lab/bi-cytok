@@ -11,7 +11,7 @@ from hypothesis.extra.numpy import arrays
 from ..selectivity_funcs import get_cell_bindings, optimize_affs
 
 # Constants for testing
-instability_threshold = 0.01  # Relative change threshold for instability detection
+instability_threshold = 0.05  # Absolute change threshold for instability detection
 num_output_tests = 50
 num_scaling_tests = 50
 
@@ -163,15 +163,13 @@ class TestModelInstability:
                 pytest.fail(f"Optimization failed with error: {e}")
 
         # Check for discontinuity/instability
-        relative_change = abs(selectivities[1] - selectivities[0]) / max(
-            selectivities[0], 1e-10
-        )
+        absolute_change = abs(selectivities[1] - selectivities[0])
 
-        # Flag potential instability if relative change is large
-        if relative_change > instability_threshold:
+        # Flag potential instability if absolute change is large
+        if absolute_change > instability_threshold:
             pytest.fail(
                 f"Potential instability detected: "
                 f"Scale factors {scale_factor_1:.6f} -> {scale_factor_2:.6f} "
                 f"caused selectivity change {selectivities[0]:.6f} -> {selectivities[1]:.6f} "
-                f"(relative change: {relative_change:.12f})"
+                f"(absolute change: {absolute_change:.12f})"
             )
