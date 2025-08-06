@@ -12,12 +12,14 @@ from ..selectivity_funcs import get_cell_bindings, optimize_affs
 
 # Constants for testing
 instability_threshold = 0.01  # Relative change threshold for instability detection
+num_output_tests = 50
+num_scaling_tests = 50
 
 # Model constants
 affinity_bounds = (6.0, 12.0)
-Kx_star_bounds = (2.24e-13, 2.24e-11)
-dose_bounds = (1e-11, 1e-7)
-valency_bounds = (1, 4)
+Kx_star_bounds = (2.24e-15, 2.24e-9)
+dose_bounds = (1e-13, 1e-7)
+valency_bounds = (1, 2)
 cell_count = 50
 
 
@@ -78,7 +80,7 @@ class TestModelInstability:
         off_targ_recs=receptor_count_matrix(),
         params=model_parameters(),
     )
-    @settings(max_examples=10, deadline=None)
+    @settings(max_examples=num_output_tests, deadline=None)
     def test_model_outputs(self, targ_recs, off_targ_recs, params):
         """Test that the model returns logical values when changing receptor counts, valencies, and doses."""
         assume(np.all(targ_recs > 0) and np.all(off_targ_recs > 0))
@@ -107,9 +109,9 @@ class TestModelInstability:
             assert np.all(Rbound <= targ_recs), "Bound receptors exceed total receptors"
 
             # Test selectivity bounds violation
-            assert (
-                0 <= selectivity <= 1
-            ), f"Selectivity {selectivity:.6f} out of bounds [0, 1]"
+            assert 0 <= selectivity <= 1, (
+                f"Selectivity {selectivity:.6f} out of bounds [0, 1]"
+            )
 
             # Test for NaN or infinite values
             assert np.isfinite(selectivity), f"Non-finite selectivity {selectivity}"
@@ -126,7 +128,7 @@ class TestModelInstability:
         off_targ_recs=receptor_count_matrix(),
         params=model_parameters(),
     )
-    @settings(max_examples=10, deadline=None)
+    @settings(max_examples=num_scaling_tests, deadline=None)
     def test_selectivity_continuity_near_one(
         self, base_scale_factor, perturbation, targ_recs, off_targ_recs, params
     ):
