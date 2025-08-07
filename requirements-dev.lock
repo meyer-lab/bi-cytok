@@ -17,6 +17,7 @@ array-api-compat==1.9
 asttokens==3.0.0
     # via stack-data
 attrs==25.3.0
+    # via hypothesis
     # via jsonschema
     # via referencing
 comm==0.2.2
@@ -46,6 +47,8 @@ fonttools==4.54.1
     # via matplotlib
 h5py==3.12.1
     # via anndata
+hypothesis==6.137.1
+    # via bi-cytok
 iniconfig==2.0.0
     # via pytest
 ipykernel==6.29.5
@@ -229,6 +232,8 @@ seaborn==0.13.2
     # via bi-cytok
 six==1.16.0
     # via python-dateutil
+sortedcontainers==2.4.0
+    # via hypothesis
 stack-data==0.6.3
     # via ipython
 threadpoolctl==3.5.0
