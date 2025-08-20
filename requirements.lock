@@ -35,6 +35,9 @@ h5py==3.12.1
     # via scanpy
 hypothesis==6.137.1
     # via bi-cytok
+igraph==0.11.9
+    # via leidenalg
+    # via python-igraph
 jax==0.6.2
     # via bi-cytok
     # via equinox
@@ -60,6 +63,8 @@ kiwisolver==1.4.7
 legacy-api-wrap==1.4.1
     # via anndata
     # via scanpy
+leidenalg==0.10.2
+    # via bi-cytok
 lineax==0.0.8
     # via optimistix
 llvmlite==0.44.0
@@ -164,6 +169,8 @@ pyparsing==3.1.4
 python-dateutil==2.9.0.post0
     # via matplotlib
     # via pandas
+python-igraph==0.11.9
+    # via bi-cytok
 pytz==2024.2
     # via pandas
 pyyaml==6.0.2
@@ -199,6 +206,8 @@ sortedcontainers==2.4.0
     # via hypothesis
 statsmodels==0.14.5
     # via scanpy
+texttable==1.7.0
+    # via igraph
 threadpoolctl==3.5.0
     # via scikit-learn
 tqdm==4.67.1

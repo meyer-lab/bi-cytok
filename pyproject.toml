@@ -18,6 +18,8 @@ dependencies = [
     "hypothesis>=6.137.1",
     "scanpy>=1.11.4",
     "scikit-misc>=0.5.1",
+    "python-igraph>=0.11.9",
+    "leidenalg>=0.10.2",
 ]
 readme = "README.md"
 requires-python = ">= 3.12"

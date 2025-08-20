@@ -61,9 +61,31 @@ print(adata_high_variability)
 ```
 
 ```{python}
+# Select three random genes
+# np.random.seed(42)  # For reproducibility
+random_genes = np.random.choice(adata_high_variability.var_names, size=3, replace=False)
+print(f"Selected genes: {random_genes}")
+
+# Plot expression distributions
+fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+for i, gene in enumerate(random_genes):
+    gene_expression = adata_high_variability[:, gene].X.toarray().flatten()
+    
+    axes[i].hist(gene_expression, bins=50, alpha=0.7, edgecolor='black')
+    axes[i].set_title(f'Expression Distribution: {gene}')
+    axes[i].set_xlabel('Expression Level')
+    axes[i].set_ylabel('Number of Cells')
+    axes[i].grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
 # Run PCA
 N_PRINCIPAL_COMPONENTS = 50
-sc.tl.pca(adata_high_variability, n_comps=N_PRINCIPAL_COMPONENTS, svd_solver='arpack')
+sc.tl.pca(adata_high_variability, n_comps=N_PRINCIPAL_COMPONENTS)
 print(f"PCA completed with {N_PRINCIPAL_COMPONENTS} components")
 ```
 
@@ -79,5 +101,41 @@ plt.title('PCA Elbow Plot')
 plt.grid(True, alpha=0.3)
 plt.show()
 
-print(f"First 10 PCs explain {sum(variance_ratio[:10]):.3f} of total variance")
+print(f"First 9 PCs explain {sum(variance_ratio[:9]):.3f} of total variance")
+```
+
+```{python}
+# Compute neighborhood graph
+N_NEIGHBORS = 15
+N_PCS = 9
+sc.pp.neighbors(adata_high_variability, n_neighbors=N_NEIGHBORS, n_pcs=N_PCS)
+print(f"Neighborhood graph computed using {N_NEIGHBORS} neighbors and {N_PCS} PCs")
+```
+
+```{python}
+# Perform Leiden clustering
+LEIDEN_RESOLUTION = 0.5
+sc.tl.leiden(adata_high_variability, resolution=LEIDEN_RESOLUTION, flavor="igraph", n_iterations=2, directed=False)
+print(f"Leiden clustering completed with resolution {LEIDEN_RESOLUTION}")
+print(f"Number of clusters: {len(adata_high_variability.obs['leiden'].unique())}")
+```
+
+```{python}
+# Compute UMAP for visualization
+sc.tl.umap(adata_high_variability)
+print("UMAP computation completed")
+```
+
+```{python}
+# Visualize clusters in UMAP space
+sc.pl.umap(adata_high_variability, color='leiden', legend_loc='on data', 
+           title='Leiden Clustering', frameon=False, save='.pdf')
+plt.show()
+```
+
+```{python}
+# Find marker genes for each cluster
+sc.tl.rank_genes_groups(adata_high_variability, 'leiden', method='wilcoxon')
+sc.pl.rank_genes_groups(adata_high_variability, n_genes=20, sharey=False)
+plt.show()
 ```
