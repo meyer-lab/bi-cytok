@@ -12,6 +12,7 @@
 -e file:.
 anndata==0.12.1
     # via bi-cytok
+    # via scanpy
 array-api-compat==1.9
     # via anndata
 attrs==25.3.0
@@ -31,6 +32,7 @@ fonttools==4.54.1
     # via matplotlib
 h5py==3.12.1
     # via anndata
+    # via scanpy
 hypothesis==6.137.1
     # via bi-cytok
 jax==0.6.2
@@ -50,21 +52,35 @@ jaxtyping==0.3.2
     # via lineax
     # via optimistix
 joblib==1.4.2
+    # via pynndescent
+    # via scanpy
     # via scikit-learn
 kiwisolver==1.4.7
     # via matplotlib
 legacy-api-wrap==1.4.1
     # via anndata
+    # via scanpy
 lineax==0.0.8
     # via optimistix
+llvmlite==0.44.0
+    # via numba
+    # via pynndescent
 matplotlib==3.10.3
     # via bi-cytok
+    # via scanpy
     # via seaborn
 ml-dtypes==0.5.1
     # via jax
     # via jaxlib
 natsort==8.4.0
     # via anndata
+    # via scanpy
+networkx==3.5
+    # via scanpy
+numba==0.61.2
+    # via pynndescent
+    # via scanpy
+    # via umap-learn
 numcodecs==0.16.1
     # via zarr
 numpy==2.0.1
@@ -75,12 +91,18 @@ numpy==2.0.1
     # via jaxlib
     # via matplotlib
     # via ml-dtypes
+    # via numba
     # via numcodecs
     # via pandas
+    # via patsy
     # via pot
+    # via scanpy
     # via scikit-learn
+    # via scikit-misc
     # via scipy
     # via seaborn
+    # via statsmodels
+    # via umap-learn
     # via zarr
 nvidia-cublas-cu12==12.9.1.4
     # via jax-cuda12-plugin
@@ -119,14 +141,24 @@ optimistix==0.0.10
 packaging==25.0
     # via anndata
     # via matplotlib
+    # via scanpy
+    # via statsmodels
     # via zarr
 pandas==2.2.3
     # via anndata
+    # via scanpy
     # via seaborn
+    # via statsmodels
+patsy==1.0.1
+    # via scanpy
+    # via statsmodels
 pillow==10.4.0
     # via matplotlib
 pot==0.9.5
     # via bi-cytok
+pynndescent==0.5.13
+    # via scanpy
+    # via umap-learn
 pyparsing==3.1.4
     # via matplotlib
 python-dateutil==2.9.0.post0
@@ -136,7 +168,14 @@ pytz==2024.2
     # via pandas
 pyyaml==6.0.2
     # via donfig
+scanpy==1.11.4
+    # via bi-cytok
 scikit-learn==1.6.1
+    # via bi-cytok
+    # via pynndescent
+    # via scanpy
+    # via umap-learn
+scikit-misc==0.5.1
     # via bi-cytok
 scipy==1.16.1
     # via anndata
@@ -144,23 +183,38 @@ scipy==1.16.1
     # via jax
     # via jaxlib
     # via pot
+    # via pynndescent
+    # via scanpy
     # via scikit-learn
+    # via statsmodels
+    # via umap-learn
 seaborn==0.13.2
     # via bi-cytok
+    # via scanpy
+session-info2==0.2
+    # via scanpy
 six==1.16.0
     # via python-dateutil
 sortedcontainers==2.4.0
     # via hypothesis
+statsmodels==0.14.5
+    # via scanpy
 threadpoolctl==3.5.0
     # via scikit-learn
+tqdm==4.67.1
+    # via scanpy
+    # via umap-learn
 typing-extensions==4.14.1
     # via equinox
     # via lineax
     # via numcodecs
     # via optimistix
+    # via scanpy
     # via zarr
 tzdata==2024.2
     # via pandas
+umap-learn==0.5.9.post2
+    # via scanpy
 wadler-lindig==0.1.7
     # via equinox
     # via jaxtyping
