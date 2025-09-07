@@ -8,7 +8,13 @@ import numpy as np
 import pandas as pd
 import os
 
-adata = sc.read_10x_mtx("/home/sama/CITE-seq_scRNA-seq_data", prefix="GSM5008737_RNA_3P-")
+# New constants for export locations
+DATA_DIR = "/home/sama/bi-cytok-2/bicytok/data"
+CUSTOM_ANNOT_DIR = os.path.join(DATA_DIR, "custom_annotations")
+os.makedirs(CUSTOM_ANNOT_DIR, exist_ok=True)
+assert os.path.isdir(CUSTOM_ANNOT_DIR), f"Could not create custom annotations dir: {CUSTOM_ANNOT_DIR}"
+
+adata = sc.read_10x_mtx("/home/sama/Hao_et_al_CITE-seq_data/RNA_data", prefix="GSM5008737_RNA_3P-")
 
 # Make variable names unique
 adata.var_names_make_unique()
@@ -146,9 +152,9 @@ print("UMAP computation completed")
 ```
 
 ```{python}
-# Visualize clusters in UMAP space
-sc.pl.umap(adata_high_variability, color='leiden', legend_loc='on data', 
-           title='Leiden Clustering', frameon=False, save='.pdf')
+# Visualize clusters in UMAP space (do not save images)
+sc.pl.umap(adata_high_variability, color='leiden', legend_loc='on data',
+           title='Leiden Clustering', frameon=False, show=True)
 plt.show()
 ```
 
@@ -243,29 +249,27 @@ with pd.option_context('display.max_rows', None,
 ```
 
 ```{python}
-# Export processed data for SCSA annotation
-OUTPUT_DIR = "/home/sama/bi-cytok-2/bicytok/processed_data"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+import os
+import pathlib
 
-# Save the processed AnnData object
-adata_high_variability.write(f"{OUTPUT_DIR}/processed_adata.h5ad")
+# Use the pre-defined CUSTOM_ANNOT_DIR for exports
+pathlib.Path(CUSTOM_ANNOT_DIR).mkdir(parents=True, exist_ok=True)
+assert os.path.isdir(CUSTOM_ANNOT_DIR)
 
-# Export for SCSA format (10X format)
-sc.io.write(f"{OUTPUT_DIR}/scsa_matrix.mtx", adata_high_variability.X.T)
+# Validate that leiden clusters exist and align with cells
+assert 'leiden' in adata_high_variability.obs.columns, "Leiden clustering not found; run clustering before exporting labels."
 
-# Save features (genes)
-features_df = pd.DataFrame({
-    'gene_id': adata_high_variability.var_names,
-    'gene_name': adata_high_variability.var_names,
-    'feature_type': 'Gene Expression'
+cell_labels_df = pd.DataFrame({
+    'barcode': adata_high_variability.obs_names,
+    'leiden_cluster': adata_high_variability.obs['leiden'].astype(str)
 })
-features_df.to_csv(f"{OUTPUT_DIR}/scsa_features.tsv", sep='\t', index=False, header=False)
 
-# Save barcodes (cell IDs)  
-barcodes_df = pd.DataFrame(adata_high_variability.obs_names)
-barcodes_df.to_csv(f"{OUTPUT_DIR}/scsa_barcodes.tsv", sep='\t', index=False, header=False)
+cell_labels_file = os.path.join(CUSTOM_ANNOT_DIR, "cell_labels.tsv")
+cell_labels_df.to_csv(cell_labels_file, sep='\t', index=False)
 
-print(f"Processed data exported to {OUTPUT_DIR}")
-print(f"Matrix shape: {adata_high_variability.X.shape}")
+# Basic validation to ensure exported labels align with processed AnnData
+assert len(cell_labels_df) == adata_high_variability.n_obs
+assert os.path.exists(cell_labels_file), f"Failed to write cell labels to {cell_labels_file}"
+print(f"Exported {len(cell_labels_df)} cell labels to {cell_labels_file}")
 ```
 
