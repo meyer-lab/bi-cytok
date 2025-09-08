@@ -51,8 +51,11 @@ sampleDF = sample_receptor_abundances(
     numCells=min(sample_size, epitopesDF.shape[0]),
     targCellType=targ_cell,
 )
+if receptors_of_interest is not None:
+    valid_columns = [col for col in sampleDF.columns if col in receptors_of_interest or col == "Cell Type"]
+    sampleDF = sampleDF[valid_columns]
 filtered_sampleDF = filter_receptor_abundances(
-    sampleDF, targ_cell_type=targ_cell, epitope_list=receptors_of_interest
+    sampleDF, targ_cell_type=targ_cell
 )
 receptors_of_interest = filtered_sampleDF.columns[
     ~filtered_sampleDF.columns.isin(["Cell Type"])
