@@ -41,18 +41,23 @@ from bicytok.selectivity_funcs import optimize_affs
 
 signal_receptor = "CD122"
 sample_size = 100
-targ_cell = "Treg"
+targ_cell = "0"
 test_valencies = [(1), (2)]
 dose = 1e-10
-cell_categorization = "CellType2"
+cell_categorization = "leiden_cluster"
 
 CITE_DF = importCITE()
+
+custom_cell_types = pd.read_csv('/home/sama/bi-cytok-2/bicytok/data/custom_annotations/cell_labels.tsv', sep='\t')
+custom_cell_types = custom_cell_types.astype(str)
+CITE_DF[cell_categorization] = custom_cell_types[cell_categorization]
+
 assert targ_cell in CITE_DF[cell_categorization].unique()
 
 epitopes = [
     col
     for col in CITE_DF.columns
-    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
+    if col not in ["Cell", "CellType1", "CellType2", "CellType3", cell_categorization]
 ]
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})

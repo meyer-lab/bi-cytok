@@ -1,0 +1,413 @@
+---
+title: "Analysis of Leiden clustering resolution effects on distance metrics and selectivity"
+---
+
+# Summary
+Analyzes how different Leiden clustering resolutions affect distance metrics (KL Divergence and EMD) and selectivity optimization results. Runs the scRNA-seq processing pipeline with multiple preset resolutions, calculates metrics for each cluster, and compares average performance across resolutions to identify optimal clustering granularity for cytokine complex design. For efficiency, KL Divergence and EMD are calculated for all epitopes simultaneously, but selectivity optimization is performed only for the epitope with maximum EMD per cluster using bivalent complexes.
+
+# Imports
+- scRNA-seq processing pipeline (`run_scrnaseq_pipeline`, `export_cluster_assignments`)
+- CITE-seq surface marker expression data (`importCITE`)
+- 1D distance metric calculation functions (`KL_EMD_1D`)
+- Selectivity optimization functions (`optimize_affs`)
+
+# Parameters
+- `leiden_resolutions`: List of float values for Leiden clustering resolution parameter
+- `signal_receptor`: String name of receptor used for signal delivery in binding model
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `valency`: Integer specifying ligand valency (bivalent complexes only)
+- `dose`: Float concentration of ligand complex in binding model
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+
+# Outputs
+- **Bar Plot 1**: Average KL Divergence per Leiden resolution
+- **Bar Plot 2**: Average EMD per Leiden resolution
+- **Bar Plot 3**: Average Selectivity per Leiden resolution
+- **Summary Table**: Comparison of cluster counts and average metrics across resolutions
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import os
+import sys
+import time
+
+# Add the bicytok directory to the path to import our pipeline
+sys.path.append('/home/sama/bi-cytok-2/bicytok')
+from bicytok.scrnaseq_pipeline import run_scrnaseq_pipeline, export_cluster_assignments
+from bicytok.distance_metric_funcs import calculate_KL_EMD
+from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+# Parameters
+leiden_resolutions = [0.5, 1.0, 1.5]
+signal_receptor = "CD122"
+sample_size = 500
+valency = 2  # Test only bivalent complexes (2x CD122, 2x max EMD epitope)
+dose = 1e-10
+cell_categorization = "leiden_cluster"
+custom_annot_dir = "/home/sama/bi-cytok-2/bicytok/data/custom_annotations"
+
+print(f"Running analysis with Leiden resolutions: {leiden_resolutions}")
+print(f"Signal receptor: {signal_receptor}")
+print(f"Sample size: {sample_size}")
+print(f"Valency: {valency}x{signal_receptor} + {valency}x max EMD epitope")
+print(f"Dose: {dose}")
+```
+
+```{python}
+# Step 1: Run processing pipeline for each resolution and save cluster assignments
+print("\n=== Step 1: Running scRNA-seq processing pipeline ===")
+
+cluster_files = {}
+for resolution in leiden_resolutions:
+    print(f"\nProcessing Leiden resolution: {resolution}")
+    
+    # Run the pipeline
+    cluster_assignments = run_scrnaseq_pipeline(leiden_resolution=resolution)
+    
+    # Export to custom annotations folder
+    filename = f"cell_labels_resolution_{resolution}.tsv"
+    export_path = export_cluster_assignments(
+        cluster_assignments, 
+        output_dir=custom_annot_dir,
+        filename=filename
+    )
+    cluster_files[resolution] = export_path
+    
+    print(f"Resolution {resolution}: {cluster_assignments.nunique()} clusters, exported to {filename}")
+
+print(f"\nCluster assignment files created: {list(cluster_files.values())}")
+```
+
+```{python}
+# Step 2: Import CITE-seq data and prepare for analysis
+print("\n=== Step 2: Loading CITE-seq data ===")
+
+CITE_DF = importCITE()
+print(f"Loaded CITE-seq data: {CITE_DF.shape[0]} cells, {CITE_DF.shape[1]} features")
+
+# Get epitope list (exclude metadata columns)
+epitopes = [
+    col for col in CITE_DF.columns
+    if col not in ["Cell", "CellType1", "CellType2", "CellType3", cell_categorization]
+]
+print(f"Epitopes to analyze: {len(epitopes)} receptors")
+```
+
+```{python}
+# Step 3: Calculate metrics for each resolution and cluster
+print("\n=== Step 3: Calculating metrics for each resolution ===")
+
+results_list = []
+
+cluster_files = {
+    0.5: "/home/sama/bi-cytok-2/bicytok/data/custom_annotations/cell_labels_resolution_0.5.tsv", 
+    1.0: "/home/sama/bi-cytok-2/bicytok/data/custom_annotations/cell_labels_resolution_1.0.tsv", 
+    1.5: "/home/sama/bi-cytok-2/bicytok/data/custom_annotations/cell_labels_resolution_1.5.tsv"
+}
+
+for resolution in leiden_resolutions:
+    print(f"\nAnalyzing resolution {resolution}...")
+    
+    # Load cluster assignments for this resolution
+    cluster_file = cluster_files[resolution]
+    custom_cell_types = pd.read_csv(cluster_file, sep='\t')
+    custom_cell_types = custom_cell_types.astype(str)
+    
+    # Add cluster assignments to CITE-seq data
+    CITE_DF_res = CITE_DF.copy()
+    CITE_DF_res[cell_categorization] = custom_cell_types[cell_categorization]
+    
+    # Get unique clusters for this resolution
+    unique_clusters = CITE_DF_res[cell_categorization].unique()
+    print(f"  Found {len(unique_clusters)} clusters: {sorted(unique_clusters)}")
+    
+    # Analyze each cluster
+    for cluster in unique_clusters:
+        print(f"    Analyzing cluster {cluster}...")
+        
+        # Prepare data for this cluster analysis
+        epitopes_df = CITE_DF_res[epitopes + [cell_categorization]]
+        epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+        
+        # Sample cells for analysis
+        sample_df = sample_receptor_abundances(
+            CITE_DF=epitopes_df,
+            numCells=min(sample_size, epitopes_df.shape[0]),
+            targCellType=cluster,
+        )
+        
+        # Check if we have enough cells of this cluster type
+        cluster_count = (sample_df["Cell Type"] == cluster).sum()
+        if cluster_count < 5:  # Skip clusters with too few cells
+            print(f"      Skipping cluster {cluster}: only {cluster_count} cells")
+            continue
+            
+        filtered_sample_df = filter_receptor_abundances(sample_df, cluster, white_list=[signal_receptor])
+        current_epitopes = filtered_sample_df.columns[:-1]
+        
+        # Create masks for target vs off-target cells
+        on_target_mask = (filtered_sample_df["Cell Type"] == cluster).to_numpy()
+        off_target_mask = ~on_target_mask
+        
+        df_targ_cell = filtered_sample_df.loc[on_target_mask]
+        df_off_targ_cell = filtered_sample_df.loc[off_target_mask]
+        
+        print(f"      Target cells: {df_targ_cell.shape[0]}, Off-target cells: {df_off_targ_cell.shape[0]}")
+        
+        # Calculate selectivity and 2D metrics for ALL receptors in this cluster
+        receptor_selectivities = {}
+        receptor_2d_metrics = {}
+        for receptor in current_epitopes:
+            time_start = time.time()
+
+            # Calculate 2D KL and EMD between CD122 and current receptor
+            try:
+                # Get 2D abundances for CD122 and current receptor
+                rec_2d_abundances = filtered_sample_df[[signal_receptor, receptor]].to_numpy()
+                KL_div_2d, EMD_2d = calculate_KL_EMD(
+                    rec_2d_abundances[on_target_mask, :] / np.mean(rec_2d_abundances, axis=0),
+                    rec_2d_abundances[off_target_mask, :] / np.mean(rec_2d_abundances, axis=0)
+                )
+                receptor_2d_metrics[receptor] = {
+                    'KL_Divergence_2D': KL_div_2d,
+                    'EMD_2D': EMD_2d
+                }
+            except Exception as e:
+                print(f"      Error calculating 2D metrics for {receptor}: {e}")
+                receptor_2d_metrics[receptor] = {
+                    'KL_Divergence_2D': np.nan,
+                    'EMD_2D': np.nan
+                }
+            
+            # Calculate selectivity
+            try:
+                model_valencies = np.array([[valency, valency]])  # 2x signal receptor, 2x current receptor
+                targ_recs = df_targ_cell[[signal_receptor] + [receptor]].to_numpy()
+                off_targ_recs = df_off_targ_cell[[signal_receptor] + [receptor]].to_numpy()
+                
+                opt_selec, _, _ = optimize_affs(
+                    targRecs=targ_recs,
+                    offTargRecs=off_targ_recs,
+                    dose=dose,
+                    valencies=model_valencies,
+                )
+                selectivity = 1 / opt_selec
+                receptor_selectivities[receptor] = selectivity
+                
+            except Exception as e:
+                print(f"      Error calculating selectivity for {receptor}: {e}")
+                receptor_selectivities[receptor] = np.nan
+
+            time_end = time.time()
+            print(f"Receptor {receptor} calculated in {time_end - time_start:.2f} seconds")
+        
+        if not receptor_2d_metrics:
+            print(f"      Skipping cluster {cluster}: no valid 2D metrics calculated")
+            continue
+            
+        # Find the receptor with maximum 2D EMD for reference
+        valid_receptors = [r for r in receptor_2d_metrics if not np.isnan(receptor_2d_metrics[r]['EMD_2D'])]
+        if not valid_receptors:
+            print(f"      Skipping cluster {cluster}: no valid 2D EMD values")
+            continue
+            
+        max_emd_receptor = max(valid_receptors, key=lambda r: receptor_2d_metrics[r]['EMD_2D'])
+        print(f"      Max 2D EMD receptor: {max_emd_receptor} (2D EMD: {receptor_2d_metrics[max_emd_receptor]['EMD_2D']:.4f})")
+        
+        print(f"      Calculated selectivity for {len(receptor_selectivities)} receptors")
+        print(f"      Calculated 2D metrics for {len(receptor_2d_metrics)} receptors")
+        
+        # Store results for all receptors with their respective metrics
+        cluster_metrics = []
+        for receptor in receptor_2d_metrics:
+            metrics_entry = {
+                'Resolution': resolution,
+                'Cluster': cluster,
+                'Receptor': receptor,
+                'KL_Divergence_2D': receptor_2d_metrics[receptor]['KL_Divergence_2D'],
+                'EMD_2D': receptor_2d_metrics[receptor]['EMD_2D'],
+                'Selectivity': receptor_selectivities.get(receptor, np.nan),
+                'Max_EMD_Receptor': receptor == max_emd_receptor
+            }
+            cluster_metrics.append(metrics_entry)
+        
+        print(f"      Completed analysis for cluster {cluster}: {len(cluster_metrics)} receptors analyzed")
+        results_list.extend(cluster_metrics)
+
+# Convert results to DataFrame
+metrics_df = pd.DataFrame(results_list)
+print(f"\nTotal results collected: {len(metrics_df)} rows")
+print(f"Resolutions analyzed: {sorted(metrics_df['Resolution'].unique())}")
+print(f"Clusters per resolution: {metrics_df.groupby('Resolution')['Cluster'].nunique().to_dict()}")
+```
+
+```{python}
+# Step 4: Calculate average metrics per resolution
+print("\n=== Step 4: Calculating average metrics per resolution ===")
+
+# For each cluster, find the max 2D KL, 2D EMD, and Selectivity values (most discriminative receptors)
+cluster_max_metrics = metrics_df.groupby(['Resolution', 'Cluster']).agg({
+    'KL_Divergence_2D': 'max',
+    'EMD_2D': 'max',
+    'Selectivity': 'max'
+}).reset_index()
+
+# Now average these max values per resolution
+avg_metrics = cluster_max_metrics.groupby('Resolution').agg({
+    'KL_Divergence_2D': 'mean',
+    'EMD_2D': 'mean',
+    'Selectivity': 'mean'
+}).reset_index()
+
+# Calculate cluster counts per resolution
+cluster_counts = metrics_df.groupby('Resolution')['Cluster'].nunique().reset_index()
+cluster_counts.columns = ['Resolution', 'N_Clusters']
+
+# Merge the results
+summary_df = avg_metrics.merge(cluster_counts, on='Resolution')
+
+print("Summary statistics per resolution:")
+print(summary_df.round(4))
+
+# Additional statistics
+print(f"\nTotal receptor-cluster combinations analyzed: {len(metrics_df)}")
+print(f"Clusters per resolution: {cluster_max_metrics.groupby('Resolution')['Cluster'].nunique().to_dict()}")
+print(f"Selectivity calculations per cluster: {metrics_df.groupby(['Resolution', 'Cluster']).size().describe()}")
+print(f"\nNote: All averages represent the mean of maximum values per cluster")
+print(f"All three metrics (KL, EMD, Selectivity) are calculated for all receptors, then max per cluster is used")
+```
+
+```{python}
+#| fig-cap: "Comparison of All Metrics by Leiden Resolution"
+
+# Create a combined plot with all three metrics
+fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+# 2D KL Divergence
+sns.barplot(data=summary_df, x='Resolution', y='KL_Divergence_2D', hue='Resolution', palette='inferno', legend=False, ax=axes[0])
+axes[0].set_title('Average 2D KL Divergence')
+axes[0].set_ylabel('2D KL Divergence')
+axes[0].grid(True, alpha=0.3)
+
+# 2D EMD
+sns.barplot(data=summary_df, x='Resolution', y='EMD_2D', hue='Resolution', palette='magma', legend=False, ax=axes[1])
+axes[1].set_title('Average 2D EMD')
+axes[1].set_ylabel('2D EMD')
+axes[1].grid(True, alpha=0.3)
+
+# Selectivity
+sns.barplot(data=summary_df, x='Resolution', y='Selectivity', hue='Resolution', palette='cividis', legend=False, ax=axes[2])
+axes[2].set_title('Average Selectivity')
+axes[2].set_ylabel('Selectivity')
+axes[2].grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Number of Clusters vs Average Metrics"
+
+# Create scatter plots showing relationship between number of clusters and metrics
+fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+# 2D KL Divergence vs N_Clusters
+axes[0].scatter(summary_df['N_Clusters'], summary_df['KL_Divergence_2D'], s=100, alpha=0.7, color='purple')
+for i, row in summary_df.iterrows():
+    axes[0].annotate(f'Res {row["Resolution"]}', 
+                    (row['N_Clusters'], row['KL_Divergence_2D']), 
+                    xytext=(5, 5), textcoords='offset points')
+axes[0].set_xlabel('Number of Clusters')
+axes[0].set_ylabel('Average 2D KL Divergence')
+axes[0].set_title('2D KL Divergence vs Cluster Count')
+axes[0].grid(True, alpha=0.3)
+
+# 2D EMD vs N_Clusters
+axes[1].scatter(summary_df['N_Clusters'], summary_df['EMD_2D'], s=100, alpha=0.7, color='orange')
+for i, row in summary_df.iterrows():
+    axes[1].annotate(f'Res {row["Resolution"]}', 
+                    (row['N_Clusters'], row['EMD_2D']), 
+                    xytext=(5, 5), textcoords='offset points')
+axes[1].set_xlabel('Number of Clusters')
+axes[1].set_ylabel('Average 2D EMD')
+axes[1].set_title('2D EMD vs Cluster Count')
+axes[1].grid(True, alpha=0.3)
+
+# Selectivity vs N_Clusters
+axes[2].scatter(summary_df['N_Clusters'], summary_df['Selectivity'], s=100, alpha=0.7, color='blue')
+for i, row in summary_df.iterrows():
+    axes[2].annotate(f'Res {row["Resolution"]}', 
+                    (row['N_Clusters'], row['Selectivity']), 
+                    xytext=(5, 5), textcoords='offset points')
+axes[2].set_xlabel('Number of Clusters')
+axes[2].set_ylabel('Average Selectivity')
+axes[2].set_title('Selectivity vs Cluster Count')
+axes[2].grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+```
+
+## Summary Table
+```{python}
+#| output: asis
+
+print("### Leiden Resolution Analysis Summary\n")
+
+# Create a simple table without requiring tabulate
+print("| Resolution | 2D KL Div | 2D EMD | Selectivity | N Clusters |")
+print("|------------|-----------|--------|-------------|------------|")
+for _, row in summary_df.iterrows():
+    print(f"| {row['Resolution']:8.1f} | {row['KL_Divergence_2D']:7.4f} | {row['EMD_2D']:6.4f} | {row['Selectivity']:9.4f} | {row['N_Clusters']:8d} |")
+
+# Find optimal resolution for each metric
+best_kl_2d = summary_df.loc[summary_df['KL_Divergence_2D'].idxmax()]
+best_emd_2d = summary_df.loc[summary_df['EMD_2D'].idxmax()]
+best_selectivity = summary_df.loc[summary_df['Selectivity'].idxmax()]
+
+print(f"\n### Optimal Resolutions by Metric:")
+print(f"- **Highest 2D KL Divergence**: Resolution {best_kl_2d['Resolution']} ({best_kl_2d['KL_Divergence_2D']:.4f})")
+print(f"- **Highest 2D EMD**: Resolution {best_emd_2d['Resolution']} ({best_emd_2d['EMD_2D']:.4f})")
+print(f"- **Highest Selectivity**: Resolution {best_selectivity['Resolution']} ({best_selectivity['Selectivity']:.4f})")
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Analyzed the effect of Leiden clustering resolution on distance metrics and selectivity optimization. 
+The analysis compared **{len(leiden_resolutions)}** different resolutions: **{', '.join(map(str, leiden_resolutions))}**.
+
+For each resolution, the scRNA-seq processing pipeline was run to generate cluster annotations, 
+which were then used to calculate metrics for each cluster compared to all other cells.
+
+**Analysis Parameters:**
+- Signal receptor: **{signal_receptor}**
+- Sample size per analysis: **{sample_size}** cells
+- Valency configuration: **{valency}x{signal_receptor} + {valency}x max EMD epitope**
+- Ligand dose: **{dose}**
+- Total epitopes analyzed: **{len(epitopes)}**
+
+**Results Summary:**
+- Total receptor-cluster combinations: **{len(metrics_df)}**
+- Clusters analyzed per resolution: **{cluster_max_metrics.groupby('Resolution')['Cluster'].nunique().to_dict()}**
+- Resolutions with successful analysis: **{sorted(metrics_df['Resolution'].unique())}**
+- Range of cluster counts: **{summary_df['N_Clusters'].min()}-{summary_df['N_Clusters'].max()}** clusters per resolution
+
+**Methodology Note:**
+- 2D metrics (KL Divergence and EMD) are calculated between CD122 and all other receptors for each cluster
+- Selectivity is calculated using bivalent complexes (signal receptor + target epitope) for all epitopes
+- Final averages represent the mean of the maximum values per cluster (most discriminative receptor per cluster)
+- This approach identifies the best-performing receptor per cluster across all three metrics
+- Focus on 2D metrics provides rich discrimination information between cell populations
+"""
+
+print(text)
+```
