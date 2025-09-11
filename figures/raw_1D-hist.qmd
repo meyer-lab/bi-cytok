@@ -39,9 +39,9 @@ from bicytok.imports import importCITE, sample_receptor_abundances
 
 plt.rcParams["svg.fonttype"] = "none"
 
-receptor = "CD117"
-targ_cell = "ILC"
-sample_size = 100
+receptor = "CD338"
+targ_cell = "Treg"
+sample_size = 356*2
 cell_categorization = "CellType2"
 plot_cell_types = [targ_cell, "other"]
 stat = "count"

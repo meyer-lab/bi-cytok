@@ -39,26 +39,24 @@ from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
-receptor_pairs = [
-    ["CD25", "CD25"],
-    ["CD25", "CD4-1"],
-    ["CD25", "CD4-2"],
-    ["CD25", "CD27"],
-    ["CD25", "CD278"],
-    ["CD25", "CD146"],
-    ["CD25", "CD338"],
-    ["CD4-1", "CD4-1"],
-    ["CD4-1", "CD4-2"],
-    ["CD4-1", "CD27"],
-    ["CD4-1", "CD278"],
-    ["CD4-1", "CD146"],
-]
-signal_receptor = "CD122"
-sample_size = 100
-targ_cell = "Treg"
+import time
+
+# receptors = ["CD27", "CD28", "CD314", "CD45RA"]
+signal_receptor = "TCR-1"
+sample_size = 356*2
+targ_cell = "dnT"
 dose = 1e-10
 cell_categorization = "CellType2"
+# model_valencies = np.array([[(2), (1), (1)]])
 model_valencies = np.array([[(2), (1), (1)]])
+
+def generate_receptor_pairs(receptors):
+    pairs = []
+    for r1 in receptors:
+        for r2 in receptors:
+            pairs.append([r1, r2])
+    return pairs
+receptor_pairs = generate_receptor_pairs(receptors)
 
 CITE_DF = importCITE()
 assert targ_cell in CITE_DF[cell_categorization].unique()
@@ -75,7 +73,7 @@ sample_df = sample_receptor_abundances(
     numCells=min(sample_size, epitopes_df.shape[0]),
     targCellType=targ_cell,
 )
-filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
+filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell, whitelist=["TCR-1"])
 
 all_receptors = set(
     [r for pair in receptor_pairs for r in pair] + [signal_receptor]
@@ -94,6 +92,8 @@ selectivity_vals = []
 KL_div_vals = []
 EMD_vals = []
 for receptor_pair in receptor_pairs:
+    time_start = time.time()
+
     rec_abundances = filtered_sample_df[receptor_pair].to_numpy()
 
     KL_div_mat, EMD_mat = KL_EMD_2D(
@@ -114,6 +114,9 @@ for receptor_pair in receptor_pairs:
     )
     selectivity_vals.append(1 / opt_selec)
 
+    time_end = time.time()
+    print(f"Processing time for {receptor_pair}: {time_end - time_start} seconds")
+
 metrics_df = pd.DataFrame(
     {
         "Receptor Pair": [str(receptor) for receptor in receptor_pairs],
@@ -126,7 +129,6 @@ metrics_df = pd.DataFrame(
 
 ```{python}
 #| fig-cap: "KL Divergence vs Selectivity for receptor pairs"
-
 sns.scatterplot(
     data=metrics_df,
     x="KL Divergence",

@@ -181,6 +181,7 @@ def filter_receptor_abundances(
     min_mean_abundance: float = 5.0,
     epitope_list: list[str] = None,
     cell_type_list: list[str] = None,
+    whitelist: list[str] = None
 ) -> pd.DataFrame:
     """
     Filters receptor abundances by removing biologically irrelevant receptors and
@@ -206,17 +207,35 @@ def filter_receptor_abundances(
     # Filter irrelevant receptors
     mean_abundances = abundance_df.mean(axis=0)
     relevant_receptors = mean_abundances[mean_abundances > min_mean_abundance].index
+    
+    # Keep whitelist receptors regardless of mean abundance
+    if whitelist is not None:
+        whitelist_receptors = [r for r in whitelist if r in abundance_df.columns]
+        relevant_receptors = relevant_receptors.union(whitelist_receptors)
+    
     abundance_df = abundance_df[relevant_receptors]
     mean_targ_abundances = abundance_df[cell_type_df == targ_cell_type].mean(axis=0)
     mean_off_targ_abundances = abundance_df[cell_type_df != targ_cell_type].mean(axis=0)
     relevant_receptors = mean_targ_abundances[
         mean_targ_abundances > mean_off_targ_abundances
     ].index
+    
+    # Ensure whitelisted receptors are kept regardless of target/off-target expression
+    if whitelist is not None:
+        whitelist_receptors = [r for r in whitelist if r in abundance_df.columns]
+        relevant_receptors = relevant_receptors.union(whitelist_receptors)
+    
     abundance_df = abundance_df[relevant_receptors]
 
     # Filter user-specified epitopes and cell types
     if epitope_list is not None:
-        abundance_df = abundance_df[epitope_list]
+        # Include both specified epitopes and whitelisted receptors
+        filtered_cols = [col for col in abundance_df.columns if col in epitope_list]
+        if whitelist is not None:
+            filtered_cols.extend([col for col in abundance_df.columns if col in whitelist])
+            filtered_cols = list(set(filtered_cols))  # Remove duplicates
+        abundance_df = abundance_df[filtered_cols]
+    
     if cell_type_list is not None:
         abundance_df = abundance_df[cell_type_df.isin(cell_type_list)]
         cell_type_df = cell_type_df[cell_type_df.isin(cell_type_list)]

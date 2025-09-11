@@ -36,12 +36,12 @@ import seaborn as sns
 from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import importCITE, sample_receptor_abundances
 
-receptor1 = "CD25"
-receptor2 = "CD4-1"
-targ_cell = "Treg"
-sample_size = 5000
+receptor1 = "CD45RA"
+receptor2 = "CD28"
+targ_cell = "dnT"
+sample_size = 356*2
 cell_categorization = "CellType2"
-plot_cell_types = ["Treg", "other"]
+plot_cell_types = ["dnT", "other"]
 
 CITE_DF = importCITE()
 assert targ_cell in CITE_DF[cell_categorization].unique()

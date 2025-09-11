@@ -31,23 +31,23 @@ import matplotlib.pyplot as plt
 from bicytok.distance_metric_funcs import KL_EMD_1D
 from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 
-sample_size = 100
+sample_size = 1000
 cell_categorization = "CellType2"
 cell_types = [
     "B memory",
     "B naive",
-    # "Treg",
-    # "NK",
-    # "CD8 Naive",
-    # "CD4 Naive",
-    # "CD8 TCM",
-    # "CD4 TCM",
-    # "CD14 Mono",
-    # "cDC1",
-    # "ILC",
-    # "CD16 Mono",
-    # "pDC",
-    # "NK_CD56bright",
+    "Treg",
+    "NK",
+    "CD8 Naive",
+    "CD4 Naive",
+    "CD8 TCM",
+    "CD4 TCM",
+    "CD14 Mono",
+    "cDC1",
+    "ILC",
+    "CD16 Mono",
+    "pDC",
+    "NK_CD56bright",
 ]
 
 CITE_DF = importCITE()
@@ -59,6 +59,8 @@ epitopes = [
 ]
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+
+cell_types = epitopes_df["Cell Type"].unique()
 
 top_EMD = []
 top_EMD_rec = []
@@ -117,7 +119,7 @@ KL_labs = np.array(KL_labs)[KL_sort_ind]
 plt.bar(KL_labs, top_KL, color="k")
 plt.xlabel("Cell Type: Epitope")
 plt.ylabel("KL Divergence")
-plt.xticks(rotation=45, ha="right")
+plt.xticks(rotation=45, ha="right", fontsize=8)
 plt.show()
 ```
 
@@ -127,7 +129,7 @@ plt.show()
 plt.bar(EMD_labs, top_EMD, color="k")
 plt.xlabel("Cell Type: Epitope")
 plt.ylabel("EMD")
-plt.xticks(rotation=45, ha="right")
+plt.xticks(rotation=45, ha="right", fontsize=8)
 plt.show()
 ```
 
