@@ -1,58 +1,88 @@
 ---
-title: "2D distribution analysis for receptor pairs"
+title: "Combined 2D distribution with marginal 1D projections"
 ---
 
 # Summary
-Generates a 2D scatter plot with kernel density estimation (KDE) contours to visualize the joint distribution of expression levels for two specified receptors across target and off-target cell populations. Calculates and displays 2D distance metrics to quantify distributional differences.
+Generates a combined figure showing the 2D receptor distribution in the center with 1D marginal distributions along the top and right axes. This visualization helps understand what happens when all points are projected onto either axis, providing both the joint distribution and the individual projections in a single integrated plot. Additionally calculates 1D and 2D selectivity metrics using optimization to compare target vs off-target binding efficiency.
 
 # Imports
 - CITE-seq surface marker expression data (`importCITE`)
-- 2D distance metric calculation functions (`KL_EMD_2D`)
+- 1D and 2D distance metric calculation functions (`KL_EMD_1D`, `KL_EMD_2D`)
+- Selectivity optimization function (`optimize_affs`)
 
 # Parameters
-- `receptor1`: String name of first receptor for 2D distribution analysis
-- `receptor2`: String name of second receptor for 2D distribution analysis
+- `receptor1`: String name of first receptor for distribution analysis
+- `receptor2`: String name of second receptor for distribution analysis
 - `targ_cell`: String identifier for target cell type in distribution comparison
 - `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
 - `cell_categorization`: String column name for cell type classification in CITE-seq data
 - `plot_cell_types`: List of strings specifying cell type labels for plotting
+- `stat`: String specifying histogram statistic ('count', 'density', 'probability')
+- `normalize`: Boolean flag to normalize receptor counts by mean expression
+- `signal`: List containing signal receptor name for selectivity calculations
+- `dose`: Float ligand concentration for selectivity optimization
+- `valencies_1d`: Array specifying ligand valencies for 1D selectivity analysis
+- `valencies_2d`: Array specifying ligand valencies for 2D selectivity analysis
 
 # Outputs
-- **2D Scatter Plot**: Joint distribution of receptor pairs with:
-  - Scatter points colored by cell type (target vs off-target)
-  - KDE contour lines overlaid for each cell population
-  - Normalized receptor expression on both axes
-  - 2D KL Divergence and EMD values displayed in plot title
-  - Axes limited to 99th percentile of expression values for clarity
+- **Combined Plot**: Main 2D scatter plot with marginal 1D histograms showing projections along each axis
+  - Center panel: 2D joint distribution with scatter points and KDE contours
+  - Top panel: 1D projection of all points onto the x-axis (receptor1)
+  - Right panel: 1D projection of all points onto the y-axis (receptor2)
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
 
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from bicytok.distance_metric_funcs import KL_EMD_2D
+import time
+
+from bicytok.distance_metric_funcs import KL_EMD_1D, KL_EMD_2D
 from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
 
-receptor1 = "CD4-1"
-receptor2 = "CD27"
-targ_cell = "Treg"
-sample_size = 5000
+plt.rcParams["svg.fonttype"] = "none"
+
+# Parameters
+receptor1 = "CD27"
+receptor2 = "CD28"
+targ_cell = "dnT"
+sample_size = 356*2
 cell_categorization = "CellType2"
-plot_cell_types = ["Treg", "other"]
+plot_cell_types = [targ_cell, "other"]
+normalize = False
 
+# Selectivity parameters
+dose = 1e-10  # ligand concentration in M
+signal = ["TCR-1"]  # signal receptor for selectivity calculations
+valencies_1d = np.array([[2, 2]])  # valencies for 1D case (signal + one target receptor)
+valencies_2d = np.array([[2, 1, 1]])  # valencies for 2D case (signal + two target receptors)
+
+# Color scheme
+TARGET_COLOR = "#CF4D6F"
+OFF_TARGET_COLOR = "#2774AE"
+colors = [TARGET_COLOR, OFF_TARGET_COLOR]
+cell_type_labels = ["Target", "Off-target"]
+
+# Figure dimensions for marginal plot layout
+FIGURE_SIZE = (10, 8)
+DPI = 100
+
+# Data loading and processing
 CITE_DF = importCITE()
 assert targ_cell in CITE_DF[cell_categorization].unique()
 
 epitopes = [
     col
     for col in CITE_DF.columns
-    if col not in ["CellType1", "CellType2", "CellType3"]
+    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
 ]
 
-for receptor in [receptor1, receptor2]:
+for receptor in [receptor1, receptor2] + signal:
     if receptor not in epitopes:
         raise ValueError(
             f"Receptor '{receptor}' not found. Available receptors: {epitopes}"
@@ -60,20 +90,103 @@ for receptor in [receptor1, receptor2]:
 
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+
+# Sample data for metric calculations (balanced)
+sample_df_metrics = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=min(sample_size, epitopes_df.shape[0]),
+    targCellType=targ_cell,
+    balance=True,
+    rand_state=42,
+)
+
+# Sample data for plotting (unbalanced, raw counts)
 sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,
     numCells=min(sample_size, epitopes_df.shape[0]),
     targCellType=targ_cell,
+    balance=False,
+    rand_state=42,
 )
 
-targ_mask = (sample_df["Cell Type"] == targ_cell).to_numpy()
+# Calculate 1D metrics for both receptors
+targ_mask = (sample_df_metrics["Cell Type"] == targ_cell).to_numpy()
 off_targ_mask = ~targ_mask
-rec_abundances = sample_df[[receptor1, receptor2]].to_numpy()
-KL_div_vals, EMD_vals = KL_EMD_2D(
-    rec_abundances, targ_mask, off_targ_mask, calc_1D=False
+
+rec1_abundances_metrics = sample_df_metrics[[receptor1]].to_numpy()
+rec2_abundances_metrics = sample_df_metrics[[receptor2]].to_numpy()
+rec_abundances_2d = sample_df_metrics[[receptor1, receptor2]].to_numpy()
+
+time_start_metrics = time.time()
+
+KL_div_vals_1, EMD_vals_1 = KL_EMD_1D(rec1_abundances_metrics, targ_mask, off_targ_mask)
+KL_div_vals_2, EMD_vals_2 = KL_EMD_1D(rec2_abundances_metrics, targ_mask, off_targ_mask)
+KL_div_vals_2d, EMD_vals_2d = KL_EMD_2D(rec_abundances_2d, targ_mask, off_targ_mask, calc_1D=False)
+
+print(f"Metric calculations took {time.time() - time_start_metrics:.2f} seconds")
+
+kl_val_1 = KL_div_vals_1[0]
+emd_val_1 = EMD_vals_1[0]
+kl_val_2 = KL_div_vals_2[0]
+emd_val_2 = EMD_vals_2[0]
+kl_val_2d = KL_div_vals_2d[1, 0] * 2**0.5/2
+emd_val_2d = EMD_vals_2d[1, 0] * 2**0.5/2
+
+# Calculate selectivity metrics
+targ_recs = sample_df_metrics[sample_df_metrics["Cell Type"] == targ_cell]
+off_targ_recs = sample_df_metrics[sample_df_metrics["Cell Type"] != targ_cell]
+
+time_start_selectivity = time.time()
+
+# Get signal receptor abundance
+signal_abun_targ = targ_recs[signal].to_numpy()
+signal_abun_off = off_targ_recs[signal].to_numpy()
+
+# 1D selectivity calculations
+def calculate_selectivity(targ_data, off_data, dose, valencies):
+    """Helper function to calculate selectivity with error handling."""
+    try:
+        opt_selec, _, _ = optimize_affs(
+            targRecs=targ_data,
+            offTargRecs=off_data,
+            dose=dose,
+            valencies=valencies
+        )
+        return 1 / opt_selec  # Convert to target/off-target ratio
+    except Exception:
+        return np.nan
+
+# For signal receptor with receptor1
+rec1_abun_targ = targ_recs[[receptor1]].to_numpy()
+rec1_abun_off = off_targ_recs[[receptor1]].to_numpy()
+receptor_abuns_1d_rec1_targ = np.hstack((signal_abun_targ, rec1_abun_targ))
+receptor_abuns_1d_rec1_off = np.hstack((signal_abun_off, rec1_abun_off))
+
+selectivity_1d_rec1 = calculate_selectivity(
+    receptor_abuns_1d_rec1_targ, receptor_abuns_1d_rec1_off, dose, valencies_1d
 )
-kl_val = KL_div_vals[1, 0]
-emd_val = EMD_vals[1, 0]
+
+# For signal receptor with receptor2
+rec2_abun_targ = targ_recs[[receptor2]].to_numpy()
+rec2_abun_off = off_targ_recs[[receptor2]].to_numpy()
+receptor_abuns_1d_rec2_targ = np.hstack((signal_abun_targ, rec2_abun_targ))
+receptor_abuns_1d_rec2_off = np.hstack((signal_abun_off, rec2_abun_off))
+
+selectivity_1d_rec2 = calculate_selectivity(
+    receptor_abuns_1d_rec2_targ, receptor_abuns_1d_rec2_off, dose, valencies_1d
+)
+
+# 2D selectivity calculation
+receptor_abuns_2d_targ = np.hstack((signal_abun_targ, rec1_abun_targ, rec2_abun_targ))
+receptor_abuns_2d_off = np.hstack((signal_abun_off, rec1_abun_off, rec2_abun_off))
+
+selectivity_2d = calculate_selectivity(
+    receptor_abuns_2d_targ, receptor_abuns_2d_off, dose, valencies_2d
+)
+
+print(f"Selectivity calculations took {time.time() - time_start_selectivity:.2f} seconds")
+
+# Prepare plotting data
 sample_df.loc[sample_df["Cell Type"] != targ_cell, "Cell Type"] = "other"
 
 rec1_abundance = sample_df[receptor1].values
@@ -81,32 +194,51 @@ rec2_abundance = sample_df[receptor2].values
 mean_rec1 = np.mean(rec1_abundance)
 mean_rec2 = np.mean(rec2_abundance)
 
-plot_df = pd.DataFrame(
-    {
-        "Cell Type": sample_df["Cell Type"],
-        f"{receptor1}_norm": rec1_abundance / mean_rec1,
-        f"{receptor2}_norm": rec2_abundance / mean_rec2,
-    }
-)
+# 2D plot data
+plot_df = pd.DataFrame({
+    "Cell Type": sample_df["Cell Type"],
+    f"{receptor1}_norm": rec1_abundance / mean_rec1 if normalize else rec1_abundance,
+    f"{receptor2}_norm": rec2_abundance / mean_rec2 if normalize else rec2_abundance,
+})
+
+# Calculate consistent axis limits for alignment
+x_max = np.percentile(plot_df[f"{receptor1}_norm"], 99) * 1.1
+y_max = np.percentile(plot_df[f"{receptor2}_norm"], 99) * 1.1
+x_min = y_min = 0
 ```
 
 ```{python}
-#| fig-cap: "2D distribution of receptor pairs with scatter plots and KDE contours"
+#| fig-cap: "2D distribution with marginal 1D projections showing axis projections"
 
-colors = ["#CF4D6F", "#2774AE"]
-cell_type_labels = ["Target", "Off-target"]
+# Create figure with custom gridspec for marginal plots
+fig = plt.figure(figsize=FIGURE_SIZE, dpi=DPI)
+gs = gridspec.GridSpec(
+    3, 3, 
+    figure=fig,
+    width_ratios=[1, 4, 1], 
+    height_ratios=[1, 4, 0.2],
+    hspace=0.15, 
+    wspace=0.05,
+    top=0.88,
+    bottom=0.1
+)
+
+# Main 2D plot (center)
+ax_main = fig.add_subplot(gs[1, 1])
+
+# Plot 2D data
 for i, cell_type in enumerate(
     [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
 ):
     cell_df = plot_df[plot_df["Cell Type"] == cell_type]
 
-    plt.scatter(
+    ax_main.scatter(
         cell_df[f"{receptor1}_norm"],
         cell_df[f"{receptor2}_norm"],
         alpha=0.3,
         color=colors[i],
         s=10,
-        label=cell_type_labels[i],
+        label=cell_type_labels[i]
     )
 
     sns.kdeplot(
@@ -115,26 +247,123 @@ for i, cell_type in enumerate(
         color=colors[i],
         levels=5,
         linewidths=1.5,
-        alpha=0.5,
+        ax=ax_main
     )
 
-x_max = np.percentile(plot_df[f"{receptor1}_norm"], 99)
-y_max = np.percentile(plot_df[f"{receptor2}_norm"], 99)
-plt.xlim(0, x_max * 1.1)
-plt.ylim(0, y_max * 1.1)
+ax_main.set_xlim(x_min, x_max)
+ax_main.set_ylim(y_min, y_max)
+ax_main.grid(alpha=0.3, linestyle="--")
 
-plt.title(
-    f"{receptor1} vs {receptor2} Distribution\nKL: {kl_val:.2f}, "
-    f"EMD: {emd_val:.2f}",
-    fontsize=10,
+if normalize:
+    ax_main.set_xlabel(f"{receptor1} Normalized Count", fontsize=16)
+    ax_main.set_ylabel(f"{receptor2} Normalized Count", fontsize=16)
+else:
+    ax_main.set_xlabel(f"{receptor1} Count", fontsize=16)
+    ax_main.set_ylabel(f"{receptor2} Count", fontsize=16)
+
+ax_main.tick_params(axis="both", labelsize=14)
+ax_main.legend(fontsize=12)
+
+# Top marginal plot (x-axis projection)
+ax_top = fig.add_subplot(gs[0, 1], sharex=ax_main)
+
+# Plot all points projected onto x-axis (receptor1)
+all_x_data = plot_df[f"{receptor1}_norm"].values
+for i, cell_type in enumerate(
+    [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
+):
+    cell_df = plot_df[plot_df["Cell Type"] == cell_type]
+    x_data = cell_df[f"{receptor1}_norm"].values
+    
+    ax_top.hist(
+        x_data,
+        bins=30,
+        alpha=0.6,
+        color=colors[i],
+        label=f"{cell_type_labels[i]} only"
+    )
+
+# Also show the overall projection (all points combined)
+ax_top.hist(
+    all_x_data,
+    bins=30,
+    alpha=0.3,
+    color='gray',
+    linestyle='--',
+    histtype='step',
+    linewidth=2,
+    label='All points projection'
 )
-plt.xlabel(f"{receptor1} Count", fontsize=28)
-plt.ylabel(f"{receptor2} Count", fontsize=28)
-plt.tick_params(axis="x", labelsize=25)
-plt.tick_params(axis="y", labelsize=25)
-plt.legend(loc="best", fontsize=25)
-plt.grid(alpha=0.3, linestyle="--")
-plt.tight_layout()
+
+ax_top.set_xlim(x_min, x_max)
+ax_top.set_ylabel("Number of Cells", fontsize=14)
+ax_top.tick_params(axis="both", labelsize=12)
+ax_top.text(
+    0.02, 0.95, 
+    f"X-axis: KL={kl_val_1:.2f}, EMD={emd_val_1:.2f}\nSelectivity ({signal[0]}+{receptor1}): {selectivity_1d_rec1:.2f}", 
+    transform=ax_top.transAxes, 
+    fontsize=11,
+    verticalalignment='top',
+    horizontalalignment='left',
+    bbox=dict(boxstyle='round', facecolor='white', alpha=0.8)
+)
+plt.setp(ax_top.get_xticklabels(), visible=False)
+
+# Right marginal plot (y-axis projection)
+ax_right = fig.add_subplot(gs[1, 2], sharey=ax_main)
+
+# Plot all points projected onto y-axis (receptor2)
+all_y_data = plot_df[f"{receptor2}_norm"].values
+for i, cell_type in enumerate(
+    [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
+):
+    cell_df = plot_df[plot_df["Cell Type"] == cell_type]
+    y_data = cell_df[f"{receptor2}_norm"].values
+    
+    ax_right.hist(
+        y_data,
+        bins=30,
+        alpha=0.6,
+        color=colors[i],
+        orientation='horizontal'
+    )
+
+# Also show the overall projection (all points combined)
+ax_right.hist(
+    all_y_data,
+    bins=30,
+    alpha=0.3,
+    color='gray',
+    orientation='horizontal',
+    linestyle='--',
+    histtype='step',
+    linewidth=2
+)
+
+ax_right.set_ylim(y_min, y_max)
+ax_right.set_xlabel("Number of Cells", fontsize=14)
+ax_right.tick_params(axis="both", labelsize=12)
+plt.setp(ax_right.get_yticklabels(), visible=False)
+
+# Add text annotation for y-axis metrics
+ax_right.text(
+    0.95, 0.95, 
+    f"Y-axis:\nKL={kl_val_2:.2f}\nEMD={emd_val_2:.2f}\nSelectivity ({signal[0]}+{receptor2}): {selectivity_1d_rec2:.2f}", 
+    transform=ax_right.transAxes, 
+    fontsize=11,
+    verticalalignment='top',
+    horizontalalignment='right',
+    bbox=dict(boxstyle='round', facecolor='white', alpha=0.8)
+)
+
+# Add overall title and 2D metrics
+fig.suptitle(
+    f"{receptor1} vs {receptor2} with Marginal Projections\n"
+    f"2D Metrics - KL: {kl_val_2d:.2f}, EMD: {emd_val_2d:.2f}, Selectivity ({signal[0]}+{receptor1}+{receptor2}): {selectivity_2d:.2f}",
+    fontsize=16,
+    y=0.98
+)
+
 plt.show()
 ```
 
@@ -143,7 +372,20 @@ plt.show()
 #| output: asis
 
 text = f"""
-Visualized the 2D joint distribution of receptor pairs **{receptor1}** and **{receptor2}** across target cell type **{targ_cell}** and off-target cells. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+Generated a combined marginal plot showing the 2D joint distribution of **{receptor1}** and **{receptor2}** with 1D projections along each axis. The visualization includes:
+
+- **Center panel**: 2D scatter plot with KDE contours showing the joint distribution
+- **Top panel**: 1D histogram showing projection of all points onto the {receptor1} axis
+- **Right panel**: 1D histogram showing projection of all points onto the {receptor2} axis
+
+Analysis compared target cell type **{targ_cell}** vs off-target cells using **{sample_size}** cells from the CITE-seq dataset. The marginal histograms show both individual cell type distributions and the overall projection (gray dashed line) to visualize what happens when all 2D points are collapsed onto each axis. Target cells are shown in {TARGET_COLOR} and off-target cells in {OFF_TARGET_COLOR}. Receptor counts were {'**normalized**' if normalize else '**not normalized**'}.
+
+**Selectivity Analysis**: Using **{signal[0]}** as the signaling receptor, selectivity was calculated for:
+- 1D case with {signal[0]}+{receptor1}: **{selectivity_1d_rec1:.2f}**
+- 1D case with {signal[0]}+{receptor2}: **{selectivity_1d_rec2:.2f}**  
+- 2D case with {signal[0]}+{receptor1}+{receptor2}: **{selectivity_2d:.2f}**
+
+Selectivity values represent the ratio of target to off-target binding after optimization at dose **{dose:.0e} M** using valencies {valencies_1d.flatten()} (1D) and {valencies_2d.flatten()} (2D).
 """
 
 print(text)
