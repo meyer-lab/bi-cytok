@@ -41,9 +41,12 @@ from bicytok.selectivity_funcs import optimize_affs
 
 import time
 
-signal_receptor = "TCR-1"
-sample_size = 356*2
-targ_cell = "dnT"
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+
+signal_receptor = "CD122"
+sample_size = 1000
+targ_cell = "Treg"
 test_valencies = [(1), (2)]
 dose = 1e-10
 cell_categorization = "CellType2"
@@ -183,7 +186,7 @@ for valency in metrics_df["Valency"].unique():
         subset["KL Divergence"],
         subset["Selectivity"],
         marker=marker,
-        s=70,
+        s=200,
         color='gray',
         alpha=0.5
     )
@@ -197,7 +200,7 @@ if len(metrics_df_kl_both) > 0:
             subset["KL Divergence"],
             subset["Selectivity"],
             color="#2774AE",
-            s=80,
+            s=200,
             alpha=0.9,
             marker=marker,
             label="Both KL & Selectivity" if valency == metrics_df_kl_both["Valency"].unique()[0] else ""
@@ -212,7 +215,7 @@ if len(metrics_df_kl_only) > 0:
             subset["KL Divergence"],
             subset["Selectivity"],
             color="#CF4D6F",
-            s=80,
+            s=200,
             alpha=0.9,
             marker=marker,
             label="KL Only" if valency == metrics_df_kl_only["Valency"].unique()[0] else ""
@@ -227,15 +230,15 @@ if len(metrics_df_selectivity_only_kl) > 0:
             subset["KL Divergence"],
             subset["Selectivity"],
             color="#FFB81C",
-            s=80,
+            s=200,
             alpha=0.9,
             marker=marker,
             label="Selectivity Only" if valency == metrics_df_selectivity_only_kl["Valency"].unique()[0] else ""
         )
 
 ax.grid(True, linestyle='--', alpha=0.7)
-ax.set_xlabel("KL divergence", fontsize=30)
-ax.set_ylabel("Selectivity", fontsize=30)
+ax.set_xlabel("KL Divergence", fontsize=30)
+ax.set_ylabel("Binding Model Selectivity", fontsize=30)
 ax.tick_params(axis='x', labelsize=25)
 ax.tick_params(axis='y', labelsize=25)
 ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=5)
@@ -256,7 +259,7 @@ for valency in metrics_df["Valency"].unique():
         subset["EMD"],
         subset["Selectivity"],
         marker=marker,
-        s=70,
+        s=200,
         color='gray',
         alpha=0.5
     )
@@ -270,7 +273,7 @@ if len(metrics_df_emd_both) > 0:
             subset["EMD"],
             subset["Selectivity"],
             color="#2774AE",
-            s=80,
+            s=200,
             alpha=0.9,
             marker=marker,
             label="Both EMD & Selectivity" if valency == metrics_df_emd_both["Valency"].unique()[0] else ""
@@ -285,7 +288,7 @@ if len(metrics_df_emd_only) > 0:
             subset["EMD"],
             subset["Selectivity"],
             color="#CF4D6F",
-            s=80,
+            s=200,
             alpha=0.9,
             marker=marker,
             label="EMD Only" if valency == metrics_df_emd_only["Valency"].unique()[0] else ""
@@ -300,7 +303,7 @@ if len(metrics_df_selectivity_only_emd) > 0:
             subset["EMD"],
             subset["Selectivity"],
             color="#FFB81C",
-            s=80,
+            s=200,
             alpha=0.9,
             marker=marker,
             label="Selectivity Only" if valency == metrics_df_selectivity_only_emd["Valency"].unique()[0] else ""
@@ -308,12 +311,10 @@ if len(metrics_df_selectivity_only_emd) > 0:
 
 ax.grid(True, linestyle='--', alpha=0.7)
 ax.set_xlabel("EMD", fontsize=30)
-ax.set_ylabel("Selectivity", fontsize=30)
+ax.set_ylabel("Binding Model Selectivity", fontsize=30)
 ax.tick_params(axis='x', labelsize=25)
 ax.tick_params(axis='y', labelsize=25)
-ax.set_xlim(0, 1.1)
-ax.set_ylim(0.47, 0.9)
-# ax.set_title("EMD vs Selectivity (Top 5 Receptors by Category)", fontsize=30)
+ax.set_title("EMD vs Selectivity (Top 5 Receptors by Category)", fontsize=30)
 ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=4)
 plt.tight_layout()
 plt.show()

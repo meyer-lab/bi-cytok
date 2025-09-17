@@ -36,12 +36,12 @@ import seaborn as sns
 from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import importCITE, sample_receptor_abundances
 
-receptor1 = "CD45RA"
-receptor2 = "CD28"
-targ_cell = "dnT"
-sample_size = 356*2
+receptor1 = "CD4-1"
+receptor2 = "CD27"
+targ_cell = "Treg"
+sample_size = 5000
 cell_categorization = "CellType2"
-plot_cell_types = ["dnT", "other"]
+plot_cell_types = ["Treg", "other"]
 
 CITE_DF = importCITE()
 assert targ_cell in CITE_DF[cell_categorization].unique()
@@ -93,7 +93,8 @@ plot_df = pd.DataFrame(
 ```{python}
 #| fig-cap: "2D distribution of receptor pairs with scatter plots and KDE contours"
 
-colors = sns.color_palette("husl", len(plot_cell_types))
+colors = ["#CF4D6F", "#2774AE"]
+cell_type_labels = ["Target", "Off-target"]
 for i, cell_type in enumerate(
     [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
 ):
@@ -105,7 +106,7 @@ for i, cell_type in enumerate(
         alpha=0.3,
         color=colors[i],
         s=10,
-        label=f"{cell_type} (n={len(cell_df)})",
+        label=cell_type_labels[i],
     )
 
     sns.kdeplot(
@@ -114,6 +115,7 @@ for i, cell_type in enumerate(
         color=colors[i],
         levels=5,
         linewidths=1.5,
+        alpha=0.5,
     )
 
 x_max = np.percentile(plot_df[f"{receptor1}_norm"], 99)
@@ -124,11 +126,13 @@ plt.ylim(0, y_max * 1.1)
 plt.title(
     f"{receptor1} vs {receptor2} Distribution\nKL: {kl_val:.2f}, "
     f"EMD: {emd_val:.2f}",
-    fontsize=14,
+    fontsize=10,
 )
-plt.xlabel(f"{receptor1} Normalized Count", fontsize=12)
-plt.ylabel(f"{receptor2} Normalized Count", fontsize=12)
-plt.legend(loc="best", fontsize=10, title="Cell Types")
+plt.xlabel(f"{receptor1} Count", fontsize=28)
+plt.ylabel(f"{receptor2} Count", fontsize=28)
+plt.tick_params(axis="x", labelsize=25)
+plt.tick_params(axis="y", labelsize=25)
+plt.legend(loc="best", fontsize=25)
 plt.grid(alpha=0.3, linestyle="--")
 plt.tight_layout()
 plt.show()

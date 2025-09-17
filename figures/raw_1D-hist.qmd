@@ -39,13 +39,13 @@ from bicytok.imports import importCITE, sample_receptor_abundances
 
 plt.rcParams["svg.fonttype"] = "none"
 
-receptor = "CD338"
+receptor = "CD27"
 targ_cell = "Treg"
-sample_size = 356*2
+sample_size = 5000
 cell_categorization = "CellType2"
 plot_cell_types = [targ_cell, "other"]
 stat = "count"
-x_limit = False
+x_limit = True
 normalize = False
 
 CITE_DF = importCITE()
@@ -108,7 +108,8 @@ for cell_type in plot_cell_types:
 ```{python}
 #| fig-cap: "1D distribution of receptor with histogram and KDE overlay"
 
-colors = sns.color_palette("husl", len(all_cell_abundances))
+colors = ["#CF4D6F", "#2774AE"]
+cell_type_labels = ["Target", "Off-target"]
 for i, abundances in enumerate(all_cell_abundances):
     if len(abundances) == 0:
         continue
@@ -116,31 +117,35 @@ for i, abundances in enumerate(all_cell_abundances):
         abundances,
         color=colors[i],
         alpha=0.5,
-        label=f"{plot_cell_types[i]} (n={len(abundances)})",
+        label=cell_type_labels[i],
         stat=stat,
         kde=True,
         kde_kws={"bw_method": "scott"},
     )
 
 plt.title(
-    f"{receptor} Distribution\nKL: {kl_val:.2f}, EMD: {emd_val:.2f}", fontsize=14
+    f"{receptor} Distribution\nKL: {kl_val:.2f}, EMD: {emd_val:.2f}", fontsize=10
 )
 if normalize:
-    plt.xlabel("Normalized receptor count", fontsize=12)
+    plt.xlabel("Normalized receptor count", fontsize=28)
 else:
-    plt.xlabel("Receptor count", fontsize=12)
+    plt.xlabel(f"Number of {receptor} Receptors", fontsize=28)
 
 if stat == "density":
-    plt.ylabel("Density", fontsize=12)
+    plt.ylabel("Density", fontsize=28)
 elif stat == "count":
-    plt.ylabel("Number of cells", fontsize=12)
+    plt.ylabel("Number of Cells", fontsize=28)
 elif stat == "probability":
-    plt.ylabel("Proportion of cells", fontsize=12)
+    plt.ylabel("Proportion of cells", fontsize=28)
 
-x_max = np.percentile(targ_abundances, 99)
+x_max = np.percentile(targ_abundances, 99.5)
 if x_limit:
     plt.xlim(0, x_max * 1.1)
-plt.legend(loc="upper right", fontsize=10, title="Cell Types")
+plt.xlim(0, 240)
+plt.tick_params(axis="x", labelsize=25)
+plt.tick_params(axis="y", labelsize=25)
+plt.legend(loc="upper right", fontsize=25)
+plt.grid(alpha=0.3, linestyle="--")
 plt.tight_layout()
 plt.show()
 ```

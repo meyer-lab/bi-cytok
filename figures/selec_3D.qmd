@@ -35,13 +35,13 @@ from bicytok.selectivity_funcs import optimize_affs
 
 import time
 
-receptors = ["CD25", "CD4-1", "CD27", "CD278", "CD338"]
+receptors = ["CD25", "CD4-1", "CD27"]
 signal = ["CD122"]
 cell_type = "Treg"
 dose = 1e-10
 valency = np.array([[2, 1, 1]])
 cell_categorization = "CellType2"
-sample_size = 1000
+sample_size = 100
 
 CITE_DF = importCITE()
 
@@ -102,17 +102,18 @@ results_df_filt = results_df_filt.iloc[::-1]
 #| fig-cap: "Selectivity values of the top 5 receptor triplet combinations"
 # Create horizontal bar plot
 plt.figure(figsize=(6, 5))
-plt.barh(
+plt.bar(
     results_df_filt['Combination'],
     results_df_filt['Selectivity'],
     color="#2774AE",
 )
-plt.tick_params(axis="y", labelsize=20)
 plt.tick_params(axis="x", labelsize=20)
-plt.xlabel("Selectivity", fontsize=25)
-plt.xlim(0.7, 1.0)
-# Add more tick labels to the x-axis
-plt.xticks(np.arange(0.7, 1.00, 0.1))
+plt.tick_params(axis="y", labelsize=20)
+plt.ylabel("Selectivity", fontsize=25)
+plt.ylim(0.7, 1.0)
+# Add more tick labels to the y-axis
+plt.yticks(np.arange(0.7, 1.00, 0.1))
+plt.xticks(rotation=45, ha='right')
 plt.tight_layout()
 plt.show()
 ```
