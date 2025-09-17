@@ -43,6 +43,7 @@ all_targets = [
 ]
 targ_cell = "Treg"
 dose_vec = np.logspace(-11, -4, num=20)
+sample_size = 1000
 
 CITE_DF = importCITE()
 
@@ -56,7 +57,7 @@ epitopes_df = epitopes_df.rename(columns={"CellType2": "Cell Type"})
 
 sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,
-    numCells=100,
+    numCells=sample_size,
     targCellType=targ_cell,
 )
 

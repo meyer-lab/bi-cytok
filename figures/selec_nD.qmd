@@ -40,11 +40,11 @@ from bicytok.selectivity_funcs import optimize_affs
 
 import time
 
-sample_size = 356*2
-targ_cell = "dnT"
+sample_size = 1000
+targ_cell = "Treg"
 dose = 1e-10
 cell_categorization = "CellType2"
-receptors = ["TCR-1", "CD27", "CD28", "CD45RA"]
+receptors = ["CD25", "CD4-1", "CD27", "CD4-2", "CD278"]
 model_valencies = np.array([[(1), (1), (1), (1)]])
 
 CITE_DF = importCITE()

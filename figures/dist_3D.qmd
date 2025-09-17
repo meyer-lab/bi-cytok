@@ -35,11 +35,11 @@ targ_cell = "Treg"
 receptors_of_interest = [
     "CD25",
     "CD4-1",
-    # "CD27",
-    # "CD4-2",
-    # "CD278",
+    "CD27",
+    "CD4-2",
+    "CD278",
 ]
-sample_size = 100
+sample_size = 1000
 cell_categorization = "CellType2"
 
 CITE_DF = importCITE()

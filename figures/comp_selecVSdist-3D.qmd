@@ -41,13 +41,12 @@ from bicytok.selectivity_funcs import optimize_affs
 
 import time
 
-# receptors = ["CD27", "CD28", "CD314", "CD45RA"]
-signal_receptor = "TCR-1"
-sample_size = 356*2
-targ_cell = "dnT"
+receptors = ["CD27", "CD28", "CD314", "CD45RA"]
+signal_receptor = "CD122"
+sample_size = 1000
+targ_cell = "Treg"
 dose = 1e-10
 cell_categorization = "CellType2"
-# model_valencies = np.array([[(2), (1), (1)]])
 model_valencies = np.array([[(2), (1), (1)]])
 
 def generate_receptor_pairs(receptors):

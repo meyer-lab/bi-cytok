@@ -41,7 +41,7 @@ cell_type = "Treg"
 dose = 1e-10
 valency = np.array([[2, 1, 1]])
 cell_categorization = "CellType2"
-sample_size = 100
+sample_size = 1000
 
 CITE_DF = importCITE()
 

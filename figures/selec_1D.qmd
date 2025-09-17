@@ -32,7 +32,7 @@ receptors = ["CD25", "CD4-1", "CD27", "CD4-2", "CD278"]
 cell_type = "Treg"
 dose = 1e-10
 cell_categorization = "CellType2"
-sample_size = 100
+sample_size = 1000
 
 CITE_DF = importCITE()
 
