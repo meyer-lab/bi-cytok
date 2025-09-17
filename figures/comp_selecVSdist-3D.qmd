@@ -73,7 +73,7 @@ sample_df = sample_receptor_abundances(
     numCells=min(sample_size, epitopes_df.shape[0]),
     targCellType=targ_cell,
 )
-filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell, whitelist=["TCR-1"])
+filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
 
 all_receptors = set(
     [r for pair in receptor_pairs for r in pair] + [signal_receptor]
