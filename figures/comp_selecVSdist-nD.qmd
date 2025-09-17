@@ -35,7 +35,6 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
@@ -48,15 +47,8 @@ cell_categorization = "CellType2"
 receptors = ["TCR-1", "CD27", "CD28", "CD45RA"]
 model_valencies = np.array([[(1), (1), (1), (1)]])
 
-def generate_receptor_pairs(receptors):
-    pairs = []
-    for r1 in receptors:
-        for r2 in receptors:
-            pairs.append([r1, r2])
-    return pairs
-receptor_pairs = generate_receptor_pairs(receptors)
-
 CITE_DF = importCITE()
+
 assert targ_cell in CITE_DF[cell_categorization].unique()
 
 epitopes = [
@@ -71,14 +63,7 @@ sample_df = sample_receptor_abundances(
     numCells=min(sample_size, epitopes_df.shape[0]),
     targCellType=targ_cell,
 )
-filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell, whitelist=["TCR-1"])
-
-all_receptors = set(
-    [r for pair in receptor_pairs for r in pair] + [signal_receptor]
-)
-missing_receptors = all_receptors - set(filtered_sample_df.columns)
-if missing_receptors:
-    raise ValueError(f"Missing receptors in filtered dataset: {missing_receptors}")
+filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
 
 on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
 off_target_mask = ~on_target_mask
@@ -89,12 +74,6 @@ df_off_targ_cell = filtered_sample_df.loc[off_target_mask]
 time_start = time.time()
 
 rec_abundances = filtered_sample_df[receptors].to_numpy()
-
-KL_div_mat, EMD_mat = KL_EMD_2D(
-    rec_abundances, on_target_mask, off_target_mask, calc_1D=False
-)
-KL_div = KL_div_mat[1, 0]
-EMD = EMD_mat[1, 0]
 
 targ_recs = df_targ_cell[receptors].to_numpy()
 off_targ_recs = df_off_targ_cell[receptors].to_numpy()
