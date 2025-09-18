@@ -39,8 +39,6 @@ jobs:
         version: '0.39.0'
     - name: Setup environment
       run: make .venv
-    - name: Setup Quarto
-      uses: quarto-dev/quarto-actions/setup@v2
     - name: Render figure ${{ matrix.figure }}
       run: quarto render figures/${{ matrix.figure }}.qmd --to typst
     - name: Upload files
