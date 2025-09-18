@@ -3,8 +3,37 @@ name: Build
 on: [push]
 
 jobs:
+  discover-figures:
+    runs-on: self-hosted
+    outputs:
+      figures: ${{ steps.get-figures.outputs.figures }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Get figure list
+      id: get-figures
+      run: |
+        cd figures
+        figures="["
+        first=true
+        for qmd_file in *.qmd; do
+          basename=$(basename "$qmd_file" .qmd)
+          if [ "$first" = true ]; then
+            figures="$figures\"$basename\""
+            first=false
+          else
+            figures="$figures,\"$basename\""
+          fi
+        done
+        figures="$figures]"
+        echo "figures=$figures" >> $GITHUB_OUTPUT
+
   build:
     runs-on: self-hosted
+    needs: discover-figures
+    strategy:
+      matrix:
+        figure: ${{ fromJson(needs.discover-figures.outputs.figures) }}
+      fail-fast: false
     steps:
     - uses: actions/checkout@v4
     - name: Setup rye
@@ -14,24 +43,11 @@ jobs:
         version: '0.39.0'
     - name: Setup environment
       run: make .venv
-    - name: Render figures individually
-      run: |
-        cd figures
-        exit_code=0
-        for qmd_file in *.qmd; do
-          echo "Rendering $qmd_file..."
-          if ! quarto render "$qmd_file" --to typst; then
-            echo "Failed to render $qmd_file"
-            exit_code=1
-          else
-            echo "Successfully rendered $qmd_file"
-          fi
-        done
-        exit $exit_code
+    - name: Render figure ${{ matrix.figure }}
+      run: quarto render figures/${{ matrix.figure }}.qmd --to typst
     - name: Upload files
       uses: actions/upload-artifact@v4
-      if: always()
       with:
-        name: figures
+        name: figure-${{ matrix.figure }}
         path: |
-          _output/figures/
+          _output/figures/${{ matrix.figure }}.*
