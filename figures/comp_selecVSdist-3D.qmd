@@ -41,9 +41,9 @@ from bicytok.selectivity_funcs import optimize_affs
 
 import time
 
-receptors = ["CD27", "CD28", "CD314", "CD45RA"]
+receptors = ["CD25", "CD4-1", "CD27"]
 signal_receptor = "CD122"
-sample_size = 1000
+sample_size = 100
 targ_cell = "Treg"
 dose = 1e-10
 cell_categorization = "CellType2"

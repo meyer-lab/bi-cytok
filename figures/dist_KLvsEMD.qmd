@@ -39,7 +39,7 @@ from bicytok.imports import filter_receptor_abundances, importCITE, sample_recep
 plt.rcParams["svg.fonttype"] = "none"
 
 targ_cell = "Treg"
-sample_size = 1000
+sample_size = 100
 cell_categorization = "CellType2"
 
 CITE_DF = importCITE()

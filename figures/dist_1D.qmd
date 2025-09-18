@@ -32,7 +32,7 @@ from bicytok.imports import filter_receptor_abundances, importCITE, sample_recep
 
 targ_cell = "Treg"
 receptors_of_interest = None
-sample_size = 1000
+sample_size = 100
 cell_categorization = "CellType2"
 
 CITE_DF = importCITE()

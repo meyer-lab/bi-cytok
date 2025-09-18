@@ -32,13 +32,13 @@ import matplotlib.pyplot as plt
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
-receptors = ["CD25", "CD4-1", "CD27", "CD4-2", "CD278"]
+receptors = ["CD25", "CD4-1", "CD27"]
 signal = ["CD122"]
 cell_type = "Treg"
 dose = 1e-10
 valency = np.array([[2, 1, 1]])
 cell_categorization = "CellType2"
-sample_size = 1000
+sample_size = 100
 
 CITE_DF = importCITE()
 

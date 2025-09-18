@@ -45,7 +45,7 @@ import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 signal_receptor = "CD122"
-sample_size = 1000
+sample_size = 100
 targ_cell = "Treg"
 test_valencies = [(1), (2)]
 dose = 1e-10

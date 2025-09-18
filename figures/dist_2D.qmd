@@ -35,7 +35,7 @@ from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 
 targ_cell = "Treg"
-sample_size = 1000
+sample_size = 100
 cell_categorization = "CellType2"
 
 CITE_DF = importCITE()

@@ -46,7 +46,7 @@ receptors_of_interest = [
     "TIGIT",
     "TSLPR",
 ]
-sample_size = 1000
+sample_size = 100
 cell_categorization = "CellType2"
 scaling_factor = 2**0.5 / 2
 

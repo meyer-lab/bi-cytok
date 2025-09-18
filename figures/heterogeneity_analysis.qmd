@@ -63,7 +63,7 @@ receptor_combinations = [
 ]
 
 targ_cell = "Treg"
-sample_size = 1000
+sample_size = 100
 dose = 1e-10
 cell_categorization = "CellType2"
 
