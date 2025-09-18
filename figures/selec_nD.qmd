@@ -1,31 +1,25 @@
 ---
-title: "Relationship between 2D distance metrics and 3D selectivity"
+title: "Calculation of selectivity of pre-specified receptor combinations"
 ---
 
 # Summary
-Generates scatter plots examining the correlation between 2D distance metrics (KL Divergence and EMD) and 3D selectivity optimization results for receptor pairs. Evaluates whether pairwise receptor distribution differences predict multivalent complex selectivity performance.
+This analysis calculates the selectivity of a specified set of receptors and valencies using CITE-seq data.
 
 # Imports
 - CITE-seq surface marker expression data (`importCITE`)
-- 2D distance metric calculation functions (`KL_EMD_2D`)
 - Selectivity optimization functions (`optimize_affs`)
 
 # Parameters
-- `receptor_pairs`: List of 2-element lists specifying receptor pairs for distance metric calculations and to be used as target receptors in selectivity optimization
-- `signal_receptor`: String name of receptor used for signal delivery in binding model
 - `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
 - `targ_cell`: String identifier for target cell type in selectivity optimization
 - `dose`: Float concentration of ligand complex in binding model
 - `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `receptors`: List of strings naming receptors for selectivity analysis
 - `model_valencies`: 2D numpy array specifying tetravalent complex design [[signal, target1, target2]]
 
 # Outputs
-- **Scatter Plot 1**: 2D KL Divergence vs 3D selectivity showing:
-  - KL Divergence values on x-axis
-  - Selectivity values (1/optimization_result) on y-axis
-  - Color-coded points by receptor pair combination
-  - Legend identifying each receptor pair
-- **Scatter Plot 2**: 2D EMD vs 3D selectivity with identical formatting
+- **Printed Output**: Processing time for selectivity calculation
+- **Printed Output**: Calculated selectivity value for specified receptors and valencies
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -44,7 +38,7 @@ sample_size = 100
 targ_cell = "Treg"
 dose = 1e-10
 cell_categorization = "CellType2"
-receptors = ["CD25", "CD4-1", "CD27"]
+receptors = ["CD122", "CD25", "CD4-1", "CD27"]
 model_valencies = np.array([[(1), (1), (1), (1)]])
 
 CITE_DF = importCITE()
@@ -88,7 +82,7 @@ selectivity = 1 / opt_selec
 time_end = time.time()
 print(f"Processing time for {receptors}: {time_end - time_start} seconds")
 
-print(f"KL Divergence: {KL_div}, EMD: {EMD}, Selectivity: {selectivity}")
+print(f"Selectivity for {receptors} with valencies {model_valencies} at dose {dose}: {selectivity}")
 ```
 
 ## Parameter Summary
@@ -96,9 +90,9 @@ print(f"KL Divergence: {KL_div}, EMD: {EMD}, Selectivity: {selectivity}")
 #| output: asis
 
 text = f"""
-Visualized the relationship between 2D distance metrics (KL Divergence and EMD) and 3D selectivity. Target cells were **{targ_cell}**s, compared against all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+Calculates the selectivity for a specific set of receptors and valencies. Target cells were **{targ_cell}**s, compared against all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
 \n\n
-For selectivity optimization, the signal receptor was **{signal_receptor}**, with tetravalent complexes at a dose of **{dose}**. Tetravalent complexes consisted of two signal receptor ligands, and one ligand each for the two target receptors. The epitope pairs that were analyzed were **{', '.join(map(str, receptor_pairs))}**, which served as the target receptors for selectivity optimization and as the double receptor distributions for 2D EMD and KL div. calculations.
+For selectivity optimization, the signal receptor was **{receptors[0]}**, with **{model_valencies}** valency complexes at a dose of **{dose}**.
 """
 
 print(text)
