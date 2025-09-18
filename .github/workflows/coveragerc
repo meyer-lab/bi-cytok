@@ -1,5 +1,5 @@
 [run]
 
 omit = 
-  bicytok/figures/*
+  figures/*
   bicytok/data/*

@@ -14,10 +14,23 @@ jobs:
         version: '0.39.0'
     - name: Setup environment
       run: make .venv
-    - name: Render all figures
-      run: quarto render figures/ --to typst
+    - name: Render figures individually
+      run: |
+        cd figures
+        exit_code=0
+        for qmd_file in *.qmd; do
+          echo "Rendering $qmd_file..."
+          if ! quarto render "$qmd_file" --to typst; then
+            echo "Failed to render $qmd_file"
+            exit_code=1
+          else
+            echo "Successfully rendered $qmd_file"
+          fi
+        done
+        exit $exit_code
     - name: Upload files
       uses: actions/upload-artifact@v4
+      if: always()
       with:
         name: figures
         path: |
