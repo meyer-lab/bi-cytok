@@ -15,7 +15,7 @@ jobs:
     - name: Setup environment
       run: make .venv
     - name: Render all figures
-      run: quarto render figures/ --to typst
+      run: quarto render figures/ --to typst --execute-param error:false
     - name: Upload files
       uses: actions/upload-artifact@v4
       with:
