@@ -40,8 +40,6 @@ from bicytok.selectivity_funcs import optimize_affs
 
 import time
 
-x=y
-
 sample_size = 100
 targ_cell = "Treg"
 dose = 1e-10

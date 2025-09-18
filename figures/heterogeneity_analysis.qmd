@@ -45,8 +45,6 @@ from scipy.stats import pearsonr, spearmanr
 from bicytok.imports import importCITE, sample_receptor_abundances, filter_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs, get_cell_bindings
 
-x=y
-
 plt.rcParams["svg.fonttype"] = "none"
 plt.style.use('default')
 

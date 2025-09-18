@@ -49,8 +49,6 @@ from bicytok.distance_metric_funcs import KL_EMD_1D
 from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
-x=y
-
 plt.rcParams["svg.fonttype"] = "none"
 
 num_hists = 10

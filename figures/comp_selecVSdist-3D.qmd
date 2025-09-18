@@ -41,8 +41,6 @@ from bicytok.selectivity_funcs import optimize_affs
 
 import time
 
-x=y
-
 receptors = ["CD25", "CD4-1", "CD27"]
 signal_receptor = "CD122"
 sample_size = 100

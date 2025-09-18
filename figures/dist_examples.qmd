@@ -35,8 +35,6 @@ import numpy as np
 from scipy import stats
 from bicytok.distance_metric_funcs import KL_EMD_1D
 
-x=y
-
 rng = np.random.default_rng(1)
 
 ref_mean = 10.0
