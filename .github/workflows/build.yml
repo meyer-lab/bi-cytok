@@ -5,6 +5,31 @@ on: [push]
 jobs:
   build:
     runs-on: self-hosted
+    strategy:
+      matrix:
+        figure: [
+          "binding_model_scaling",
+          "comp_selecVSdist-2D", 
+          "comp_selecVSdist-3D",
+          "dist_1D",
+          "dist_1Dvs2D", 
+          "dist_2D",
+          "dist_3D",
+          "dist_KLvsEMD",
+          "dist_across-cell-types",
+          "dist_examples",
+          "heterogeneity_analysis",
+          "raw_1D-hist",
+          "raw_2D-hist", 
+          "raw_hists",
+          "selec_1D",
+          "selec_2D",
+          "selec_3D",
+          "selec_doses",
+          "selec_nD",
+          "variation_analysis"
+        ]
+      fail-fast: false
     steps:
     - uses: actions/checkout@v4
     - name: Setup rye
@@ -14,11 +39,13 @@ jobs:
         version: '0.39.0'
     - name: Setup environment
       run: make .venv
-    - name: Build figures
-      run: make all -j 2
+    - name: Setup Quarto
+      uses: quarto-dev/quarto-actions/setup@v2
+    - name: Render figure ${{ matrix.figure }}
+      run: quarto render figures/${{ matrix.figure }}.qmd --to typst
     - name: Upload files
       uses: actions/upload-artifact@v4
       with:
-        name: files
+        name: figure-${{ matrix.figure }}
         path: |
-          output/*.svg
+          _output/figures/${{ matrix.figure }}.*
