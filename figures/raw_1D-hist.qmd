@@ -37,6 +37,8 @@ import seaborn as sns
 from bicytok.distance_metric_funcs import KL_EMD_1D
 from bicytok.imports import importCITE, sample_receptor_abundances
 
+x=y
+
 plt.rcParams["svg.fonttype"] = "none"
 
 receptor = "CD27"
@@ -61,7 +63,6 @@ if receptor not in epitopes:
     raise ValueError(
         f"Receptor '{receptor}' not found. Available receptors: {epitopes}"
     )
-
 # Use converted receptor abundances to calculate metric values
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})

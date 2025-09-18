@@ -44,6 +44,8 @@ import time
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
+x=y
+
 signal_receptor = "CD122"
 sample_size = 100
 targ_cell = "Treg"
