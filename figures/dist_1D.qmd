@@ -74,10 +74,11 @@ top_EMD_indices = np.argsort(np.nan_to_num(EMD_values))[-10:]
 plt.bar(
     filtered_sampleDF.columns[top_KL_indices],
     KL_values[top_KL_indices],
-    color="r",
+    color="#2774AE",
 )
-
-plt.ylabel("KL Divergence")
+plt.tick_params(axis="x", labelsize=20)
+plt.tick_params(axis="y", labelsize=20)
+plt.ylabel("KL divergence", fontsize=25)
 plt.xticks(rotation=45)
 plt.show()
 ```
@@ -89,10 +90,11 @@ plt.show()
 plt.bar(
     filtered_sampleDF.columns[top_EMD_indices],
     EMD_values[top_EMD_indices],
-    color="b",
+    color="#2774AE",
 )
-
-plt.ylabel("EMD")
+plt.tick_params(axis="x", labelsize=20)
+plt.tick_params(axis="y", labelsize=15)
+plt.ylabel("EMD", fontsize=25)
 plt.xticks(rotation=45)
 plt.show()
 ```

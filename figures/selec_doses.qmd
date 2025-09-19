@@ -33,19 +33,16 @@ from bicytok.selectivity_funcs import get_cell_bindings, optimize_affs
 
 plt.rcParams["svg.fonttype"] = "none"
 
-signal = ["CD122", 1]
+signal = ["CD122", 2]
 all_targets = [
-    [("CD25", 1)],
-    [("CD25", 4)],
-    # [("CD25", 1), ("CD278", 1)],
-    # [("CD25", 4), ("CD278", 4)],
-    # [("CD25", 1), ("CD27", 1)],
-    # [("CD25", 4), ("CD27", 4)],
-    # [("CD25", 1), ("CD278", 1), ("CD27", 1)],
-    # [("CD25", 4), ("CD278", 4), ("CD27", 4)],
+    [("CD25", 2)],
+    [("CD338", 2)],
+    [("CD27", 2)],
+    [("CD4-1", 2)],
 ]
 targ_cell = "Treg"
-dose_vec = np.logspace(-2, 2, num=10)
+dose_vec = np.logspace(-11, -4, num=20)
+sample_size = 100
 
 CITE_DF = importCITE()
 
@@ -59,7 +56,7 @@ epitopes_df = epitopes_df.rename(columns={"CellType2": "Cell Type"})
 
 sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,
-    numCells=100,
+    numCells=sample_size,
     targCellType=targ_cell,
 )
 

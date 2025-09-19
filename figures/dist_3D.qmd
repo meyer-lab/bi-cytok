@@ -35,9 +35,7 @@ targ_cell = "Treg"
 receptors_of_interest = [
     "CD25",
     "CD4-1",
-    # "CD27",
-    # "CD4-2",
-    # "CD278",
+    "CD27",
 ]
 sample_size = 100
 cell_categorization = "CellType2"

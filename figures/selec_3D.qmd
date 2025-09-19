@@ -1,0 +1,152 @@
+---
+title: "Optimal selectivities of trivalent complexes"
+---
+
+# Summary
+Generates a bar plot showing the top 10 optimal selectivity values achieved by trivalent complexes targeting all possible combinations of three receptors (one signaling + two targeting receptors). Performs affinity optimization for each receptor triplet and ranks results by selectivity performance.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- Selectivity optimization functions (`optimize_affs`)
+
+# Parameters
+- `receptors`: List of strings naming target receptors for combination selectivity analysis
+- `signal`: List of string name of receptor used for signal delivery in binding model
+- `cell_type`: String identifier for target cell type in selectivity optimization
+- `dose`: Float concentration of ligand complex in binding model
+- `valency`: 2D numpy array specifying ligand valencies [[signal, target1, target2]]
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+
+# Outputs
+- **Bar Plot**: Top 10 receptor triplet combinations ranked by optimal selectivity values, with receptor combination names on x-axis and selectivity values on y-axis
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from itertools import combinations_with_replacement
+
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+import time
+
+receptors = ["CD25", "CD4-1", "CD27"]
+signal = ["CD122"]
+cell_type = "Treg"
+dose = 1e-10
+valency = np.array([[2, 1, 1]])
+cell_categorization = "CellType2"
+sample_size = 100
+
+CITE_DF = importCITE()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
+
+targ_mask = (sample_df["Cell Type"] == cell_type).to_numpy()
+off_targ_mask = ~targ_mask
+
+signal_abun = sample_df[signal].to_numpy()
+
+# Generate all possible combinations of 2 receptors from the receptor list (including same receptor twice)
+receptor_combinations = list(combinations_with_replacement(receptors, 2))
+
+selectivities = []
+combination_names = []
+
+for rec1, rec2 in receptor_combinations:
+    time_start = time.time()
+
+    rec1_abun = sample_df[[rec1]].to_numpy()
+    rec2_abun = sample_df[[rec2]].to_numpy()
+
+    receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+
+    targ_abun = receptor_abuns[targ_mask]
+    off_targ_abun = receptor_abuns[off_targ_mask]
+
+    opt_selec, _, _ = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
+    
+    selectivities.append(1 / opt_selec)
+    combination_names.append(f"{rec1}+{rec2}")
+
+    time_end = time.time()
+    print(f"Processed combination {rec1}, {rec2} in {time_end - time_start:.2f} seconds")
+
+# Create DataFrame with results
+results_df = pd.DataFrame({
+    'Combination': combination_names,
+    'Selectivity': selectivities
+})
+```
+
+```{python}
+# Sort by selectivity and get top 5 (descending order - highest to lowest)
+results_df_filt = results_df.sort_values('Selectivity', ascending=False).head(9)
+# Reverse order for display (highest to lowest from left to right)
+results_df_filt = results_df_filt.iloc[::-1]
+```
+
+```{python}
+#| fig-cap: "Selectivity values of the top 5 receptor triplet combinations"
+# Create horizontal bar plot
+plt.figure(figsize=(6, 5))
+plt.bar(
+    results_df_filt['Combination'],
+    results_df_filt['Selectivity'],
+    color="#2774AE",
+)
+plt.tick_params(axis="x", labelsize=20)
+plt.tick_params(axis="y", labelsize=20)
+plt.ylabel("Selectivity", fontsize=25)
+plt.ylim(0.7, 1.0)
+# Add more tick labels to the y-axis
+plt.yticks(np.arange(0.7, 1.00, 0.1))
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+```
+
+## Results Summary
+```{python}
+#| output: asis
+
+print(f"**Top 10 Receptor Triplet Combinations for {cell_type} Cells:**\n")
+for i, (idx, row) in enumerate(results_df.iterrows(), 1):
+    print(f"{i}. {row['Combination']}: Selectivity = {row['Selectivity']:.3f}")
+
+print(f"\n**Analysis Parameters:**")
+print(f"- Target cell type: {cell_type}")
+print(f"- Dose: {dose}")
+print(f"- Sample size: {sample_size} cells")
+print(f"- Signal receptor: {signal[0]}")
+print(f"- Target receptors analyzed: {', '.join(receptors)}")
+print(f"- Complex valencies: 2x signal receptor ligand, 1x ligand for each of two target receptors")
+print(f"- Total combinations evaluated: {len(receptor_combinations)}")
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Compared the optimal selectivities achieved by trivalent complexes composed of ligands for various relevant receptor combinations in the target cell type **{cell_type}** at doses of **{dose}**. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+\n\n
+The signal receptor used was **{signal[0]}**. All possible combinations of two target receptors from the set **{', '.join(receptors)}** were evaluated, resulting in **{len(receptor_combinations)}** unique triplet combinations. The valencies of each complex were as follows: 2x signal receptor ligand, 1x ligand for each of the two target receptors.
+\n\n
+The top 10 performing combinations are ranked by their selectivity values, which represent the ratio of target cell binding to off-target cell binding after optimization of receptor-ligand affinities.
+"""
+
+print(text)
+```

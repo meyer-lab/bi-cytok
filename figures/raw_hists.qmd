@@ -1,12 +1,5 @@
 ---
 title: "Distribution histograms of top and bottom epitopes by various metrics"
-
-format:
-  pdf:
-    geometry:
-      - left=1in
-      - right=1in
-      - paperwidth=30in
 ---
 ## Run this file in an interactive window (cell by cell); it is not optimized for full rendering.
 
@@ -89,7 +82,7 @@ for receptor in epitopes:
     targ_abun = receptor_abun[targ_mask]
     off_targ_abun = receptor_abun[off_targ_mask]
 
-    opt_selec, _ = optimize_affs(
+    opt_selec, _, _ = optimize_affs(
         targ_abun, off_targ_abun, dose, valencies=np.array([[1]])
     )
     selectivities.append(1 / opt_selec)

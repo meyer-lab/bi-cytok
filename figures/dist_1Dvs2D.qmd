@@ -43,8 +43,6 @@ receptors_of_interest = [
     "CD122",
     "CD28",
     "TCR-2",
-    "TIGIT",
-    "TSLPR",
 ]
 sample_size = 100
 cell_categorization = "CellType2"

@@ -32,8 +32,7 @@ import matplotlib.pyplot as plt
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
-# receptors = ["CD25", "CD4-1", "CD27", "CD4-2", "CD278"]
-receptors = ["CD25", "CD4-1"]
+receptors = ["CD25", "CD4-1", "CD27"]
 signal = ["CD122"]
 cell_type = "Treg"
 dose = 1e-10

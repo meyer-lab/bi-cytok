@@ -44,7 +44,7 @@ from bicytok.selectivity_funcs import get_cell_bindings, optimize_affs
 
 # Parameters
 targ_cell = "Treg"
-sample_size = 1000
+sample_size = 100
 cell_categorization = "CellType2"
 dose = 1e-10
 signal_receptor = "CD122"

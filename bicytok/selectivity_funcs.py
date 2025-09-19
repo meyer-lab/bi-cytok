@@ -108,8 +108,8 @@ def optimize_affs(
     offTargRecs: np.ndarray,
     dose: float,
     valencies: np.ndarray,
-    affinity_bounds: tuple[float, float] = (7.0, 9.0),
-    Kx_star_bounds: tuple[float, float] = (2.24e-13, 2.24e-11),
+    affinity_bounds: tuple[float, float] = (6.0, 12.0),
+    Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
 ) -> tuple[float, list, float]:
     """
     An optimizer that maximizes the selectivity for a target cell type

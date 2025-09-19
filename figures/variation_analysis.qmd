@@ -40,7 +40,7 @@ from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
-sample_sizes = [50, 100]
+sample_sizes = [50, 100, 200]
 randomizations = 3
 targ_cell = "Treg"
 signal_receptor = "CD122"
@@ -68,7 +68,7 @@ for sample_size in sample_sizes:
     num_target_cells = sample_size // 2
     num_off_target_cells = sample_size - num_target_cells
 
-    for _ in range(randomizations):
+    for i in range(randomizations):
         sampled_target_cells = target_cells.sample(
             min(num_target_cells, target_cells.shape[0]), replace=True
         )
@@ -102,6 +102,7 @@ for sample_size in sample_sizes:
             valencies=valencies,
         )
         time_ellapsed_mod = time.time() - time_start_mod
+        print(f"Sample Size: {sample_size}, Randomization: {i + 1}/{randomizations}, Model Time: {time_ellapsed_mod:.4f}s")
 
         metrics.append(
             {
@@ -181,7 +182,7 @@ print(avg_times.to_string(index=False))
 #| output: asis
 
 text = f"""
-Analyzed various metrics and their variability with sample size. The metrics were calculated for the target cell type **{targ_cell}** using the signal receptor **{signal_receptor}** and target receptors **{target_receptors}** at a dose of **{dose}**. The analyses were performed on **{randomizations}** bootstrapped samplings for each sample size, with a total of **{sample_sizes}** sample sizes.
+Analyzed various metrics and their variability with sample size. The metrics were calculated for the target cell type **{targ_cell}** using the signal receptor **{signal_receptor}** and target receptors **{targets}** at a dose of **{dose}**. The analyses were performed on **{randomizations}** bootstrapped samplings for each sample size, with a total of **{sample_sizes}** sample sizes.
 """
 
 print(text)

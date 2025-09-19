@@ -216,7 +216,9 @@ def filter_receptor_abundances(
 
     # Filter user-specified epitopes and cell types
     if epitope_list is not None:
-        abundance_df = abundance_df[epitope_list]
+        filtered_cols = [col for col in abundance_df.columns if col in epitope_list]
+        abundance_df = abundance_df[filtered_cols]
+
     if cell_type_list is not None:
         abundance_df = abundance_df[cell_type_df.isin(cell_type_list)]
         cell_type_df = cell_type_df[cell_type_df.isin(cell_type_list)]
