@@ -5,10 +5,12 @@ Functions used in binding and selectivity analysis
 import jax
 import jax.numpy as jnp
 import numpy as np
+import optax
 from jaxtyping import Array, Float64, Scalar
-from scipy.optimize import Bounds, minimize
 
 from .binding_model_funcs import cyt_binding_model
+
+jax.config.update("jax_enable_x64", True)
 
 
 # Called in minOffTargSelec and get_cell_bindings
@@ -100,7 +102,6 @@ def min_off_targ_selec(
 
 # Define the function to minimize, which is the selectivity
 min_off_targ_selec_jax = jax.jit(jax.value_and_grad(min_off_targ_selec))
-min_off_targ_selec_jax_hess = jax.jit(jax.hessian(min_off_targ_selec))
 
 
 def optimize_affs(
@@ -110,6 +111,10 @@ def optimize_affs(
     valencies: np.ndarray,
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
+    max_iter: int = 25,
+    xtol: float = 1e-6,
+    ftol: float = 1e-6,
+    gtol: float = 1e-6,
 ) -> tuple[float, list, float]:
     """
     An optimizer that maximizes the selectivity for a target cell type
@@ -130,6 +135,10 @@ def optimize_affs(
             complex with two different ligands.
         affinity_bounds: minimum and maximum optimization bounds for affinity values
         Kx_star_bounds: minimum and maximum optimization bounds for Kx_star
+        max_iter: maximum number of iterations
+        xtol: parameter tolerance for convergence
+        ftol: objective function tolerance for convergence
+        gtol: gradient norm tolerance for convergence
     Return:
         optSelec: optimized selectivity value
         optAffs: optimized affinity values that yield the optimized selectivity
@@ -148,45 +157,78 @@ def optimize_affs(
     initKx_star = rng.uniform(
         low=np.log10(Kx_star_bounds[0]), high=np.log10(Kx_star_bounds[1])
     )
-    initParams = np.concatenate((initAffs, [initKx_star]))
+    params = np.concatenate((initAffs, [initKx_star]))
 
     # Set bounds for optimization
     minBounds = np.concatenate([minAffs, [np.log10(Kx_star_bounds[0])]])
     maxBounds = np.concatenate([maxAffs, [np.log10(Kx_star_bounds[1])]])
-    optBnds = Bounds(minBounds, maxBounds)  # type: ignore
 
     targRecs[targRecs == 0] = 1e-9
     offTargRecs[offTargRecs == 0] = 1e-9
 
-    # Run optimization to minimize off-target selectivity by changing affinities and Kx_star
-    optimizer = minimize(
-        fun=min_off_targ_selec_jax,
-        hess=min_off_targ_selec_jax_hess,
-        method="trust-constr",
-        x0=initParams,
-        bounds=optBnds,
-        args=(
-            jnp.array(targRecs, dtype=jnp.float64),
-            jnp.array(offTargRecs, dtype=jnp.float64),
-            jnp.array(dose, dtype=jnp.float64),
-            jnp.array(valencies, dtype=jnp.float64),
-        ),
-        jac=True,
-        options={"disp": False, "xtol": 1e-12, "gtol": 1e-12},
-    )
-    optSelect = optimizer.fun
-    optAffs = optimizer.x[:-1]
-    optKx_star = np.power(10, optimizer.x[-1])
-    convergence = optimizer.success
+    targRecs = jnp.array(targRecs, dtype=jnp.float64)
+    offTargRecs = jnp.array(offTargRecs, dtype=jnp.float64)
+    dose = jnp.array(dose, dtype=jnp.float64)
+    valencies = jnp.array(valencies, dtype=jnp.float64)
 
-    if not convergence or (1 / optSelect) < 0 or (1 / optSelect) > 1:
-        print(
-            f"Optimization warning: {optimizer.message}, "
-            f"Selectivity: {optSelect:.3f}, affinity values: {optAffs}, "
-            f"cross-linking constant: {optKx_star:.2e}, Convergence: {convergence}"
+    solver = optax.lbfgs(
+        linesearch=optax.scale_by_zoom_linesearch(
+            max_linesearch_steps=55, verbose=False, initial_guess_strategy="one"
         )
+    )
+    opt_state = solver.init(params)
 
-    return optSelect, optAffs, optKx_star
+    prev_params = params.copy()
+    prev_loss = np.inf
+
+    for _ in range(max_iter):
+        # This is faster but only because grad_from_state does not yet use jax
+        loss, grads = min_off_targ_selec_jax(
+            params,
+            targRecs,
+            offTargRecs,
+            dose,
+            valencies,
+        )
+        # This should be faster once this entire function is jitted
+        # because it borrows the value and grad from the linesearch
+        # loss, grads = optax.value_and_grad_from_state(min_off_targ_selec)(
+        #     params,
+        #     state=opt_state,
+        #     targRecs=targRecs,
+        #     offTargRecs=offTargRecs,
+        #     dose=dose,
+        #     valencies=valencies,
+        # )
+        updates, opt_state = solver.update(
+            grads,
+            opt_state,
+            params,
+            value=loss,
+            grad=grads,
+            value_fn=min_off_targ_selec,
+            targRecs=targRecs,
+            offTargRecs=offTargRecs,
+            dose=dose,
+            valencies=valencies,
+        )
+        params = optax.apply_updates(params, updates)
+        params = optax.projections.projection_box(params, minBounds, maxBounds)
+
+        # Check convergence conditions
+        param_change = np.sqrt(np.sum((params - prev_params) ** 2))
+        loss_change = np.abs(loss - prev_loss)
+        grad_norm = np.sqrt(np.sum(grads**2))
+        x_converged = param_change < xtol
+        f_converged = loss_change < ftol
+        g_converged = grad_norm < gtol
+        if x_converged or f_converged or g_converged:
+            break
+
+        prev_params = params.copy()
+        prev_loss = loss
+
+    return loss, params[:-1], np.power(10, params[-1])
 
 
 cyt_binding_model_jit = jax.jit(cyt_binding_model)
