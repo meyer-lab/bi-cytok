@@ -117,12 +117,12 @@ def _optimize_affs_jax(
     offTargRecs_jax: Float64[Array, "cells receptors"],
     dose: float,
     valencies_jax: Float64[Array, "complexes epitopes"],
-    affinity_bounds: tuple[float, float] = (6.0, 12.0),
-    Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
-    max_iter: int = 25,
-    xtol: float = 1e-6,
-    ftol: float = 1e-6,
-    gtol: float = 1e-6,
+    affinity_bounds: tuple[float, float],
+    Kx_star_bounds: tuple[float, float],
+    max_iter: int,
+    xtol: float,
+    ftol: float,
+    gtol: float,
 ) -> tuple[Scalar, Float64[Array, "receptors"], Scalar]:
     """
     JAX-optimized core optimization function.
@@ -230,10 +230,10 @@ def optimize_affs(
     valencies: np.ndarray,
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
-    max_iter: int = 25,
-    xtol: float = 1e-6,
-    ftol: float = 1e-6,
-    gtol: float = 1e-6,
+    max_iter: int = 100,
+    xtol: float = 1e-12,
+    ftol: float = 1e-12,
+    gtol: float = 1e-12,
 ) -> tuple[float, list, float]:
     """
     NumPy-compatible wrapper for optimize_affs that handles conversions to/from JAX.
