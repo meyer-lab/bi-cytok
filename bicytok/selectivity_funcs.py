@@ -103,8 +103,12 @@ def min_off_targ_selec(
     return (targetBound + offTargetBound) / targetBound
 
 
-# Define the function to minimize, which is the selectivity
+# Define the JAX-optimized objective function and its gradient (minimizing selectivity)
 min_off_targ_selec_jax = jax.jit(jax.value_and_grad(min_off_targ_selec))
+
+# Affinity optimization constants
+INIT_AFF_SEED = 42
+REC_COUNT_EPS = 1e-6
 
 
 @jax.jit
@@ -128,7 +132,7 @@ def _optimize_affs_jax(
     maxAffs = jnp.full(targRecs_jax.shape[1], affinity_bounds[1])
 
     # Start optimization at random values between min and max bounds
-    key = jax.random.PRNGKey(42)
+    key = jax.random.PRNGKey(INIT_AFF_SEED)
     key1, key2 = jax.random.split(key)
     initAffs = jax.random.uniform(
         key1, shape=(targRecs_jax.shape[1],), minval=minAffs, maxval=maxAffs
@@ -142,9 +146,12 @@ def _optimize_affs_jax(
     minBounds = jnp.concatenate([minAffs, jnp.array([jnp.log10(Kx_star_bounds[0])])])
     maxBounds = jnp.concatenate([maxAffs, jnp.array([jnp.log10(Kx_star_bounds[1])])])
 
-    targRecs_clean = jnp.where(targRecs_jax == 0, 1e-6, targRecs_jax)
-    offTargRecs_clean = jnp.where(offTargRecs_jax == 0, 1e-6, offTargRecs_jax)
+    # Replace zero receptor counts with small epsilon to avoid instability
+    targRecs_clean = jnp.where(targRecs_jax == 0, REC_COUNT_EPS, targRecs_jax)
+    offTargRecs_clean = jnp.where(offTargRecs_jax == 0, REC_COUNT_EPS, offTargRecs_jax)
 
+    # Set up the L-BFGS solver from Optax
+    # Optax recommends max 55 linesearch steps for 64-bit precision
     solver = optax.lbfgs(
         linesearch=optax.scale_by_zoom_linesearch(
             max_linesearch_steps=55, verbose=False, initial_guess_strategy="one"
@@ -152,6 +159,7 @@ def _optimize_affs_jax(
     )
     opt_state = solver.init(params)
 
+    # Condition function for jax while loop checks convergence criteria
     def cond_fn(loop_state):
         iteration, params, prev_params, prev_loss, loss, grads, opt_state = loop_state
 
@@ -166,6 +174,7 @@ def _optimize_affs_jax(
 
         return (~converged) & (iteration < max_iter)
 
+    # Body function for jax while loop performs one optimization step
     def body_fn(loop_state):
         iteration, params, prev_params, prev_loss, loss, grads, opt_state = loop_state
 
@@ -202,12 +211,11 @@ def _optimize_affs_jax(
             new_opt_state,
         )
 
+    # Run the jax optimization loop
     init_loss, init_grads = min_off_targ_selec_jax(
         params, targRecs_clean, offTargRecs_clean, dose, valencies_jax
     )
-
     initial_state = (0, params, params, jnp.inf, init_loss, init_grads, opt_state)
-
     _, final_params, _, _, final_loss, _, _ = jax.lax.while_loop(
         cond_fn, body_fn, initial_state
     )
@@ -229,6 +237,8 @@ def optimize_affs(
 ) -> tuple[float, list, float]:
     """
     NumPy-compatible wrapper for optimize_affs that handles conversions to/from JAX.
+    Minimizes the off-target to on-target selectivity ratio by optimizing
+    receptor affinities and Kx_star using L-BFGS.
 
     Args:
         targRecs: receptor counts of target cell type (NumPy array)
