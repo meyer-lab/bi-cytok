@@ -2,6 +2,8 @@
 Functions used in binding and selectivity analysis
 """
 
+import os
+
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -11,6 +13,7 @@ from jaxtyping import Array, Float64, Scalar
 from .binding_model_funcs import cyt_binding_model
 
 jax.config.update("jax_enable_x64", True)
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".05"
 
 
 # Called in minOffTargSelec and get_cell_bindings
