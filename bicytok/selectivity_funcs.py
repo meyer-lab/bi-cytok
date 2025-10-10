@@ -108,64 +108,30 @@ min_off_targ_selec_jax = jax.jit(jax.value_and_grad(min_off_targ_selec))
 
 
 @jax.jit
-def optimize_affs(
-    targRecs: np.ndarray,
-    offTargRecs: np.ndarray,
+def _optimize_affs_jax(
+    targRecs_jax: Float64[Array, "cells receptors"],
+    offTargRecs_jax: Float64[Array, "cells receptors"],
     dose: float,
-    valencies: np.ndarray,
+    valencies_jax: Float64[Array, "complexes epitopes"],
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
     max_iter: int = 25,
     xtol: float = 1e-6,
     ftol: float = 1e-6,
     gtol: float = 1e-6,
-) -> tuple[float, list, float]:
+) -> tuple[Scalar, Float64[Array, "receptors"], Scalar]:
     """
-    An optimizer that maximizes the selectivity for a target cell type
-        by varying the affinities of each receptor-ligand pair and the
-        cross-linking constant Kx_star.
-    Args:
-        targRecs: receptor counts of each receptor (columns) on
-            different cells (rows) of a target cell type. The
-            first column must be the signal receptor which is used
-            to calculate selectivity in min_off_targ_selec.
-        offTargRecs: receptor counts of each receptor on
-            different cells of off-target cell types. The
-            columns must match the columns of targRecs.
-        dose: ligand concentration/dose that is being modeled
-        valencies: array of valencies of each ligand epitope
-            Only set up for single complex modeling. Valencies
-            must be a nested array, such as [[1, 1]] for a bivalent
-            complex with two different ligands.
-        affinity_bounds: minimum and maximum optimization bounds for affinity values
-        Kx_star_bounds: minimum and maximum optimization bounds for Kx_star
-        max_iter: maximum number of iterations
-        xtol: parameter tolerance for convergence
-        ftol: objective function tolerance for convergence
-        gtol: gradient norm tolerance for convergence
-    Return:
-        optSelec: optimized selectivity value
-        optAffs: optimized affinity values that yield the optimized selectivity
-        optKx_star: optimized Kx_star value
+    JAX-optimized core optimization function.
     """
 
-    assert targRecs.size > 0
-    assert offTargRecs.size > 0
-
-    # Convert inputs to JAX arrays
-    targRecs = jnp.array(targRecs, dtype=jnp.float64)
-    offTargRecs = jnp.array(offTargRecs, dtype=jnp.float64)
-    dose = jnp.array(dose, dtype=jnp.float64)
-    valencies = jnp.array(valencies, dtype=jnp.float64)
-
-    minAffs = jnp.array([affinity_bounds[0]] * (targRecs.shape[1]))
-    maxAffs = jnp.array([affinity_bounds[1]] * (targRecs.shape[1]))
+    minAffs = jnp.full(targRecs_jax.shape[1], affinity_bounds[0])
+    maxAffs = jnp.full(targRecs_jax.shape[1], affinity_bounds[1])
 
     # Start optimization at random values between min and max bounds
     key = jax.random.PRNGKey(42)
     key1, key2 = jax.random.split(key)
     initAffs = jax.random.uniform(
-        key1, shape=(len(minAffs),), minval=minAffs, maxval=maxAffs
+        key1, shape=(targRecs_jax.shape[1],), minval=minAffs, maxval=maxAffs
     )
     initKx_star = jax.random.uniform(
         key2, minval=jnp.log10(Kx_star_bounds[0]), maxval=jnp.log10(Kx_star_bounds[1])
@@ -176,8 +142,8 @@ def optimize_affs(
     minBounds = jnp.concatenate([minAffs, jnp.array([jnp.log10(Kx_star_bounds[0])])])
     maxBounds = jnp.concatenate([maxAffs, jnp.array([jnp.log10(Kx_star_bounds[1])])])
 
-    targRecs = jnp.where(targRecs == 0, 1e-6, targRecs)
-    offTargRecs = jnp.where(offTargRecs == 0, 1e-6, offTargRecs)
+    targRecs_clean = jnp.where(targRecs_jax == 0, 1e-6, targRecs_jax)
+    offTargRecs_clean = jnp.where(offTargRecs_jax == 0, 1e-6, offTargRecs_jax)
 
     solver = optax.lbfgs(
         linesearch=optax.scale_by_zoom_linesearch(
@@ -210,20 +176,20 @@ def optimize_affs(
             value=loss,
             grad=grads,
             value_fn=min_off_targ_selec,
-            targRecs=targRecs,
-            offTargRecs=offTargRecs,
+            targRecs=targRecs_clean,
+            offTargRecs=offTargRecs_clean,
             dose=dose,
-            valencies=valencies,
+            valencies=valencies_jax,
         )
         new_params = optax.apply_updates(params, updates)
         new_params = optax.projections.projection_box(new_params, minBounds, maxBounds)
 
         new_loss, new_grads = min_off_targ_selec_jax(
             new_params,
-            targRecs,
-            offTargRecs,
+            targRecs_clean,
+            offTargRecs_clean,
             dose,
-            valencies,
+            valencies_jax,
         )
 
         return (
@@ -237,7 +203,7 @@ def optimize_affs(
         )
 
     init_loss, init_grads = min_off_targ_selec_jax(
-        params, targRecs, offTargRecs, dose, valencies
+        params, targRecs_clean, offTargRecs_clean, dose, valencies_jax
     )
 
     initial_state = (0, params, params, jnp.inf, init_loss, init_grads, opt_state)
@@ -246,10 +212,70 @@ def optimize_affs(
         cond_fn, body_fn, initial_state
     )
 
+    return final_loss, final_params[:-1], jnp.power(10, final_params[-1])
+
+
+def optimize_affs(
+    targRecs: np.ndarray,
+    offTargRecs: np.ndarray,
+    dose: float,
+    valencies: np.ndarray,
+    affinity_bounds: tuple[float, float] = (6.0, 12.0),
+    Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
+    max_iter: int = 25,
+    xtol: float = 1e-6,
+    ftol: float = 1e-6,
+    gtol: float = 1e-6,
+) -> tuple[float, list, float]:
+    """
+    NumPy-compatible wrapper for optimize_affs that handles conversions to/from JAX.
+
+    Args:
+        targRecs: receptor counts of target cell type (NumPy array)
+        offTargRecs: receptor counts of off-target cell types (NumPy array)
+        dose: ligand concentration/dose that is being modeled
+        valencies: array of valencies of each ligand epitope (NumPy array)
+        affinity_bounds: minimum and maximum optimization bounds for affinity values
+        Kx_star_bounds: minimum and maximum optimization bounds for Kx_star
+        max_iter: maximum number of iterations
+        xtol: parameter tolerance for convergence
+        ftol: objective function tolerance for convergence
+        gtol: gradient norm tolerance for convergence
+
+    Return:
+        optSelec: optimized selectivity value (Python float)
+        optAffs: optimized affinity values (Python list)
+        optKx_star: optimized Kx_star value (Python float)
+    """
+
+    assert targRecs.size > 0
+    assert offTargRecs.size > 0
+    assert targRecs.shape[1] == offTargRecs.shape[1]
+
+    # Convert inputs to JAX arrays
+    targRecs_jax = jnp.array(targRecs, dtype=jnp.float64)
+    offTargRecs_jax = jnp.array(offTargRecs, dtype=jnp.float64)
+    valencies_jax = jnp.array(valencies, dtype=jnp.float64)
+
+    # Call the JAX-optimized function
+    final_loss, final_affs, final_kx_star = _optimize_affs_jax(
+        targRecs_jax,
+        offTargRecs_jax,
+        dose,
+        valencies_jax,
+        affinity_bounds,
+        Kx_star_bounds,
+        max_iter,
+        xtol,
+        ftol,
+        gtol,
+    )
+
+    # Convert outputs back to Python types
     return (
-        final_loss.astype(float),
-        list(final_params[:-1]),
-        jnp.power(10, final_params[-1]).astype(float),
+        float(final_loss),
+        [float(x) for x in final_affs],
+        float(final_kx_star),
     )
 
 
