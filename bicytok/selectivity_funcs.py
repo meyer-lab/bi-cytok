@@ -215,8 +215,9 @@ def _optimize_affs_jax(
     init_loss, init_grads = min_off_targ_selec_jax(
         params, targRecs_clean, offTargRecs_clean, dose, valencies_jax
     )
-    initial_state = (0, params, params, jnp.inf, init_loss, init_grads, opt_state)
-    _, final_params, _, _, final_loss, _, _ = jax.lax.while_loop(
+    prev_params_init = params + jnp.ones_like(params) * (xtol * 10)
+    initial_state = (0, params, prev_params_init, jnp.inf, init_loss, init_grads+1, opt_state)
+    iteration, final_params, _, _, final_loss, _, _ = jax.lax.while_loop(
         cond_fn, body_fn, initial_state
     )
 
@@ -231,9 +232,9 @@ def optimize_affs(
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
     max_iter: int = 100,
-    xtol: float = 1e-12,
-    ftol: float = 1e-12,
-    gtol: float = 1e-12,
+    xtol: float = 1e-6,
+    ftol: float = 1e-6,
+    gtol: float = 1e-6,
 ) -> tuple[float, list, float]:
     """
     NumPy-compatible wrapper for optimize_affs that handles conversions to/from JAX.
