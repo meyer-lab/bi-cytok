@@ -301,6 +301,10 @@ def get_cell_bindings(
         Rbound: number of bound receptors for each cell
     """
 
+    monomerAffs = jnp.array(monomerAffs, dtype=jnp.float64)
+    recCounts = jnp.array(recCounts, dtype=jnp.float64)
+    valencies = jnp.array(valencies, dtype=jnp.float64)
+
     # Reformat input affinities to 10^aff and diagonalize
     modelAffs = restructure_affs(monomerAffs)
 
