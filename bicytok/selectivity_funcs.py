@@ -104,6 +104,7 @@ def min_off_targ_selec(
 min_off_targ_selec_jax = jax.jit(jax.value_and_grad(min_off_targ_selec))
 
 
+@jax.jit
 def optimize_affs(
     targRecs: np.ndarray,
     offTargRecs: np.ndarray,
@@ -160,7 +161,9 @@ def optimize_affs(
     # Start optimization at random values between min and max bounds
     key = jax.random.PRNGKey(42)
     key1, key2 = jax.random.split(key)
-    initAffs = jax.random.uniform(key1, shape=(len(minAffs),), minval=minAffs, maxval=maxAffs)
+    initAffs = jax.random.uniform(
+        key1, shape=(len(minAffs),), minval=minAffs, maxval=maxAffs
+    )
     initKx_star = jax.random.uniform(
         key2, minval=jnp.log10(Kx_star_bounds[0]), maxval=jnp.log10(Kx_star_bounds[1])
     )
@@ -180,29 +183,24 @@ def optimize_affs(
     )
     opt_state = solver.init(params)
 
-    prev_params = params
-    prev_loss = jnp.inf
+    def cond_fn(loop_state):
+        iteration, params, prev_params, prev_loss, loss, grads, opt_state = loop_state
 
-    for _ in range(max_iter):
-        # This is faster but only because grad_from_state does not yet use jax
-        loss, grads = min_off_targ_selec_jax(
-            params,
-            targRecs,
-            offTargRecs,
-            dose,
-            valencies,
-        )
-        # This should be faster once this entire function is jitted
-        # because it borrows the value and grad from the linesearch
-        # loss, grads = optax.value_and_grad_from_state(min_off_targ_selec)(
-        #     params,
-        #     state=opt_state,
-        #     targRecs=targRecs,
-        #     offTargRecs=offTargRecs,
-        #     dose=dose,
-        #     valencies=valencies,
-        # )
-        updates, opt_state = solver.update(
+        param_change = jnp.sqrt(jnp.sum((params - prev_params) ** 2))
+        loss_change = jnp.abs(loss - prev_loss)
+        grad_norm = jnp.sqrt(jnp.sum(grads**2))
+
+        x_converged = param_change < xtol
+        f_converged = loss_change < ftol
+        g_converged = grad_norm < gtol
+        converged = x_converged | f_converged | g_converged
+
+        return (~converged) & (iteration < max_iter)
+
+    def body_fn(loop_state):
+        iteration, params, prev_params, prev_loss, loss, grads, opt_state = loop_state
+
+        updates, new_opt_state = solver.update(
             grads,
             opt_state,
             params,
@@ -214,23 +212,42 @@ def optimize_affs(
             dose=dose,
             valencies=valencies,
         )
-        params = optax.apply_updates(params, updates)
-        params = optax.projections.projection_box(params, minBounds, maxBounds)
+        new_params = optax.apply_updates(params, updates)
+        new_params = optax.projections.projection_box(new_params, minBounds, maxBounds)
 
-        # Check convergence conditions
-        param_change = jnp.sqrt(jnp.sum((params - prev_params) ** 2))
-        loss_change = jnp.abs(loss - prev_loss)
-        grad_norm = jnp.sqrt(jnp.sum(grads**2))
-        x_converged = param_change < xtol
-        f_converged = loss_change < ftol
-        g_converged = grad_norm < gtol
-        if x_converged or f_converged or g_converged:
-            break
+        new_loss, new_grads = min_off_targ_selec_jax(
+            new_params,
+            targRecs,
+            offTargRecs,
+            dose,
+            valencies,
+        )
 
-        prev_params = params
-        prev_loss = loss
+        return (
+            iteration + 1,
+            new_params,
+            params,
+            loss,
+            new_loss,
+            new_grads,
+            new_opt_state,
+        )
 
-    return float(loss), list(params[:-1]), float(jnp.power(10, params[-1]))
+    init_loss, init_grads = min_off_targ_selec_jax(
+        params, targRecs, offTargRecs, dose, valencies
+    )
+
+    initial_state = (0, params, params, jnp.inf, init_loss, init_grads, opt_state)
+
+    _, final_params, _, _, final_loss, _, _ = jax.lax.while_loop(
+        cond_fn, body_fn, initial_state
+    )
+
+    return (
+        final_loss.astype(float),
+        list(final_params[:-1]),
+        jnp.power(10, final_params[-1]).astype(float),
+    )
 
 
 cyt_binding_model_jit = jax.jit(cyt_binding_model)
