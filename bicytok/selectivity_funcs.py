@@ -93,8 +93,8 @@ def min_off_targ_selec(
 
     # Calculate total bound receptors for target and off-target
     #   cell types, normalized by number of cells
-    targetBound = np.sum(targRbound[:, 0]) / targRbound.shape[0]
-    offTargetBound = np.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
+    targetBound = jnp.sum(targRbound[:, 0]) / targRbound.shape[0]
+    offTargetBound = jnp.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
 
     # Return selectivity ratio
     return (targetBound + offTargetBound) / targetBound
@@ -148,28 +148,30 @@ def optimize_affs(
     assert targRecs.size > 0
     assert offTargRecs.size > 0
 
-    minAffs = [affinity_bounds[0]] * (targRecs.shape[1])
-    maxAffs = [affinity_bounds[1]] * (targRecs.shape[1])
-
-    # Start optimization at random values between min and max bounds
-    rng = np.random.default_rng()
-    initAffs = rng.uniform(low=minAffs, high=maxAffs, size=len(minAffs))
-    initKx_star = rng.uniform(
-        low=np.log10(Kx_star_bounds[0]), high=np.log10(Kx_star_bounds[1])
-    )
-    params = np.concatenate((initAffs, [initKx_star]))
-
-    # Set bounds for optimization
-    minBounds = np.concatenate([minAffs, [np.log10(Kx_star_bounds[0])]])
-    maxBounds = np.concatenate([maxAffs, [np.log10(Kx_star_bounds[1])]])
-
-    targRecs[targRecs == 0] = 1e-9
-    offTargRecs[offTargRecs == 0] = 1e-9
-
+    # Convert inputs to JAX arrays
     targRecs = jnp.array(targRecs, dtype=jnp.float64)
     offTargRecs = jnp.array(offTargRecs, dtype=jnp.float64)
     dose = jnp.array(dose, dtype=jnp.float64)
     valencies = jnp.array(valencies, dtype=jnp.float64)
+
+    minAffs = jnp.array([affinity_bounds[0]] * (targRecs.shape[1]))
+    maxAffs = jnp.array([affinity_bounds[1]] * (targRecs.shape[1]))
+
+    # Start optimization at random values between min and max bounds
+    key = jax.random.PRNGKey(42)
+    key1, key2 = jax.random.split(key)
+    initAffs = jax.random.uniform(key1, shape=(len(minAffs),), minval=minAffs, maxval=maxAffs)
+    initKx_star = jax.random.uniform(
+        key2, minval=jnp.log10(Kx_star_bounds[0]), maxval=jnp.log10(Kx_star_bounds[1])
+    )
+    params = jnp.concatenate((initAffs, jnp.array([initKx_star])))
+
+    # Set bounds for optimization
+    minBounds = jnp.concatenate([minAffs, jnp.array([jnp.log10(Kx_star_bounds[0])])])
+    maxBounds = jnp.concatenate([maxAffs, jnp.array([jnp.log10(Kx_star_bounds[1])])])
+
+    targRecs = jnp.where(targRecs == 0, 1e-6, targRecs)
+    offTargRecs = jnp.where(offTargRecs == 0, 1e-6, offTargRecs)
 
     solver = optax.lbfgs(
         linesearch=optax.scale_by_zoom_linesearch(
@@ -178,8 +180,8 @@ def optimize_affs(
     )
     opt_state = solver.init(params)
 
-    prev_params = params.copy()
-    prev_loss = np.inf
+    prev_params = params
+    prev_loss = jnp.inf
 
     for _ in range(max_iter):
         # This is faster but only because grad_from_state does not yet use jax
@@ -216,19 +218,19 @@ def optimize_affs(
         params = optax.projections.projection_box(params, minBounds, maxBounds)
 
         # Check convergence conditions
-        param_change = np.sqrt(np.sum((params - prev_params) ** 2))
-        loss_change = np.abs(loss - prev_loss)
-        grad_norm = np.sqrt(np.sum(grads**2))
+        param_change = jnp.sqrt(jnp.sum((params - prev_params) ** 2))
+        loss_change = jnp.abs(loss - prev_loss)
+        grad_norm = jnp.sqrt(jnp.sum(grads**2))
         x_converged = param_change < xtol
         f_converged = loss_change < ftol
         g_converged = grad_norm < gtol
         if x_converged or f_converged or g_converged:
             break
 
-        prev_params = params.copy()
+        prev_params = params
         prev_loss = loss
 
-    return loss, params[:-1], np.power(10, params[-1])
+    return float(loss), list(params[:-1]), float(jnp.power(10, params[-1]))
 
 
 cyt_binding_model_jit = jax.jit(cyt_binding_model)
