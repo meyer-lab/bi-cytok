@@ -179,7 +179,7 @@ def KL_EMD_2D(
 def make_2D_distance_metrics():
     """
     Generates a CSV of 2D EMD and KL Divergence values for all receptors.
-    Called with "rye run distanceCSV"
+    Called with "uv run distanceCSV"
     """
     start = time.time()
 

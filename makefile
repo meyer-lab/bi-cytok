@@ -8,23 +8,23 @@ all: $(patsubst bicytok/figures/figure%.py, output/figure%.svg, $(flist))
 
 output/figure%.svg: bicytok/figures/figure%.py
 	@ mkdir -p ./output
-	rye run fbuild $*
+	uv run fbuild $*
 
 clean:
 	rm -r output
 
 test: .venv
-	rye run pytest -s -v -x
+	uv run pytest -s -v -x
 
 .venv: pyproject.toml
-	rye sync
+	uv sync --dev
 
 testprofile:
-	rye run python3 -m cProfile -o profile -m pytest -s -v -x
+	uv run python3 -m cProfile -o profile -m pytest -s -v -x
 	gprof2dot -f pstats --node-thres=5.0 profile | dot -Tsvg -o profile.svg
 
 coverage.xml: .venv
-	rye run pytest --junitxml=junit.xml --cov=bicytok --cov-report xml:coverage.xml
+	uv run pytest --junitxml=junit.xml --cov=bicytok --cov-report xml:coverage.xml
 
 pyright: .venv
-	rye run pyright bicytok
+	uv run pyright bicytok

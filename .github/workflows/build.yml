@@ -36,11 +36,10 @@ jobs:
       fail-fast: false
     steps:
     - uses: actions/checkout@v4
-    - name: Setup rye
-      uses: eifinger/setup-rye@v4
+    - name: Install the latest version of uv
+      uses: astral-sh/setup-uv@v7
       with:
         enable-cache: true
-        version: '0.39.0'
     - name: Setup environment
       run: make .venv
     - name: Render figure ${{ matrix.figure }}
