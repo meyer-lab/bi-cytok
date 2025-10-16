@@ -54,13 +54,13 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
     # Calculate KL Divergence
     KL_div_val_1 = stats.entropy(dist2_probs + 1e-200, dist1_probs + 1e-200, base=2)
     KL_div_val_2 = stats.entropy(dist1_probs + 1e-200, dist2_probs + 1e-200, base=2)
-    KL_div_val = (KL_div_val_1 + KL_div_val_2) / 2
+    KL_div_val = float((KL_div_val_1 + KL_div_val_2) / 2)
 
     # Calculate Euclidean distance matrix
     M = ot.dist(dist1, dist2, metric="euclidean")
 
     # Calculate EMD
-    EMD_val = ot.emd2([], [], M, numItermax=1e9)
+    EMD_val = ot.emd2([], [], M, numItermax=int(1e9))
 
     return KL_div_val, EMD_val
 

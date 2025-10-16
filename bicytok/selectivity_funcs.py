@@ -12,7 +12,7 @@ from .binding_model_funcs import cyt_binding_model
 
 
 # Called in minOffTargSelec and get_cell_bindings
-def restructure_affs(affs: jnp.ndarray) -> jnp.ndarray:
+def restructure_affs(affs: jnp.ndarray | np.ndarray) -> jnp.ndarray:
     """
     Structures array of receptor affinities to be compatible with the binding model
     Args:
@@ -110,7 +110,7 @@ def optimize_affs(
     valencies: np.ndarray,
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
-) -> tuple[float, list, float]:
+) -> tuple[float, np.ndarray, float]:
     """
     An optimizer that maximizes the selectivity for a target cell type
         by varying the affinities of each receptor-ligand pair and the
