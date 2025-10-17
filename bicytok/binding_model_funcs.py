@@ -13,8 +13,8 @@ jax.config.update("jax_enable_x64", True)
 def cyt_binding_model(
     dose: jnp.ndarray | float,
     recCounts: jnp.ndarray | np.ndarray,
-    valencies: jnp.ndarray,
-    monomerAffs: jnp.ndarray,
+    valencies: jnp.ndarray | np.ndarray,
+    monomerAffs: jnp.ndarray | np.ndarray,
     Kx_star: float | jnp.ndarray = 2.24e-12,
 ) -> jnp.ndarray:
     """
