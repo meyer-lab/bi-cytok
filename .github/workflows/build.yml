@@ -41,13 +41,6 @@ jobs:
       with:
         enable-cache: true
         cache-suffix: "build"
-    - name: Cache virtual environment
-      uses: actions/cache@v4
-      with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
-        restore-keys: |
-          venv-${{ runner.os }}-
     - name: Setup environment
       run: make .venv
     - name: Render figure ${{ matrix.figure }}
