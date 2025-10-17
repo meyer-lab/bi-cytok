@@ -17,7 +17,9 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".05"
 
 
 # Called in minOffTargSelec and get_cell_bindings
-def restructure_affs(affs: jnp.ndarray) -> jnp.ndarray:
+def restructure_affs(
+    affs: Float64[Array, "receptors"],  # type: ignore
+) -> Float64[Array, "receptors receptors"]:  # type: ignore
     """
     Structures array of receptor affinities to be compatible with the binding model
     Args:
@@ -43,30 +45,26 @@ def restructure_affs(affs: jnp.ndarray) -> jnp.ndarray:
 
 # Called in optimizeDesign
 def min_off_targ_selec(
-    params: jnp.ndarray,
-    targRecs: Float64[Array, "cells receptors"],
-    offTargRecs: Float64[Array, "cells receptors"],
+    params: Float64[Array, "receptors_plus_one"],  # type: ignore
+    targRecs: Float64[Array, "cells receptors"],  # type: ignore
+    offTargRecs: Float64[Array, "cells receptors"],  # type: ignore
     dose: Scalar,
-    valencies: jnp.ndarray,
+    valencies: Float64[Array, "receptors"],  # type: ignore
 ):
     """
-    Serves as the function which will have its return value
-        minimized to get optimal selectivity.
-        Used in conjunction with optimize_affs.
-        The output (selectivity) is calculated based on the amounts of
-        bound receptors of only the first column/receptor of
-        the receptor abundance arrays.
+    The objective function to optimize selectivity by varying affinities. The output
+        (selectivity) is calculated based on the amounts of bound receptors of only the
+        first column/receptor (i.e., the signal receptor).
     Args:
         params: combined array of [monomer affinities, log10(Kx_star)]
         targRecs: receptor counts of target cell type
         offTargRecs: receptors count of off-target cell types
-        dose: ligand concentration/dose that is being modeled
-        valencies: array of valencies of each ligand epitope
+        dose: ligand concentration/dose
+        valencies: array of valencies of each distinct ligand in the ligand complex
     Return:
-        selectivity: value to be minimized.
-            Defined as ratio of off target to on target binding.
-            This is the selectivity for the off target cells, so is
-            minimized to maximize selectivity for the target cell type.
+        selectivity: value to be minimized. Defined as ratio of off target to on target
+            binding. By minimizing the selectivity for off-target cells, we maximize
+            the selectivity for target cells.
     """
 
     assert targRecs.shape[1] == offTargRecs.shape[1]
@@ -78,7 +76,6 @@ def min_off_targ_selec(
     modelAffs = restructure_affs(monomerAffs)
 
     # Use the binding model to calculate bound receptors
-    #   for target and off-target cell types
     targRbound = cyt_binding_model(
         dose=dose,
         recCounts=targRecs,
@@ -94,8 +91,8 @@ def min_off_targ_selec(
         Kx_star=Kx_star,
     )
 
-    # Calculate total bound receptors for target and off-target
-    #   cell types, normalized by number of cells
+    # Calculate total bound receptors for target and off-target cell types, normalized
+    #   by number of cells
     targetBound = jnp.sum(targRbound[:, 0]) / targRbound.shape[0]
     offTargetBound = jnp.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
 
@@ -113,17 +110,17 @@ REC_COUNT_EPS = 1e-6
 
 @jax.jit
 def _optimize_affs_jax(
-    targRecs_jax: Float64[Array, "cells receptors"],
-    offTargRecs_jax: Float64[Array, "cells receptors"],
+    targRecs_jax: Float64[Array, "cells receptors"],  # type: ignore
+    offTargRecs_jax: Float64[Array, "cells receptors"],  # type: ignore
     dose: float,
-    valencies_jax: Float64[Array, "complexes epitopes"],
+    valencies_jax: Float64[Array, "receptors"],  # type: ignore
     affinity_bounds: tuple[float, float],
     Kx_star_bounds: tuple[float, float],
     max_iter: int,
     xtol: float,
     ftol: float,
     gtol: float,
-) -> tuple[Scalar, Float64[Array, "receptors"], Scalar]:
+) -> tuple[Scalar, Float64[Array, "receptors"], Scalar]:  # type: ignore
     """
     JAX-optimized core optimization function.
     """
@@ -216,7 +213,15 @@ def _optimize_affs_jax(
         params, targRecs_clean, offTargRecs_clean, dose, valencies_jax
     )
     prev_params_init = params + jnp.ones_like(params) * (xtol * 10)
-    initial_state = (0, params, prev_params_init, jnp.inf, init_loss, init_grads+1, opt_state)
+    initial_state = (
+        0,
+        params,
+        prev_params_init,
+        jnp.inf,
+        init_loss,
+        init_grads + 1,
+        opt_state,
+    )
     iteration, final_params, _, _, final_loss, _, _ = jax.lax.while_loop(
         cond_fn, body_fn, initial_state
     )
@@ -242,10 +247,10 @@ def optimize_affs(
     receptor affinities and Kx_star using L-BFGS.
 
     Args:
-        targRecs: receptor counts of target cell type (NumPy array)
-        offTargRecs: receptor counts of off-target cell types (NumPy array)
-        dose: ligand concentration/dose that is being modeled
-        valencies: array of valencies of each ligand epitope (NumPy array)
+        targRecs: receptor counts of target cell type
+        offTargRecs: receptors count of off-target cell types
+        dose: ligand concentration/dose
+        valencies: array of valencies of each distinct ligand in the ligand complex
         affinity_bounds: minimum and maximum optimization bounds for affinity values
         Kx_star_bounds: minimum and maximum optimization bounds for Kx_star
         max_iter: maximum number of iterations
@@ -254,9 +259,9 @@ def optimize_affs(
         gtol: gradient norm tolerance for convergence
 
     Return:
-        optSelec: optimized selectivity value (Python float)
-        optAffs: optimized affinity values (Python list)
-        optKx_star: optimized Kx_star value (Python float)
+        optSelec: optimized selectivity value
+        optAffs: optimized affinity values
+        optKx_star: optimized Kx_star value
     """
 
     assert targRecs.size > 0
@@ -306,7 +311,7 @@ def get_cell_bindings(
         recCounts: single cell abundances of receptors
         monomerAffs: monomer ligand-receptor affinities
         dose: ligand concentration/dose that is being modeled
-        valencies: array of valencies of each ligand epitope
+        valencies: array of valencies of each distinct ligand in the ligand complex
         Kx_star: cross-linking constant for the binding model
     Return:
         Rbound: number of bound receptors for each cell

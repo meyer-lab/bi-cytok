@@ -4,19 +4,19 @@ Implementation of a simple multivalent binding model.
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 import optimistix as opt
+from jaxtyping import Array, Float64, Scalar
 
 jax.config.update("jax_enable_x64", True)
 
 
 def cyt_binding_model(
-    dose: jnp.ndarray | float,
-    recCounts: jnp.ndarray | np.ndarray,
-    valencies: jnp.ndarray,
-    monomerAffs: jnp.ndarray,
-    Kx_star: float | jnp.ndarray = 2.24e-12,
-) -> jnp.ndarray:
+    dose: Scalar,
+    recCounts: Float64[Array, "cells receptors"],  # type: ignore
+    valencies: Float64[Array, "receptors"],  # type: ignore
+    monomerAffs: Float64[Array, "receptors receptors"],  # type: ignore
+    Kx_star: Scalar,
+) -> Float64[Array, "cells receptors"]:  # type: ignore
     """
     Calculate the amount of receptor bound to ligand at a given dose,
     considering receptor counts, valencies, and monomer affinities.
@@ -27,22 +27,16 @@ def cyt_binding_model(
     has the same number of ligands, receptors, and complexes.
 
     Args:
-        dose (float): The concentration of the ligand in molar units.
-        recCounts (jnp.ndarray): A 2D array where each row represents a
-            system and each column represents the number of a specific
-            receptor type in that system.
-        valencies (np.ndarray): A 2D array (1 x number of complexes)
-            representing the valency of each complex.
-        monomerAffs (np.ndarray): A 2D array representing the affinity
-            of each monomer for each receptor. Rows correspond to complexes,
-            columns correspond to receptors.
-        Kx_star (float, optional): A float representing the cross-linking
-            constant which describes all secondary binding events.
+        dose: The concentration of the ligand complex in molar units.
+        recCounts: Receptor counts (columns) across cells (rows).
+        valencies: The valency of each ligand complex (just one distinct complex for
+            our purposes).
+        monomerAffs: The affinity of each ligand monomer for each receptor.
+        Kx_star: The cross-linking constant which describes all secondary binding
+            events.
 
     Returns:
-        np.ndarray: A 2D array with the same shape as recCounts,
-            representing the amount of each receptor bound to the ligand
-            in each system.
+        Rbound: The amount of each receptor bound to each ligand on each cell.
     """
     assert recCounts.ndim == 2
     assert monomerAffs.shape == (recCounts.shape[1], valencies.shape[1])
@@ -56,17 +50,19 @@ def cyt_binding_model(
 
 
 def infer_Req(
-    Rtot: jnp.ndarray,
-    L0: jnp.ndarray | float,
-    KxStar: jnp.ndarray | float,
-    Cplx: jnp.ndarray,
-    Ka: jnp.ndarray,
-) -> jnp.ndarray:
+    Rtot: Float64[Array, "receptors"],  # type: ignore
+    L0: Scalar,
+    KxStar: Scalar,
+    Cplx: Float64[Array, "receptors"],  # type: ignore
+    Ka: Float64[Array, "receptors receptors"],  # type: ignore
+) -> Float64[Array, "receptors"]:  # type: ignore
     L0_KxStar = L0 / KxStar
     Ka_KxStar = Ka * KxStar
     Cplxsum = Cplx.sum(axis=0)
 
-    def residual_log(log_Req: jnp.ndarray, _args) -> jnp.ndarray:
+    def residual_log(
+        log_Req: Float64[Array, "receptors"], _args
+    ) -> Float64[Array, "receptors"]:  # type: ignore
         """The polyc model from Tan et al."""
         Req = jnp.exp(log_Req)
         Psi = Req * Ka_KxStar
