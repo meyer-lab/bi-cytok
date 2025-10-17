@@ -5,13 +5,14 @@ on: [push]
 jobs:
   build:
     runs-on: self-hosted
+    env:
+      JAX_PLATFORM_NAME: cpu
     steps:
     - uses: actions/checkout@v4
     - name: Install the latest version of uv
       uses: astral-sh/setup-uv@v7
       with:
-        enable-cache: true
-        cache-suffix: "test"
+        enable-cache: false
     - name: Check linting
       run: uv run ruff check bicytok
     - name: Check formatting
