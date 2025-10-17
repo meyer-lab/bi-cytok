@@ -16,7 +16,7 @@ dependencies = [
     "pot>=0.9.5",
     "jaxtyping>=0.3.2",
     "hypothesis>=6.137.1",
-    "optax>=0.2.6",
+    "jaxopt>=0.8.5",
 ]
 readme = "README.md"
 requires-python = ">= 3.12"

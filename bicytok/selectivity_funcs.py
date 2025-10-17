@@ -7,7 +7,7 @@ import os
 import jax
 import jax.numpy as jnp
 import numpy as np
-import optax
+import jaxopt
 from jaxtyping import Array, Float64, Scalar
 
 from .binding_model_funcs import cyt_binding_model
@@ -112,17 +112,15 @@ REC_COUNT_EPS = 1e-6
 def _optimize_affs_jax(
     targRecs_jax: Float64[Array, "cells receptors"],  # type: ignore
     offTargRecs_jax: Float64[Array, "cells receptors"],  # type: ignore
-    dose: float,
+    dose: Scalar,
     valencies_jax: Float64[Array, "receptors"],  # type: ignore
     affinity_bounds: tuple[float, float],
     Kx_star_bounds: tuple[float, float],
     max_iter: int,
-    xtol: float,
-    ftol: float,
-    gtol: float,
+    tol: float,
 ) -> tuple[Scalar, Float64[Array, "receptors"], Scalar]:  # type: ignore
     """
-    JAX-optimized core optimization function.
+    JAX-optimized core optimization function using L-BFGS-B.
     """
 
     minAffs = jnp.full(targRecs_jax.shape[1], affinity_bounds[0])
@@ -139,92 +137,36 @@ def _optimize_affs_jax(
     )
     params = jnp.concatenate((initAffs, jnp.array([initKx_star])))
 
-    # Set bounds for optimization
-    minBounds = jnp.concatenate([minAffs, jnp.array([jnp.log10(Kx_star_bounds[0])])])
-    maxBounds = jnp.concatenate([maxAffs, jnp.array([jnp.log10(Kx_star_bounds[1])])])
+    # Set bounds for optimization - correct format for jaxopt.LBFGSB
+    bounds = (
+        jnp.concatenate([minAffs, jnp.array([jnp.log10(Kx_star_bounds[0])])]),  # lower bounds
+        jnp.concatenate([maxAffs, jnp.array([jnp.log10(Kx_star_bounds[1])])])   # upper bounds
+    )
 
     # Replace zero receptor counts with small epsilon to avoid instability
     targRecs_clean = jnp.where(targRecs_jax == 0, REC_COUNT_EPS, targRecs_jax)
     offTargRecs_clean = jnp.where(offTargRecs_jax == 0, REC_COUNT_EPS, offTargRecs_jax)
 
-    # Set up the L-BFGS solver from Optax
-    # Optax recommends max 55 linesearch steps for 64-bit precision
-    solver = optax.lbfgs(
-        linesearch=optax.scale_by_zoom_linesearch(
-            max_linesearch_steps=55, verbose=False, initial_guess_strategy="one"
-        )
+    # Set up L-BFGS-B solver from jaxopt
+    solver = jaxopt.LBFGSB(
+        fun=min_off_targ_selec,
+        maxiter=max_iter,
+        tol=tol,
+        jit=True
     )
-    opt_state = solver.init(params)
 
-    # Condition function for jax while loop checks convergence criteria
-    def cond_fn(loop_state):
-        iteration, params, prev_params, prev_loss, loss, grads, opt_state = loop_state
-
-        param_change = jnp.sqrt(jnp.sum((params - prev_params) ** 2))
-        loss_change = jnp.abs(loss - prev_loss)
-        grad_norm = jnp.sqrt(jnp.sum(grads**2))
-
-        x_converged = param_change < xtol
-        f_converged = loss_change < ftol
-        g_converged = grad_norm < gtol
-        converged = x_converged | f_converged | g_converged
-
-        return (~converged) & (iteration < max_iter)
-
-    # Body function for jax while loop performs one optimization step
-    def body_fn(loop_state):
-        iteration, params, prev_params, prev_loss, loss, grads, opt_state = loop_state
-
-        updates, new_opt_state = solver.update(
-            grads,
-            opt_state,
-            params,
-            value=loss,
-            grad=grads,
-            value_fn=min_off_targ_selec,
-            targRecs=targRecs_clean,
-            offTargRecs=offTargRecs_clean,
-            dose=dose,
-            valencies=valencies_jax,
-        )
-        new_params = optax.apply_updates(params, updates)
-        new_params = optax.projections.projection_box(new_params, minBounds, maxBounds)
-
-        new_loss, new_grads = min_off_targ_selec_jax(
-            new_params,
-            targRecs_clean,
-            offTargRecs_clean,
-            dose,
-            valencies_jax,
-        )
-
-        return (
-            iteration + 1,
-            new_params,
-            params,
-            loss,
-            new_loss,
-            new_grads,
-            new_opt_state,
-        )
-
-    # Run the jax optimization loop
-    init_loss, init_grads = min_off_targ_selec_jax(
-        params, targRecs_clean, offTargRecs_clean, dose, valencies_jax
+    # Run optimization with bounds passed to run method
+    result = solver.run(
+        init_params=params,
+        bounds=bounds,
+        targRecs=targRecs_clean,
+        offTargRecs=offTargRecs_clean,
+        dose=dose,
+        valencies=valencies_jax,
     )
-    prev_params_init = params + jnp.ones_like(params) * (xtol * 10)
-    initial_state = (
-        0,
-        params,
-        prev_params_init,
-        jnp.inf,
-        init_loss,
-        init_grads + 1,
-        opt_state,
-    )
-    iteration, final_params, _, _, final_loss, _, _ = jax.lax.while_loop(
-        cond_fn, body_fn, initial_state
-    )
+
+    final_params = result.params
+    final_loss = result.state.value
 
     return final_loss, final_params[:-1], jnp.power(10, final_params[-1])
 
@@ -237,9 +179,7 @@ def optimize_affs(
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
     max_iter: int = 100,
-    xtol: float = 1e-6,
-    ftol: float = 1e-6,
-    gtol: float = 1e-6,
+    tol: float = 1e-3,
 ) -> tuple[float, list, float]:
     """
     NumPy-compatible wrapper for optimize_affs that handles conversions to/from JAX.
@@ -270,6 +210,7 @@ def optimize_affs(
 
     # Convert inputs to JAX arrays
     targRecs_jax = jnp.array(targRecs, dtype=jnp.float64)
+    dose_jax = jnp.array(dose, dtype=jnp.float64)
     offTargRecs_jax = jnp.array(offTargRecs, dtype=jnp.float64)
     valencies_jax = jnp.array(valencies, dtype=jnp.float64)
 
@@ -277,14 +218,12 @@ def optimize_affs(
     final_loss, final_affs, final_kx_star = _optimize_affs_jax(
         targRecs_jax,
         offTargRecs_jax,
-        dose,
+        dose_jax,
         valencies_jax,
         affinity_bounds,
         Kx_star_bounds,
         max_iter,
-        xtol,
-        ftol,
-        gtol,
+        tol,
     )
 
     # Convert outputs back to Python types

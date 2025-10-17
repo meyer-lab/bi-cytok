@@ -65,6 +65,7 @@ jax==0.6.2
     # via bi-cytok
     # via chex
     # via equinox
+    # via jaxopt
     # via lineax
     # via optax
     # via optimistix
@@ -75,7 +76,10 @@ jax-cuda12-plugin==0.6.2
 jaxlib==0.6.2
     # via chex
     # via jax
+    # via jaxopt
     # via optax
+jaxopt==0.8.5
+    # via bi-cytok
 jaxtyping==0.3.2
     # via bi-cytok
     # via equinox
@@ -130,6 +134,7 @@ numpy==2.0.1
     # via h5py
     # via jax
     # via jaxlib
+    # via jaxopt
     # via matplotlib
     # via ml-dtypes
     # via numcodecs
@@ -239,6 +244,7 @@ scipy==1.16.1
     # via bi-cytok
     # via jax
     # via jaxlib
+    # via jaxopt
     # via pot
     # via scikit-learn
 seaborn==0.13.2
