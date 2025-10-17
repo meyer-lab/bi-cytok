@@ -48,7 +48,6 @@ jobs:
         quarto render figures/${{ matrix.figure }}.qmd --to typst
       env:
         QUARTO_PYTHON: .venv/bin/python
-        JAX_PLATFORM_NAME: cpu
     - name: Upload files
       uses: actions/upload-artifact@v4
       with:
