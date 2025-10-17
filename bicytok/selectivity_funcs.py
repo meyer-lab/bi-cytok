@@ -6,8 +6,8 @@ import os
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 import jaxopt
+import numpy as np
 from jaxtyping import Array, Float64, Scalar
 
 from .binding_model_funcs import cyt_binding_model
@@ -139,8 +139,12 @@ def _optimize_affs_jax(
 
     # Set bounds for optimization - correct format for jaxopt.LBFGSB
     bounds = (
-        jnp.concatenate([minAffs, jnp.array([jnp.log10(Kx_star_bounds[0])])]),  # lower bounds
-        jnp.concatenate([maxAffs, jnp.array([jnp.log10(Kx_star_bounds[1])])])   # upper bounds
+        jnp.concatenate(
+            [minAffs, jnp.array([jnp.log10(Kx_star_bounds[0])])]
+        ),  # lower bounds
+        jnp.concatenate(
+            [maxAffs, jnp.array([jnp.log10(Kx_star_bounds[1])])]
+        ),  # upper bounds
     )
 
     # Replace zero receptor counts with small epsilon to avoid instability
@@ -148,12 +152,7 @@ def _optimize_affs_jax(
     offTargRecs_clean = jnp.where(offTargRecs_jax == 0, REC_COUNT_EPS, offTargRecs_jax)
 
     # Set up L-BFGS-B solver from jaxopt
-    solver = jaxopt.LBFGSB(
-        fun=min_off_targ_selec,
-        maxiter=max_iter,
-        tol=tol,
-        jit=True
-    )
+    solver = jaxopt.LBFGSB(fun=min_off_targ_selec, maxiter=max_iter, tol=tol, jit=True)
 
     # Run optimization with bounds passed to run method
     result = solver.run(
