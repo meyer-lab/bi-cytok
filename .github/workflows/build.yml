@@ -39,14 +39,15 @@ jobs:
     - name: Install the latest version of uv
       uses: astral-sh/setup-uv@v7
       with:
-        enable-cache: true
-        cache-suffix: "build"
+        enable-cache: false
     - name: Setup environment
       run: make .venv
     - name: Render figure ${{ matrix.figure }}
       run: |
         source .venv/bin/activate
         quarto render figures/${{ matrix.figure }}.qmd --to typst
+      env:
+        QUARTO_PYTHON: .venv/bin/python
     - name: Upload files
       uses: actions/upload-artifact@v4
       with:
