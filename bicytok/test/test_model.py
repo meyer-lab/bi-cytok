@@ -127,6 +127,7 @@ def test_optimize_affs():
     optSelec, optAffs, optKx_star = optimize_affs(
         targRecs=targRecs, offTargRecs=offTargRecs, dose=dose, valencies=valencies
     )
+    optAffs = np.array(optAffs)
 
     assert isinstance(optSelec, float)
     assert optSelec >= 0
