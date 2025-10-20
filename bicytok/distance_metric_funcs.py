@@ -19,7 +19,7 @@ BW_METHOD = "scott"  # Bandwidth method for KDE
 KDE_GRID_MARGIN = 0.5  # Margin added to min/max for KDE grid
 KDE_GRID_SIZE = 50  # Number of points per dimension in KDE grid
 ENTROPY_EPS = 1e-6  # Small value to avoid log(0) in entropy calculations
-EMD_MAX_ITER = 1e9  # Maximum iterations for EMD calculation
+EMD_MAX_ITER = 100  # Maximum iterations for EMD calculation
 
 
 def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float]:
@@ -72,8 +72,23 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
     # Calculate Euclidean distance matrix
     M = ot.dist(dist1, dist2, metric="euclidean")
 
-    # Calculate EMD
-    EMD_val = ot.emd2([], [], M, numItermax=int(EMD_MAX_ITER))
+    time_start = time.time()
+    # Wasserstein solvers
+    # EMD_val = ot.emd2([], [], M, numItermax=int(EMD_MAX_ITER))
+    # EMD_res = ot.solve(M)
+
+    # Sinkhorn solvers
+    # EMD_val = ot.bregman.sinkhorn2(
+    #     a=np.ones(dist1.shape[0]) / dist1.shape[0],
+    #     b=np.ones(dist2.shape[0]) / dist2.shape[0],
+    #     M=M,
+    #     reg=0.1,
+    #     method="sinkhorn",
+    # )
+    EMD_res = ot.solve(M, reg=1.0)
+
+    EMD_val = EMD_res.value_linear
+    print(f"EMD calculation took {time.time() - time_start} seconds.")
 
     return KL_div_val, EMD_val
 
