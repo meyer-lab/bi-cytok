@@ -6,17 +6,20 @@ import os
 
 import jax
 import jax.numpy as jnp
+import jaxopt
 import numpy as np
 from jaxtyping import Array, Float64, Scalar
-from scipy.optimize import Bounds, minimize
 
 from .binding_model_funcs import cyt_binding_model
 
+jax.config.update("jax_enable_x64", True)
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".05"
 
 
 # Called in minOffTargSelec and get_cell_bindings
-def restructure_affs(affs: jnp.ndarray | np.ndarray) -> jnp.ndarray:
+def restructure_affs(
+    affs: Float64[Array, "receptors"],  # type: ignore
+) -> Float64[Array, "receptors receptors"]:  # type: ignore
     """
     Structures array of receptor affinities to be compatible with the binding model
     Args:
@@ -42,30 +45,26 @@ def restructure_affs(affs: jnp.ndarray | np.ndarray) -> jnp.ndarray:
 
 # Called in optimizeDesign
 def min_off_targ_selec(
-    params: jnp.ndarray,
-    targRecs: Float64[Array, "cells receptors"],
-    offTargRecs: Float64[Array, "cells receptors"],
+    params: Float64[Array, "receptors_plus_one"],  # type: ignore
+    targRecs: Float64[Array, "cells receptors"],  # type: ignore
+    offTargRecs: Float64[Array, "cells receptors"],  # type: ignore
     dose: Scalar,
-    valencies: jnp.ndarray,
+    valencies: Float64[Array, "receptors"],  # type: ignore
 ):
     """
-    Serves as the function which will have its return value
-        minimized to get optimal selectivity.
-        Used in conjunction with optimize_affs.
-        The output (selectivity) is calculated based on the amounts of
-        bound receptors of only the first column/receptor of
-        the receptor abundance arrays.
+    The objective function to optimize selectivity by varying affinities. The output
+        (selectivity) is calculated based on the amounts of bound receptors of only the
+        first column/receptor (i.e., the signal receptor).
     Args:
         params: combined array of [monomer affinities, log10(Kx_star)]
         targRecs: receptor counts of target cell type
         offTargRecs: receptors count of off-target cell types
-        dose: ligand concentration/dose that is being modeled
-        valencies: array of valencies of each ligand epitope
+        dose: ligand concentration/dose
+        valencies: array of valencies of each distinct ligand in the ligand complex
     Return:
-        selectivity: value to be minimized.
-            Defined as ratio of off target to on target binding.
-            This is the selectivity for the off target cells, so is
-            minimized to maximize selectivity for the target cell type.
+        selectivity: value to be minimized. Defined as ratio of off target to on target
+            binding. By minimizing the selectivity for off-target cells, we maximize
+            the selectivity for target cells.
     """
 
     assert targRecs.shape[1] == offTargRecs.shape[1]
@@ -77,7 +76,6 @@ def min_off_targ_selec(
     modelAffs = restructure_affs(monomerAffs)
 
     # Use the binding model to calculate bound receptors
-    #   for target and off-target cell types
     targRbound = cyt_binding_model(
         dose=dose,
         recCounts=targRecs,
@@ -93,18 +91,83 @@ def min_off_targ_selec(
         Kx_star=Kx_star,
     )
 
-    # Calculate total bound receptors for target and off-target
-    #   cell types, normalized by number of cells
-    targetBound = np.sum(targRbound[:, 0]) / targRbound.shape[0]
-    offTargetBound = np.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
+    # Calculate total bound receptors for target and off-target cell types, normalized
+    #   by number of cells
+    targetBound = jnp.sum(targRbound[:, 0]) / targRbound.shape[0]
+    offTargetBound = jnp.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
 
     # Return selectivity ratio
     return (targetBound + offTargetBound) / targetBound
 
 
-# Define the function to minimize, which is the selectivity
+# Define the JAX-optimized objective function and its gradient (minimizing selectivity)
 min_off_targ_selec_jax = jax.jit(jax.value_and_grad(min_off_targ_selec))
-min_off_targ_selec_jax_hess = jax.jit(jax.hessian(min_off_targ_selec))
+
+# Affinity optimization constants
+INIT_AFF_SEED = 42
+REC_COUNT_EPS = 1e-6
+
+
+@jax.jit
+def _optimize_affs_jax(
+    targRecs_jax: Float64[Array, "cells receptors"],  # type: ignore
+    offTargRecs_jax: Float64[Array, "cells receptors"],  # type: ignore
+    dose: Scalar,
+    valencies_jax: Float64[Array, "receptors"],  # type: ignore
+    affinity_bounds: tuple[float, float],
+    Kx_star_bounds: tuple[float, float],
+    max_iter: int,
+    tol: float,
+) -> tuple[Scalar, Float64[Array, "receptors"], Scalar]:  # type: ignore
+    """
+    JAX-optimized core optimization function using L-BFGS-B.
+    """
+
+    minAffs = jnp.full(targRecs_jax.shape[1], affinity_bounds[0])
+    maxAffs = jnp.full(targRecs_jax.shape[1], affinity_bounds[1])
+
+    # Start optimization at random values between min and max bounds
+    key = jax.random.PRNGKey(INIT_AFF_SEED)
+    key1, key2 = jax.random.split(key)
+    initAffs = jax.random.uniform(
+        key1, shape=(targRecs_jax.shape[1],), minval=minAffs, maxval=maxAffs
+    )
+    initKx_star = jax.random.uniform(
+        key2, minval=jnp.log10(Kx_star_bounds[0]), maxval=jnp.log10(Kx_star_bounds[1])
+    )
+    params = jnp.concatenate((initAffs, jnp.array([initKx_star])))
+
+    # Set bounds for optimization - correct format for jaxopt.LBFGSB
+    bounds = (
+        jnp.concatenate(
+            [minAffs, jnp.array([jnp.log10(Kx_star_bounds[0])])]
+        ),  # lower bounds
+        jnp.concatenate(
+            [maxAffs, jnp.array([jnp.log10(Kx_star_bounds[1])])]
+        ),  # upper bounds
+    )
+
+    # Replace zero receptor counts with small epsilon to avoid instability
+    targRecs_clean = jnp.where(targRecs_jax == 0, REC_COUNT_EPS, targRecs_jax)
+    offTargRecs_clean = jnp.where(offTargRecs_jax == 0, REC_COUNT_EPS, offTargRecs_jax)
+
+    # Set up L-BFGS-B solver from jaxopt
+    solver = jaxopt.LBFGSB(fun=min_off_targ_selec, maxiter=max_iter, tol=tol, jit=True)
+
+    # Run optimization with bounds passed to run method
+    result = solver.run(
+        init_params=params,
+        bounds=bounds,
+        targRecs=targRecs_clean,
+        offTargRecs=offTargRecs_clean,
+        dose=dose,
+        valencies=valencies_jax,
+    )
+
+    final_params = result.params
+    final_loss = result.state.value
+
+    return final_loss, final_params[:-1], jnp.power(10, final_params[-1])
 
 
 def optimize_affs(
@@ -114,83 +177,60 @@ def optimize_affs(
     valencies: np.ndarray,
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
-) -> tuple[float, np.ndarray, float]:
+    max_iter: int = 100,
+    tol: float = 1e-3,
+) -> tuple[float, list, float]:
     """
-    An optimizer that maximizes the selectivity for a target cell type
-        by varying the affinities of each receptor-ligand pair and the
-        cross-linking constant Kx_star.
+    NumPy-compatible wrapper for optimize_affs that handles conversions to/from JAX.
+    Minimizes the off-target to on-target selectivity ratio by optimizing
+    receptor affinities and Kx_star using L-BFGS.
+
     Args:
-        targRecs: receptor counts of each receptor (columns) on
-            different cells (rows) of a target cell type. The
-            first column must be the signal receptor which is used
-            to calculate selectivity in min_off_targ_selec.
-        offTargRecs: receptor counts of each receptor on
-            different cells of off-target cell types. The
-            columns must match the columns of targRecs.
-        dose: ligand concentration/dose that is being modeled
-        valencies: array of valencies of each ligand epitope
-            Only set up for single complex modeling. Valencies
-            must be a nested array, such as [[1, 1]] for a bivalent
-            complex with two different ligands.
+        targRecs: receptor counts of target cell type
+        offTargRecs: receptors count of off-target cell types
+        dose: ligand concentration/dose
+        valencies: array of valencies of each distinct ligand in the ligand complex
         affinity_bounds: minimum and maximum optimization bounds for affinity values
         Kx_star_bounds: minimum and maximum optimization bounds for Kx_star
+        max_iter: maximum number of iterations
+        xtol: parameter tolerance for convergence
+        ftol: objective function tolerance for convergence
+        gtol: gradient norm tolerance for convergence
+
     Return:
         optSelec: optimized selectivity value
-        optAffs: optimized affinity values that yield the optimized selectivity
+        optAffs: optimized affinity values
         optKx_star: optimized Kx_star value
     """
 
     assert targRecs.size > 0
     assert offTargRecs.size > 0
+    assert targRecs.shape[1] == offTargRecs.shape[1]
 
-    minAffs = [affinity_bounds[0]] * (targRecs.shape[1])
-    maxAffs = [affinity_bounds[1]] * (targRecs.shape[1])
+    # Convert inputs to JAX arrays
+    targRecs_jax = jnp.array(targRecs, dtype=jnp.float64)
+    dose_jax = jnp.array(dose, dtype=jnp.float64)
+    offTargRecs_jax = jnp.array(offTargRecs, dtype=jnp.float64)
+    valencies_jax = jnp.array(valencies, dtype=jnp.float64)
 
-    # Start optimization at random values between min and max bounds
-    rng = np.random.default_rng()
-    initAffs = rng.uniform(low=minAffs, high=maxAffs, size=len(minAffs))
-    initKx_star = rng.uniform(
-        low=np.log10(Kx_star_bounds[0]), high=np.log10(Kx_star_bounds[1])
+    # Call the JAX-optimized function
+    final_loss, final_affs, final_kx_star = _optimize_affs_jax(
+        targRecs_jax,
+        offTargRecs_jax,
+        dose_jax,
+        valencies_jax,
+        affinity_bounds,
+        Kx_star_bounds,
+        max_iter,
+        tol,
     )
-    initParams = np.concatenate((initAffs, [initKx_star]))
 
-    # Set bounds for optimization
-    minBounds = np.concatenate([minAffs, [np.log10(Kx_star_bounds[0])]])
-    maxBounds = np.concatenate([maxAffs, [np.log10(Kx_star_bounds[1])]])
-    optBnds = Bounds(minBounds, maxBounds)  # type: ignore
-
-    targRecs[targRecs == 0] = 1e-9
-    offTargRecs[offTargRecs == 0] = 1e-9
-
-    # Run optimization to minimize off-target selectivity by changing affinities and Kx_star
-    optimizer = minimize(
-        fun=min_off_targ_selec_jax,
-        hess=min_off_targ_selec_jax_hess,
-        method="trust-constr",
-        x0=initParams,
-        bounds=optBnds,
-        args=(
-            jnp.array(targRecs, dtype=jnp.float64),
-            jnp.array(offTargRecs, dtype=jnp.float64),
-            jnp.array(dose, dtype=jnp.float64),
-            jnp.array(valencies, dtype=jnp.float64),
-        ),
-        jac=True,
-        options={"disp": False, "xtol": 1e-12, "gtol": 1e-12},
+    # Convert outputs back to Python types
+    return (
+        float(final_loss),
+        [float(x) for x in final_affs],
+        float(final_kx_star),
     )
-    optSelect = optimizer.fun
-    optAffs = optimizer.x[:-1]
-    optKx_star = np.power(10, optimizer.x[-1])
-    convergence = optimizer.success
-
-    if not convergence or (1 / optSelect) < 0 or (1 / optSelect) > 1:
-        print(
-            f"Optimization warning: {optimizer.message}, "
-            f"Selectivity: {optSelect:.3f}, affinity values: {optAffs}, "
-            f"cross-linking constant: {optKx_star:.2e}, Convergence: {convergence}"
-        )
-
-    return optSelect, optAffs, optKx_star
 
 
 cyt_binding_model_jit = jax.jit(cyt_binding_model)
@@ -209,11 +249,15 @@ def get_cell_bindings(
         recCounts: single cell abundances of receptors
         monomerAffs: monomer ligand-receptor affinities
         dose: ligand concentration/dose that is being modeled
-        valencies: array of valencies of each ligand epitope
+        valencies: array of valencies of each distinct ligand in the ligand complex
         Kx_star: cross-linking constant for the binding model
     Return:
         Rbound: number of bound receptors for each cell
     """
+
+    monomerAffs = jnp.array(monomerAffs, dtype=jnp.float64)
+    recCounts = jnp.array(recCounts, dtype=jnp.float64)
+    valencies = jnp.array(valencies, dtype=jnp.float64)
 
     # Reformat input affinities to 10^aff and diagonalize
     modelAffs = restructure_affs(monomerAffs)
