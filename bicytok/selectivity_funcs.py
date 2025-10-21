@@ -108,7 +108,6 @@ INIT_AFF_SEED = 42
 REC_COUNT_EPS = 1e-6
 
 
-@jax.jit
 def _optimize_affs_jax(
     targRecs_jax: Float64[Array, "cells receptors"],  # type: ignore
     offTargRecs_jax: Float64[Array, "cells receptors"],  # type: ignore
@@ -213,8 +212,10 @@ def optimize_affs(
     offTargRecs_jax = jnp.array(offTargRecs, dtype=jnp.float64)
     valencies_jax = jnp.array(valencies, dtype=jnp.float64)
 
+    _optimize_affs_jax_jit = jax.jit(_optimize_affs_jax)
+
     # Call the JAX-optimized function
-    final_loss, final_affs, final_kx_star = _optimize_affs_jax(
+    final_loss, final_affs, final_kx_star = _optimize_affs_jax_jit(
         targRecs_jax,
         offTargRecs_jax,
         dose_jax,
@@ -230,6 +231,78 @@ def optimize_affs(
         float(final_loss),
         [float(x) for x in final_affs],
         float(final_kx_star),
+    )
+
+
+def optimize_affs_parallel(
+    targRecs: np.ndarray, # problems by cells by receptors
+    offTargRecs: np.ndarray,  # problems by cells by receptors
+    dose: np.ndarray,  # problems
+    valencies: np.ndarray, # problems by receptors
+    affinity_bounds: tuple[float, float] = (6.0, 12.0),
+    Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
+    max_iter: int = 100,
+    tol: float = 1e-3,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Parallelized version of the NumPy-compatible wrapper for optimize_affs. Uses
+        vectorized mapping and data sharding to optimize multiple problems in parallel
+        via multiple CPU devices.
+
+    Vectorized arguments:
+        targRecs: target cell receptor counts for multiple problems
+        offTargRecs: off-target cell receptor counts for multiple problems
+        dose: ligand concentration/dose for multiple problems
+        valencies: complex valencies for multiple problems
+    
+    Arguments:
+        affinity_bounds: minimum and maximum optimization bounds for affinity values
+        Kx_star_bounds: minimum and maximum optimization bounds for Kx_star
+        max_iter: maximum number of iterations
+        xtol: parameter tolerance for convergence
+        ftol: objective function tolerance for convergence
+        gtol: gradient norm tolerance for convergence
+
+    Vectorized outputs:
+        optSelec: optimized selectivity values for multiple problems
+        optAffs: optimized affinity values for multiple problems
+        optKx_star: optimized Kx_star values for multiple problems
+    """
+
+    assert targRecs.shape[0] == offTargRecs.shape[0]  # Same number of problems
+    assert targRecs.shape[2] == offTargRecs.shape[2]  # Same number of receptors
+    assert valencies.shape[0] == targRecs.shape[0]  # Same problems in valencies
+    assert dose.shape[0] == targRecs.shape[0]  # Same problems in doses
+
+    # Convert inputs to JAX arrays
+    targRecs_jax = jnp.array(targRecs, dtype=jnp.float64)
+    dose_jax = jnp.array(dose, dtype=jnp.float64)
+    offTargRecs_jax = jnp.array(offTargRecs, dtype=jnp.float64)
+    valencies_jax = jnp.array(valencies, dtype=jnp.float64)
+
+    optimize_affs_vmap = jax.vmap(
+        _optimize_affs_jax,
+        in_axes=(0, 0, 0, 0, None, None, None, None),
+        out_axes=(0, 0, 0),
+    )
+
+    optimize_affs_vmap_jit = jax.jit(optimize_affs_vmap)
+
+    optSelec, optAffs, optKx_star = optimize_affs_vmap_jit(
+        targRecs_jax,
+        offTargRecs_jax,
+        dose_jax,
+        valencies_jax,
+        affinity_bounds,
+        Kx_star_bounds,
+        max_iter,
+        tol,
+    )
+
+    return (
+        np.array(optSelec),
+        np.array(optAffs),
+        np.array(optKx_star),
     )
 
 
