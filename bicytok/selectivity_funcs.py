@@ -21,10 +21,12 @@ def restructure_affs(
     affs: Float64[Array, "receptors"],  # type: ignore
 ) -> Float64[Array, "receptors receptors"]:  # type: ignore
     """
-    Structures array of receptor affinities to be compatible with the binding model
-    Args:
+    Structures array of receptor affinities to be compatible with the binding model.
+
+    Argument:
         affs: receptor affinities in log10(M)
-    Return:
+
+    Output:
         restructuredAffs: restructured receptor affinities in L/mol (1/M)
     """
 
@@ -55,13 +57,15 @@ def min_off_targ_selec(
     The objective function to optimize selectivity by varying affinities. The output
         (selectivity) is calculated based on the amounts of bound receptors of only the
         first column/receptor (i.e., the signal receptor).
-    Args:
+
+    Arguments:
         params: combined array of [monomer affinities, log10(Kx_star)]
         targRecs: receptor counts of target cell type
         offTargRecs: receptors count of off-target cell types
         dose: ligand concentration/dose
         valencies: array of valencies of each distinct ligand in the ligand complex
-    Return:
+
+    Output:
         selectivity: value to be minimized. Defined as ratio of off target to on target
             binding. By minimizing the selectivity for off-target cells, we maximize
             the selectivity for target cells.
@@ -184,7 +188,7 @@ def optimize_affs(
     Minimizes the off-target to on-target selectivity ratio by optimizing
     receptor affinities and Kx_star using L-BFGS.
 
-    Args:
+    Arguments:
         targRecs: receptor counts of target cell type
         offTargRecs: receptors count of off-target cell types
         dose: ligand concentration/dose
@@ -196,7 +200,7 @@ def optimize_affs(
         ftol: objective function tolerance for convergence
         gtol: gradient norm tolerance for convergence
 
-    Return:
+    Outputs:
         optSelec: optimized selectivity value
         optAffs: optimized affinity values
         optKx_star: optimized Kx_star value
@@ -235,10 +239,10 @@ def optimize_affs(
 
 
 def optimize_affs_parallel(
-    targRecs: np.ndarray, # problems by cells by receptors
+    targRecs: np.ndarray,  # problems by cells by receptors
     offTargRecs: np.ndarray,  # problems by cells by receptors
     dose: np.ndarray,  # problems
-    valencies: np.ndarray, # problems by receptors
+    valencies: np.ndarray,  # problems by receptors
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
     max_iter: int = 100,
@@ -254,7 +258,7 @@ def optimize_affs_parallel(
         offTargRecs: off-target cell receptor counts for multiple problems
         dose: ligand concentration/dose for multiple problems
         valencies: complex valencies for multiple problems
-    
+
     Arguments:
         affinity_bounds: minimum and maximum optimization bounds for affinity values
         Kx_star_bounds: minimum and maximum optimization bounds for Kx_star
@@ -317,14 +321,16 @@ def get_cell_bindings(
     Kx_star: float = 2.24e-12,
 ) -> np.ndarray:
     """
-    Returns amount of receptor bound to each cell
-    Args:
+    Predicts the amount of bound receptors across cells based on set affinities.
+
+    Arguments:
         recCounts: single cell abundances of receptors
         monomerAffs: monomer ligand-receptor affinities
         dose: ligand concentration/dose that is being modeled
         valencies: array of valencies of each distinct ligand in the ligand complex
         Kx_star: cross-linking constant for the binding model
-    Return:
+
+    Output:
         Rbound: number of bound receptors for each cell
     """
 
