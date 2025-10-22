@@ -8,6 +8,7 @@ import jax
 import jax.numpy as jnp
 import jaxopt
 import numpy as np
+from jax.sharding import Mesh, NamedSharding, PartitionSpec
 from jaxtyping import Array, Float64, Scalar
 
 from .binding_model_funcs import cyt_binding_model
@@ -196,9 +197,7 @@ def optimize_affs(
         affinity_bounds: minimum and maximum optimization bounds for affinity values
         Kx_star_bounds: minimum and maximum optimization bounds for Kx_star
         max_iter: maximum number of iterations
-        xtol: parameter tolerance for convergence
-        ftol: objective function tolerance for convergence
-        gtol: gradient norm tolerance for convergence
+        tol: parameter tolerance for convergence
 
     Outputs:
         optSelec: optimized selectivity value
@@ -238,6 +237,9 @@ def optimize_affs(
     )
 
 
+NUM_CPU_DEVICES = 48
+
+
 def optimize_affs_parallel(
     targRecs: np.ndarray,  # problems by cells by receptors
     offTargRecs: np.ndarray,  # problems by cells by receptors
@@ -263,9 +265,7 @@ def optimize_affs_parallel(
         affinity_bounds: minimum and maximum optimization bounds for affinity values
         Kx_star_bounds: minimum and maximum optimization bounds for Kx_star
         max_iter: maximum number of iterations
-        xtol: parameter tolerance for convergence
-        ftol: objective function tolerance for convergence
-        gtol: gradient norm tolerance for convergence
+        tol: parameter tolerance for convergence
 
     Vectorized outputs:
         optSelec: optimized selectivity values for multiple problems
@@ -284,6 +284,17 @@ def optimize_affs_parallel(
     offTargRecs_jax = jnp.array(offTargRecs, dtype=jnp.float64)
     valencies_jax = jnp.array(valencies, dtype=jnp.float64)
 
+    devices_to_use = jax.devices()[:NUM_CPU_DEVICES]
+    num_devices_to_use = min(len(devices_to_use), targRecs.shape[0])
+
+    mesh = Mesh(devices_to_use[:num_devices_to_use], ("data",))
+    sharding = NamedSharding(mesh, PartitionSpec("data"))
+
+    targRecs_sharded = jax.device_put(targRecs_jax, sharding)
+    offTargRecs_sharded = jax.device_put(offTargRecs_jax, sharding)
+    dose_sharded = jax.device_put(dose_jax, sharding)
+    valencies_sharded = jax.device_put(valencies_jax, sharding)
+
     optimize_affs_vmap = jax.vmap(
         _optimize_affs_jax,
         in_axes=(0, 0, 0, 0, None, None, None, None),
@@ -293,10 +304,10 @@ def optimize_affs_parallel(
     optimize_affs_vmap_jit = jax.jit(optimize_affs_vmap)
 
     optSelec, optAffs, optKx_star = optimize_affs_vmap_jit(
-        targRecs_jax,
-        offTargRecs_jax,
-        dose_jax,
-        valencies_jax,
+        targRecs_sharded,
+        offTargRecs_sharded,
+        dose_sharded,
+        valencies_sharded,
         affinity_bounds,
         Kx_star_bounds,
         max_iter,
