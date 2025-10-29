@@ -155,8 +155,10 @@ def _optimize_affs_jax(
     targRecs_clean = jnp.where(targRecs_jax == 0, REC_COUNT_EPS, targRecs_jax)
     offTargRecs_clean = jnp.where(offTargRecs_jax == 0, REC_COUNT_EPS, offTargRecs_jax)
 
+    min_off_targ_selec_jit = jax.jit(min_off_targ_selec)
+
     # Set up L-BFGS-B solver from jaxopt
-    solver = jaxopt.LBFGSB(fun=min_off_targ_selec, maxiter=max_iter, tol=tol, jit=True)
+    solver = jaxopt.LBFGSB(fun=min_off_targ_selec_jit, maxiter=max_iter, tol=tol, jit=True)
 
     # Run optimization with bounds passed to run method
     result = solver.run(
@@ -237,9 +239,6 @@ def optimize_affs(
     )
 
 
-NUM_CPU_DEVICES = 48
-
-
 def optimize_affs_parallel(
     targRecs: np.ndarray,  # problems by cells by receptors
     offTargRecs: np.ndarray,  # problems by cells by receptors
@@ -284,16 +283,8 @@ def optimize_affs_parallel(
     offTargRecs_jax = jnp.array(offTargRecs, dtype=jnp.float64)
     valencies_jax = jnp.array(valencies, dtype=jnp.float64)
 
-    devices_to_use = jax.devices()[:NUM_CPU_DEVICES]
-    num_devices_to_use = min(len(devices_to_use), targRecs.shape[0])
-
-    mesh = Mesh(devices_to_use[:num_devices_to_use], ("data",))
-    sharding = NamedSharding(mesh, PartitionSpec("data"))
-
-    targRecs_sharded = jax.device_put(targRecs_jax, sharding)
-    offTargRecs_sharded = jax.device_put(offTargRecs_jax, sharding)
-    dose_sharded = jax.device_put(dose_jax, sharding)
-    valencies_sharded = jax.device_put(valencies_jax, sharding)
+    # Ensure we use the 4090 (temporary)
+    assert targRecs_jax.devices() == "{CudaDevice(id=0)}"
 
     optimize_affs_vmap = jax.vmap(
         _optimize_affs_jax,
@@ -304,10 +295,10 @@ def optimize_affs_parallel(
     optimize_affs_vmap_jit = jax.jit(optimize_affs_vmap)
 
     optSelec, optAffs, optKx_star = optimize_affs_vmap_jit(
-        targRecs_sharded,
-        offTargRecs_sharded,
-        dose_sharded,
-        valencies_sharded,
+        targRecs_jax,
+        offTargRecs_jax,
+        dose_jax,
+        valencies_jax,
         affinity_bounds,
         Kx_star_bounds,
         max_iter,

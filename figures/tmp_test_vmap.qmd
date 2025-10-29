@@ -2,9 +2,9 @@
 import os
 
 # Force JAX to use CPU - must be set before ANY JAX imports
-os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=48'
-os.environ['JAX_PLATFORM_NAME'] = 'cpu'
-os.environ['CUDA_VISIBLE_DEVICES'] = ''  # Hide GPUs from JAX
+# os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=48'
+os.environ['JAX_PLATFORM_NAME'] = 'gpu'
+# os.environ['CUDA_VISIBLE_DEVICES'] = ''  # Hide GPUs from JAX
 
 %config InlineBackend.figure_formats = ['svg']
 
@@ -21,13 +21,13 @@ print(f"JAX platform: {jax.default_backend()}")
 print(f"Number of devices: {len(jax.devices())}")
 print(f"Device types: {[device.device_kind for device in jax.devices()]}")
 
-receptors = ["CD25", "CD4-1", "CD27", "CD28", "CD45RA", "CD127", "CD4-2", "TCR-1"]
+receptors = ["CD25", "CD4-1", "CD27"]
 signal = ["CD122"]
 cell_type = "Treg"
 dose = 1e-10
 valency = np.array([[2, 1, 1]])
 cell_categorization = "CellType2"
-sample_size = 1000
+sample_size = 100
 
 CITE_DF = importCITE()
 
