@@ -69,10 +69,10 @@ def infer_Req(
         Psirs = Psi.sum(axis=1) + 1
         Psinorm = Psi / Psirs[:, None]
         Rbound = L0_KxStar * jnp.prod(Psirs**Cplxsum) * jnp.dot(Cplxsum, Psinorm)
-        return jnp.log(Rtot) - jnp.log(Req + Rbound)
+        return jnp.sum(jnp.square(jnp.log(Rtot) - jnp.log(Req + Rbound)))
 
-    solver = opt.LevenbergMarquardt(rtol=1e-10, atol=1e-10)
-    solution = opt.least_squares(
+    solver = opt.BFGS(rtol=1e-8, atol=1e-8)
+    solution = opt.minimise(
         residual_log,
         solver,
         y0=jnp.log(Rtot / 100.0),
