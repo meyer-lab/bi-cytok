@@ -16,15 +16,16 @@ jax.config.update("jax_enable_x64", True)
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".05"
 
 
-# Called in minOffTargSelec and get_cell_bindings
 def restructure_affs(
-    affs: Float64[Array, "receptors"],  # type: ignore
-) -> Float64[Array, "receptors receptors"]:  # type: ignore
+    affs: Float64[Array, "receptors"],
+) -> Float64[Array, "receptors receptors"]:
     """
-    Structures array of receptor affinities to be compatible with the binding model
-    Args:
+    Structures array of receptor affinities to be compatible with the binding model.
+
+    Arguments:
         affs: receptor affinities in log10(M)
-    Return:
+
+    Outputs:
         restructuredAffs: restructured receptor affinities in L/mol (1/M)
     """
 
@@ -43,25 +44,26 @@ def restructure_affs(
     return restructuredAffs
 
 
-# Called in optimizeDesign
 def min_off_targ_selec(
-    params: Float64[Array, "receptors_plus_one"],  # type: ignore
-    targRecs: Float64[Array, "cells receptors"],  # type: ignore
-    offTargRecs: Float64[Array, "cells receptors"],  # type: ignore
+    params: Float64[Array, "receptors_plus_one"],
+    targRecs: Float64[Array, "cells receptors"],
+    offTargRecs: Float64[Array, "cells receptors"],
     dose: Scalar,
-    valencies: Float64[Array, "receptors"],  # type: ignore
+    valencies: Float64[Array, "receptors"],
 ):
     """
     The objective function to optimize selectivity by varying affinities. The output
         (selectivity) is calculated based on the amounts of bound receptors of only the
         first column/receptor (i.e., the signal receptor).
-    Args:
+
+    Arguments:
         params: combined array of [monomer affinities, log10(Kx_star)]
         targRecs: receptor counts of target cell type
         offTargRecs: receptors count of off-target cell types
         dose: ligand concentration/dose
         valencies: array of valencies of each distinct ligand in the ligand complex
-    Return:
+
+    Outputs:
         selectivity: value to be minimized. Defined as ratio of off target to on target
             binding. By minimizing the selectivity for off-target cells, we maximize
             the selectivity for target cells.
@@ -100,25 +102,21 @@ def min_off_targ_selec(
     return (targetBound + offTargetBound) / targetBound
 
 
-# Define the JAX-optimized objective function and its gradient (minimizing selectivity)
-min_off_targ_selec_jax = jax.jit(jax.value_and_grad(min_off_targ_selec))
-
 # Affinity optimization constants
 INIT_AFF_SEED = 42
 REC_COUNT_EPS = 1e-6
 
 
-@jax.jit
 def _optimize_affs_jax(
-    targRecs_jax: Float64[Array, "cells receptors"],  # type: ignore
-    offTargRecs_jax: Float64[Array, "cells receptors"],  # type: ignore
+    targRecs_jax: Float64[Array, "cells receptors"],
+    offTargRecs_jax: Float64[Array, "cells receptors"],
     dose: Scalar,
-    valencies_jax: Float64[Array, "receptors"],  # type: ignore
+    valencies_jax: Float64[Array, "receptors"],
     affinity_bounds: tuple[float, float],
     Kx_star_bounds: tuple[float, float],
     max_iter: int,
     tol: float,
-) -> tuple[Scalar, Float64[Array, "receptors"], Scalar]:  # type: ignore
+) -> tuple[Scalar, Float64[Array, "receptors"], Scalar]:
     """
     JAX-optimized core optimization function using L-BFGS-B.
     """
@@ -137,7 +135,7 @@ def _optimize_affs_jax(
     )
     params = jnp.concatenate((initAffs, jnp.array([initKx_star])))
 
-    # Set bounds for optimization - correct format for jaxopt.LBFGSB
+    # Set optimization bounds
     bounds = (
         jnp.concatenate(
             [minAffs, jnp.array([jnp.log10(Kx_star_bounds[0])])]
@@ -152,7 +150,7 @@ def _optimize_affs_jax(
     offTargRecs_clean = jnp.where(offTargRecs_jax == 0, REC_COUNT_EPS, offTargRecs_jax)
 
     # Set up L-BFGS-B solver from jaxopt
-    solver = jaxopt.LBFGSB(fun=min_off_targ_selec, maxiter=max_iter, tol=tol, jit=True)
+    solver = jaxopt.LBFGSB(fun=min_off_targ_selec, maxiter=max_iter, tol=tol)
 
     # Run optimization with bounds passed to run method
     result = solver.run(
@@ -185,7 +183,7 @@ def optimize_affs(
     Minimizes the off-target to on-target selectivity ratio by optimizing
     receptor affinities and Kx_star using L-BFGS.
 
-    Args:
+    Arguments:
         targRecs: receptor counts of target cell type
         offTargRecs: receptors count of off-target cell types
         dose: ligand concentration/dose
@@ -193,11 +191,9 @@ def optimize_affs(
         affinity_bounds: minimum and maximum optimization bounds for affinity values
         Kx_star_bounds: minimum and maximum optimization bounds for Kx_star
         max_iter: maximum number of iterations
-        xtol: parameter tolerance for convergence
-        ftol: objective function tolerance for convergence
-        gtol: gradient norm tolerance for convergence
+        tol: parameter tolerance for convergence
 
-    Return:
+    Outputs:
         optSelec: optimized selectivity value
         optAffs: optimized affinity values
         optKx_star: optimized Kx_star value
@@ -213,8 +209,10 @@ def optimize_affs(
     offTargRecs_jax = jnp.array(offTargRecs, dtype=jnp.float64)
     valencies_jax = jnp.array(valencies, dtype=jnp.float64)
 
+    _optimize_affs_jax_jit = jax.jit(_optimize_affs_jax)
+
     # Call the JAX-optimized function
-    final_loss, final_affs, final_kx_star = _optimize_affs_jax(
+    final_loss, final_affs, final_kx_star = _optimize_affs_jax_jit(
         targRecs_jax,
         offTargRecs_jax,
         dose_jax,
@@ -244,14 +242,16 @@ def get_cell_bindings(
     Kx_star: float = 2.24e-12,
 ) -> np.ndarray:
     """
-    Returns amount of receptor bound to each cell
-    Args:
+    Predicts the amount of bound receptors across cells based on set affinities.
+
+    Arguments:
         recCounts: single cell abundances of receptors
         monomerAffs: monomer ligand-receptor affinities
         dose: ligand concentration/dose that is being modeled
         valencies: array of valencies of each distinct ligand in the ligand complex
         Kx_star: cross-linking constant for the binding model
-    Return:
+
+    Outputs:
         Rbound: number of bound receptors for each cell
     """
 
