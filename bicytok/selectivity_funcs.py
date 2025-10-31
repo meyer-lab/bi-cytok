@@ -8,7 +8,6 @@ import jax
 import jax.numpy as jnp
 import jaxopt
 import numpy as np
-from jax.sharding import Mesh, NamedSharding, PartitionSpec
 from jaxtyping import Array, Float64, Scalar
 
 from .binding_model_funcs import cyt_binding_model
@@ -17,7 +16,6 @@ jax.config.update("jax_enable_x64", True)
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".05"
 
 
-# Called in minOffTargSelec and get_cell_bindings
 def restructure_affs(
     affs: Float64[Array, "receptors"],  # type: ignore
 ) -> Float64[Array, "receptors receptors"]:  # type: ignore
@@ -46,7 +44,6 @@ def restructure_affs(
     return restructuredAffs
 
 
-# Called in optimizeDesign
 def min_off_targ_selec(
     params: Float64[Array, "receptors_plus_one"],  # type: ignore
     targRecs: Float64[Array, "cells receptors"],  # type: ignore
@@ -105,9 +102,6 @@ def min_off_targ_selec(
     return (targetBound + offTargetBound) / targetBound
 
 
-# Define the JAX-optimized objective function and its gradient (minimizing selectivity)
-min_off_targ_selec_jax = jax.jit(jax.value_and_grad(min_off_targ_selec))
-
 # Affinity optimization constants
 INIT_AFF_SEED = 42
 REC_COUNT_EPS = 1e-6
@@ -155,10 +149,8 @@ def _optimize_affs_jax(
     targRecs_clean = jnp.where(targRecs_jax == 0, REC_COUNT_EPS, targRecs_jax)
     offTargRecs_clean = jnp.where(offTargRecs_jax == 0, REC_COUNT_EPS, offTargRecs_jax)
 
-    min_off_targ_selec_jit = jax.jit(min_off_targ_selec)
-
     # Set up L-BFGS-B solver from jaxopt
-    solver = jaxopt.LBFGSB(fun=min_off_targ_selec_jit, maxiter=max_iter, tol=tol, jit=True)
+    solver = jaxopt.LBFGSB(fun=min_off_targ_selec, maxiter=max_iter, tol=tol)
 
     # Run optimization with bounds passed to run method
     result = solver.run(
@@ -282,9 +274,6 @@ def optimize_affs_parallel(
     dose_jax = jnp.array(dose, dtype=jnp.float64)
     offTargRecs_jax = jnp.array(offTargRecs, dtype=jnp.float64)
     valencies_jax = jnp.array(valencies, dtype=jnp.float64)
-
-    # Ensure we use the 4090 (temporary)
-    assert targRecs_jax.devices() == "{CudaDevice(id=0)}"
 
     optimize_affs_vmap = jax.vmap(
         _optimize_affs_jax,
