@@ -12,11 +12,11 @@ jax.config.update("jax_enable_x64", True)
 
 def cyt_binding_model(
     dose: Scalar,
-    recCounts: Float64[Array, "cells receptors"],  # type: ignore
-    valencies: Float64[Array, "receptors"],  # type: ignore
-    monomerAffs: Float64[Array, "receptors receptors"],  # type: ignore
+    recCounts: Float64[Array, "cells receptors"],
+    valencies: Float64[Array, "receptors"],
+    monomerAffs: Float64[Array, "receptors receptors"],
     Kx_star: Scalar,
-) -> Float64[Array, "cells receptors"]:  # type: ignore
+) -> Float64[Array, "cells receptors"]:
     """
     Calculate the amount of receptor bound to ligand at a given dose,
     considering receptor counts, valencies, and monomer affinities.
@@ -26,7 +26,7 @@ def cyt_binding_model(
     affinity of the ligand for each receptor.  It assumes that each system
     has the same number of ligands, receptors, and complexes.
 
-    Args:
+    Arguments:
         dose: The concentration of the ligand complex in molar units.
         recCounts: Receptor counts (columns) across cells (rows).
         valencies: The valency of each ligand complex (just one distinct complex for
@@ -35,7 +35,7 @@ def cyt_binding_model(
         Kx_star: The cross-linking constant which describes all secondary binding
             events.
 
-    Returns:
+    Outputs:
         Rbound: The amount of each receptor bound to each ligand on each cell.
     """
     assert recCounts.ndim == 2
@@ -50,19 +50,19 @@ def cyt_binding_model(
 
 
 def infer_Req(
-    Rtot: Float64[Array, "receptors"],  # type: ignore
+    Rtot: Float64[Array, "receptors"],
     L0: Scalar,
     KxStar: Scalar,
-    Cplx: Float64[Array, "receptors"],  # type: ignore
-    Ka: Float64[Array, "receptors receptors"],  # type: ignore
-) -> Float64[Array, "receptors"]:  # type: ignore
+    Cplx: Float64[Array, "receptors"],
+    Ka: Float64[Array, "receptors receptors"],
+) -> Float64[Array, "receptors"]:
     L0_KxStar = L0 / KxStar
     Ka_KxStar = Ka * KxStar
     Cplxsum = Cplx.sum(axis=0)
 
-    def residual_log(
+    def squared_residual_log(
         log_Req: Float64[Array, "receptors"], _args
-    ) -> Float64[Array, "receptors"]:  # type: ignore
+    ) -> Float64[Array, "receptors"]:
         """The polyc model from Tan et al."""
         Req = jnp.exp(log_Req)
         Psi = Req * Ka_KxStar
@@ -73,7 +73,7 @@ def infer_Req(
 
     solver = opt.BFGS(rtol=1e-8, atol=1e-8)
     solution = opt.minimise(
-        residual_log,
+        squared_residual_log,
         solver,
         y0=jnp.log(Rtot / 100.0),
         throw=False,

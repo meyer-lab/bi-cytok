@@ -17,15 +17,15 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".05"
 
 
 def restructure_affs(
-    affs: Float64[Array, "receptors"],  # type: ignore
-) -> Float64[Array, "receptors receptors"]:  # type: ignore
+    affs: Float64[Array, "receptors"],
+) -> Float64[Array, "receptors receptors"]:
     """
     Structures array of receptor affinities to be compatible with the binding model.
 
-    Argument:
+    Arguments:
         affs: receptor affinities in log10(M)
 
-    Output:
+    Outputs:
         restructuredAffs: restructured receptor affinities in L/mol (1/M)
     """
 
@@ -45,11 +45,11 @@ def restructure_affs(
 
 
 def min_off_targ_selec(
-    params: Float64[Array, "receptors_plus_one"],  # type: ignore
-    targRecs: Float64[Array, "cells receptors"],  # type: ignore
-    offTargRecs: Float64[Array, "cells receptors"],  # type: ignore
+    params: Float64[Array, "receptors_plus_one"],
+    targRecs: Float64[Array, "cells receptors"],
+    offTargRecs: Float64[Array, "cells receptors"],
     dose: Scalar,
-    valencies: Float64[Array, "receptors"],  # type: ignore
+    valencies: Float64[Array, "receptors"],
 ):
     """
     The objective function to optimize selectivity by varying affinities. The output
@@ -63,7 +63,7 @@ def min_off_targ_selec(
         dose: ligand concentration/dose
         valencies: array of valencies of each distinct ligand in the ligand complex
 
-    Output:
+    Outputs:
         selectivity: value to be minimized. Defined as ratio of off target to on target
             binding. By minimizing the selectivity for off-target cells, we maximize
             the selectivity for target cells.
@@ -108,15 +108,15 @@ REC_COUNT_EPS = 1e-6
 
 
 def _optimize_affs_jax(
-    targRecs_jax: Float64[Array, "cells receptors"],  # type: ignore
-    offTargRecs_jax: Float64[Array, "cells receptors"],  # type: ignore
+    targRecs_jax: Float64[Array, "cells receptors"],
+    offTargRecs_jax: Float64[Array, "cells receptors"],
     dose: Scalar,
-    valencies_jax: Float64[Array, "receptors"],  # type: ignore
+    valencies_jax: Float64[Array, "receptors"],
     affinity_bounds: tuple[float, float],
     Kx_star_bounds: tuple[float, float],
     max_iter: int,
     tol: float,
-) -> tuple[Scalar, Float64[Array, "receptors"], Scalar]:  # type: ignore
+) -> tuple[Scalar, Float64[Array, "receptors"], Scalar]:
     """
     JAX-optimized core optimization function using L-BFGS-B.
     """
@@ -135,7 +135,7 @@ def _optimize_affs_jax(
     )
     params = jnp.concatenate((initAffs, jnp.array([initKx_star])))
 
-    # Set bounds for optimization - correct format for jaxopt.LBFGSB
+    # Set optimization bounds
     bounds = (
         jnp.concatenate(
             [minAffs, jnp.array([jnp.log10(Kx_star_bounds[0])])]
@@ -251,7 +251,7 @@ def get_cell_bindings(
         valencies: array of valencies of each distinct ligand in the ligand complex
         Kx_star: cross-linking constant for the binding model
 
-    Output:
+    Outputs:
         Rbound: number of bound receptors for each cell
     """
 
