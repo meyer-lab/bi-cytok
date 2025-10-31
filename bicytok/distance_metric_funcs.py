@@ -17,12 +17,16 @@ KDE_A_TOL = 1e-3  # Tolerance for KDE fitting
 KDE_R_TOL = 1e-3  # Tolerance for KDE fitting
 BW_METHOD = "scott"  # Bandwidth method for KDE
 KDE_GRID_MARGIN = 0.5  # Margin added to min/max for KDE grid
-KDE_GRID_SIZE = 50  # Number of points per dimension in KDE grid
+KDE_GRID_SIZE = 10  # Number of points per dimension in KDE grid
 ENTROPY_EPS = 1e-6  # Small value to avoid log(0) in entropy calculations
-EMD_MAX_ITER = 100  # Maximum iterations for EMD calculation
+EMD_MAX_ITER = 1e6  # Maximum iterations for EMD calculation
 
 
-def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float]:
+def calculate_KL_EMD(
+    dist1: np.ndarray,
+    dist2: np.ndarray,
+    reg_strength: float | None,
+) -> tuple[float, float]:
     """
     Calculates the KL Divergence and EMD between two distributions of n variables.
     Can be used to calculate distance metrics for specific combinations of receptors.
@@ -69,25 +73,17 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
     )
     KL_div_val = float((KL_div_val_1 + KL_div_val_2) / 2)  # Symmetrized KL Divergence
 
-    # Calculate Euclidean distance matrix
+    # Calculate Euclidean cost matrix
     M = ot.dist(dist1, dist2, metric="euclidean")
 
     time_start = time.time()
-    # Wasserstein solvers
-    # EMD_val = ot.emd2([], [], M, numItermax=int(EMD_MAX_ITER))
-    # EMD_res = ot.solve(M)
 
-    # Sinkhorn solvers
-    # EMD_val = ot.bregman.sinkhorn2(
-    #     a=np.ones(dist1.shape[0]) / dist1.shape[0],
-    #     b=np.ones(dist2.shape[0]) / dist2.shape[0],
-    #     M=M,
-    #     reg=0.1,
-    #     method="sinkhorn",
-    # )
-    EMD_res = ot.solve(M, reg=1.0)
+    # Solve the optimal transport problem
+    EMD_res = ot.solve(M, reg=reg_strength)
 
+    # Extract the total transportation cost
     EMD_val = EMD_res.value_linear
+
     print(f"EMD calculation took {time.time() - time_start} seconds.")
 
     return KL_div_val, EMD_val
@@ -97,6 +93,7 @@ def KL_EMD_1D(
     recAbundances: np.ndarray,
     targ: np.ndarray,
     offTarg: np.ndarray,
+    reg_strength: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 1D EMD and KL Divergence between target and off-target populations.
@@ -137,7 +134,9 @@ def KL_EMD_1D(
         )
 
         KL_div_vals[rec], EMD_vals[rec] = calculate_KL_EMD(
-            targAbun.reshape(-1, 1), offTargAbun.reshape(-1, 1)
+            targAbun.reshape(-1, 1),
+            offTargAbun.reshape(-1, 1),
+            reg_strength=reg_strength,
         )
 
     return KL_div_vals, EMD_vals
@@ -148,6 +147,7 @@ def KL_EMD_2D(
     targ: np.ndarray,
     offTarg: np.ndarray,
     calc_1D: bool = True,
+    reg_strength: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 2D EMD and KL Divergence between the target and off-target populations
@@ -198,7 +198,7 @@ def KL_EMD_2D(
         assert targAbunAll.shape == (np.sum(targ), 2)
 
         KL_div_vals[rec1, rec2], EMD_vals[rec1, rec2] = calculate_KL_EMD(
-            targAbunAll, offTargAbunAll
+            targAbunAll, offTargAbunAll, reg_strength=reg_strength
         )
 
     return KL_div_vals, EMD_vals
@@ -292,6 +292,7 @@ def KL_EMD_3D(
     targ: np.ndarray,
     offTarg: np.ndarray,
     calc_diags: bool = True,
+    reg_strength: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 3D EMD and KL Divergence between the target and off-target populations
@@ -354,7 +355,7 @@ def KL_EMD_3D(
         assert targAbunAll.shape == (np.sum(targ), 3)
 
         KL_div_vals[rec1, rec2, rec3], EMD_vals[rec1, rec2, rec3] = calculate_KL_EMD(
-            targAbunAll, offTargAbunAll
+            targAbunAll, offTargAbunAll, reg_strength=reg_strength
         )
 
     return KL_div_vals, EMD_vals
