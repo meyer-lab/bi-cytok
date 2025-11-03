@@ -1,0 +1,241 @@
+---
+title: "Regularization effects on EMD for high-selectivity receptors"
+---
+
+# Summary
+Analyzes how regularization strength affects EMD calculations for receptors, receptor pairs, and receptor triplets identified as having high selectivity. Tests varying regularization strengths to understand their impact on EMD stability and discrimination performance. KL Divergence is unaffected by regularization and is not analyzed.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 1D, 2D, and 3D distance metric calculation functions (`KL_EMD_1D`, `KL_EMD_2D`, `KL_EMD_3D`)
+
+# Parameters
+- `targ_cell`: String identifier for target cell type in distance metric comparison
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `reg_strengths`: Array of regularization strength values to test
+- High-selectivity receptors, pairs, and triplets identified from previous analyses
+
+# Outputs
+- **Line Plot 1**: 1D EMD trends versus regularization strength for individual receptors
+- **Line Plot 2**: 2D EMD trends versus regularization strength for receptor pairs  
+- **Line Plot 3**: 3D EMD trends versus regularization strength for receptor triplets
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import time
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from bicytok.distance_metric_funcs import KL_EMD_1D, KL_EMD_2D, KL_EMD_3D
+from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+
+TARG_CELL = "Treg"
+SAMPLE_SIZE = 1000
+CELL_CATEGORIZATION = "CellType2"
+REG_STRENGTHS = np.logspace(0, 2, 20)
+
+# High-selectivity receptors identified from previous analyses
+RECEPTORS_1D = ['CD25', 'CD4-1', "CD27"] # Set to None to calculate for all reasonable receptors
+RECEPTOR_PAIRS_2D = [['CD25', 'CD4-1'], ['CD25', 'CD27'], ['CD4-1', 'CD27']]
+RECEPTOR_TRIADS_3D = [['CD25', 'CD4-1', 'CD27']]
+
+CITE_DF = importCITE()
+assert TARG_CELL in CITE_DF[CELL_CATEGORIZATION].unique()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
+]
+# Prepare data for all receptors of interest
+ALL_RECEPTORS = list(set([r for pair in RECEPTOR_PAIRS_2D for r in pair] + [r for triad in RECEPTOR_TRIADS_3D for r in triad]))
+if RECEPTORS_1D is not None:
+    ALL_RECEPTORS = list(set(ALL_RECEPTORS + RECEPTORS_1D))
+epitopes_df = CITE_DF[epitopes + [CELL_CATEGORIZATION]]
+epitopes_df = epitopes_df.rename(columns={CELL_CATEGORIZATION: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=min(SAMPLE_SIZE, epitopes_df.shape[0]),
+    targCellType=TARG_CELL,
+)
+filtered_sample_df = filter_receptor_abundances(
+    sample_df, targ_cell_type=TARG_CELL, whitelist=ALL_RECEPTORS
+)
+if RECEPTORS_1D is None:
+    RECEPTORS_1D = filtered_sample_df.columns.tolist()
+    RECEPTORS_1D.remove("Cell Type")
+
+on_target_mask = (sample_df["Cell Type"] == TARG_CELL).to_numpy()
+off_target_mask = ~on_target_mask
+
+# Calculate baseline (non-regularized) metrics first
+print("Calculating baseline (non-regularized) metrics...")
+baseline_1d = {}
+rec_abundances = filtered_sample_df[RECEPTORS_1D].to_numpy()
+_, EMD_vals = KL_EMD_1D(rec_abundances, on_target_mask, off_target_mask, reg_strength=None)
+for i, receptor in enumerate(RECEPTORS_1D):
+    baseline_1d[receptor] = EMD_vals[i]
+
+baseline_2d = {}
+for pair in RECEPTOR_PAIRS_2D:
+    rec_abundances = filtered_sample_df[pair].to_numpy()
+    _, EMD_vals = KL_EMD_2D(
+        rec_abundances, on_target_mask, off_target_mask, calc_1D=False, reg_strength=None
+    )
+    baseline_2d[f"{pair[0]}-{pair[1]}"] = EMD_vals[1, 0]
+
+baseline_3d = {}
+for triad in RECEPTOR_TRIADS_3D:
+    rec_abundances = filtered_sample_df[triad].to_numpy()
+    _, EMD_vals = KL_EMD_3D(
+        rec_abundances, on_target_mask, off_target_mask, calc_diags=False, reg_strength=None
+    )
+    baseline_3d[f"{triad[0]}-{triad[1]}-{triad[2]}"] = EMD_vals[0, 1, 2]
+
+# Calculate metrics for varying regularization strengths
+results_1d = []
+results_2d = []
+results_3d = []
+
+print("Calculating 1D metrics for varying regularization...")
+for reg_strength in REG_STRENGTHS:
+    time_start = time.time()
+    rec_abundances = filtered_sample_df[RECEPTORS_1D].to_numpy()
+    _, EMD_vals = KL_EMD_1D(
+        rec_abundances, on_target_mask, off_target_mask, reg_strength=reg_strength
+    )
+    
+    for i, receptor in enumerate(RECEPTORS_1D):
+        results_1d.append({
+            'receptor': receptor,
+            'regularization': reg_strength,
+            'EMD': EMD_vals[i]
+        })
+    
+    print(f"1D regularization {reg_strength:.3f} done in {time.time() - time_start:.2f} sec")
+
+print("Calculating 2D metrics for varying regularization...")
+for reg_strength in REG_STRENGTHS:
+    time_start = time.time()
+    for pair in RECEPTOR_PAIRS_2D:
+        rec_abundances = filtered_sample_df[pair].to_numpy()
+        _, EMD_vals = KL_EMD_2D(
+            rec_abundances, on_target_mask, off_target_mask, calc_1D=False, reg_strength=reg_strength
+        )
+        results_2d.append({
+            'receptor_pair': f"{pair[0]}-{pair[1]}",
+            'regularization': reg_strength,
+            'EMD': EMD_vals[1, 0]
+        })
+
+    print(f"2D regularization {reg_strength:.3f} done in {time.time() - time_start:.2f} sec")
+
+print("Calculating 3D metrics for varying regularization...")
+for reg_strength in REG_STRENGTHS:
+    time_start = time.time()    
+    for triad in RECEPTOR_TRIADS_3D:
+        rec_abundances = filtered_sample_df[triad].to_numpy()
+        _, EMD_vals = KL_EMD_3D(
+            rec_abundances, on_target_mask, off_target_mask, calc_diags=False, reg_strength=reg_strength
+        )
+        results_3d.append({
+            'receptor_triad': f"{triad[0]}-{triad[1]}-{triad[2]}",
+            'regularization': reg_strength,
+            'EMD': EMD_vals[0, 1, 2]
+        })
+
+    print(f"3D regularization {reg_strength:.3f} done in {time.time() - time_start:.2f} sec")
+
+df_1d = pd.DataFrame(results_1d)
+df_2d = pd.DataFrame(results_2d)
+df_3d = pd.DataFrame(results_3d)
+
+print(f"Calculated metrics for {len(REG_STRENGTHS)} regularization values")
+```
+
+```{python}
+#| fig-cap: "1D EMD trends versus regularization strength"
+
+fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+for receptor in RECEPTORS_1D:
+    data = df_1d[df_1d['receptor'] == receptor]
+    ax.semilogx(data['regularization'], data['EMD'], 'o-', label=receptor, linewidth=2, markersize=4)
+    # Add baseline (non-regularized) as dashed horizontal line
+    ax.axhline(y=baseline_1d[receptor], color=ax.get_lines()[-1].get_color(), 
+               linestyle='--', alpha=0.7, linewidth=2)
+
+ax.set_xlabel('Regularization Strength', fontsize=20)
+ax.set_ylabel('Earth Mover Distance (EMD)', fontsize=20)
+ax.tick_params(axis='both', labelsize=15)
+ax.legend(fontsize=12)
+ax.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| fig-cap: "2D EMD trends versus regularization strength"
+
+fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+
+for pair in RECEPTOR_PAIRS_2D:
+    pair_label = f"{pair[0]}-{pair[1]}"
+    data = df_2d[df_2d['receptor_pair'] == pair_label]
+    ax.semilogx(data['regularization'], data['EMD'], 'o-', label=pair_label, linewidth=2, markersize=4)
+    # Add baseline (non-regularized) as dashed horizontal line
+    ax.axhline(y=baseline_2d[pair_label], color=ax.get_lines()[-1].get_color(), 
+               linestyle='--', alpha=0.7, linewidth=2)
+
+ax.set_xlabel('Regularization Strength', fontsize=20)
+ax.set_ylabel('Earth Mover Distance (EMD)', fontsize=20)
+ax.tick_params(axis='both', labelsize=15)
+ax.legend(fontsize=10)
+ax.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| fig-cap: "3D EMD trends versus regularization strength"
+
+fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+
+for triad in RECEPTOR_TRIADS_3D:
+    triad_label = f"{triad[0]}-{triad[1]}-{triad[2]}"
+    data = df_3d[df_3d['receptor_triad'] == triad_label]
+    ax.semilogx(data['regularization'], data['EMD'], 'o-', label=triad_label, linewidth=2, markersize=4)
+    # Add baseline (non-regularized) as dashed horizontal line
+    ax.axhline(y=baseline_3d[triad_label], color=ax.get_lines()[-1].get_color(), 
+               linestyle='--', alpha=0.7, linewidth=2)
+
+ax.set_xlabel('Regularization Strength', fontsize=20)
+ax.set_ylabel('Earth Mover Distance (EMD)', fontsize=20)
+ax.tick_params(axis='both', labelsize=15)
+ax.legend(fontsize=8)
+ax.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Analyzed the effects of regularization strength on EMD calculations for high-selectivity receptors. The analysis tested **{len(REG_STRENGTHS)}** regularization values ranging from **{REG_STRENGTHS[0]:.3f}** to **{REG_STRENGTHS[-1]:.1f}** for distinguishing **{TARG_CELL}**s from other cell types.
+
+The analysis used **{SAMPLE_SIZE}** cells sampled from the CITE-seq dataset and examined:
+- **1D analysis**: {len(RECEPTORS_1D)} individual receptors: **{', '.join(RECEPTORS_1D)}**
+- **2D analysis**: {len(RECEPTOR_PAIRS_2D)} receptor pairs: **{', '.join([f"{pair[0]}-{pair[1]}" for pair in RECEPTOR_PAIRS_2D])}**
+- **3D analysis**: {len(RECEPTOR_TRIADS_3D)} receptor triplets: **{', '.join([f"{triad[0]}-{triad[1]}-{triad[2]}" for triad in RECEPTOR_TRIADS_3D])}**
+"""
+
+print(text)
+```
