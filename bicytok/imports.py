@@ -179,53 +179,61 @@ def filter_receptor_abundances(
     abundance_df: pd.DataFrame,
     targ_cell_type: str,
     min_mean_abundance: float = 5.0,
-    epitope_list: list[str] = None,
-    cell_type_list: list[str] = None,
+    whitelist: list[str] = None,
+    blacklist: list[str] = None,
 ) -> pd.DataFrame:
     """
     Filters receptor abundances by removing biologically irrelevant receptors and
         user specified epitopes and cell types. Biologically irrelevant receptors are
         defined as those with large enough mean abundance (can't target a receptor
         with low overall expression) and those that have higher expression in target
-        cells compared to other cell types.
+        cells compared to other cell types. Whitelisted receptors are always included.
     Args:
         abundance_df: DataFrame containing receptor abundances for filtering
         targ_cell_type: The cell type to determine biologically relevant receptors
         min_mean_abundance: Minimum mean abundance threshold for receptors
-        epitope_list: List of specific epitopes to retain; if None, all are retained
-        cell_type_list: List of specific cell types to retain; if None, all are retained
+        whitelist: List of receptors to include regardless of filtering criteria
+        blacklist: List of receptors to exclude regardless of filtering criteria
     Return:
         A DataFrame containing filtered receptor abundances
     """
 
-    assert "Cell Type" in abundance_df.columns
+    assert "Cell Type" in abundance_df.columns, "Missing cell type annotations"
 
+    whitelist = whitelist or []
+    blacklist = blacklist or []
+    assert not [r for r in whitelist if r not in abundance_df.columns], (
+        "Whitelist receptors not found in data"
+    )
+    assert not set(whitelist).intersection(set(blacklist)), (
+        "Overlap between whitelisted and blacklisted receptors"
+    )
+
+    # Separate cell type column for filtering
     cell_type_df = abundance_df["Cell Type"]
     abundance_df = abundance_df.drop(columns=["Cell Type"])
 
-    # Filter irrelevant receptors
+    # Remove blacklisted receptors
+    abundance_df = abundance_df.drop(columns=blacklist, errors="ignore")
+
+    # Filter irrelevant receptors based on mean abundance
     mean_abundances = abundance_df.mean(axis=0)
-    relevant_receptors = mean_abundances[mean_abundances > min_mean_abundance].index
-    abundance_df = abundance_df[relevant_receptors]
+    high_mean = list(mean_abundances[mean_abundances > min_mean_abundance].index)
+
+    # Filter based on target vs off-target expression
     mean_targ_abundances = abundance_df[cell_type_df == targ_cell_type].mean(axis=0)
     mean_off_targ_abundances = abundance_df[cell_type_df != targ_cell_type].mean(axis=0)
-    relevant_receptors = mean_targ_abundances[
-        mean_targ_abundances > mean_off_targ_abundances
-    ].index
+    higher_in_target = list(
+        mean_targ_abundances[mean_targ_abundances > mean_off_targ_abundances].index
+    )
+
+    # Apply filtering (receptors must pass both filters or be whitelisted)
+    relevant_receptors = list(
+        set(high_mean).intersection(set(higher_in_target)).union(set(whitelist))
+    )
     abundance_df = abundance_df[relevant_receptors]
 
-    # Filter user-specified epitopes and cell types
-    if epitope_list is not None:
-        filtered_cols = [col for col in abundance_df.columns if col in epitope_list]
-        abundance_df = abundance_df[filtered_cols]
-
-    if cell_type_list is not None:
-        abundance_df = abundance_df[cell_type_df.isin(cell_type_list)]
-        cell_type_df = cell_type_df[cell_type_df.isin(cell_type_list)]
-
-    # Re-add the cell type column efficiently using pd.concat
-    epitope_cols = abundance_df.copy()
-    cell_type_df = pd.DataFrame(cell_type_df, columns=["Cell Type"])
-    abundance_df = pd.concat([epitope_cols, cell_type_df], axis=1)
+    # Re-add the cell type column
+    abundance_df = pd.concat([abundance_df, cell_type_df], axis=1)
 
     return abundance_df
