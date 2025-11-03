@@ -19,7 +19,7 @@ BW_METHOD = "scott"  # Bandwidth method for KDE
 KDE_GRID_MARGIN = 0.5  # Margin added to min/max for KDE grid
 KDE_GRID_SIZE = 10  # Number of points per dimension in KDE grid
 ENTROPY_EPS = 1e-6  # Small value to avoid log(0) in entropy calculations
-EMD_MAX_ITER = 1e6  # Maximum iterations for EMD calculation
+EMD_MAX_ITER = 10000  # Maximum iterations for EMD calculation
 
 
 def calculate_KL_EMD(
@@ -79,7 +79,7 @@ def calculate_KL_EMD(
     time_start = time.time()
 
     # Solve the optimal transport problem
-    EMD_res = ot.solve(M, reg=reg_strength)
+    EMD_res = ot.solve(M, reg=reg_strength, max_iter=EMD_MAX_ITER)
 
     # Extract the total transportation cost
     EMD_val = EMD_res.value_linear
