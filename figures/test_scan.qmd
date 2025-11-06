@@ -1,0 +1,54 @@
+---
+title: ""
+---
+
+# Summary
+
+# Imports
+
+# Parameters
+
+# Outputs
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+from bicytok.scanning_funcs import scan_selectivity
+
+receptors = ["CD122", "CD25", "CD4-1", "CD27", "CD28", "CD45RA"]
+signal_ind = 0
+cell_types = ["Treg", "dnT", "MAIT"]
+dose = 1e-10
+valency = np.array([[2, 2]])
+cell_categorization = "CellType2"
+sample_size = 100
+
+CITE_DF = importCITE()
+
+epitopes_df = CITE_DF[receptors + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+
+rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
+cell_type_labels = epitopes_df["Cell Type"].tolist()
+
+print(len(cell_type_labels))
+print(rec_abundances.shape[0])
+
+opt_selec, opt_affs, opt_Kx_star = scan_selectivity(
+    rec_abundances,
+    cell_type_labels,
+    cell_types,
+    dim=1,
+    dose=dose,
+    valencies=valency,
+    sample_size=sample_size,
+    signal_col=signal_ind,
+)
+```
