@@ -43,7 +43,7 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
 
     # Create a mesh grid for n-dimensional comparison
     grids = np.meshgrid(
-        *[np.linspace(min_abun[i], max_abun[i], 100) for i in range(n_dim)]
+        *[np.linspace(min_abun[i], max_abun[i], 20) for i in range(n_dim)]
     )
     grids = np.stack([grid.flatten() for grid in grids], axis=-1)
 
