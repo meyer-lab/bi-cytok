@@ -36,9 +36,9 @@ TARG_CELL = "Treg"
 SAMPLE_SIZE = 1000
 CELL_CATEGORIZATION = "CellType2"
 REG_STRENGTHS = np.logspace(0, 2, 20)
-RECEPTORS_1D = ['CD25', 'CD4-1', "CD27"] # Set to None to calculate for all reasonable receptors
+RECEPTORS_1D = ['CD25', 'CD4-1', 'CD27'] # Set to None to calculate for all reasonable receptors
 RECEPTOR_PAIRS_2D = [['CD25', 'CD4-1'], ['CD25', 'CD27'], ['CD4-1', 'CD27']]
-RECEPTOR_TRIADS_3D = [['CD25', 'CD4-1', 'CD27']]
+RECEPTOR_TRIADS_3D = [['CD25', 'CD4-1', 'CD27', "Cccc"]]
 
 CITE_DF = importCITE()
 assert TARG_CELL in CITE_DF[CELL_CATEGORIZATION].unique()
@@ -97,9 +97,9 @@ results_2d = []
 results_3d = []
 
 print("Calculating 1D metrics for varying regularization...")
+rec_abundances = filtered_sample_df[RECEPTORS_1D].to_numpy()
 for reg_strength in REG_STRENGTHS:
     time_start = time.time()
-    rec_abundances = filtered_sample_df[RECEPTORS_1D].to_numpy()
     _, EMD_vals = KL_EMD_1D(
         rec_abundances, on_target_mask, off_target_mask, reg_strength=reg_strength
     )

@@ -81,15 +81,11 @@ def calculate_KL_EMD(
     # Calculate Euclidean cost matrix
     M = ot.dist(dist1, dist2, metric="euclidean")
 
-    time_start = time.time()
-
     # Solve the optimal transport problem
     EMD_res = ot.solve(M, reg=reg_strength, max_iter=EMD_MAX_ITER)
 
     # Extract the total transportation cost
     EMD_val = EMD_res.value_linear
-
-    print(f"EMD calculation took {time.time() - time_start} seconds.")
 
     return KL_div_val, EMD_val
 
