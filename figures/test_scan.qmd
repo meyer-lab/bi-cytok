@@ -20,13 +20,14 @@ import matplotlib.pyplot as plt
 
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
-from bicytok.scanning_funcs import scan_selectivity
+from bicytok.scanning_funcs import scan_selectivity, scan_KL_EMD
 
 receptors = ["CD122", "CD25", "CD4-1", "CD27", "CD28", "CD45RA"]
 signal_ind = 0
 cell_types = ["Treg", "dnT", "MAIT"]
 dose = 1e-10
-valency = np.array([[2, 2]])
+valency = np.array([[2, 1, 1]])
+# valency = np.array([[2, 2]])
 cell_categorization = "CellType2"
 sample_size = 100
 
@@ -38,17 +39,30 @@ epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
 rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
 cell_type_labels = epitopes_df["Cell Type"].tolist()
 
-print(len(cell_type_labels))
-print(rec_abundances.shape[0])
+# opt_selec, opt_affs, opt_Kx_star = scan_selectivity(
+#     rec_abundances,
+#     cell_type_labels,
+#     cell_types,
+#     dim=2,
+#     dose=dose,
+#     valencies=valency,
+#     sample_size=sample_size,
+#     signal_col=signal_ind,
+# )
 
-opt_selec, opt_affs, opt_Kx_star = scan_selectivity(
+# print("Optimal selectivity values:", opt_selec)
+# print("Optimal affinities (M):", opt_affs)
+# print("Optimal Kx* values:", opt_Kx_star)
+
+KL_results, EMD_results = scan_KL_EMD(
     rec_abundances,
     cell_type_labels,
     cell_types,
-    dim=1,
-    dose=dose,
-    valencies=valency,
+    dim=3,
     sample_size=sample_size,
-    signal_col=signal_ind,
 )
+
+print("KL Divergence results:\n", KL_results)
+print("EMD results:\n", EMD_results)
+
 ```
