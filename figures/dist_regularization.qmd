@@ -36,21 +36,17 @@ TARG_CELL = "Treg"
 SAMPLE_SIZE = 1000
 CELL_CATEGORIZATION = "CellType2"
 REG_STRENGTHS = np.logspace(0, 2, 20)
-
-# High-selectivity receptors identified from previous analyses
 RECEPTORS_1D = ['CD25', 'CD4-1', "CD27"] # Set to None to calculate for all reasonable receptors
 RECEPTOR_PAIRS_2D = [['CD25', 'CD4-1'], ['CD25', 'CD27'], ['CD4-1', 'CD27']]
 RECEPTOR_TRIADS_3D = [['CD25', 'CD4-1', 'CD27']]
 
 CITE_DF = importCITE()
 assert TARG_CELL in CITE_DF[CELL_CATEGORIZATION].unique()
-
 epitopes = [
     col
     for col in CITE_DF.columns
     if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
 ]
-# Prepare data for all receptors of interest
 ALL_RECEPTORS = list(set([r for pair in RECEPTOR_PAIRS_2D for r in pair] + [r for triad in RECEPTOR_TRIADS_3D for r in triad]))
 if RECEPTORS_1D is not None:
     ALL_RECEPTORS = list(set(ALL_RECEPTORS + RECEPTORS_1D))
@@ -187,7 +183,6 @@ for pair in RECEPTOR_PAIRS_2D:
     pair_label = f"{pair[0]}-{pair[1]}"
     data = df_2d[df_2d['receptor_pair'] == pair_label]
     ax.semilogx(data['regularization'], data['EMD'], 'o-', label=pair_label, linewidth=2, markersize=4)
-    # Add baseline (non-regularized) as dashed horizontal line
     ax.axhline(y=baseline_2d[pair_label], color=ax.get_lines()[-1].get_color(), 
                linestyle='--', alpha=0.7, linewidth=2)
 
@@ -210,7 +205,6 @@ for triad in RECEPTOR_TRIADS_3D:
     triad_label = f"{triad[0]}-{triad[1]}-{triad[2]}"
     data = df_3d[df_3d['receptor_triad'] == triad_label]
     ax.semilogx(data['regularization'], data['EMD'], 'o-', label=triad_label, linewidth=2, markersize=4)
-    # Add baseline (non-regularized) as dashed horizontal line
     ax.axhline(y=baseline_3d[triad_label], color=ax.get_lines()[-1].get_color(), 
                linestyle='--', alpha=0.7, linewidth=2)
 

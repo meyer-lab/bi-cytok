@@ -35,8 +35,8 @@ def calculate_KL_EMD(
     :param dist2: Second distribution
     :param reg_strength: Regularization strength for the EMD calculation. Also controls
         the OT solving algorithm used. If None or 0, the unregularized EMD is calculated
-        using the Network Simplex algorithm with a block search pivot (Bonneel et al. 
-        2011). If a positive float, the KL divergence-regularized EMD is calculated 
+        using the Network Simplex algorithm with a block search pivot (Bonneel et al.
+        2011). If a positive float, the KL divergence-regularized EMD is calculated
         using the Sinkhorn-Knopp matrix scaling algorithm (Cuturi 2013).
     :return:
         KL Divergence between the two distributions

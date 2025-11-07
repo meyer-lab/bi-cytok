@@ -183,11 +183,11 @@ def filter_receptor_abundances(
     blacklist: list[str] = None,
 ) -> pd.DataFrame:
     """
-    Filters receptor abundances by removing biologically irrelevant receptors and
-        user specified epitopes and cell types. Biologically irrelevant receptors are
-        defined as those with large enough mean abundance (can't target a receptor
-        with low overall expression) and those that have higher expression in target
-        cells compared to other cell types. Whitelisted receptors are always included.
+    Filters receptor abundances by removing biologically irrelevant receptors.
+        Biologically irrelevant receptors are defined as those with large enough mean
+        abundance (can't target a receptor with low overall expression) and those that
+        have higher expression in target cells compared to other cell types. 
+        Whitelisted receptors are always included and blacklisted receptors excluded.
     Args:
         abundance_df: DataFrame containing receptor abundances for filtering
         targ_cell_type: The cell type to determine biologically relevant receptors
