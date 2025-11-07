@@ -38,7 +38,7 @@ CELL_CATEGORIZATION = "CellType2"
 REG_STRENGTHS = np.logspace(0, 2, 20)
 RECEPTORS_1D = ['CD25', 'CD4-1', 'CD27'] # Set to None to calculate for all reasonable receptors
 RECEPTOR_PAIRS_2D = [['CD25', 'CD4-1'], ['CD25', 'CD27'], ['CD4-1', 'CD27']]
-RECEPTOR_TRIADS_3D = [['CD25', 'CD4-1', 'CD27', "Cccc"]]
+RECEPTOR_TRIADS_3D = [['CD25', 'CD4-1', 'CD27']]
 
 CITE_DF = importCITE()
 assert TARG_CELL in CITE_DF[CELL_CATEGORIZATION].unique()
