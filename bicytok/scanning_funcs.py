@@ -166,6 +166,8 @@ def scan_selectivity(
     opt_affs_scan = np.full(affs_output_shape, np.nan)
 
     for i, cell_type in enumerate(targ_cell_types):
+        time_start = time.time()
+
         sampled_rec_abundances, sampled_cell_type_labels = _sample_cells(
             rec_abundances,
             cell_type_labels,
@@ -212,11 +214,7 @@ def scan_selectivity(
                 targ_recs = rec_abun_pruned[targ_mask, :]
                 off_targ_recs = rec_abun_pruned[off_targ_mask, :]
 
-                (
-                    opt_selec[rec1_ind, rec2_ind],
-                    opt_aff_vals[rec1_ind, rec2_ind, :],
-                    opt_Kx_star[rec1_ind, rec2_ind],
-                ) = optimize_affs(targ_recs, off_targ_recs, dose, valencies)
+                opt_selec, opt_aff_vals, opt_Kx_star = optimize_affs(targ_recs, off_targ_recs, dose, valencies)
 
                 selec_vals_scan[rec1_ind, rec2_ind, i] = 1 / opt_selec
                 opt_affs_scan[rec1_ind, rec2_ind, i, :] = opt_aff_vals
@@ -224,5 +222,7 @@ def scan_selectivity(
 
         if dim == 3:
             pass
+
+        print(f"Completed selectivity scan for {cell_type} in {time.time() - time_start:.2f} seconds.")
 
     return selec_vals_scan, opt_affs_scan, opt_Kx_star_scan
