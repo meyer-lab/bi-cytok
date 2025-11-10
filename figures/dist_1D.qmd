@@ -31,7 +31,6 @@ from bicytok.distance_metric_funcs import KL_EMD_1D
 from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 
 targ_cell = "Treg"
-receptors_of_interest = None
 sample_size = 100
 cell_categorization = "CellType2"
 
@@ -52,7 +51,7 @@ sampleDF = sample_receptor_abundances(
     targCellType=targ_cell,
 )
 filtered_sampleDF = filter_receptor_abundances(
-    sampleDF, targ_cell_type=targ_cell, epitope_list=receptors_of_interest
+    sampleDF, targ_cell_type=targ_cell
 )
 receptors_of_interest = filtered_sampleDF.columns[
     ~filtered_sampleDF.columns.isin(["Cell Type"])
