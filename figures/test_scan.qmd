@@ -133,33 +133,6 @@ results_dir = "../bicytok/data/selectivity_scan_results"
 import os
 os.makedirs(results_dir, exist_ok=True)
 
-# Save per-cell-type matrices
-for i, cell_type in enumerate(cell_types):
-    selectivity_matrix = opt_selec[:, :, i]
-    selectivity_df = pd.DataFrame(
-        selectivity_matrix,
-        index=receptors,
-        columns=receptors
-    )
-    selectivity_df.to_csv(f"{results_dir}/selectivity_{cell_type}.csv")
-    
-    opt_Kx_star_matrix = opt_Kx_star[:, :, i]
-    Kx_star_df = pd.DataFrame(
-        opt_Kx_star_matrix,
-        index=receptors,
-        columns=receptors
-    )
-    Kx_star_df.to_csv(f"{results_dir}/Kx_star_{cell_type}.csv")
-    
-    for j in range(opt_affs.shape[-1]):
-        affs_matrix = opt_affs[:, :, i, j]
-        affs_df = pd.DataFrame(
-            affs_matrix,
-            index=receptors,
-            columns=receptors
-        )
-        affs_df.to_csv(f"{results_dir}/affinities_{cell_type}_receptor{j}.csv")
-
 # Save flattened results
 flattened_data = []
 row_indices, col_indices = np.tril_indices(len(receptors), k=0)
@@ -197,7 +170,9 @@ print(f"Flattened results: {len(flattened_data)} receptor pair-cell type combina
 ```{python}
 # Plotting heatmaps of optimal selectivity across cell types
 
-fig, axes = plt.subplots(1, len(cell_types), figsize=(6 * len(cell_types), 5))
+TOP_N_PAIRS = 50
+
+fig, axes = plt.subplots(1, len(cell_types), figsize=(8 * len(cell_types), 7))
 
 if len(cell_types) == 1:
     axes = [axes]
@@ -205,20 +180,35 @@ if len(cell_types) == 1:
 for i, cell_type in enumerate(cell_types):
     selectivity_matrix = opt_selec[:, :, i]
     
+    row_indices, col_indices = np.tril_indices(len(receptors), k=0)
+    pair_selectivities = []
+    for rec1_idx, rec2_idx in zip(row_indices, col_indices):
+        pair_selectivities.append((rec1_idx, rec2_idx, selectivity_matrix[rec1_idx, rec2_idx]))
+    
+    pair_selectivities.sort(key=lambda x: x[2] if not np.isnan(x[2]) else -np.inf, reverse=True)
+    top_pairs = pair_selectivities[:TOP_N_PAIRS]
+    
+    unique_receptors = sorted(set([idx for pair in top_pairs for idx in pair[:2]]))
+    receptor_labels = [receptors[idx] for idx in unique_receptors]
+    
+    subset_matrix = selectivity_matrix[np.ix_(unique_receptors, unique_receptors)]
+    
     ax = axes[i]
     sns.heatmap(
-        selectivity_matrix,
+        subset_matrix,
         ax=ax,
         cmap="viridis",
-        xticklabels=receptors,
-        yticklabels=receptors,
+        xticklabels=receptor_labels,
+        yticklabels=receptor_labels,
         cbar_kws={'label': 'Selectivity'},
         square=True,
         annot=False
     )
-    ax.set_title(f'{cell_type} Selectivity')
+    ax.set_title(f'{cell_type} Selectivity (Top {TOP_N_PAIRS} Pairs)')
     ax.set_xlabel('Receptor 2')
     ax.set_ylabel('Receptor 1')
+    ax.tick_params(axis='x', rotation=90, labelsize=8)
+    ax.tick_params(axis='y', rotation=0, labelsize=8)
 
 plt.tight_layout()
 plt.show()
