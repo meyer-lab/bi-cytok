@@ -1,0 +1,189 @@
+---
+title: "Bootstrap analysis of metrics across target cell proportions"
+---
+
+# Summary
+Performs bootstrap analysis to quantify how KL Divergence, EMD, and selectivity metrics vary with different proportions of target vs off-target cells. Keeps total sample size constant while varying the ratio of target to off-target cells. Generates box plots showing the distribution of metric values across different proportions.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 2D distance metric calculation functions (`KL_EMD_2D`)
+- Selectivity optimization functions (`optimize_affs`)
+
+# Parameters
+- `total_sample_size`: Integer total number of cells in each bootstrap sample
+- `target_proportions`: List of floats specifying fraction of cells that are target cells
+- `randomizations`: Integer number of bootstrap iterations per proportion
+- `targ_cell`: String identifier for target cell type in selectivity optimization
+- `signal_receptor`: String name of receptor used for signal delivery in binding model
+- `valencies`: 2D numpy array specifying ligand valencies [[signal, target1, target2]]
+- `targets`: List of strings naming target receptors for multivalent complex design
+- `dose`: Float concentration of ligand complex in binding model
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+
+# Outputs
+- **Box Plot 1**: Bootstrap distribution of KL Divergence values across target cell proportions
+- **Box Plot 2**: Bootstrap distribution of EMD values across target cell proportions
+- **Box Plot 3**: Bootstrap distribution of selectivity values (1/optimization_result) across target cell proportions
+- **Box Plot 4**: Bootstrap distribution of optimal affinity parameters across proportions, grouped by affinity type
+- **Summary Table**: Average computation times for binding model optimization and distance metric calculations per proportion
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import time
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+from bicytok.distance_metric_funcs import KL_EMD_2D
+from bicytok.imports import importCITE
+from bicytok.selectivity_funcs import optimize_affs
+
+TOTAL_SAMPLE_SIZE = 2500
+TARGET_PROPORTIONS = [0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99]
+RANDOMIZATIONS = 10
+TARG_CELL = "Treg"
+SIGNAL_RECEPTOR = "CD122"
+VALENCIES = np.array([[2, 1, 1]])
+TARGETS = ["CD25", "CD4-1"]
+DOSE = 1e-10
+CELL_CATEGORIZATION = "CellType2"
+
+CITE_DF = importCITE()
+assert TARG_CELL in CITE_DF[CELL_CATEGORIZATION].unique()
+
+epitopes_df = CITE_DF[[SIGNAL_RECEPTOR] + TARGETS + [CELL_CATEGORIZATION]]
+epitopes_df = epitopes_df.rename(columns={CELL_CATEGORIZATION: "Cell Type"})
+
+all_target_cells = epitopes_df[epitopes_df["Cell Type"] == TARG_CELL]
+all_off_target_cells = epitopes_df[epitopes_df["Cell Type"] != TARG_CELL]
+
+metrics = []
+for target_prop in TARGET_PROPORTIONS:
+    num_target_cells = int(TOTAL_SAMPLE_SIZE * target_prop)
+    num_off_target_cells = TOTAL_SAMPLE_SIZE - num_target_cells
+
+    for i in range(RANDOMIZATIONS):
+        sampled_target_cells = all_target_cells.sample(
+            min(num_target_cells, all_target_cells.shape[0]), replace=False
+        )
+        sampled_off_target_cells = all_off_target_cells.sample(
+            min(num_off_target_cells, all_off_target_cells.shape[0]), replace=False
+        )
+        rand_samples = pd.concat([sampled_target_cells, sampled_off_target_cells])
+
+        target_mask = (rand_samples["Cell Type"] == TARG_CELL).to_numpy()
+        off_target_mask = ~target_mask
+
+        rec_abundances = rand_samples[TARGETS].to_numpy()
+        time_start_dist = time.time()
+        KL_div_mat, EMD_mat = KL_EMD_2D(
+            rec_abundances, target_mask, off_target_mask, calc_1D=False
+        )
+        time_ellapsed_dist = time.time() - time_start_dist
+        KL_div = KL_div_mat[1, 0]
+        EMD = EMD_mat[1, 0]
+
+        targ_df = rand_samples.loc[target_mask]
+        off_targ_df = rand_samples.loc[off_target_mask]
+        targ_recs = targ_df[[SIGNAL_RECEPTOR] + TARGETS].to_numpy()
+        off_targ_recs = off_targ_df[[SIGNAL_RECEPTOR] + TARGETS].to_numpy()
+
+        time_start_mod = time.time()
+        opt_selec, opt_affs, _ = optimize_affs(
+            targRecs=targ_recs,
+            offTargRecs=off_targ_recs,
+            dose=DOSE,
+            valencies=VALENCIES,
+        )
+        time_ellapsed_mod = time.time() - time_start_mod
+        print(f"Target Proportion: {target_prop:.2f}, Randomization: {i + 1}/{RANDOMIZATIONS}, Model Time: {time_ellapsed_mod:.4f}s")
+
+        metrics.append(
+            {
+                "target_proportion": target_prop,
+                "num_target": num_target_cells,
+                "num_off_target": num_off_target_cells,
+                "KL_div": KL_div,
+                "EMD": EMD,
+                "selectivity": 1 / opt_selec,
+                "affinities": opt_affs,
+                "model_time": time_ellapsed_mod,
+                "distance_metric_time": time_ellapsed_dist,
+            }
+        )
+
+metrics_df = pd.DataFrame(metrics)
+
+affinities_df = pd.DataFrame(
+    metrics_df["affinities"].tolist(), columns=["aff1", "aff2", "aff3"]
+)
+affinities_df["target_proportion"] = metrics_df["target_proportion"]
+
+affinities_melted = affinities_df.melt(
+    id_vars=["target_proportion"],
+    value_vars=["aff1", "aff2", "aff3"],
+    var_name="Affinity",
+    value_name="Value",
+)
+```
+
+```{python}
+#| fig-cap: "Bootstrap variation in KL Divergence across target cell proportions"
+
+sns.boxplot(x="target_proportion", y="KL_div", data=metrics_df)
+plt.xlabel("Target Cell Proportion")
+plt.ylabel("KL Divergence")
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Bootstrap variation in EMD across target cell proportions"
+
+sns.boxplot(x="target_proportion", y="EMD", data=metrics_df)
+plt.xlabel("Target Cell Proportion")
+plt.ylabel("EMD")
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Bootstrap variation in selectivity across target cell proportions"
+
+sns.boxplot(x="target_proportion", y="selectivity", data=metrics_df)
+plt.xlabel("Target Cell Proportion")
+plt.ylabel("Selectivity")
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Bootstrap variation in optimal affinities across target cell proportions"
+
+sns.boxplot(x="target_proportion", y="Value", hue="Affinity", data=affinities_melted)
+plt.xlabel("Target Cell Proportion")
+plt.ylabel("Affinity Value")
+plt.legend(title="Affinity")
+plt.show()
+```
+
+```{python}
+avg_times = (
+    metrics_df.groupby("target_proportion")[["model_time", "distance_metric_time"]]
+    .mean()
+    .reset_index()
+)
+print(avg_times.to_string(index=False))
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+
+text = f"""
+Analyzed how metrics vary with target cell proportion while keeping total sample size constant at **{TOTAL_SAMPLE_SIZE}** cells. The metrics were calculated for the target cell type **{TARG_CELL}** using the signal receptor **{SIGNAL_RECEPTOR}** and target receptors **{TARGETS}** at a dose of **{DOSE}**. The analyses were performed on **{RANDOMIZATIONS}** bootstrapped samplings for each target proportion, testing proportions of **{TARGET_PROPORTIONS}**.
+"""
+
+print(text)
+```
+
