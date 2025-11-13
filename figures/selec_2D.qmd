@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import jax
 
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
@@ -56,6 +57,25 @@ off_targ_mask = ~targ_mask
 
 signal_abun = sample_df[signal].to_numpy()
 
+# Warm-up optimization to JIT compile
+i=0
+j=0
+rec1 = receptors[i]
+rec2 = receptors[j]
+
+rec1_abun = sample_df[[rec1]].to_numpy()
+rec2_abun = sample_df[[rec2]].to_numpy()
+
+receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+
+targ_abun = receptor_abuns[targ_mask]
+off_targ_abun = receptor_abuns[off_targ_mask]
+
+opt_selec, _, _ = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
+# selectivities[i, j] = 1 / opt_selec
+
+
+jax.profiler.start_trace("/tmp/profile-data")
 selectivities = np.full((len(receptors), len(receptors)), np.nan)
 row, col = np.tril_indices(len(receptors), k=0)
 for i, j in zip(row, col, strict=False):
@@ -72,6 +92,8 @@ for i, j in zip(row, col, strict=False):
 
     opt_selec, _, _ = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
     selectivities[i, j] = 1 / opt_selec
+
+jax.profiler.stop_trace()
 
 i_upper, j_upper = np.triu_indices(len(receptors), k=1)
 selectivities[i_upper, j_upper] = selectivities[j_upper, i_upper]

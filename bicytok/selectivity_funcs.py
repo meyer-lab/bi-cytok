@@ -222,6 +222,7 @@ def optimize_affs(
         max_iter,
         tol,
     )
+    final_loss.block_until_ready()
 
     # Convert outputs back to Python types
     return (
@@ -293,6 +294,7 @@ def optimize_affs_parallel(
         max_iter,
         tol,
     )
+    optSelec.block_until_ready()
 
     return (
         np.array(optSelec),

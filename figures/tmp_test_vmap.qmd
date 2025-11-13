@@ -65,6 +65,26 @@ print(targ_rec_stack)
 print(off_targ_rec_stack)
 print(dose_stack)
 print(valency_stack)
+
+# Warm-up run to compile JAX functions
+time_start = time.time()
+opt_selec, opt_affs, opt_kx_star = optimize_affs_parallel(
+    targ_rec_stack, 
+    off_targ_rec_stack, 
+    dose_stack, 
+    valency_stack
+)
+print(f"Warm-up run completed in {time.time() - time_start:.2f} seconds.")
+
+time_start = time.time()
+opt_selec, opt_affs, opt_kx_star = optimize_affs_parallel(
+    targ_rec_stack, 
+    off_targ_rec_stack, 
+    dose_stack, 
+    valency_stack
+)
+print(f"Pre-compiled run completed in {time.time() - time_start:.2f} seconds.")
+
 # Run parallel optimization
 jax.profiler.start_trace("/tmp/profile-data")
 opt_selec, opt_affs, opt_kx_star = optimize_affs_parallel(
