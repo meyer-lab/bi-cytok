@@ -14,19 +14,75 @@ import time
 print(f"JAX platform: {jax.default_backend()}")
 print(f"Number of devices: {len(jax.devices())}")
 print(f"Device types: {[device.device_kind for device in jax.devices()]}")
-receptors = ["CD25", "CD4-1", "CD27"]
+# receptors = ["CD25", "CD4-1", "CD27"]
 signal = ["CD122"]
 cell_type = "Treg"
 dose = 1e-10
 valency = np.array([[2, 1, 1]])
 cell_categorization = "CellType2"
-sample_size = 100
+sample_size = 5000
+
+batch_sizes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 25, 30, 40, 50, 100]
+repeat_runs = 10
+
 CITE_DF = importCITE()
 epitopes = [
     col
     for col in CITE_DF.columns
     if col not in ["CellType1", "CellType2", "CellType3"]
 ]
+
+# receptors=epitopes[:3]
+# epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+# epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+# sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
+# targ_mask = (sample_df["Cell Type"] == cell_type).to_numpy()
+# off_targ_mask = ~targ_mask
+# signal_abun = sample_df[signal].to_numpy()
+# selectivities = np.full((len(receptors), len(receptors)), np.nan)
+# row, col = np.tril_indices(len(receptors), k=0)
+# targ_rec_stack = []
+# off_targ_rec_stack = []
+# dose_stack = []
+# valency_stack = []
+# time_start = time.time()
+# for i, j in zip(row, col, strict=False):
+#     rec1 = receptors[i]
+#     rec2 = receptors[j]
+#     rec1_abun = sample_df[[rec1]].to_numpy()
+#     rec2_abun = sample_df[[rec2]].to_numpy()
+#     receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+#     targ_abun = receptor_abuns[targ_mask]
+#     off_targ_abun = receptor_abuns[off_targ_mask]
+#     targ_rec_stack.append(targ_abun)
+#     off_targ_rec_stack.append(off_targ_abun)
+#     dose_stack.append(dose)
+#     valency_stack.append(valency)
+# # Convert lists to numpy arrays with proper shapes
+# targ_rec_stack = np.array(targ_rec_stack)  # (problems, target_cells, receptors)
+# off_targ_rec_stack = np.array(off_targ_rec_stack)  # (problems, off_target_cells, receptors)
+# dose_stack = np.array(dose_stack)  # (problems,)
+# valency_stack = np.array(valency_stack)  # (problems, receptors)
+# print(f"Target receptor stack shape: {targ_rec_stack.shape}")
+# print(f"Off-target receptor stack shape: {off_targ_rec_stack.shape}")
+# print(f"Dose stack shape: {dose_stack.shape}")
+# print(f"Valency stack shape: {valency_stack.shape}")
+# # print(targ_rec_stack)
+# # print(off_targ_rec_stack)
+# # print(dose_stack)
+# # print(valency_stack)
+
+# # Warm-up run to compile JAX functions
+# time_start = time.time()
+# opt_selec, opt_affs, opt_kx_star = optimize_affs_parallel(
+#     targ_rec_stack, 
+#     off_targ_rec_stack, 
+#     dose_stack, 
+#     valency_stack
+# )
+# print(f"Warm-up run completed in {time.time() - time_start:.2f} seconds.")
+
+receptors=epitopes[:20]
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
 sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
@@ -61,42 +117,180 @@ print(f"Target receptor stack shape: {targ_rec_stack.shape}")
 print(f"Off-target receptor stack shape: {off_targ_rec_stack.shape}")
 print(f"Dose stack shape: {dose_stack.shape}")
 print(f"Valency stack shape: {valency_stack.shape}")
-print(targ_rec_stack)
-print(off_targ_rec_stack)
-print(dose_stack)
-print(valency_stack)
+# print(targ_rec_stack)
+# print(off_targ_rec_stack)
+# print(dose_stack)
+# print(valency_stack)
 
-# Warm-up run to compile JAX functions
-time_start = time.time()
-opt_selec, opt_affs, opt_kx_star = optimize_affs_parallel(
-    targ_rec_stack, 
-    off_targ_rec_stack, 
-    dose_stack, 
-    valency_stack
-)
-print(f"Warm-up run completed in {time.time() - time_start:.2f} seconds.")
 
-time_start = time.time()
-opt_selec, opt_affs, opt_kx_star = optimize_affs_parallel(
-    targ_rec_stack, 
-    off_targ_rec_stack, 
-    dose_stack, 
-    valency_stack
-)
-print(f"Pre-compiled run completed in {time.time() - time_start:.2f} seconds.")
+compilation_times = {}
+run_times = {}
+for batch_size in batch_sizes:
+    print(f"\nRunning optimizations with batch size: {batch_size}")
+    # Warmup run
+    comp_start = time.time()
+    for start_idx in range(0, targ_rec_stack.shape[0], batch_size):
+        end_idx = [start_idx + batch_size if (start_idx + batch_size) < targ_rec_stack.shape[0] else targ_rec_stack.shape[0]][0]
+
+        batch_targ_rec = targ_rec_stack[start_idx:end_idx]
+        batch_off_targ_rec = off_targ_rec_stack[start_idx:end_idx]
+        batch_dose = dose_stack[start_idx:end_idx]
+        batch_valency = valency_stack[start_idx:end_idx]
+        
+        batch_opt_selec, batch_opt_affs, batch_opt_kx_star = optimize_affs_parallel(
+            batch_targ_rec, 
+            batch_off_targ_rec, 
+            batch_dose, 
+            batch_valency
+        )
+    comp_end = time.time()
+    compilation_times[batch_size] = comp_end - comp_start
+
+    # Timed runs
+    batch_run_times = []
+    for run_idx in range(repeat_runs):
+        time_start = time.time()
+        opt_selec_list = []
+        opt_affs_list = []
+        opt_kx_star_list = []
+        for start_idx in range(0, targ_rec_stack.shape[0], batch_size):
+            end_idx = [start_idx + batch_size if (start_idx + batch_size) < targ_rec_stack.shape[0] else targ_rec_stack.shape[0]][0]
+
+            batch_targ_rec = targ_rec_stack[start_idx:end_idx]
+            batch_off_targ_rec = off_targ_rec_stack[start_idx:end_idx]
+            batch_dose = dose_stack[start_idx:end_idx]
+            batch_valency = valency_stack[start_idx:end_idx]
+            
+            batch_opt_selec, batch_opt_affs, batch_opt_kx_star = optimize_affs_parallel(
+                batch_targ_rec, 
+                batch_off_targ_rec, 
+                batch_dose, 
+                batch_valency
+            )
+            opt_selec_list.append(batch_opt_selec)
+            opt_affs_list.append(batch_opt_affs)
+            opt_kx_star_list.append(batch_opt_kx_star)
+        time_end = time.time()
+        run_time = time_end - time_start
+        batch_run_times.append(run_time)
+
+    run_times[batch_size] = batch_run_times
 
 # Run parallel optimization
-jax.profiler.start_trace("/tmp/profile-data")
-opt_selec, opt_affs, opt_kx_star = optimize_affs_parallel(
-    targ_rec_stack, 
-    off_targ_rec_stack, 
-    dose_stack, 
-    valency_stack
-)
-jax.profiler.stop_trace()
-time_end = time.time()
-print(f"Optimization completed in {time_end - time_start:.2f} seconds.")
-print(f"Optimized selectivities: {opt_selec}")
-print(f"Optimized affinities shape: {opt_affs.shape}")
-print(f"Optimized Kx_star values: {opt_kx_star}")
+# jax.profiler.start_trace("/tmp/profile-data")
+# opt_selec, opt_affs, opt_kx_star = optimize_affs_parallel(
+#     targ_rec_stack, 
+#     off_targ_rec_stack, 
+#     dose_stack, 
+#     valency_stack
+# )
+# jax.profiler.stop_trace()
+# time_end = time.time()
+# print(f"Optimization completed in {time_end - time_start:.2f} seconds.")
+# print(f"Optimized selectivities: {opt_selec}")
+# print(f"Optimized affinities shape: {opt_affs.shape}")
+# print(f"Optimized Kx_star values: {opt_kx_star}")
+```
+```{python}
+# Calculate baseline sequential time
+import time
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import jax
+
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+
+# receptors = ["CD25", "CD4-1", "CD27"]
+signal = ["CD122"]
+cell_type = "Treg"
+dose = 1e-10
+valency = np.array([[2, 1, 1]])
+cell_categorization = "CellType2"
+sample_size = 1000
+
+CITE_DF = importCITE()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["CellType1", "CellType2", "CellType3"]
+]
+receptors=epitopes[:20]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
+
+targ_mask = (sample_df["Cell Type"] == cell_type).to_numpy()
+off_targ_mask = ~targ_mask
+
+signal_abun = sample_df[signal].to_numpy()
+
+time_start = time.time()
+# Warm-up optimization to JIT compile
+i=0
+j=0
+rec1 = receptors[i]
+rec2 = receptors[j]
+
+rec1_abun = sample_df[[rec1]].to_numpy()
+rec2_abun = sample_df[[rec2]].to_numpy()
+
+receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+
+targ_abun = receptor_abuns[targ_mask]
+off_targ_abun = receptor_abuns[off_targ_mask]
+
+opt_selec, _, _ = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
+# selectivities[i, j] = 1 / opt_selec
+print(f"Warm-up run completed in {time.time() - time_start:.2f} seconds.")
+
+baseline_run_times = []
+for run_idx in range(repeat_runs):
+    time_start = time.time()
+    selectivities = np.full((len(receptors), len(receptors)), np.nan)
+    row, col = np.tril_indices(len(receptors), k=0)
+    for i, j in zip(row, col, strict=False):
+        rec1 = receptors[i]
+        rec2 = receptors[j]
+
+        rec1_abun = sample_df[[rec1]].to_numpy()
+        rec2_abun = sample_df[[rec2]].to_numpy()
+
+        receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+
+        targ_abun = receptor_abuns[targ_mask]
+        off_targ_abun = receptor_abuns[off_targ_mask]
+
+        opt_selec, _, _ = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
+        selectivities[i, j] = 1 / opt_selec
+    time_end = time.time()
+    run_time = time_end - time_start
+    baseline_run_times.append(run_time)
+
+```
+```{python}
+plt.figure(figsize=(8, 6))
+avg_run_times = [np.mean(run_times[bs]) for bs in batch_sizes]
+plt.plot(batch_sizes, avg_run_times, marker='o')
+plt.axhline(y=np.mean(baseline_run_times), color='r', linestyle='--', label='Baseline Sequential Time')
+plt.axhline(y=np.min(baseline_run_times), color='g', linestyle='--', label='Baseline Min Time')
+plt.axhline(y=np.max(baseline_run_times), color='b', linestyle='--', label='Baseline Max Time')
+plt.legend()
+plt.errorbar(batch_sizes, avg_run_times, 
+    yerr=[np.std(run_times[bs]) for bs in batch_sizes], 
+    fmt='o', capsize=5)
+plt.xscale('log')
+# plt.yscale('log')
+plt.xlabel('Batch Size')
+plt.ylabel('Average Run Time (seconds)')
+plt.title('Average Run Time vs. Batch Size for Selectivity Optimization')
+plt.grid(True, which="both", ls="--")
+plt.show()
+
+print(run_times)
+print("Baseline sequential run times:", baseline_run_times)
 ```

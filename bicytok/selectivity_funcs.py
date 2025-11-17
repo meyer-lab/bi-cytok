@@ -13,7 +13,7 @@ from jaxtyping import Array, Float64, Scalar
 from .binding_model_funcs import cyt_binding_model
 
 jax.config.update("jax_enable_x64", True)
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".05"
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = ".90"
 
 
 def restructure_affs(
@@ -232,6 +232,40 @@ def optimize_affs(
     )
 
 
+def _optimize_affs_vmap(
+    targRecs: jnp.ndarray,
+    offTargRecs: jnp.ndarray,
+    dose: jnp.ndarray,
+    valencies: jnp.ndarray,
+    affinity_bounds: tuple[float, float] = (6.0, 12.0),
+    Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
+    max_iter: int = 100,
+    tol: float = 1e-3,
+) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+    """
+    Vectorized version of the JAX-optimized core optimization function using L-BFGS-B.
+    """
+    
+    optimize_affs_vmap_inner = jax.vmap(
+        _optimize_affs_jax,
+        in_axes=(0, 0, 0, 0, None, None, None, None),
+        out_axes=(0, 0, 0),
+    )
+
+    optSelec, optAffs, optKx_star = optimize_affs_vmap_inner(
+        targRecs,
+        offTargRecs,
+        dose,
+        valencies,
+        affinity_bounds,
+        Kx_star_bounds,
+        max_iter,
+        tol,
+    )
+
+    return optSelec, optAffs, optKx_star
+
+
 def optimize_affs_parallel(
     targRecs: np.ndarray,  # problems by cells by receptors
     offTargRecs: np.ndarray,  # problems by cells by receptors
@@ -276,13 +310,7 @@ def optimize_affs_parallel(
     offTargRecs_jax = jnp.array(offTargRecs, dtype=jnp.float64)
     valencies_jax = jnp.array(valencies, dtype=jnp.float64)
 
-    optimize_affs_vmap = jax.vmap(
-        _optimize_affs_jax,
-        in_axes=(0, 0, 0, 0, None, None, None, None),
-        out_axes=(0, 0, 0),
-    )
-
-    optimize_affs_vmap_jit = jax.jit(optimize_affs_vmap)
+    optimize_affs_vmap_jit = jax.jit(_optimize_affs_vmap)
 
     optSelec, optAffs, optKx_star = optimize_affs_vmap_jit(
         targRecs_jax,
@@ -294,7 +322,7 @@ def optimize_affs_parallel(
         max_iter,
         tol,
     )
-    optSelec.block_until_ready()
+    # optSelec.block_until_ready()
 
     return (
         np.array(optSelec),
