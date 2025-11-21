@@ -34,8 +34,8 @@ import matplotlib.pyplot as plt
 from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
 
-targ_cell = "Treg"
-sample_size = 100
+targ_cell = "dnT"
+sample_size = 1000
 cell_categorization = "CellType2"
 
 CITE_DF = importCITE()
@@ -46,15 +46,18 @@ epitopes = [
     for col in CITE_DF.columns
     if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
 ]
+epitopes = ["CD122", "CD25", "CD4-1", "CD27", "CD28", "CD45RA", "CD338", "CD3-1", "TIGIT", "TSLPR", "CD275-1"]
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
 sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,
     numCells=min(sample_size, epitopes_df.shape[0]),
     targCellType=targ_cell,
+    balance=True
 )
-filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
-epitopes = list(filtered_sample_df.columns[:-1])
+# filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell, epitope_list=epitopes)
+# epitopes = list(filtered_sample_df.columns[:-1])
+filtered_sample_df = sample_df
 
 on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
 off_target_mask = ~on_target_mask
@@ -89,6 +92,9 @@ kl_threshold = np.percentile(np.concatenate([kl_row_means, kl_col_means]), cutof
 
 df_EMD_filt = df_EMD.loc[emd_row_means >= emd_threshold, emd_col_means >= emd_threshold]
 df_KL_filt = df_KL.loc[kl_row_means >= kl_threshold, kl_col_means >= kl_threshold]
+
+df_EMD_filt = df_EMD
+df_KL_filt = df_KL
 
 # common_receptors = sorted(set(df_EMD.index).intersection(set(df_KL.index)))
 # df_EMD = df_EMD.loc[common_receptors, common_receptors]
