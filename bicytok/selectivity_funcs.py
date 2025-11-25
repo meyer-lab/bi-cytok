@@ -44,6 +44,9 @@ def restructure_affs(
     return restructuredAffs
 
 
+SELEC_DEF = "geometric_mean"
+
+
 def min_off_targ_selec(
     params: Float64[Array, "receptors_plus_one"],
     targRecs: Float64[Array, "cells receptors"],
@@ -93,10 +96,23 @@ def min_off_targ_selec(
         Kx_star=Kx_star,
     )
 
-    # Calculate total bound receptors for target and off-target cell types, normalized
-    #   by number of cells
-    targetBound = jnp.sum(targRbound[:, 0]) / targRbound.shape[0]
-    offTargetBound = jnp.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
+    n_targets = targRbound.shape[0]
+    n_off_targets = offTargRbound.shape[0]
+
+    # Selectivity definitions
+    if SELEC_DEF == "mean":
+        targetBound = jnp.sum(targRbound[:, 0]) / n_targets
+        offTargetBound = jnp.sum(offTargRbound[:, 0]) / n_off_targets
+    elif SELEC_DEF == "geometric_mean":
+        targetBound = jnp.exp(
+            jnp.sum(jnp.log(targRbound[:, 0]) / n_targets)
+        )
+        offTargetBound = jnp.exp(
+            jnp.sum(jnp.log(offTargRbound[:, 0]) / n_off_targets)
+        )
+    elif SELEC_DEF == "median":
+        targetBound = jnp.median(targRbound[:, 0])
+        offTargetBound = jnp.median(offTargRbound[:, 0])
 
     # Return selectivity ratio
     return (targetBound + offTargetBound) / targetBound
