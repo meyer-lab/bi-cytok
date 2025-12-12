@@ -24,6 +24,7 @@ Generates a symmetric heatmap showing optimal selectivity values achieved by mul
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
 
+import time
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -32,8 +33,9 @@ import matplotlib.pyplot as plt
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
-receptors = ["CD122", "CD25", "CD4-1", "CD107a", "CD109", "CD278", "CD28", "CD338", "CD2", "CD194", "CD357"]
-signal = ["CD357"]
+# receptors = ["CD122", "CD25", "CD4-1", "CD107a", "CD109", "CD278", "CD28", "CD338", "CD2", "CD194", "CD357"]
+receptors = ["CD338", "CD25"]
+signal = ["CD122"]
 # signal = ["Prototype_Signal_Receptor"]
 cell_type = "Treg"
 # off_targ_cell_types = ["ILC"]
@@ -43,6 +45,7 @@ dose = 1e-10
 valency = np.array([[2, 1, 1]])
 cell_categorization = "CellType2"
 sample_size = 1000
+include_prototype_signal_receptor = False
 
 CITE_DF = importCITE()
 
@@ -54,9 +57,10 @@ epitopes = [
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
 
-prototype_signal_receptor = np.random.normal(loc=50, scale=5, size=(epitopes_df.shape[0],))
-epitopes_df.insert(0, "Prototype_Signal_Receptor", prototype_signal_receptor)
-receptors = ["Prototype_Signal_Receptor"] + receptors
+if include_prototype_signal_receptor:
+    prototype_signal_receptor = np.random.normal(loc=50, scale=5, size=(epitopes_df.shape[0],))
+    epitopes_df.insert(0, "Prototype_Signal_Receptor", prototype_signal_receptor)
+    receptors = ["Prototype_Signal_Receptor"] + receptors
 
 sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type, offTargCellTypes=off_targ_cell_types, rand_state=42)
 
@@ -69,9 +73,12 @@ off_targ_mask = ~targ_mask
 
 signal_abun = sample_df[signal].to_numpy()
 
+total_time_start = time.time()
+
 selectivities = np.full((len(receptors), len(receptors)), np.nan)
 row, col = np.tril_indices(len(receptors), k=0)
 for i, j in zip(row, col, strict=False):
+    time_start = time.time()
     rec1 = receptors[i]
     rec2 = receptors[j]
 
@@ -85,6 +92,10 @@ for i, j in zip(row, col, strict=False):
 
     opt_selec, _, _ = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
     selectivities[i, j] = 1 / opt_selec
+
+    print(f"Completed optimization in {time.time() - time_start:.2f} seconds")
+
+print(f"Total optimization time: {time.time() - total_time_start:.2f} seconds")
 
 i_upper, j_upper = np.triu_indices(len(receptors), k=1)
 selectivities[i_upper, j_upper] = selectivities[j_upper, i_upper]
@@ -103,15 +114,14 @@ selec_df = pd.DataFrame(selectivities, index=receptors, columns=receptors)
 
 ```{python}
 #| fig-cap: "Heatmap of binding model selectivity for receptor pairs"
-
 sns.heatmap(
-    selec_df, cmap="bwr", cbar=True, xticklabels=True, yticklabels=True
+    selec_df, cmap="bwr", cbar=True, xticklabels=True, yticklabels=True, vmin=0.7, vmax=1.0
 )
 
-plt.tick_params(axis="x", labelsize=5)
-plt.tick_params(axis="y", labelsize=5)
+plt.tick_params(axis="x", labelsize=10)
+plt.tick_params(axis="y", labelsize=10)
 cbar = plt.gcf().axes[-1]
-cbar.set_title("Selectivity", fontsize=8)
+cbar.set_title("Selectivity", fontsize=12)
 plt.show()
 
 print(f"Maximum selectivity: {np.nanmax(selectivities)}")

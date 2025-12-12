@@ -182,6 +182,7 @@ plt.show()
 #| fig-cap: "Bootstrap variation in selectivity across sample sizes"
 
 sns.boxplot(x="sample_size", y="selectivity", data=metrics_df)
+plt.ylim(0.5, 1.0)
 plt.xlabel("Sample Size")
 plt.ylabel("Selectivity")
 plt.show()
