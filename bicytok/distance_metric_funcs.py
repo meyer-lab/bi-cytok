@@ -13,13 +13,31 @@ from .imports import importCITE, sample_receptor_abundances
 path_here = Path(__file__).parent.parent
 
 
-def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float]:
+KDE_A_TOL = 1e-3  # Tolerance for KDE fitting
+KDE_R_TOL = 1e-3  # Tolerance for KDE fitting
+BW_METHOD = "scott"  # Bandwidth method for KDE
+KDE_GRID_MARGIN = 0.5  # Margin added to min/max for KDE grid
+KDE_GRID_SIZE = 10  # Number of points per dimension in KDE grid
+ENTROPY_EPS = 1e-6  # Small value to avoid log(0) in entropy calculations
+EMD_MAX_ITER = 10000  # Maximum iterations for EMD calculation
+
+
+def calculate_KL_EMD(
+    dist1: np.ndarray,
+    dist2: np.ndarray,
+    reg_strength: float | None,
+) -> tuple[float, float]:
     """
     Calculates the KL Divergence and EMD between two distributions of n variables.
     Can be used to calculate distance metrics for specific combinations of receptors.
 
     :param dist1: First distribution
     :param dist2: Second distribution
+    :param reg_strength: Regularization strength for the EMD calculation. Also controls
+        the OT solving algorithm used. If None or 0, the unregularized EMD is calculated
+        using the Network Simplex algorithm with a block search pivot (Bonneel et al.
+        2011). If a positive float, the KL divergence-regularized EMD is calculated
+        using the Sinkhorn-Knopp matrix scaling algorithm (Cuturi 2013).
     :return:
         KL Divergence between the two distributions
         EMD between the two distributions
@@ -28,22 +46,22 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
     associated with the kernel density estimation and the EMD distance matrix
     calculation that can be adjusted.
     """
+
     assert dist1.shape[1] == dist2.shape[1]
 
     n_dim = dist1.shape[1]
 
     # Estimate the n-dimensional probability distributions
-    bw_method = "scott"
-    kde1 = KernelDensity(atol=1e-9, rtol=1e-9, bandwidth=bw_method).fit(dist1)
-    kde2 = KernelDensity(atol=1e-9, rtol=1e-9, bandwidth=bw_method).fit(dist2)
+    kde1 = KernelDensity(atol=KDE_A_TOL, rtol=KDE_R_TOL, bandwidth=BW_METHOD).fit(dist1)
+    kde2 = KernelDensity(atol=KDE_A_TOL, rtol=KDE_R_TOL, bandwidth=BW_METHOD).fit(dist2)
 
     # Compare over the entire distribution space by looking at the global max/min
-    min_abun = np.minimum(dist1.min(axis=0), dist2.min(axis=0)) - 0.5
-    max_abun = np.maximum(dist1.max(axis=0), dist2.max(axis=0)) + 0.5
+    min_abun = np.minimum(dist1.min(axis=0), dist2.min(axis=0)) - KDE_GRID_MARGIN
+    max_abun = np.maximum(dist1.max(axis=0), dist2.max(axis=0)) + KDE_GRID_MARGIN
 
     # Create a mesh grid for n-dimensional comparison
     grids = np.meshgrid(
-        *[np.linspace(min_abun[i], max_abun[i], 20) for i in range(n_dim)]
+        *[np.linspace(min_abun[i], max_abun[i], KDE_GRID_SIZE) for i in range(n_dim)]
     )
     grids = np.stack([grid.flatten() for grid in grids], axis=-1)
 
@@ -52,15 +70,22 @@ def calculate_KL_EMD(dist1: np.ndarray, dist2: np.ndarray) -> tuple[float, float
     dist2_probs = np.exp(kde2.score_samples(grids))
 
     # Calculate KL Divergence
-    KL_div_val_1 = stats.entropy(dist2_probs + 1e-200, dist1_probs + 1e-200, base=2)
-    KL_div_val_2 = stats.entropy(dist1_probs + 1e-200, dist2_probs + 1e-200, base=2)
-    KL_div_val = float((KL_div_val_1 + KL_div_val_2) / 2)
+    KL_div_val_1 = stats.entropy(
+        dist2_probs + ENTROPY_EPS, dist1_probs + ENTROPY_EPS, base=2
+    )
+    KL_div_val_2 = stats.entropy(
+        dist1_probs + ENTROPY_EPS, dist2_probs + ENTROPY_EPS, base=2
+    )
+    KL_div_val = float((KL_div_val_1 + KL_div_val_2) / 2)  # Symmetrized KL Divergence
 
-    # Calculate Euclidean distance matrix
+    # Calculate Euclidean cost matrix
     M = ot.dist(dist1, dist2, metric="euclidean")
 
-    # Calculate EMD
-    EMD_val = ot.emd2([], [], M, numItermax=int(1e9))
+    # Solve the optimal transport problem
+    EMD_res = ot.solve(M, reg=reg_strength, max_iter=EMD_MAX_ITER)
+
+    # Extract the total transportation cost
+    EMD_val = EMD_res.value_linear
 
     return KL_div_val, EMD_val
 
@@ -69,6 +94,7 @@ def KL_EMD_1D(
     recAbundances: np.ndarray,
     targ: np.ndarray,
     offTarg: np.ndarray,
+    reg_strength: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 1D EMD and KL Divergence between target and off-target populations.
@@ -109,7 +135,9 @@ def KL_EMD_1D(
         )
 
         KL_div_vals[rec], EMD_vals[rec] = calculate_KL_EMD(
-            targAbun.reshape(-1, 1), offTargAbun.reshape(-1, 1)
+            targAbun.reshape(-1, 1),
+            offTargAbun.reshape(-1, 1),
+            reg_strength=reg_strength,
         )
 
     return KL_div_vals, EMD_vals
@@ -120,6 +148,7 @@ def KL_EMD_2D(
     targ: np.ndarray,
     offTarg: np.ndarray,
     calc_1D: bool = True,
+    reg_strength: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 2D EMD and KL Divergence between the target and off-target populations
@@ -170,7 +199,7 @@ def KL_EMD_2D(
         assert targAbunAll.shape == (np.sum(targ), 2)
 
         KL_div_vals[rec1, rec2], EMD_vals[rec1, rec2] = calculate_KL_EMD(
-            targAbunAll, offTargAbunAll
+            targAbunAll, offTargAbunAll, reg_strength=reg_strength
         )
 
     return KL_div_vals, EMD_vals
@@ -181,8 +210,10 @@ def make_2D_distance_metrics():
     Generates a CSV of 2D EMD and KL Divergence values for all receptors.
     Called with "uv run distanceCSV"
     """
+
     start = time.time()
 
+    # Parameters
     targCell = "Treg"
     receptors_of_interest = None  # Can be a list of receptors or None
     sample_size = 1000
@@ -199,6 +230,7 @@ def make_2D_distance_metrics():
             "Treg",
         ]
     )
+
     offTargCells = cellTypes[cellTypes != targCell]
 
     epitopesList = pd.read_csv(path_here / "bicytok" / "data" / "epitopeList.csv")
@@ -261,6 +293,7 @@ def KL_EMD_3D(
     targ: np.ndarray,
     offTarg: np.ndarray,
     calc_diags: bool = True,
+    reg_strength: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculates 3D EMD and KL Divergence between the target and off-target populations
@@ -323,7 +356,7 @@ def KL_EMD_3D(
         assert targAbunAll.shape == (np.sum(targ), 3)
 
         KL_div_vals[rec1, rec2, rec3], EMD_vals[rec1, rec2, rec3] = calculate_KL_EMD(
-            targAbunAll, offTargAbunAll
+            targAbunAll, offTargAbunAll, reg_strength=reg_strength
         )
 
     return KL_div_vals, EMD_vals
@@ -339,6 +372,7 @@ def test_runtimes(dim: int = 3, sample_size: int = 1000):
 
     assert dim in [1, 2, 3]
 
+    # Parameters
     targCell = "Treg"
     receptors_of_interest = ["CD25", "CD4-1", "CD27", "CD4-2"]
     cell_categorization = "CellType2"
@@ -354,6 +388,7 @@ def test_runtimes(dim: int = 3, sample_size: int = 1000):
             "Treg",
         ]
     )
+
     offTargCells = cellTypes[cellTypes != targCell]
 
     epitopesList = pd.read_csv(path_here / "bicytok" / "data" / "epitopeList.csv")
