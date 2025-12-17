@@ -226,3 +226,32 @@ def scan_selectivity(
         print(f"Completed selectivity scan for {cell_type} in {time.time() - time_start:.2f} seconds.")
 
     return selec_vals_scan, opt_affs_scan, opt_Kx_star_scan
+
+
+
+# def scan_selectivity_signal(
+#     rec_abundances: np.ndarray,
+#     cell_type_labels: np.ndarray,
+#     targ_cell_type: str,
+#     dose: float,
+#     valencies: np.ndarray,
+#     signal_rec_inds: list[int] | None = None,
+#     sample_size: int = 100,
+# ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+#     """
+#     Optimize binding selectivity for all receptor pairs across all possible signal
+#     receptor designations for a single target cell type.
+#     """
+
+#     n_receptors = rec_abundances.shape[1]
+
+#     if signal_rec_inds == None:
+#         signal_rec_inds = range(n_receptors)
+
+#     output_shape = (n_receptors, n_receptors, len(signal_rec_inds))
+#     selec_vals_scan = np.full(output_shape, np.nan)
+#     opt_Kx_star_scan = np.full(output_shape, np.nan)
+#     affs_output_shape = (n_receptors, n_receptors, len(signal_rec_inds), 3)
+#     opt_affs_scan = np.full(affs_output_shape, np.nan)
+
+#     for signal_ind in 

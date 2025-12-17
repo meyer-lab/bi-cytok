@@ -44,8 +44,8 @@ def restructure_affs(
     return restructuredAffs
 
 
-SELEC_DEF = "geometric_mean"
-VAR_REG = True
+SELEC_DEF = "mean"
+VAR_REG = False
 REG_WEIGHT = 0.8
 
 

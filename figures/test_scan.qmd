@@ -160,7 +160,7 @@ cell_categorization = "CellType2"
 sample_size = 1000
 
 # receptors = ["CD122", "CD25", "CD4-1", "CD27", "CD28", "CD45RA", "CD338", "CD3-1", "TIGIT", "TSLPR", "CD275-1"]
-# cell_types = ["Treg", "dnT", "MAIT"]
+cell_types = ["Treg", "dnT", "CD4 CTL", "CD8 Proliferating", "CD4 TCM", "B memory", "CD8 TCM", "CD8 Naive", "CD4 Proliferating", "NK_CD56bright", "CD4 Naive", "CD8 TEM", "ILC", "CD4 TEM", "B naive"]
 receptors = None
 cell_types = None
 
@@ -192,6 +192,7 @@ rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
 cell_type_labels = epitopes_df["Cell Type"].tolist()
 if cell_types is None:
     cell_types = list(set(cell_type_labels))
+print(cell_types)
 
 print(f"Using receptors: {receptors}, total {len(receptors)} receptors.")
 print(f"Total possible receptor pairs: {len(receptors)*(len(receptors)+1)//2}.")
