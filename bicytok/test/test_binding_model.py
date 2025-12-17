@@ -85,6 +85,46 @@ def test_binding_model():
     assert R_bound.shape == recCounts.shape
 
 
+def test_symmetric_affinities():
+    """Test that optimize_affs predicts symmetric target receptor affinities when valencies are symmetric"""
+
+    recAbundances, targ, offTarg = sample_data(n_obs=1000, n_var=5)
+    dose = 1e-10
+    valencies = np.array([[2, 1, 1]])
+    max_iter = 5000
+    tol = 1e-12
+
+    row, col = np.tril_indices(5, k=0)
+    for i, j in zip(row, col, strict=False):
+        if i == j or i == 0 or j == 0:
+            continue
+
+        test_abundances = recAbundances[:, [0, i, j]]
+        targRecs = test_abundances[targ]
+        offTargRecs = test_abundances[offTarg]
+
+        optSelec, optAffs, optKx_star = optimize_affs(
+            targRecs=targRecs, offTargRecs=offTargRecs, dose=dose, valencies=valencies, max_iter=max_iter, tol=tol
+        )
+        optAffs_forward = np.array(optAffs)
+
+        test_abundances = recAbundances[:, [0, j, i]]
+        targRecs = test_abundances[targ]
+        offTargRecs = test_abundances[offTarg]
+
+        optSelec, optAffs, optKx_star = optimize_affs(
+            targRecs=targRecs, offTargRecs=offTargRecs, dose=dose, valencies=valencies, max_iter=max_iter, tol=tol
+        )
+        optAffs_reverse = np.array(optAffs)
+
+        print(f"Testing receptors {i} and {j} swapped")
+        print(f"Forward affinities: {optAffs_forward}, Reverse affinities: {optAffs_reverse}")
+
+        assert np.isclose(optAffs_forward[0], optAffs_reverse[0], rtol=1e-2)
+        assert np.isclose(optAffs_forward[1], optAffs_reverse[2], rtol=1e-2)
+        assert np.isclose(optAffs_forward[2], optAffs_reverse[1], rtol=1e-2)
+
+
 def test_invalid_model_function_inputs():
     """Test for appropriate error handling of invalid inputs in binding model functions."""
 
