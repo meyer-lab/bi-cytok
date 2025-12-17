@@ -2,10 +2,11 @@
 Functions for calculating binding model selectivity, EMD, and KL divergence for many
 receptor combinations and target cell types.
 """
+
 import time
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from .distance_metric_funcs import KL_EMD_1D, KL_EMD_2D, KL_EMD_3D
 from .imports import sample_receptor_abundances
@@ -37,14 +38,19 @@ def _sample_cells(
     """
 
     sampled_abun_DF = sample_receptor_abundances(
-        pd.DataFrame(np.hstack((rec_abundances, np.asarray(cell_type_labels).reshape(-1, 1))), columns=
-                        [f"Rec_{j}" for j in range(rec_abundances.shape[1])] + ["Cell Type"]),
+        pd.DataFrame(
+            np.hstack((rec_abundances, np.asarray(cell_type_labels).reshape(-1, 1))),
+            columns=[f"Rec_{j}" for j in range(rec_abundances.shape[1])]
+            + ["Cell Type"],
+        ),
         numCells=sample_size,
         targCellType=targ_cell_type,
-        balance=balance
+        balance=balance,
     )
     sampled_cell_type_labels = sampled_abun_DF["Cell Type"].to_numpy(dtype=str)
-    sampled_rec_abundances = sampled_abun_DF.drop(columns=["Cell Type"]).to_numpy(dtype=float)
+    sampled_rec_abundances = sampled_abun_DF.drop(columns=["Cell Type"]).to_numpy(
+        dtype=float
+    )
 
     return sampled_rec_abundances, sampled_cell_type_labels
 
@@ -92,7 +98,7 @@ def scan_KL_EMD(
             cell_type_labels,
             targ_cell_type=cell_type,
             sample_size=sample_size,
-            balance=True
+            balance=True,
         )
 
         targ_mask = sampled_cell_type_labels == cell_type
@@ -110,7 +116,9 @@ def scan_KL_EMD(
             KL_div_vals_scan[:, :, :, i], EMD_vals_scan[:, :, :, i] = KL_EMD_3D(
                 sampled_rec_abundances, targ_mask, off_targ_mask
             )
-        print(f"Completed KL/EMD scan for {cell_type} in {time.time() - time_start:.2f} seconds.")
+        print(
+            f"Completed KL/EMD scan for {cell_type} in {time.time() - time_start:.2f} seconds."
+        )
 
     return KL_div_vals_scan, EMD_vals_scan
 
@@ -162,7 +170,10 @@ def scan_selectivity(
     output_shape = (n_receptors,) * dim + (len(targ_cell_types),)
     selec_vals_scan = np.full(output_shape, np.nan)
     opt_Kx_star_scan = np.full(output_shape, np.nan)
-    affs_output_shape = (n_receptors,) * dim + (len(targ_cell_types), dim + (1 if signal_col is not None else 0))
+    affs_output_shape = (n_receptors,) * dim + (
+        len(targ_cell_types),
+        dim + (1 if signal_col is not None else 0),
+    )
     opt_affs_scan = np.full(affs_output_shape, np.nan)
 
     for i, cell_type in enumerate(targ_cell_types):
@@ -173,7 +184,7 @@ def scan_selectivity(
             cell_type_labels,
             targ_cell_type=cell_type,
             sample_size=sample_size,
-            balance=False  # Balanced distributions not necessary for binding model
+            balance=False,  # Balanced distributions not necessary for binding model
         )
 
         targ_mask = sampled_cell_type_labels == cell_type
@@ -214,7 +225,9 @@ def scan_selectivity(
                 targ_recs = rec_abun_pruned[targ_mask, :]
                 off_targ_recs = rec_abun_pruned[off_targ_mask, :]
 
-                opt_selec, opt_aff_vals, opt_Kx_star = optimize_affs(targ_recs, off_targ_recs, dose, valencies)
+                opt_selec, opt_aff_vals, opt_Kx_star = optimize_affs(
+                    targ_recs, off_targ_recs, dose, valencies
+                )
 
                 selec_vals_scan[rec1_ind, rec2_ind, i] = 1 / opt_selec
                 opt_affs_scan[rec1_ind, rec2_ind, i, :] = opt_aff_vals
@@ -223,10 +236,11 @@ def scan_selectivity(
         if dim == 3:
             pass
 
-        print(f"Completed selectivity scan for {cell_type} in {time.time() - time_start:.2f} seconds.")
+        print(
+            f"Completed selectivity scan for {cell_type} in {time.time() - time_start:.2f} seconds."
+        )
 
     return selec_vals_scan, opt_affs_scan, opt_Kx_star_scan
-
 
 
 # def scan_selectivity_signal(
@@ -254,4 +268,4 @@ def scan_selectivity(
 #     affs_output_shape = (n_receptors, n_receptors, len(signal_rec_inds), 3)
 #     opt_affs_scan = np.full(affs_output_shape, np.nan)
 
-#     for signal_ind in 
+#     for signal_ind in

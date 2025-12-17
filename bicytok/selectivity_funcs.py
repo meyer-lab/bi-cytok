@@ -107,18 +107,14 @@ def min_off_targ_selec(
         offTargetBound = jnp.sum(offTargRbound[:, 0]) / n_off_targets
         selec = (targetBound + offTargetBound) / targetBound
     elif SELEC_DEF == "geometric_mean":
-        targetBound = jnp.exp(
-            jnp.sum(jnp.log(targRbound[:, 0]) / n_targets)
-        )
-        offTargetBound = jnp.exp(
-            jnp.sum(jnp.log(offTargRbound[:, 0]) / n_off_targets)
-        )
+        targetBound = jnp.exp(jnp.sum(jnp.log(targRbound[:, 0]) / n_targets))
+        offTargetBound = jnp.exp(jnp.sum(jnp.log(offTargRbound[:, 0]) / n_off_targets))
         selec = (targetBound + offTargetBound) / targetBound
     elif SELEC_DEF == "median":
         targetBound = jnp.median(targRbound[:, 0])
         offTargetBound = jnp.median(offTargRbound[:, 0])
         selec = (targetBound + offTargetBound) / targetBound
-    
+
     if VAR_REG:
         return REG_WEIGHT * jnp.var(targRbound[:, 0]) + selec
     else:
