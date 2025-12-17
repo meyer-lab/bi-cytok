@@ -2,20 +2,11 @@
 Unit test file for distribution metric functions.
 """
 
-from pathlib import Path
-
 import numpy as np
-import pandas as pd
 import pytest
 
 from ..distance_metric_funcs import KL_EMD_1D, KL_EMD_2D, KL_EMD_3D
-from ..imports import importCITE, sample_receptor_abundances
 from ..imports import sample_test_data as sample_data
-from ..selectivity_funcs import (
-    min_off_targ_selec,
-    optimize_affs,
-    restructure_affs,
-)
 
 
 def test_KL_EMD_1D():

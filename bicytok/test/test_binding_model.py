@@ -87,7 +87,7 @@ def test_binding_model():
 
 def test_invalid_model_function_inputs():
     """Test for appropriate error handling of invalid inputs in binding model functions."""
-    
+
     rng = np.random.default_rng(1)
 
     # Test invalid inputs for restructuringAffs
