@@ -3,6 +3,7 @@
 from pathlib import Path
 from zipfile import ZipFile
 
+import numpy as np
 import pandas as pd
 
 path_here = Path(__file__).parent.parent
@@ -237,3 +238,13 @@ def filter_receptor_abundances(
     abundance_df = pd.concat([abundance_df, cell_type_df], axis=1)
 
     return abundance_df
+
+
+def sample_test_data(n_obs=100, n_var=10):
+    rng = np.random.default_rng(1)
+    recAbundances = rng.uniform(size=(n_obs, n_var)) * 10
+    targ_ind = rng.choice(n_obs, size=n_obs // 2, replace=False)
+    targ = np.zeros(n_obs, dtype=bool)
+    targ[targ_ind] = True
+    offTarg = ~targ
+    return recAbundances, targ, offTarg
