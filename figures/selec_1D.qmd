@@ -28,11 +28,13 @@ import matplotlib.pyplot as plt
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
-receptors = ["CD25", "CD4-1", "CD27", "CD4-2", "CD278"]
+receptors = ["CD107a", "CD338", "CD194", "CD357", "CD2", "CD122", "CD25", "CD4-1", "CD109", "CD278", "CD28", "CCR10"]
+# receptors = None
+signal = ["CD122"]
 cell_type = "Treg"
 dose = 1e-10
 cell_categorization = "CellType2"
-sample_size = 100
+sample_size = 1000
 
 CITE_DF = importCITE()
 
@@ -43,6 +45,13 @@ epitopes = [
 ]
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+
+if receptors is None:
+    receptors = [
+        col
+        for col in epitopes_df.columns
+        if col not in signal + ["Cell Type"]
+    ]
 
 sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
 
@@ -56,10 +65,14 @@ for receptor in receptors:
     targ_abun = receptor_abun[targ_mask]
     off_targ_abun = receptor_abun[off_targ_mask]
 
-    opt_selec, _, _ = optimize_affs(
-        targ_abun, off_targ_abun, dose, valencies=np.array([[1]])
+    opt_selec, opt_affs, opt_Kx_star = optimize_affs(
+        targ_abun, off_targ_abun, dose, valencies=np.array([[2, 1, 1]])
     )
     selectivities.append(1 / opt_selec)
+
+    print(
+        f"Optimized selectivity for {receptor}: {1 / opt_selec:.4f}, Optimal affinities (M): {opt_affs}, Optimal Kx*: {opt_Kx_star:.2e}"
+    )
 
 sort_indices = np.argsort(selectivities)
 ```

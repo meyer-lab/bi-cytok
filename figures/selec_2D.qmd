@@ -34,7 +34,8 @@ from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
 # receptors = ["CD122", "CD25", "CD4-1", "CD107a", "CD109", "CD278", "CD28", "CD338", "CD2", "CD194", "CD357"]
-receptors = ["CD338", "CD25"]
+# receptors = ["CD338", "CD25"]
+receptors = None
 signal = ["CD122"]
 # signal = ["Prototype_Signal_Receptor"]
 cell_type = "Treg"
@@ -42,7 +43,8 @@ cell_type = "Treg"
 off_targ_cell_types = None
 # off_targ_cell_types = ["CD4 TCM", "CD8 TCM", "ILC"]
 dose = 1e-10
-valency = np.array([[2, 1, 1]])
+valency_main = np.array([[2, 1, 1]])
+valency_diag = np.array([[2, 2]])
 cell_categorization = "CellType2"
 sample_size = 1000
 include_prototype_signal_receptor = False
@@ -56,6 +58,13 @@ epitopes = [
 ]
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+
+if receptors is None:
+    receptors = [
+        col
+        for col in epitopes_df.columns
+        if col != "Cell Type" and col not in signal
+    ]
 
 if include_prototype_signal_receptor:
     prototype_signal_receptor = np.random.normal(loc=50, scale=5, size=(epitopes_df.shape[0],))
@@ -82,16 +91,25 @@ for i, j in zip(row, col, strict=False):
     rec1 = receptors[i]
     rec2 = receptors[j]
 
-    rec1_abun = sample_df[[rec1]].to_numpy()
-    rec2_abun = sample_df[[rec2]].to_numpy()
-
-    receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+    if rec1 == rec2:
+        valency = valency_diag
+        rec_abun = sample_df[[rec1]].to_numpy()
+        receptor_abuns = np.hstack((signal_abun, rec_abun))
+    else:
+        valency = valency_main
+        rec1_abun = sample_df[[rec1]].to_numpy()
+        rec2_abun = sample_df[[rec2]].to_numpy()
+        receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
 
     targ_abun = receptor_abuns[targ_mask]
     off_targ_abun = receptor_abuns[off_targ_mask]
 
-    opt_selec, _, _ = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
+    opt_selec, opt_affs, opt_Kx_star = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
     selectivities[i, j] = 1 / opt_selec
+
+    print(f"Optimized selectivity for {rec1} and {rec2}: {1 / opt_selec:.4f}")
+    print(f"Optimal affinities (M): {opt_affs}")
+    print(f"Optimal Kx*: {opt_Kx_star:.2e}")
 
     print(f"Completed optimization in {time.time() - time_start:.2f} seconds")
 
@@ -101,15 +119,15 @@ i_upper, j_upper = np.triu_indices(len(receptors), k=1)
 selectivities[i_upper, j_upper] = selectivities[j_upper, i_upper]
 selec_df = pd.DataFrame(selectivities, index=receptors, columns=receptors)
 
-# selec_df = selec_df.dropna(how="all").dropna(how="all", axis=1)
-# selec_df_row_means = selec_df.mean(axis=1)
-# selec_df_col_means = selec_df.mean(axis=0)
-# selec_thresh = np.percentile(
-#     np.concatenate([selec_df_row_means, selec_df_col_means]), 25
-# )
-# selec_df = selec_df.loc[
-#     (selec_df_row_means >= selec_thresh) & (selec_df_col_means >= selec_thresh)
-# ]
+selec_df = selec_df.dropna(how="all").dropna(how="all", axis=1)
+selec_df_row_means = selec_df.mean(axis=1)
+selec_df_col_means = selec_df.mean(axis=0)
+selec_thresh = np.percentile(
+    np.concatenate([selec_df_row_means, selec_df_col_means]), 25
+)
+selec_df = selec_df.loc[
+    (selec_df_row_means >= selec_thresh) & (selec_df_col_means >= selec_thresh)
+]
 ```
 
 ```{python}
