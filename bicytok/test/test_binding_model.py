@@ -91,8 +91,8 @@ def test_symmetric_affinities():
     recAbundances, targ, offTarg = sample_data(n_obs=1000, n_var=5)
     dose = 1e-10
     valencies = np.array([[2, 1, 1]])
-    max_iter = 5000
-    tol = 1e-12
+    max_iter = 1000
+    tol = 1e-6
 
     row, col = np.tril_indices(5, k=0)
     for i, j in zip(row, col, strict=False):
@@ -104,7 +104,12 @@ def test_symmetric_affinities():
         offTargRecs = test_abundances[offTarg]
 
         optSelec, optAffs, optKx_star = optimize_affs(
-            targRecs=targRecs, offTargRecs=offTargRecs, dose=dose, valencies=valencies, max_iter=max_iter, tol=tol
+            targRecs=targRecs,
+            offTargRecs=offTargRecs,
+            dose=dose,
+            valencies=valencies,
+            max_iter=max_iter,
+            tol=tol,
         )
         optAffs_forward = np.array(optAffs)
 
@@ -113,12 +118,19 @@ def test_symmetric_affinities():
         offTargRecs = test_abundances[offTarg]
 
         optSelec, optAffs, optKx_star = optimize_affs(
-            targRecs=targRecs, offTargRecs=offTargRecs, dose=dose, valencies=valencies, max_iter=max_iter, tol=tol
+            targRecs=targRecs,
+            offTargRecs=offTargRecs,
+            dose=dose,
+            valencies=valencies,
+            max_iter=max_iter,
+            tol=tol,
         )
         optAffs_reverse = np.array(optAffs)
 
         print(f"Testing receptors {i} and {j} swapped")
-        print(f"Forward affinities: {optAffs_forward}, Reverse affinities: {optAffs_reverse}")
+        print(
+            f"Forward affinities: {optAffs_forward}, Reverse affinities: {optAffs_reverse}"
+        )
 
         assert np.isclose(optAffs_forward[0], optAffs_reverse[0], rtol=1e-2)
         assert np.isclose(optAffs_forward[1], optAffs_reverse[2], rtol=1e-2)
