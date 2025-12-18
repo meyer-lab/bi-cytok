@@ -91,8 +91,6 @@ def test_symmetric_affinities():
     recAbundances, targ, offTarg = sample_data(n_obs=1000, n_var=5)
     dose = 1e-10
     valencies = np.array([[2, 1, 1]])
-    max_iter = 1000
-    tol = 1e-6
 
     row, col = np.tril_indices(5, k=0)
     for i, j in zip(row, col, strict=False):
@@ -108,8 +106,6 @@ def test_symmetric_affinities():
             offTargRecs=offTargRecs,
             dose=dose,
             valencies=valencies,
-            max_iter=max_iter,
-            tol=tol,
         )
         optAffs_forward = np.array(optAffs)
 
@@ -122,8 +118,6 @@ def test_symmetric_affinities():
             offTargRecs=offTargRecs,
             dose=dose,
             valencies=valencies,
-            max_iter=max_iter,
-            tol=tol,
         )
         optAffs_reverse = np.array(optAffs)
 
