@@ -242,9 +242,11 @@ def filter_receptor_abundances(
 
 def sample_test_data(n_obs=100, n_var=10):
     rng = np.random.default_rng(1)
-    recAbundances = rng.uniform(size=(n_obs, n_var)) * 10
+    recAbundances = rng.normal(loc=50, scale=2, size=(n_obs, n_var))
+    print(recAbundances.shape)
     targ_ind = rng.choice(n_obs, size=n_obs // 2, replace=False)
     targ = np.zeros(n_obs, dtype=bool)
     targ[targ_ind] = True
     offTarg = ~targ
+    recAbundances[targ] = recAbundances[targ] + 3.0
     return recAbundances, targ, offTarg
