@@ -88,47 +88,44 @@ def test_binding_model():
 def test_symmetric_affinities():
     """Test that optimize_affs predicts symmetric target receptor affinities when valencies are symmetric"""
 
-    recAbundances, targ, offTarg = sample_data(n_obs=1000, n_var=5)
+    n_receptors = 10
+    recAbundances, targ, offTarg = sample_data(n_obs=1000, n_var=n_receptors)
     dose = 1e-10
     valencies = np.array([[2, 1, 1]])
 
-    row, col = np.tril_indices(5, k=0)
+    row, col = np.tril_indices(n_receptors, k=0)
     for i, j in zip(row, col, strict=False):
+        # Exclude signal receptor or identical target receptors
         if i == j or i == 0 or j == 0:
             continue
 
+        # Test forward target receptor order
         test_abundances = recAbundances[:, [0, i, j]]
         targRecs = test_abundances[targ]
         offTargRecs = test_abundances[offTarg]
-
-        optSelec, optAffs, optKx_star = optimize_affs(
+        optSelec_f, optAffs_f, optKx_star_f = optimize_affs(
             targRecs=targRecs,
             offTargRecs=offTargRecs,
             dose=dose,
             valencies=valencies,
         )
-        optAffs_forward = np.array(optAffs)
 
+        # Test reverse target receptor order
         test_abundances = recAbundances[:, [0, j, i]]
         targRecs = test_abundances[targ]
         offTargRecs = test_abundances[offTarg]
-
-        optSelec, optAffs, optKx_star = optimize_affs(
+        optSelec_r, optAffs_r, optKx_star_r = optimize_affs(
             targRecs=targRecs,
             offTargRecs=offTargRecs,
             dose=dose,
             valencies=valencies,
         )
-        optAffs_reverse = np.array(optAffs)
 
-        print(f"Testing receptors {i} and {j} swapped")
-        print(
-            f"Forward affinities: {optAffs_forward}, Reverse affinities: {optAffs_reverse}"
-        )
-
-        assert np.isclose(optAffs_forward[0], optAffs_reverse[0], rtol=1e-2)
-        assert np.isclose(optAffs_forward[1], optAffs_reverse[2], rtol=1e-2)
-        assert np.isclose(optAffs_forward[2], optAffs_reverse[1], rtol=1e-2)
+        assert np.isclose(optSelec_f, optSelec_r)
+        assert np.isclose(optAffs_f[0], optAffs_r[0], rtol=1e-3)
+        assert np.isclose(optAffs_f[1], optAffs_r[2], rtol=1e-3)
+        assert np.isclose(optAffs_f[2], optAffs_r[1], rtol=1e-3)
+        assert np.isclose(optKx_star_f, optKx_star_r)
 
 
 def test_invalid_model_function_inputs():
