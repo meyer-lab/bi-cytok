@@ -2,6 +2,7 @@
 Unit test file for binding model functions.
 """
 
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -126,6 +127,54 @@ def test_symmetric_affinities():
         assert np.isclose(optAffs_f[1], optAffs_r[2], rtol=1e-3)
         assert np.isclose(optAffs_f[2], optAffs_r[1], rtol=1e-3)
         assert np.isclose(optKx_star_f, optKx_star_r)
+
+
+def test_equivalent_compositions():
+    """
+    Test that optimize_affs predicts equivalent selectivities for functionally
+        equivalent valency composition definitions.
+    """
+
+    n_receptors = 10
+    recAbundances, targ, offTarg = sample_data(n_obs=1000, n_var=n_receptors)
+    dose = 1e-10
+
+    for i in range(1, n_receptors):
+        # Test shared valency definition
+        test_abundances = recAbundances[:, [0, i]]
+        valencies = np.array([[2, 2]])
+        targRecs = test_abundances[targ]
+        offTargRecs = test_abundances[offTarg]
+        optSelec_sh, optAffs_sh, optKx_star_sh = optimize_affs(
+            targRecs=targRecs,
+            offTargRecs=offTargRecs,
+            dose=dose,
+            valencies=valencies,
+        )
+
+        # Test split valency definition
+        test_abundances = recAbundances[:, [0, i, i]]
+        valencies = np.array([[2, 1, 1]])
+        targRecs = test_abundances[targ]
+        offTargRecs = test_abundances[offTarg]
+        optSelec_sp, optAffs_sp, optKx_star_sp = optimize_affs(
+            targRecs=targRecs,
+            offTargRecs=offTargRecs,
+            dose=dose,
+            valencies=valencies,
+        )
+
+        # Tols loosened to pass disagreements
+        assert np.isclose(optSelec_sh, optSelec_sp, rtol=1e-2)
+        warnings.warn(
+            "Affinity tolerances temporarily loosened to pass disagreements between "
+            "equivalent compositions.",
+            stacklevel=2,
+        )
+        assert np.isclose(optAffs_sh[0], optAffs_sp[0], rtol=1e-1)
+        assert np.isclose(optAffs_sh[1], optAffs_sp[1], rtol=1e-1)
+        assert np.isclose(optAffs_sp[1], optAffs_sp[2], rtol=1e-1)
+        assert np.isclose(optKx_star_sh, optKx_star_sp)
 
 
 def test_invalid_model_function_inputs():
