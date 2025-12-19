@@ -36,7 +36,8 @@ receptors = ["CD25", "CD4-1", "CD27"]
 signal = ["CD122"]
 cell_type = "Treg"
 dose = 1e-10
-valency = np.array([[2, 1, 1]])
+valencies_main = np.array([[2, 1, 1]])
+valencies_diag = np.array([[2, 2]])
 cell_categorization = "CellType2"
 sample_size = 100
 
@@ -65,7 +66,12 @@ for i, j in zip(row, col, strict=False):
     rec1_abun = sample_df[[rec1]].to_numpy()
     rec2_abun = sample_df[[rec2]].to_numpy()
 
-    receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+    if i == j:
+        valency = valencies_diag
+        receptor_abuns = np.hstack((signal_abun, rec1_abun))
+    else:
+        valency = valencies_main
+        receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
 
     targ_abun = receptor_abuns[targ_mask]
     off_targ_abun = receptor_abuns[off_targ_mask]
@@ -76,7 +82,10 @@ for i, j in zip(row, col, strict=False):
 i_upper, j_upper = np.triu_indices(len(receptors), k=1)
 selectivities[i_upper, j_upper] = selectivities[j_upper, i_upper]
 selec_df = pd.DataFrame(selectivities, index=receptors, columns=receptors)
+```
 
+``` {python}
+# Filter selectivity dataframe to highlight top combinations
 selec_df = selec_df.dropna(how="all").dropna(how="all", axis=1)
 selec_df_row_means = selec_df.mean(axis=1)
 selec_df_col_means = selec_df.mean(axis=0)

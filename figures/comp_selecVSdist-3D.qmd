@@ -47,7 +47,8 @@ sample_size = 100
 targ_cell = "Treg"
 dose = 1e-10
 cell_categorization = "CellType2"
-model_valencies = np.array([[(2), (1), (1)]])
+model_valencies_main = np.array([[2, 1, 1]])
+model_valencies_diag = np.array([[2, 2]])
 
 def generate_receptor_pairs(receptors):
     pairs = []
@@ -103,8 +104,15 @@ for receptor_pair in receptor_pairs:
     KL_div_vals.append(KL_div)
     EMD_vals.append(EMD)
 
-    targ_recs = df_targ_cell[[signal_receptor] + receptor_pair].to_numpy()
-    off_targ_recs = df_off_targ_cell[[signal_receptor] + receptor_pair].to_numpy()
+    if receptor_pair[0] == receptor_pair[1]:
+        model_valencies = model_valencies_diag
+        targ_recs = df_targ_cell[[signal_receptor, receptor_pair[0]]].to_numpy()
+        off_targ_recs = df_off_targ_cell[[signal_receptor, receptor_pair[0]]].to_numpy()
+    else:
+        model_valencies = model_valencies_main
+        targ_recs = df_targ_cell[[signal_receptor] + receptor_pair].to_numpy()
+        off_targ_recs = df_off_targ_cell[[signal_receptor] + receptor_pair].to_numpy()
+
     opt_selec, _, _ = optimize_affs(
         targRecs=targ_recs,
         offTargRecs=off_targ_recs,
