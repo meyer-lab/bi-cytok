@@ -1,5 +1,5 @@
 """
-Unit test file.
+Unit test file for binding model functions.
 """
 
 from pathlib import Path
@@ -9,8 +9,8 @@ import pandas as pd
 import pytest
 
 from ..binding_model_funcs import cyt_binding_model
-from ..distance_metric_funcs import KL_EMD_1D, KL_EMD_2D, KL_EMD_3D
 from ..imports import importCITE, sample_receptor_abundances
+from ..imports import sample_test_data as sample_data
 from ..selectivity_funcs import (
     min_off_targ_selec,
     optimize_affs,
@@ -20,101 +20,8 @@ from ..selectivity_funcs import (
 path_here = Path(__file__).parent.parent
 
 
-def sample_data(n_obs=100, n_var=10):
-    rng = np.random.default_rng(1)
-    recAbundances = rng.uniform(size=(n_obs, n_var)) * 10
-    targ_ind = rng.choice(n_obs, size=n_obs // 2, replace=False)
-    targ = np.zeros(n_obs, dtype=bool)
-    targ[targ_ind] = True
-    offTarg = ~targ
-    return recAbundances, targ, offTarg
-
-
-def test_KL_EMD_1D():
-    recAbundances, targ, offTarg = sample_data()
-    targ = np.array(targ, dtype=bool)
-    offTarg = np.array(offTarg, dtype=bool)
-
-    KL_div_vals, EMD_vals = KL_EMD_1D(recAbundances, targ, offTarg)
-
-    assert len(KL_div_vals) == recAbundances.shape[1]
-    assert len(EMD_vals) == recAbundances.shape[1]
-    assert all([isinstance(i, np.bool) for i in np.append(targ, offTarg)])
-
-
-def test_KL_EMD_2D():
-    recAbundances, targ, offTarg = sample_data()
-    targ = np.array(targ, dtype=bool)
-    offTarg = np.array(offTarg, dtype=bool)
-
-    KL_div_vals, EMD_vals = KL_EMD_2D(recAbundances, targ, offTarg)
-
-    assert KL_div_vals.shape == (recAbundances.shape[1], recAbundances.shape[1])
-    assert EMD_vals.shape == (recAbundances.shape[1], recAbundances.shape[1])
-    assert np.all(np.isnan(KL_div_vals) | (KL_div_vals >= 0))
-    assert np.all(np.isnan(EMD_vals) | (EMD_vals >= 0))
-
-
-def test_KL_EMD_3D():
-    recAbundances, targ, offTarg = sample_data(n_var=3)
-    targ = np.array(targ, dtype=bool)
-    offTarg = np.array(offTarg, dtype=bool)
-
-    KL_div_vals, EMD_vals = KL_EMD_3D(recAbundances, targ, offTarg)
-
-    assert KL_div_vals.shape == (
-        recAbundances.shape[1],
-        recAbundances.shape[1],
-        recAbundances.shape[1],
-    )
-    assert EMD_vals.shape == (
-        recAbundances.shape[1],
-        recAbundances.shape[1],
-        recAbundances.shape[1],
-    )
-    assert np.all(np.isnan(KL_div_vals) | (KL_div_vals >= 0))
-    assert np.all(np.isnan(EMD_vals) | (EMD_vals >= 0))
-
-
-def test_invalid_distance_function_inputs():
-    recAbundances, targ, offTarg = sample_data()
-
-    # Test invalid inputs for KL_EMD_1D
-    with pytest.raises(AssertionError):
-        KL_EMD_1D(recAbundances, np.arange(100), offTarg)  # non-boolean targ/offTarg
-
-    with pytest.raises(AssertionError):
-        KL_EMD_1D(recAbundances, np.full_like(targ, False), offTarg)  # no target cells
-
-    with pytest.raises(AssertionError):
-        KL_EMD_1D(
-            recAbundances, targ, np.full_like(offTarg, False)
-        )  # no off-target cells
-
-    # Test invalid inputs for KL_EMD_2D
-    with pytest.raises(AssertionError):
-        KL_EMD_2D(recAbundances, np.arange(100), offTarg)  # non-boolean targ/offTarg
-
-    with pytest.raises(AssertionError):
-        KL_EMD_2D(recAbundances, np.full_like(targ, False), offTarg)  # no target cells
-
-    with pytest.raises(AssertionError):
-        KL_EMD_2D(
-            recAbundances, targ, np.full_like(offTarg, False)
-        )  # no off-target cells
-
-    # Test invalid inputs for KL_EMD_3D
-    with pytest.raises(AssertionError):
-        KL_EMD_3D(recAbundances, np.arange(100), offTarg)
-
-    with pytest.raises(AssertionError):
-        KL_EMD_3D(recAbundances, np.full_like(targ, False), offTarg)
-
-    with pytest.raises(AssertionError):
-        KL_EMD_3D(recAbundances, targ, np.full_like(offTarg, False))
-
-
 def test_optimize_affs():
+    """Test for reasonable output types and shapes from optimize_affs function."""
     recAbundances, targ, offTarg = sample_data()
     recAbundances = recAbundances[:, 0:3]
     targRecs = recAbundances[targ]
@@ -138,6 +45,7 @@ def test_optimize_affs():
 
 
 def test_binding_model():
+    """Test for reasonable output types and shapes from cyt_binding_model function."""
     rng = np.random.default_rng(1)
 
     num_receptors = 3
@@ -177,7 +85,52 @@ def test_binding_model():
     assert R_bound.shape == recCounts.shape
 
 
+def test_symmetric_affinities():
+    """Test that optimize_affs predicts symmetric target receptor affinities when valencies are symmetric"""
+
+    n_receptors = 10
+    recAbundances, targ, offTarg = sample_data(n_obs=1000, n_var=n_receptors)
+    dose = 1e-10
+    valencies = np.array([[2, 1, 1]])
+
+    row, col = np.tril_indices(n_receptors, k=0)
+    for i, j in zip(row, col, strict=False):
+        # Exclude signal receptor or identical target receptors
+        if i == j or i == 0 or j == 0:
+            continue
+
+        # Test forward target receptor order
+        test_abundances = recAbundances[:, [0, i, j]]
+        targRecs = test_abundances[targ]
+        offTargRecs = test_abundances[offTarg]
+        optSelec_f, optAffs_f, optKx_star_f = optimize_affs(
+            targRecs=targRecs,
+            offTargRecs=offTargRecs,
+            dose=dose,
+            valencies=valencies,
+        )
+
+        # Test reverse target receptor order
+        test_abundances = recAbundances[:, [0, j, i]]
+        targRecs = test_abundances[targ]
+        offTargRecs = test_abundances[offTarg]
+        optSelec_r, optAffs_r, optKx_star_r = optimize_affs(
+            targRecs=targRecs,
+            offTargRecs=offTargRecs,
+            dose=dose,
+            valencies=valencies,
+        )
+
+        assert np.isclose(optSelec_f, optSelec_r)
+        assert np.isclose(optAffs_f[0], optAffs_r[0], rtol=1e-3)
+        assert np.isclose(optAffs_f[1], optAffs_r[2], rtol=1e-3)
+        assert np.isclose(optAffs_f[2], optAffs_r[1], rtol=1e-3)
+        assert np.isclose(optKx_star_f, optKx_star_r)
+
+
 def test_invalid_model_function_inputs():
+    """Test for appropriate error handling of invalid inputs in binding model functions."""
+
     rng = np.random.default_rng(1)
 
     # Test invalid inputs for restructuringAffs

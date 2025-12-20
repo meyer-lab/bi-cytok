@@ -39,7 +39,8 @@ receptors = ["CD25", "CD4-1", "CD27"]
 signal = ["CD122"]
 cell_type = "Treg"
 dose = 1e-10
-valency = np.array([[2, 1, 1]])
+valencies_main = np.array([[2, 1, 1]])
+valencies_diag = np.array([[2,2]])
 cell_categorization = "CellType2"
 sample_size = 100
 
@@ -71,12 +72,17 @@ for rec1, rec2 in receptor_combinations:
     rec1_abun = sample_df[[rec1]].to_numpy()
     rec2_abun = sample_df[[rec2]].to_numpy()
 
-    receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+    if rec1 == rec2:
+        valencies = valencies_diag
+        receptor_abuns = np.hstack((signal_abun, rec1_abun))
+    else:
+        valencies = valencies_main
+        receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
 
     targ_abun = receptor_abuns[targ_mask]
     off_targ_abun = receptor_abuns[off_targ_mask]
 
-    opt_selec, _, _ = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
+    opt_selec, _, _ = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valencies)
     
     selectivities.append(1 / opt_selec)
     combination_names.append(f"{rec1}+{rec2}")
