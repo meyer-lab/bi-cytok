@@ -26,15 +26,18 @@ Generates a scatter plot analyzing the correlation between KL Divergence and EMD
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
-
 from sklearn.linear_model import LinearRegression
+
 from bicytok.distance_metric_funcs import KL_EMD_1D
-from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.imports import (
+    filter_receptor_abundances,
+    importCITE,
+    sample_receptor_abundances,
+)
 
 plt.rcParams["svg.fonttype"] = "none"
 
@@ -96,14 +99,13 @@ results_df.loc[results_df["Residual"] < -residual_threshold, "Outlier_Type"] = (
 high_kl_outliers = results_df[
     results_df["Outlier_Type"] == "High KL, Low EMD"
 ].nlargest(5, "Abs_Residual")
-low_kl_outliers = results_df[
-    results_df["Outlier_Type"] == "Low KL, High EMD"
-].nlargest(5, "Abs_Residual")
+low_kl_outliers = results_df[results_df["Outlier_Type"] == "Low KL, High EMD"].nlargest(
+    5, "Abs_Residual"
+)
 ```
 
 ```{python}
 #| fig-cap: "KL Divergence vs EMD scatter plot with outlier analysis"
-
 color_map = {
     "Normal": "gray",
     "High KL, Low EMD": "red",
@@ -156,7 +158,6 @@ plt.show()
 ```
 
 ```{python}
-
 stats_text = (
     f"Pearson correlation: {correlation:.4f}\n"
     f"R²: {r_squared:.4f}\n"
@@ -170,11 +171,10 @@ print(stats_text)
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
 Visualized the relationship between KL Divergence and EMD between **{targ_cell}** and all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
 \n\n
-The receptors analyzed were **{', '.join(receptor_columns)}**.
+The receptors analyzed were **{", ".join(receptor_columns)}**.
 """
 
 print(text)

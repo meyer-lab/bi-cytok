@@ -29,17 +29,18 @@ Generates scatter plots examining the correlation between 2D distance metrics (K
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
+import time
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 from bicytok.distance_metric_funcs import KL_EMD_2D
-from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.imports import (
+    filter_receptor_abundances,
+    importCITE,
+    sample_receptor_abundances,
+)
 from bicytok.selectivity_funcs import optimize_affs
-
-import time
 
 receptors = ["CD25", "CD4-1", "CD27"]
 signal_receptor = "CD122"
@@ -50,21 +51,22 @@ cell_categorization = "CellType2"
 model_valencies_main = np.array([[2, 1, 1]])
 model_valencies_diag = np.array([[2, 2]])
 
+
 def generate_receptor_pairs(receptors):
     pairs = []
     for r1 in receptors:
         for r2 in receptors:
             pairs.append([r1, r2])
     return pairs
+
+
 receptor_pairs = generate_receptor_pairs(receptors)
 
 CITE_DF = importCITE()
 assert targ_cell in CITE_DF[cell_categorization].unique()
 
 epitopes = [
-    col
-    for col in CITE_DF.columns
-    if col not in ["CellType1", "CellType2", "CellType3"]
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
 ]
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
@@ -75,9 +77,7 @@ sample_df = sample_receptor_abundances(
 )
 filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
 
-all_receptors = set(
-    [r for pair in receptor_pairs for r in pair] + [signal_receptor]
-)
+all_receptors = set([r for pair in receptor_pairs for r in pair] + [signal_receptor])
 missing_receptors = all_receptors - set(filtered_sample_df.columns)
 if missing_receptors:
     raise ValueError(f"Missing receptors in filtered dataset: {missing_receptors}")
@@ -145,14 +145,13 @@ sns.scatterplot(
     legend=True,
 )
 
-plt.grid(True, linestyle='--', alpha=0.7)
+plt.grid(True, linestyle="--", alpha=0.7)
 plt.legend(bbox_to_anchor=(1.05, 1), title="Receptor Pair")
 plt.show()
 ```
 
 ```{python}
 #| fig-cap: "EMD vs Selectivity for receptor pairs"
-
 sns.scatterplot(
     data=metrics_df,
     x="EMD",
@@ -162,7 +161,7 @@ sns.scatterplot(
     legend=True,
 )
 
-plt.grid(True, linestyle='--', alpha=0.7)
+plt.grid(True, linestyle="--", alpha=0.7)
 plt.legend(loc="upper left", title="Receptor Pair")
 plt.legend(bbox_to_anchor=(1.05, 1), title="Receptor Pair")
 plt.show()
@@ -171,11 +170,10 @@ plt.show()
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
 Visualized the relationship between 2D distance metrics (KL Divergence and EMD) and 3D selectivity. Target cells were **{targ_cell}**s, compared against all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
 \n\n
-For selectivity optimization, the signal receptor was **{signal_receptor}**, with tetravalent complexes at a dose of **{dose}**. Tetravalent complexes consisted of two signal receptor ligands, and one ligand each for the two target receptors. The epitope pairs that were analyzed were **{', '.join(map(str, receptor_pairs))}**, which served as the target receptors for selectivity optimization and as the double receptor distributions for 2D EMD and KL div. calculations.
+For selectivity optimization, the signal receptor was **{signal_receptor}**, with tetravalent complexes at a dose of **{dose}**. Tetravalent complexes consisted of two signal receptor ligands, and one ligand each for the two target receptors. The epitope pairs that were analyzed were **{", ".join(map(str, receptor_pairs))}**, which served as the target receptors for selectivity optimization and as the double receptor distributions for 2D EMD and KL div. calculations.
 """
 
 print(text)

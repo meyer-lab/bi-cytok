@@ -24,12 +24,14 @@ Generates horizontal bar plots showing the receptor triplets with the highest 3D
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import numpy as np
-import matplotlib.pyplot as plt
 
 from bicytok.distance_metric_funcs import KL_EMD_3D
-from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.imports import (
+    filter_receptor_abundances,
+    importCITE,
+    sample_receptor_abundances,
+)
 
 targ_cell = "Treg"
 receptors_of_interest = [
@@ -83,7 +85,6 @@ top_EMD_receptors = [
 
 ```{python}
 #| fig-cap: "Top 5 KL Divergence values for receptor triplets"
-
 plt.barh(
     top_KL_receptors,
     KL_flat[top_KL_indices],
@@ -96,7 +97,6 @@ plt.show()
 
 ```{python}
 #| fig-cap: "Top 5 EMD values for receptor triplets"
-
 plt.barh(
     top_EMD_receptors,
     EMD_flat[top_EMD_indices],
@@ -110,11 +110,10 @@ plt.show()
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
 Calculated the 3D KL Divergence and EMD for receptor triplets between **{targ_cell}**s and all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
 \n\n
-The receptors analyzed were **{', '.join(receptors_of_interest)}**.
+The receptors analyzed were **{", ".join(receptors_of_interest)}**.
 """
 
 print(text)

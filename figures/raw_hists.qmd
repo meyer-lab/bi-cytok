@@ -32,14 +32,16 @@ Generates a comprehensive grid of histogram plots comparing CITE-seq epitope cou
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 
 from bicytok.distance_metric_funcs import KL_EMD_1D
-from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.imports import (
+    filter_receptor_abundances,
+    importCITE,
+    sample_receptor_abundances,
+)
 from bicytok.selectivity_funcs import optimize_affs
 
 plt.rcParams["svg.fonttype"] = "none"
@@ -106,22 +108,75 @@ bottom_selec_df = metrics_df.nsmallest(num_hists, "Selectivity")
 
 plot_data = []
 for i, (_, row) in enumerate(top_kl_df.iterrows()):
-    plot_data.append((row["Receptor"], row["KL_Divergence"], row["EMD"], row["Selectivity"], "Top KL", i))
+    plot_data.append(
+        (
+            row["Receptor"],
+            row["KL_Divergence"],
+            row["EMD"],
+            row["Selectivity"],
+            "Top KL",
+            i,
+        )
+    )
 for i, (_, row) in enumerate(bottom_kl_df.iterrows()):
-    plot_data.append((row["Receptor"], row["KL_Divergence"], row["EMD"], row["Selectivity"], "Bottom KL", i + num_hists))
+    plot_data.append(
+        (
+            row["Receptor"],
+            row["KL_Divergence"],
+            row["EMD"],
+            row["Selectivity"],
+            "Bottom KL",
+            i + num_hists,
+        )
+    )
 for i, (_, row) in enumerate(top_emd_df.iterrows()):
-    plot_data.append((row["Receptor"], row["KL_Divergence"], row["EMD"], row["Selectivity"], "Top EMD", i + 2 * num_hists))
+    plot_data.append(
+        (
+            row["Receptor"],
+            row["KL_Divergence"],
+            row["EMD"],
+            row["Selectivity"],
+            "Top EMD",
+            i + 2 * num_hists,
+        )
+    )
 for i, (_, row) in enumerate(bottom_emd_df.iterrows()):
-    plot_data.append((row["Receptor"], row["KL_Divergence"], row["EMD"], row["Selectivity"], "Bottom EMD", i + 3 * num_hists))
+    plot_data.append(
+        (
+            row["Receptor"],
+            row["KL_Divergence"],
+            row["EMD"],
+            row["Selectivity"],
+            "Bottom EMD",
+            i + 3 * num_hists,
+        )
+    )
 for i, (_, row) in enumerate(top_selec_df.iterrows()):
-    plot_data.append((row["Receptor"], row["KL_Divergence"], row["EMD"], row["Selectivity"], "Top Selectivity", i + 4 * num_hists))
+    plot_data.append(
+        (
+            row["Receptor"],
+            row["KL_Divergence"],
+            row["EMD"],
+            row["Selectivity"],
+            "Top Selectivity",
+            i + 4 * num_hists,
+        )
+    )
 for i, (_, row) in enumerate(bottom_selec_df.iterrows()):
-    plot_data.append((row["Receptor"], row["KL_Divergence"], row["EMD"], row["Selectivity"], "Bottom Selectivity", i + 5 * num_hists))
+    plot_data.append(
+        (
+            row["Receptor"],
+            row["KL_Divergence"],
+            row["EMD"],
+            row["Selectivity"],
+            "Bottom Selectivity",
+            i + 5 * num_hists,
+        )
+    )
 ```
 
 ```{python}
 #| fig-cap: "Receptor distribution comparison showing target vs off-target distributions"
-
 fig, ax = plt.subplots(6, num_hists, figsize=(num_hists * 4, 20))
 
 for receptor, kl_val, emd_val, selec_val, category, plot_idx in plot_data:
@@ -129,9 +184,9 @@ for receptor, kl_val, emd_val, selec_val, category, plot_idx in plot_data:
     mean_abundance = np.mean(rec_abundance)
     targ_abundances = rec_abundance[targ_mask] / mean_abundance
     off_targ_abundances = rec_abundance[off_targ_mask] / mean_abundance
-    
+
     i = plot_idx
-    
+
     sns.histplot(
         targ_abundances,
         ax=ax[i // num_hists, i % num_hists],
