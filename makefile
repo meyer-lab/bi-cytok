@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 flist = $(wildcard bicytok/figures/figure*.py)
 
-.PHONY: clean test all testprofile pyright
+.PHONY: clean test all testprofile pyright ruff-check-figures ruff-format-figures ruff-check-all ruff-format-all
 
 all: $(patsubst bicytok/figures/figure%.py, output/figure%.svg, $(flist))
 
@@ -28,3 +28,19 @@ coverage.xml: .venv
 
 pyright: .venv
 	uv run pyright bicytok
+
+# Ruff linting and formatting for Quarto figures
+ruff-check-figures: .venv
+	uv run python bicytok/lint_qmd.py check figures
+
+ruff-format-figures: .venv
+	uv run python bicytok/lint_qmd.py format figures
+
+# Ruff linting and formatting for all code (including Quarto)
+ruff-check-all: .venv
+	uv run ruff check bicytok
+	uv run python bicytok/lint_qmd.py check figures
+
+ruff-format-all: .venv
+	uv run ruff format bicytok
+	uv run python bicytok/lint_qmd.py format figures
