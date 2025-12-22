@@ -43,8 +43,8 @@ cell_type = "Treg"
 off_targ_cell_types = None
 # off_targ_cell_types = ["CD4 TCM", "CD8 TCM", "ILC"]
 dose = 1e-10
-valency_main = np.array([[2, 1, 1]])
-valency_diag = np.array([[2, 2]])
+valencies_main = np.array([[2, 1, 1]])
+valencies_diag = np.array([[2, 2]])
 cell_categorization = "CellType2"
 sample_size = 1000
 include_prototype_signal_receptor = False
@@ -91,14 +91,14 @@ for i, j in zip(row, col, strict=False):
     rec1 = receptors[i]
     rec2 = receptors[j]
 
-    if rec1 == rec2:
-        valency = valency_diag
-        rec_abun = sample_df[[rec1]].to_numpy()
-        receptor_abuns = np.hstack((signal_abun, rec_abun))
+    rec1_abun = sample_df[[rec1]].to_numpy()
+    rec2_abun = sample_df[[rec2]].to_numpy()
+
+    if i == j:
+        valency = valencies_diag
+        receptor_abuns = np.hstack((signal_abun, rec1_abun))
     else:
-        valency = valency_main
-        rec1_abun = sample_df[[rec1]].to_numpy()
-        rec2_abun = sample_df[[rec2]].to_numpy()
+        valency = valencies_main
         receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
 
     targ_abun = receptor_abuns[targ_mask]
@@ -118,7 +118,10 @@ print(f"Total optimization time: {time.time() - total_time_start:.2f} seconds")
 i_upper, j_upper = np.triu_indices(len(receptors), k=1)
 selectivities[i_upper, j_upper] = selectivities[j_upper, i_upper]
 selec_df = pd.DataFrame(selectivities, index=receptors, columns=receptors)
+```
 
+``` {python}
+# Filter selectivity dataframe to highlight top combinations
 selec_df = selec_df.dropna(how="all").dropna(how="all", axis=1)
 selec_df_row_means = selec_df.mean(axis=1)
 selec_df_col_means = selec_df.mean(axis=0)

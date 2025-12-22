@@ -194,8 +194,8 @@ def optimize_affs(
     valencies: np.ndarray,
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
-    max_iter: int = 100,
-    tol: float = 1e-3,
+    max_iter: int = 1000,
+    tol: float = 1e-6,
 ) -> tuple[float, list, float]:
     """
     NumPy-compatible wrapper for optimize_affs that handles conversions to/from JAX.
