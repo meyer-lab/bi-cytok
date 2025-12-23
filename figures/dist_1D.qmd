@@ -68,6 +68,8 @@ top_EMD_indices = np.argsort(np.nan_to_num(EMD_values))[-10:]
 
 ```{python}
 #| fig-cap: "KL divergence values of the top 10 epitopes"
+import matplotlib.pyplot as plt
+
 # Plot KL values
 plt.bar(
     filtered_sampleDF.columns[top_KL_indices],

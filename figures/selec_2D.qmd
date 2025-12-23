@@ -94,6 +94,9 @@ selec_df = selec_df.loc[
 
 ```{python}
 #| fig-cap: "Heatmap of binding model selectivity for receptor pairs"
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 sns.heatmap(selec_df, cmap="bwr", cbar=True, xticklabels=True, yticklabels=True)
 
 plt.tick_params(axis="x", labelsize=5)

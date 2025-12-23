@@ -181,6 +181,8 @@ metrics_df_selectivity_only_emd = metrics_df[
 
 ```{python}
 #| fig-cap: "KL Divergence vs Selectivity with categorized top 5 receptors"
+import matplotlib.pyplot as plt
+
 fig, ax = plt.subplots(figsize=(10, 8))
 
 # Plot all receptors in gray
@@ -340,8 +342,6 @@ ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left", fontsize=4)
 plt.tight_layout()
 plt.show()
 ```
-
-
 
 ## Parameter Summary
 ```{python}

@@ -108,6 +108,8 @@ for target_pairs in all_targets:
 
 ```{python}
 #| fig-cap: "Dose vs Selectivity for different ligand combinations and doses"
+import seaborn as sns
+
 sns.lineplot(data=df, x="Dose", y="Selectivity", hue="Ligand")
 plt.xscale("log")
 plt.show()

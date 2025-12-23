@@ -50,6 +50,11 @@ n_samples = 1500
 
 ```{python}
 #| fig-cap: "Comparison of KL divergence and EMD for different Gaussian distributions"
+import matplotlib.pyplot as plt
+from scipy import stats
+
+from bicytok.distance_metric_funcs import KL_EMD_1D
+
 fig, axs = plt.subplots(3, 3, figsize=(15, 10))
 axs = axs.flatten()
 

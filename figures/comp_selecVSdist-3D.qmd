@@ -136,6 +136,9 @@ metrics_df = pd.DataFrame(
 
 ```{python}
 #| fig-cap: "KL Divergence vs Selectivity for receptor pairs"
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 sns.scatterplot(
     data=metrics_df,
     x="KL Divergence",

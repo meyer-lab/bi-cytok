@@ -104,6 +104,8 @@ for cell_type in plot_cell_types:
 
 ```{python}
 #| fig-cap: "1D distribution of receptor with histogram and KDE overlay"
+import seaborn as sns
+
 colors = ["#CF4D6F", "#2774AE"]
 cell_type_labels = ["Target", "Off-target"]
 for i, abundances in enumerate(all_cell_abundances):

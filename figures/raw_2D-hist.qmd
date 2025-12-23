@@ -219,6 +219,9 @@ x_min = y_min = 0
 
 ```{python}
 #| fig-cap: "2D distribution with marginal 1D projections showing axis projections"
+import matplotlib.gridspec as gridspec
+import seaborn as sns
+
 # Create figure with custom gridspec for marginal plots
 fig = plt.figure(figsize=FIGURE_SIZE, dpi=DPI)
 gs = gridspec.GridSpec(

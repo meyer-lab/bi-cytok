@@ -177,6 +177,8 @@ for i, (_, row) in enumerate(bottom_selec_df.iterrows()):
 
 ```{python}
 #| fig-cap: "Receptor distribution comparison showing target vs off-target distributions"
+import seaborn as sns
+
 fig, ax = plt.subplots(6, num_hists, figsize=(num_hists * 4, 20))
 
 for receptor, kl_val, emd_val, selec_val, category, plot_idx in plot_data:

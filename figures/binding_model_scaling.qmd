@@ -150,6 +150,9 @@ for receptor_valency in receptors_of_interest:
 
 ```{python}
 #| fig-cap: "Binding model scaling factor analysis showing receptor binding, selectivity, and optimization parameters"
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 fig, axes = plt.subplots(2, 3, figsize=(18, 10))
 ax = axes.flatten()
 

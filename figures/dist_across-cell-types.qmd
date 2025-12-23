@@ -115,6 +115,8 @@ KL_labs = np.array(KL_labs)[KL_sort_ind]
 
 ```{python}
 #| fig-cap: "Epitopes with the top KL Divergence values for each cell type"
+import matplotlib.pyplot as plt
+
 plt.bar(KL_labs, top_KL, color="k")
 plt.xlabel("Cell Type: Epitope")
 plt.ylabel("KL Divergence")

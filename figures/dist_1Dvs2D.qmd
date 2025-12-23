@@ -86,6 +86,8 @@ KL_div_r2 = 1 - np.sum((KL_div_vals_1D - KL_div_vals_2D_scaled) ** 2) / np.sum(
 
 ```{python}
 #| fig-cap: "Comparison of 1D vs 2D KL Divergence values after scaling correction"
+import matplotlib.pyplot as plt
+
 plt.scatter(KL_div_vals_2D_scaled, KL_div_vals_1D, color="k")
 max_val = max(max(KL_div_vals_1D), max(KL_div_vals_2D_scaled))
 min_val = min(min(KL_div_vals_1D), min(KL_div_vals_2D_scaled))

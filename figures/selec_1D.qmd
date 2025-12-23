@@ -62,6 +62,8 @@ sort_indices = np.argsort(selectivities)
 
 ```{python}
 #| fig-cap: "Optimal selectivity of various epitopes"
+import matplotlib.pyplot as plt
+
 plt.barh(
     np.array(receptors)[sort_indices],
     np.array(selectivities)[sort_indices],

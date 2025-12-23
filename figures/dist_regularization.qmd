@@ -192,6 +192,8 @@ print(f"Calculated metrics for {len(REG_STRENGTHS)} regularization values")
 
 ```{python}
 #| fig-cap: "1D EMD trends versus regularization strength"
+import matplotlib.pyplot as plt
+
 fig, ax = plt.subplots(1, 1, figsize=(10, 10))
 
 for receptor in RECEPTORS_1D:

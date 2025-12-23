@@ -85,6 +85,8 @@ top_EMD_receptors = [
 
 ```{python}
 #| fig-cap: "Top 5 KL Divergence values for receptor triplets"
+import matplotlib.pyplot as plt
+
 plt.barh(
     top_KL_receptors,
     KL_flat[top_KL_indices],

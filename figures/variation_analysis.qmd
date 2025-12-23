@@ -133,6 +133,9 @@ affinities_melted = affinities_df.melt(
 
 ```{python}
 #| fig-cap: "Bootstrap variation in KL Divergence across sample sizes"
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 sns.boxplot(x="sample_size", y="KL_div", data=metrics_df)
 plt.xlabel("Sample Size")
 plt.ylabel("KL Divergence")

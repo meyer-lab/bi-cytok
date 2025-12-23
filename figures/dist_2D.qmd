@@ -94,16 +94,14 @@ kl_threshold = np.percentile(
 
 df_EMD_filt = df_EMD.loc[emd_row_means >= emd_threshold, emd_col_means >= emd_threshold]
 df_KL_filt = df_KL.loc[kl_row_means >= kl_threshold, kl_col_means >= kl_threshold]
-
-# common_receptors = sorted(set(df_EMD.index).intersection(set(df_KL.index)))
-# df_EMD = df_EMD.loc[common_receptors, common_receptors]
-# df_KL = df_KL.loc[common_receptors, common_receptors]
 ```
 
 ```{python}
 #| fig-cap: "EMD heatmap for receptor pairs"
 # Create custom continuous colormap using specified colors
 import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 colors = ["#2774AE", "white", "#CF4D6F"]
 positions = [0, 0.5, 1]
