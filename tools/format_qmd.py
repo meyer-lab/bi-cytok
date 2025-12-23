@@ -2,7 +2,6 @@
 """Lint and format Python code blocks in Quarto markdown files."""
 
 import argparse
-import re
 import subprocess
 import sys
 import tempfile
@@ -44,32 +43,6 @@ def extract_python_blocks(qmd_content: str) -> list[tuple[int, int, str, list[st
     return blocks
 
 
-def adjust_output_paths(output: str, filepath: Path, code_start: int) -> str:
-    """Replace temp file paths with actual paths and adjust line numbers for interpretable check output."""
-    lines = output.split("\n")
-    result = []
-
-    for line in lines:
-        # Match temp file pattern with optional path prefix
-        match = re.search(r"(?:.*[/\\])?tmp[a-zA-Z0-9_-]+\.py", line)
-        if match:
-            line = line.replace(match.group(0), str(filepath))
-            if line_match := re.search(r"(\d+):(\d+)", line):
-                actual_line = int(line_match.group(1)) + code_start - 1
-                line = re.sub(
-                    r"\d+:\d+",
-                    f"{actual_line}:{line_match.group(2)}",
-                    line,
-                    count=1,
-                )
-        elif match := re.match(r"^(\s+\|)?\s+(\d+)\s+\|", line):
-            actual_line = int(match.group(2)) + code_start - 1
-            line = re.sub(r"^\s+(\d+)\s+\|", f"{actual_line} |", line)
-        result.append(line)
-
-    return "\n".join(result)
-
-
 def check_and_fix_qmd_file(filepath: Path, check_only: bool = False) -> int:
     """Check and fix linting issues in a Quarto markdown file.
 
@@ -83,6 +56,7 @@ def check_and_fix_qmd_file(filepath: Path, check_only: bool = False) -> int:
     blocks = extract_python_blocks(content)
     if not blocks:
         return 0
+    file_id = filepath.stem + "_"
 
     issues_found = False
     unfixed_issues = False
@@ -94,7 +68,9 @@ def check_and_fix_qmd_file(filepath: Path, check_only: bool = False) -> int:
         if not code.endswith("\n"):
             code = code + "\n"
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(
+            mode="w", prefix=file_id, suffix=".py", delete=False
+        ) as tmp:
             tmp.write(code)
             tmp_path = tmp.name
 
@@ -107,14 +83,14 @@ def check_and_fix_qmd_file(filepath: Path, check_only: bool = False) -> int:
             )
             if check_result.returncode != 0:
                 issues_found = True
-            if check_result.stdout or check_result.stderr:
+            if check_only and (check_result.stdout or check_result.stderr):
                 output = check_result.stdout + check_result.stderr
-                if (
-                    "All checks passed!" not in output
-                    or check_result.returncode != 0
-                ):
-                    print(adjust_output_paths(output, filepath, code_start), end="")
-            
+                if "All checks passed!" not in output or check_result.returncode != 0:
+                    print(
+                        f"Linting issue(s) found in file: {filepath}, chunk lines: {code_start}-{code_end}"
+                    )
+                    print(output)
+
             # Attempt to fix linting issues
             if not check_only:
                 result = subprocess.run(
@@ -129,11 +105,11 @@ def check_and_fix_qmd_file(filepath: Path, check_only: bool = False) -> int:
                 # Print issues from ruff output
                 if result.stdout or result.stderr:
                     output = result.stdout + result.stderr
-                    if (
-                        "All checks passed!" not in output
-                        or result.returncode != 0
-                    ):
-                        print(adjust_output_paths(output, filepath, code_start), end="")
+                    if "All checks passed!" not in output or result.returncode != 0:
+                        print(
+                            f"Linting issue(s) found in file: {filepath}, chunk lines: {code_start}-{code_end}"
+                        )
+                        print(output)
 
                 # Read changes, merge with Quarto magics, and append updates to lines
                 corrected = Path(tmp_path).read_text()
@@ -146,7 +122,7 @@ def check_and_fix_qmd_file(filepath: Path, check_only: bool = False) -> int:
     # Write back changes if not in check-only mode
     if not check_only:
         filepath.write_text("\n".join(lines))
-        return 2 if unfixed_issues else 0        
+        return 2 if unfixed_issues else 0
 
     return 1 if issues_found else 0
 
@@ -165,6 +141,7 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
     blocks = extract_python_blocks(content)
     if not blocks:
         return 0
+    file_id = filepath.stem + "_"
 
     issues_found = False
     format_failed = False
@@ -174,7 +151,9 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
     for code_start, code_end, code, original_lines in reversed(blocks):
         code = code + "\n" if not code.endswith("\n") else code
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(
+            mode="w", prefix=file_id, suffix=".py", delete=False
+        ) as tmp:
             tmp.write(code)
             tmp_path = tmp.name
 
@@ -187,10 +166,13 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
             )
             if check_result.returncode != 0:
                 issues_found = True
-            if check_result.stdout or check_result.stderr:
+            if check_only and (check_result.stdout or check_result.stderr):
                 output = check_result.stdout + check_result.stderr
-                if "1 file" not in output:
-                    print(adjust_output_paths(output, filepath, code_start), end="")
+                if "already" not in output:
+                    print(
+                        f"Formatting issue(s) found in file: {filepath}, chunk lines: {code_start}-{code_end}"
+                    )
+                    print(output)
 
             # Attempt to fix formatting issues
             if not check_only:
@@ -205,8 +187,11 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
 
                 if result.stdout or result.stderr:
                     output = result.stdout + result.stderr
-                    if "1 file" not in output:
-                        print(adjust_output_paths(output, filepath, code_start), end="")
+                    if "unchanged" not in output:
+                        print(
+                            f"Formatting issue(s) found in file: {filepath}, chunk lines: {code_start}-{code_end}"
+                        )
+                        print(output)
 
                 formatted = Path(tmp_path).read_text()
                 formatted_lines = formatted.rstrip("\n").split("\n")
@@ -308,7 +293,9 @@ def main():
     elif exit_code == 1 and args.check:
         print("Some checks failed.")
     else:
-        print("Some checks failed. If no issues were printed, files have been fixed.")
+        print(
+            "Some checks failed. If no issues were printed above, fixes have been applied."
+        )
 
     return exit_code
 
