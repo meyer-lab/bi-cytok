@@ -39,8 +39,10 @@ ruff-format-figures: .venv
 # Ruff linting and formatting for all code (including Quarto)
 ruff-check-all: .venv
 	uv run ruff check bicytok
+	uv run ruff check tools
 	uv run python tools/format_qmd.py check figures
 
 ruff-format-all: .venv
 	uv run ruff format bicytok
+	uv run ruff format tools
 	uv run python tools/format_qmd.py format figures
