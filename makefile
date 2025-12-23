@@ -31,16 +31,16 @@ pyright: .venv
 
 # Ruff linting and formatting for Quarto figures
 ruff-check-figures: .venv
-	uv run python bicytok/lint_qmd.py check figures
+	uv run python tools/format_qmd.py check figures
 
 ruff-format-figures: .venv
-	uv run python bicytok/lint_qmd.py format figures
+	uv run python tools/format_qmd.py format figures
 
 # Ruff linting and formatting for all code (including Quarto)
 ruff-check-all: .venv
 	uv run ruff check bicytok
-	uv run python bicytok/lint_qmd.py check figures
+	uv run python tools/format_qmd.py check figures
 
 ruff-format-all: .venv
 	uv run ruff format bicytok
-	uv run python bicytok/lint_qmd.py format figures
+	uv run python tools/format_qmd.py format figures
