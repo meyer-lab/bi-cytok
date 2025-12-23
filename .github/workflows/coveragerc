@@ -2,6 +2,6 @@
 
 omit = 
   figures/*
+  tools/*
   bicytok/data/*
-  tools/format_qmd.py
   bicytok/imports.py
