@@ -22,7 +22,6 @@ def extract_python_blocks(qmd_content: str) -> list[tuple[int, int, str, list[st
     lines = qmd_content.split("\n")
     i = 0
     while i < len(lines):
-        # Look for Python code block markers
         if lines[i].strip().startswith("```{python}"):
             code_start = i + 1
             i += 1
@@ -31,54 +30,40 @@ def extract_python_blocks(qmd_content: str) -> list[tuple[int, int, str, list[st
                 code_lines.append(lines[i])
                 i += 1
 
-            end_line = i
-
             if code_lines:
-                # Filter out lines that aren't valid Python
                 filtered_lines = [
                     line
                     for line in code_lines
-                    if not line.lstrip().startswith("%")  # IPython magic
-                    and not line.lstrip().startswith("!")  # Shell commands
-                    and not line.lstrip().startswith("#|")  # Quarto options
+                    if not line.lstrip().startswith(("%", "!", "#|"))
                 ]
                 code = "\n".join(filtered_lines)
                 if code.strip():
-                    blocks.append((code_start, end_line, code, code_lines))
+                    blocks.append((code_start, i, code, code_lines))
         i += 1
 
     return blocks
 
 
 def adjust_output_paths(output: str, filepath: Path, code_start: int) -> str:
-    """Adjust ruff output to show actual file path instead of temp path."""
+    """Replace temp file paths with actual paths and adjust line numbers for interpretable check output."""
     lines = output.split("\n")
     result = []
 
     for line in lines:
-        # Replace temp file path with actual file path
-        # Match the pattern: /tmp/tmpXXXXXX.py (includes letters, numbers, underscores, hyphens)
         match = re.search(r"/tmp/tmp[a-zA-Z0-9_-]+\.py", line)
         if match:
-            temp_file = match.group(0)
-            line = line.replace(temp_file, str(filepath))
-            # Find line number reference like "1:4" and adjust it
-            line_match = re.search(r"(\d+):(\d+)", line)
-            if line_match:
-                temp_line_num = int(line_match.group(1))
-                col_num = line_match.group(2)
-                actual_line_num = temp_line_num + code_start - 1
+            line = line.replace(match.group(0), str(filepath))
+            if line_match := re.search(r"(\d+):(\d+)", line):
+                actual_line = int(line_match.group(1)) + code_start - 1
                 line = re.sub(
                     r"\d+:\d+",
-                    f"{actual_line_num}:{col_num}",
+                    f"{actual_line}:{line_match.group(2)}",
                     line,
                     count=1,
                 )
         elif match := re.match(r"^(\s+\|)?\s+(\d+)\s+\|", line):
-            # Adjust line numbers in the code context display
-            temp_line_num = int(match.group(2))
-            actual_line_num = temp_line_num + code_start - 1
-            line = re.sub(r"^\s+(\d+)\s+\|", f"{actual_line_num} |", line)
+            actual_line = int(match.group(2)) + code_start - 1
+            line = re.sub(r"^\s+(\d+)\s+\|", f"{actual_line} |", line)
         result.append(line)
 
     return "\n".join(result)
@@ -95,7 +80,6 @@ def check_and_fix_qmd_file(filepath: Path, check_only: bool = False) -> int:
     """
     content = filepath.read_text()
     blocks = extract_python_blocks(content)
-
     if not blocks:
         return 0
 
@@ -108,13 +92,11 @@ def check_and_fix_qmd_file(filepath: Path, check_only: bool = False) -> int:
         if not code.endswith("\n"):
             code = code + "\n"
 
-        # Create a temporary Python file for ruff to check
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
             tmp.write(code)
             tmp_path = tmp.name
 
         try:
-            # First, check if there are any issues (without fixing)
             check_result = subprocess.run(
                 ["ruff", "check", tmp_path],
                 capture_output=True,
@@ -125,53 +107,36 @@ def check_and_fix_qmd_file(filepath: Path, check_only: bool = False) -> int:
                 issues_found = True
 
             if check_only:
-                # In check-only mode, display the check output and don't fix
                 if check_result.stdout or check_result.stderr:
                     output = check_result.stdout + check_result.stderr
                     if (
                         "All checks passed!" not in output
                         or check_result.returncode != 0
                     ):
-                        adjusted_output = adjust_output_paths(
-                            output, filepath, code_start
-                        )
-                        print(adjusted_output, end="")
+                        print(adjust_output_paths(output, filepath, code_start), end="")
             else:
-                # Now run with --fix to fix the issues
                 result = subprocess.run(
                     ["ruff", "check", "--fix", tmp_path],
                     capture_output=True,
                     text=True,
                 )
 
-                # Always display output (even when fixing, to show what was fixed or what remains)
-                # But filter out "All checks passed!" messages that are just noise
                 if result.stdout or result.stderr:
                     output = result.stdout + result.stderr
-                    # Skip "All checks passed!" if there are no actual issues to report
+                    # Skip "All checks passed!" if there are no issues to report
                     if (
                         "All checks passed!" not in output
                         or check_result.returncode != 0
                     ):
-                        adjusted_output = adjust_output_paths(
-                            output, filepath, code_start
-                        )
-                        print(adjusted_output, end="")
+                        print(adjust_output_paths(output, filepath, code_start), end="")
 
-                # Read back the corrected code
                 corrected = Path(tmp_path).read_text()
-                # Remove the trailing newline we added for ruff, then split
                 corrected_lines = corrected.rstrip("\n").split("\n")
-
-                # Merge corrected code with original non-Python lines (Quarto options, etc.)
                 merged_lines = merge_code_blocks(original_lines, corrected_lines)
-
-                # Replace the code lines (keeping the block markers)
                 lines = lines[:code_start] + merged_lines + lines[code_end:]
         finally:
             Path(tmp_path).unlink()
 
-    # Write back the fixed content (only if not in check-only mode)
     if not check_only:
         filepath.write_text("\n".join(lines))
 
@@ -189,7 +154,6 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
     """
     content = filepath.read_text()
     blocks = extract_python_blocks(content)
-
     if not blocks:
         return 0
 
@@ -199,17 +163,13 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
 
     # Process blocks in reverse order to avoid line number shifting
     for code_start, code_end, code, original_lines in reversed(blocks):
-        # Ensure code ends with newline for ruff
-        if not code.endswith("\n"):
-            code = code + "\n"
+        code = code + "\n" if not code.endswith("\n") else code
 
-        # Create a temporary Python file for ruff to format
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
             tmp.write(code)
             tmp_path = tmp.name
 
         try:
-            # First check if formatting would make changes
             check_result = subprocess.run(
                 ["ruff", "format", "--check", tmp_path],
                 capture_output=True,
@@ -218,40 +178,29 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
 
             if check_result.returncode != 0:
                 issues_found = True
-                # Print that formatting is needed (only once per file)
                 if not has_printed_reformat_msg:
                     print(f"would reformat {filepath}")
                     has_printed_reformat_msg = True
 
-            # Run ruff format
-            result = subprocess.run(
-                ["ruff", "format", tmp_path],
-                capture_output=True,
-                text=True,
-            )
+            if not check_only:
+                result = subprocess.run(
+                    ["ruff", "format", tmp_path],
+                    capture_output=True,
+                    text=True,
+                )
 
-            # Display any output (ruff format usually has minimal output)
-            if result.stdout or result.stderr:
-                output = result.stdout + result.stderr
-                # Filter out "1 file reformatted" messages that are per-block noise
-                if "1 file" not in output:
-                    adjusted_output = adjust_output_paths(output, filepath, code_start)
-                    print(adjusted_output, end="")
+                if result.stdout or result.stderr:
+                    output = result.stdout + result.stderr
+                    if "1 file" not in output:
+                        print(adjust_output_paths(output, filepath, code_start), end="")
 
-            # Read back the formatted code
-            formatted = Path(tmp_path).read_text()
-            # Remove the trailing newline we added for ruff, then split
-            formatted_lines = formatted.rstrip("\n").split("\n")
-
-            # Merge formatted code with original non-Python lines (Quarto options, etc.)
-            merged_lines = merge_code_blocks(original_lines, formatted_lines)
-
-            # Replace the code lines (keeping the block markers)
-            lines = lines[:code_start] + merged_lines + lines[code_end:]
+                formatted = Path(tmp_path).read_text()
+                formatted_lines = formatted.rstrip("\n").split("\n")
+                merged_lines = merge_code_blocks(original_lines, formatted_lines)
+                lines = lines[:code_start] + merged_lines + lines[code_end:]
         finally:
             Path(tmp_path).unlink()
 
-    # Write back the formatted content (only if not in check mode)
     if not check_only:
         filepath.write_text("\n".join(lines))
 
@@ -261,34 +210,19 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
 def merge_code_blocks(
     original_lines: list[str], corrected_lines: list[str]
 ) -> list[str]:
-    """Merge corrected code with original non-Python lines.
-
-    Preserves Quarto options (#|), IPython magics (%), and shell commands (!)
-    at their original positions, while updating the actual Python code.
-    """
+    """Merge corrected code with Quarto directives/magics."""
     merged = []
     corrected_idx = 0
 
     for orig_line in original_lines:
         stripped = orig_line.lstrip()
-        # Preserve non-Python lines in their original positions
-        if (
-            stripped.startswith("#|")
-            or stripped.startswith("%")
-            or stripped.startswith("!")
-        ):
+        if stripped.startswith(("#|", "%", "!")):
             merged.append(orig_line)
-        else:
-            # Use corrected Python code line
-            if corrected_idx < len(corrected_lines):
-                merged.append(corrected_lines[corrected_idx])
-                corrected_idx += 1
+        elif corrected_idx < len(corrected_lines):
+            merged.append(corrected_lines[corrected_idx])
+            corrected_idx += 1
 
-    # Add any remaining corrected lines (shouldn't normally happen)
-    while corrected_idx < len(corrected_lines):
-        merged.append(corrected_lines[corrected_idx])
-        corrected_idx += 1
-
+    merged.extend(corrected_lines[corrected_idx:])
     return merged
 
 
@@ -340,14 +274,14 @@ def main():
 
     exit_code = 0
     for filepath in sorted(files_to_process):
+        result = None
         if args.command == "check":
-            check_only = getattr(args, "check", False)
-            if check_and_fix_qmd_file(filepath, check_only=check_only) != 0:
-                exit_code = 1
+            result = check_and_fix_qmd_file(filepath, check_only=args.check)
         elif args.command == "format":
-            check_only = getattr(args, "check", False)
-            if format_qmd_file(filepath, check_only=check_only) != 0:
-                exit_code = 1
+            result = format_qmd_file(filepath, check_only=args.check)
+
+        if result != 0:
+            exit_code = 1
 
     return exit_code
 
