@@ -14,7 +14,7 @@ def extract_python_blocks(qmd_content: str) -> list[tuple[int, int, str, list[st
 
     Returns a list of (start_line, end_line, code, original_lines) tuples for each Python block.
     Filters out:
-    - IPython magic commands (%, !!)
+    - IPython magic commands (%, !)
     - Quarto code chunk options (#|)
     But preserves them to rewrite later.
     """
@@ -50,7 +50,8 @@ def adjust_output_paths(output: str, filepath: Path, code_start: int) -> str:
     result = []
 
     for line in lines:
-        match = re.search(r"/tmp/tmp[a-zA-Z0-9_-]+\.py", line)
+        # Match temp file pattern with optional path prefix
+        match = re.search(r"(?:.*[/\\])?tmp[a-zA-Z0-9_-]+\.py", line)
         if match:
             line = line.replace(match.group(0), str(filepath))
             if line_match := re.search(r"(\d+):(\d+)", line):
@@ -84,6 +85,7 @@ def check_and_fix_qmd_file(filepath: Path, check_only: bool = False) -> int:
         return 0
 
     issues_found = False
+    unfixed_issues = False
     lines = content.split("\n")
 
     # Process blocks in reverse order to avoid line number shifting
@@ -121,12 +123,15 @@ def check_and_fix_qmd_file(filepath: Path, check_only: bool = False) -> int:
                     text=True,
                 )
 
+                if result.returncode != 0:
+                    unfixed_issues = True
+
                 if result.stdout or result.stderr:
                     output = result.stdout + result.stderr
                     # Skip "All checks passed!" if there are no issues to report
                     if (
                         "All checks passed!" not in output
-                        or check_result.returncode != 0
+                        or result.returncode != 0
                     ):
                         print(adjust_output_paths(output, filepath, code_start), end="")
 
@@ -139,6 +144,7 @@ def check_and_fix_qmd_file(filepath: Path, check_only: bool = False) -> int:
 
     if not check_only:
         filepath.write_text("\n".join(lines))
+        return 1 if unfixed_issues else 0
 
     return 1 if issues_found else 0
 
@@ -158,6 +164,7 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
         return 0
 
     issues_found = False
+    format_failed = False
     has_printed_reformat_msg = False
     lines = content.split("\n")
 
@@ -178,7 +185,7 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
 
             if check_result.returncode != 0:
                 issues_found = True
-                if not has_printed_reformat_msg:
+                if check_only and not has_printed_reformat_msg:
                     print(f"would reformat {filepath}")
                     has_printed_reformat_msg = True
 
@@ -188,6 +195,9 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
                     capture_output=True,
                     text=True,
                 )
+
+                if result.returncode != 0:
+                    format_failed = True
 
                 if result.stdout or result.stderr:
                     output = result.stdout + result.stderr
@@ -203,6 +213,7 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
 
     if not check_only:
         filepath.write_text("\n".join(lines))
+        return 1 if format_failed else 0
 
     return 1 if issues_found else 0
 
@@ -274,11 +285,12 @@ def main():
 
     exit_code = 0
     for filepath in sorted(files_to_process):
-        result = None
         if args.command == "check":
             result = check_and_fix_qmd_file(filepath, check_only=args.check)
         elif args.command == "format":
             result = format_qmd_file(filepath, check_only=args.check)
+        else:
+            continue
 
         if result != 0:
             exit_code = 1
