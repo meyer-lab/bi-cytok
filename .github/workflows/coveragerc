@@ -3,3 +3,5 @@
 omit = 
   figures/*
   bicytok/data/*
+  bicytok/lint_qmd.py
+  bicytok/imports.py
