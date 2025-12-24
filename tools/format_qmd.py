@@ -258,7 +258,7 @@ def main():
     """
     Main function to parse arguments and run linting/formatting on Quarto files.
 
-    Returns an exit code indicating success (code 0) or degree of failture (code 1 
+    Returns an exit code indicating success (code 0) or degree of failture (code 1
         indicating fixed/fixable issues, 2 indicating infixable issues).
     """
     parser = argparse.ArgumentParser(
