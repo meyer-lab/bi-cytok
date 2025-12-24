@@ -29,10 +29,8 @@ Generates a histogram with kernel density estimation (KDE) overlay to visualize 
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 
 from bicytok.distance_metric_funcs import KL_EMD_1D
 from bicytok.imports import importCITE, sample_receptor_abundances
@@ -106,6 +104,7 @@ for cell_type in plot_cell_types:
 
 ```{python}
 #| fig-cap: "1D distribution of receptor with histogram and KDE overlay"
+import seaborn as sns
 
 colors = ["#CF4D6F", "#2774AE"]
 cell_type_labels = ["Target", "Off-target"]
@@ -122,9 +121,7 @@ for i, abundances in enumerate(all_cell_abundances):
         kde_kws={"bw_method": "scott"},
     )
 
-plt.title(
-    f"{receptor} Distribution\nKL: {kl_val:.2f}, EMD: {emd_val:.2f}", fontsize=10
-)
+plt.title(f"{receptor} Distribution\nKL: {kl_val:.2f}, EMD: {emd_val:.2f}", fontsize=10)
 if normalize:
     plt.xlabel("Normalized receptor count", fontsize=28)
 else:
@@ -152,9 +149,8 @@ plt.show()
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
-Analyzed the distribution of the receptor **{receptor}** between target cell type **{targ_cell}** and all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset. The histogram statistic used was '**{stat}**' and the epitope counts were {'**normalized**' if normalize else '**not normalized**'} for comparison
+Analyzed the distribution of the receptor **{receptor}** between target cell type **{targ_cell}** and all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset. The histogram statistic used was '**{stat}**' and the epitope counts were {"**normalized**" if normalize else "**not normalized**"} for comparison
 """
 
 print(text)

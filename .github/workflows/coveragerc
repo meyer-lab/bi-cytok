@@ -2,4 +2,6 @@
 
 omit = 
   figures/*
+  tools/*
   bicytok/data/*
+  bicytok/imports.py

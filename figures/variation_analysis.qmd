@@ -29,12 +29,10 @@ Performs bootstrap analysis to quantify variability in KL Divergence, EMD, and s
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import time
-import matplotlib.pyplot as plt
+
 import numpy as np
 import pandas as pd
-import seaborn as sns
 
 from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import importCITE, sample_receptor_abundances
@@ -102,7 +100,9 @@ for sample_size in sample_sizes:
             valencies=valencies,
         )
         time_ellapsed_mod = time.time() - time_start_mod
-        print(f"Sample Size: {sample_size}, Randomization: {i + 1}/{randomizations}, Model Time: {time_ellapsed_mod:.4f}s")
+        print(
+            f"Sample Size: {sample_size}, Randomization: {i + 1}/{randomizations}, Model Time: {time_ellapsed_mod:.4f}s"
+        )
 
         metrics.append(
             {
@@ -133,6 +133,8 @@ affinities_melted = affinities_df.melt(
 
 ```{python}
 #| fig-cap: "Bootstrap variation in KL Divergence across sample sizes"
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 sns.boxplot(x="sample_size", y="KL_div", data=metrics_df)
 plt.xlabel("Sample Size")
@@ -142,7 +144,6 @@ plt.show()
 
 ```{python}
 #| fig-cap: "Bootstrap variation in EMD across sample sizes"
-
 sns.boxplot(x="sample_size", y="EMD", data=metrics_df)
 plt.xlabel("Sample Size")
 plt.ylabel("EMD")
@@ -151,7 +152,6 @@ plt.show()
 
 ```{python}
 #| fig-cap: "Bootstrap variation in selectivity across sample sizes"
-
 sns.boxplot(x="sample_size", y="selectivity", data=metrics_df)
 plt.xlabel("Sample Size")
 plt.ylabel("Selectivity")
@@ -160,7 +160,6 @@ plt.show()
 
 ```{python}
 #| fig-cap: "Bootstrap variation in optimal affinities across sample sizes"
-
 sns.boxplot(x="sample_size", y="Value", hue="Affinity", data=affinities_melted)
 plt.xlabel("Sample Size")
 plt.ylabel("Affinity Value")
@@ -180,7 +179,6 @@ print(avg_times.to_string(index=False))
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
 Analyzed various metrics and their variability with sample size. The metrics were calculated for the target cell type **{targ_cell}** using the signal receptor **{signal_receptor}** and target receptors **{targets}** at a dose of **{dose}**. The analyses were performed on **{randomizations}** bootstrapped samplings for each sample size, with a total of **{sample_sizes}** sample sizes.
 """

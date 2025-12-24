@@ -23,12 +23,14 @@ Generates horizontal bar charts ranking the top 10 receptors by 1D KL Divergence
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import numpy as np
-import matplotlib.pyplot as plt
 
 from bicytok.distance_metric_funcs import KL_EMD_1D
-from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.imports import (
+    filter_receptor_abundances,
+    importCITE,
+    sample_receptor_abundances,
+)
 
 targ_cell = "Treg"
 sample_size = 100
@@ -50,9 +52,7 @@ sampleDF = sample_receptor_abundances(
     numCells=min(sample_size, epitopesDF.shape[0]),
     targCellType=targ_cell,
 )
-filtered_sampleDF = filter_receptor_abundances(
-    sampleDF, targ_cell_type=targ_cell
-)
+filtered_sampleDF = filter_receptor_abundances(sampleDF, targ_cell_type=targ_cell)
 receptors_of_interest = filtered_sampleDF.columns[
     ~filtered_sampleDF.columns.isin(["Cell Type"])
 ]
@@ -68,6 +68,7 @@ top_EMD_indices = np.argsort(np.nan_to_num(EMD_values))[-10:]
 
 ```{python}
 #| fig-cap: "KL divergence values of the top 10 epitopes"
+import matplotlib.pyplot as plt
 
 # Plot KL values
 plt.bar(
@@ -84,7 +85,6 @@ plt.show()
 
 ```{python}
 #| fig-cap: "EMD values of the top 10 epitopes"
-
 # Plot EMD values
 plt.bar(
     filtered_sampleDF.columns[top_EMD_indices],
@@ -101,11 +101,10 @@ plt.show()
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
 Identified epitopes with the top ten KL divergence and EMD between **{targ_cell}**s and other cell types. Used **{sample_size}** cells sampled from the CITE-seq data.
 \n\n
-Analyzed the following receptors: **{', '.join(receptors_of_interest)}**.
+Analyzed the following receptors: **{", ".join(receptors_of_interest)}**.
 """
 
 print(text)

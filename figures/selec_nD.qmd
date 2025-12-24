@@ -23,16 +23,16 @@ This analysis calculates the selectivity of a specified set of receptors and val
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
+import time
 
 import numpy as np
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
-from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.imports import (
+    filter_receptor_abundances,
+    importCITE,
+    sample_receptor_abundances,
+)
 from bicytok.selectivity_funcs import optimize_affs
-
-import time
 
 sample_size = 100
 targ_cell = "Treg"
@@ -46,9 +46,7 @@ CITE_DF = importCITE()
 assert targ_cell in CITE_DF[cell_categorization].unique()
 
 epitopes = [
-    col
-    for col in CITE_DF.columns
-    if col not in ["CellType1", "CellType2", "CellType3"]
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
 ]
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
@@ -82,13 +80,14 @@ selectivity = 1 / opt_selec
 time_end = time.time()
 print(f"Processing time for {receptors}: {time_end - time_start} seconds")
 
-print(f"Selectivity for {receptors} with valencies {model_valencies} at dose {dose}: {selectivity}")
+print(
+    f"Selectivity for {receptors} with valencies {model_valencies} at dose {dose}: {selectivity}"
+)
 ```
 
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
 Calculates the selectivity for a specific set of receptors and valencies. Target cells were **{targ_cell}**s, compared against all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
 \n\n

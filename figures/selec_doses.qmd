@@ -22,11 +22,9 @@ Generates dose-response curves for multivalent ligand complexes by optimizing re
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import get_cell_bindings, optimize_affs
@@ -47,9 +45,7 @@ sample_size = 100
 CITE_DF = importCITE()
 
 epitopes = [
-    col
-    for col in CITE_DF.columns
-    if col not in ["CellType1", "CellType2", "CellType3"]
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
 ]
 epitopes_df = CITE_DF[epitopes + ["CellType2"]]
 epitopes_df = epitopes_df.rename(columns={"CellType2": "Cell Type"})
@@ -112,6 +108,7 @@ for target_pairs in all_targets:
 
 ```{python}
 #| fig-cap: "Dose vs Selectivity for different ligand combinations and doses"
+import seaborn as sns
 
 sns.lineplot(data=df, x="Dose", y="Selectivity", hue="Ligand")
 plt.xscale("log")
@@ -120,7 +117,6 @@ plt.show()
 
 ```{python}
 #| fig-cap: "Dose vs Target Bound for different ligand combinations and doses"
-
 sns.lineplot(data=df, x="Dose", y="Target Bound", hue="Ligand")
 plt.xscale("log")
 plt.show()
@@ -129,11 +125,10 @@ plt.show()
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
 Compared the selectivity of complexes of varying valencies and doses for the target cell type **{targ_cell}**. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
 \n\n
-The signal receptor used was **{signal[0]}** at a valency of {signal[1]}. The target receptors analyzed were **{', '.join([f'{target[0]} ({target[1]})' for target in all_targets[0]])}**, with valencies of {', '.join([str(target[1]) for target in all_targets[0]])}.
+The signal receptor used was **{signal[0]}** at a valency of {signal[1]}. The target receptors analyzed were **{", ".join([f"{target[0]} ({target[1]})" for target in all_targets[0]])}**, with valencies of {", ".join([str(target[1]) for target in all_targets[0]])}.
 """
 
 print(text)
