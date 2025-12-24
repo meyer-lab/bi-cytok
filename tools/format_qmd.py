@@ -9,7 +9,11 @@ from pathlib import Path
 
 
 def extract_python_blocks(qmd_content: str) -> list[tuple[int, int, str, list[str]]]:
-    """Extract Python code blocks from Quarto markdown content.
+    """
+    Extract Python code blocks from Quarto markdown content.
+
+    Args:
+        qmd_content: The code content of the Quarto markdown file as a string.
 
     Returns a list of (start_line, end_line, code, original_lines) tuples for each Python block.
     Filters out:
@@ -44,13 +48,15 @@ def extract_python_blocks(qmd_content: str) -> list[tuple[int, int, str, list[st
 
 
 def check_and_fix_qmd_file(filepath: Path, check_only: bool = False) -> int:
-    """Check and fix linting issues in a Quarto markdown file.
+    """
+    Check and fix linting issues in a Quarto markdown file.
 
     Args:
         filepath: Path to the Quarto file
         check_only: If True, only check for issues without fixing them
 
-    Returns 0 if no issues, 1 if issues found (even after fixing).
+    Returns 0 if no issues, 1 if issues were found and fixed, 2 if issues were found
+        but not fixed.
     """
     content = filepath.read_text()
     blocks = extract_python_blocks(content)
@@ -122,7 +128,12 @@ def check_and_fix_qmd_file(filepath: Path, check_only: bool = False) -> int:
     # Write back changes if not in check-only mode
     if not check_only:
         filepath.write_text("\n".join(lines))
-        return 2 if unfixed_issues else 0
+        if unfixed_issues:
+            return 2
+        elif issues_found:
+            return 1
+        else:
+            return 0
 
     return 1 if issues_found else 0
 
@@ -135,7 +146,8 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
         filepath: Path to the Quarto file
         check_only: If True, only check if formatting would change
 
-    Returns 0 if no issues, 1 if issues found (even after fixing).
+    Returns 0 if no issues, 1 if issues were found and fixed, 2 if issues were found
+        but not fixed.
     """
     content = filepath.read_text()
     blocks = extract_python_blocks(content)
@@ -202,7 +214,12 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
 
     if not check_only:
         filepath.write_text("\n".join(lines))
-        return 1 if format_failed else 0
+        if format_failed:
+            return 2
+        elif issues_found:
+            return 1
+        else:
+            return 0
 
     return 1 if issues_found else 0
 
@@ -210,7 +227,15 @@ def format_qmd_file(filepath: Path, check_only: bool = False) -> int:
 def merge_code_blocks(
     original_lines: list[str], corrected_lines: list[str]
 ) -> list[str]:
-    """Merge corrected code with Quarto directives/magics."""
+    """
+    Merge corrected code with Quarto directives/magics.
+
+    Args:
+        original_lines: The original lines of the code block.
+        corrected_lines: The corrected/formatted lines of the code block.
+
+    Returns the original directive lines combined with corrected code.
+    """
     merged = []
     corrected_idx = 0
 
@@ -220,7 +245,6 @@ def merge_code_blocks(
         #   problems if directives are present anywhere but the start of a chunk
         if stripped.startswith(("#|", "%", "!")):
             merged.append(orig_line)
-        # Else, take from corrected lines
         elif corrected_idx < len(corrected_lines):
             merged.append(corrected_lines[corrected_idx])
             corrected_idx += 1
@@ -231,6 +255,12 @@ def merge_code_blocks(
 
 
 def main():
+    """
+    Main function to parse arguments and run linting/formatting on Quarto files.
+
+    Returns an exit code indicating success (code 0) or degree of failture (code 1 
+        indicating fixed/fixable issues, 2 indicating infixable issues).
+    """
     parser = argparse.ArgumentParser(
         description="Lint and format Python code blocks in Quarto markdown files"
     )
@@ -285,17 +315,19 @@ def main():
         else:
             continue
 
-        if result != 0:
+        if result == 1:
             exit_code = 1
+        elif result == 2:
+            exit_code = 2
 
     if exit_code == 0:
         print("All checks passed!")
     elif exit_code == 1 and args.check:
         print("Some checks failed.")
+    elif exit_code == 1 and not args.check:
+        print("Some checks failed, but were successfully fixed.")
     else:
-        print(
-            "Some checks failed. If no issues were printed above, fixes have been applied."
-        )
+        print("Some checks failed and could not be fixed.")
 
     return exit_code
 
