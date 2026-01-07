@@ -59,6 +59,7 @@ def generate_receptor_pairs(receptors):
             pairs.append([r1, r2])
     return pairs
 
+
 receptor_pairs = generate_receptor_pairs(receptors)
 
 CITE_DF = importCITE()
@@ -77,15 +78,13 @@ sample_df = sample_receptor_abundances(
 )
 
 if receptors is not None:
-    filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell, whitelist=receptors)
+    filtered_sample_df = filter_receptor_abundances(
+        sample_df, targ_cell, whitelist=receptors
+    )
     receptor_pairs = generate_receptor_pairs(receptors)
 else:
     filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
-    receptors = [
-        col
-        for col in filtered_sample_df.columns
-        if col != "Cell Type"
-    ]
+    receptors = [col for col in filtered_sample_df.columns if col != "Cell Type"]
     receptor_pairs = generate_receptor_pairs(receptors)
 
 print(f"Receptors analyzed: {receptors}")
@@ -112,7 +111,9 @@ for i, receptor_pair in enumerate(receptor_pairs):
     EMD = EMD_mat[1, 0]
     KL_div_vals.append(KL_div)
     EMD_vals.append(EMD)
-    print(f"Metric calculation time for {receptor_pair}: {time.time() - time_start_metric} seconds")
+    print(
+        f"Metric calculation time for {receptor_pair}: {time.time() - time_start_metric} seconds"
+    )
 
     if receptor_pair[0] == receptor_pair[1]:
         model_valencies = model_valencies_diag
@@ -134,7 +135,9 @@ for i, receptor_pair in enumerate(receptor_pairs):
     selectivity_vals.append(1 / opt_selec)
 
     time_end = time.time()
-    print(f"Processing time for {receptor_pair}, pair {i} out of {len(receptor_pairs)}: {time_end - time_start} seconds")
+    print(
+        f"Processing time for {receptor_pair}, pair {i} out of {len(receptor_pairs)}: {time_end - time_start} seconds"
+    )
     print(f"Affinities: {opt_affs}, Kx*: {opt_Kx_star}\n\n\n")
 
 metrics_df = pd.DataFrame(
@@ -149,11 +152,11 @@ metrics_df = pd.DataFrame(
 
 ```{python}
 #| fig-cap: "KL Divergence vs Selectivity for receptor pairs"
-
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 fig, ax = plt.subplots(figsize=(10, 6))
+
 
 def label_top_n(ax, data, x_col, y_col, n=10):
     """Label top n points by y-value on scatter plot."""
@@ -165,9 +168,9 @@ def label_top_n(ax, data, x_col, y_col, n=10):
             fontsize=8,
             alpha=0.7,
             xytext=(5, 5),
-            textcoords="offset points"
+            textcoords="offset points",
         )
-    
+
     top_indices_x = data.nlargest(n, x_col).index
     for idx in top_indices_x:
         if idx not in top_indices_y:
@@ -177,8 +180,9 @@ def label_top_n(ax, data, x_col, y_col, n=10):
                 fontsize=8,
                 alpha=0.7,
                 xytext=(5, 5),
-                textcoords="offset points"
+                textcoords="offset points",
             )
+
 
 sns.scatterplot(
     data=metrics_df,
@@ -191,7 +195,7 @@ sns.scatterplot(
 )
 
 label_top_n(ax, metrics_df, "KL Divergence", "Selectivity", n=5)
-ax.grid(True, linestyle='--', alpha=0.7)
+ax.grid(True, linestyle="--", alpha=0.7)
 ax.legend(bbox_to_anchor=(1.05, 1), title="Receptor Pair")
 plt.tight_layout()
 plt.show()
@@ -199,7 +203,6 @@ plt.show()
 
 ```{python}
 #| fig-cap: "EMD vs Selectivity for receptor pairs"
-
 fig, ax = plt.subplots(figsize=(10, 6))
 sns.scatterplot(
     data=metrics_df,
@@ -212,7 +215,7 @@ sns.scatterplot(
 )
 
 label_top_n(ax, metrics_df, "EMD", "Selectivity", n=5)
-ax.grid(True, linestyle='--', alpha=0.7)
+ax.grid(True, linestyle="--", alpha=0.7)
 ax.legend(bbox_to_anchor=(1.05, 1), title="Receptor Pair")
 plt.tight_layout()
 plt.show()

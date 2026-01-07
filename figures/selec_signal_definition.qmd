@@ -12,17 +12,30 @@ title: ""
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import time
-import numpy as np
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
-from bicytok.imports import importCITE, sample_receptor_abundances, filter_receptor_abundances
+import numpy as np
+
+from bicytok.imports import (
+    importCITE,
+    sample_receptor_abundances,
+)
 from bicytok.selectivity_funcs import optimize_affs
 
-receptors = ["CD107a", "CD338", "CD194", "CD357", "CD2", "CD122", "CD25", "CD4-1", "CD109", "CD278", "CD28", "CCR10"]
+receptors = [
+    "CD107a",
+    "CD338",
+    "CD194",
+    "CD357",
+    "CD2",
+    "CD122",
+    "CD25",
+    "CD4-1",
+    "CD109",
+    "CD278",
+    "CD28",
+    "CCR10",
+]
 cell_type = "Treg"
 # off_targ_cell_types = ["ILC"]
 off_targ_cell_types = None
@@ -38,19 +51,26 @@ print(f"Number of signal receptors: {len(signal_receptors)}")
 CITE_DF = importCITE()
 
 epitopes = [
-    col
-    for col in CITE_DF.columns
-    if col not in ["CellType1", "CellType2", "CellType3"]
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
 ]
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
 
 if include_prototype_signal_receptor:
-    prototype_signal_receptor = np.random.normal(loc=50, scale=5, size=(epitopes_df.shape[0],))
+    rng = np.random.default_rng()
+    prototype_signal_receptor = rng.normal(
+        loc=50, scale=5, size=(epitopes_df.shape[0],)
+    )
     epitopes_df.insert(0, "Prototype_Signal_Receptor", prototype_signal_receptor)
     receptors = ["Prototype_Signal_Receptor"] + receptors
 
-sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type, offTargCellTypes=off_targ_cell_types, rand_state=42)
+sample_df = sample_receptor_abundances(
+    epitopes_df,
+    sample_size,
+    cell_type,
+    offTargCellTypes=off_targ_cell_types,
+    rand_state=42,
+)
 
 # sample_df = filter_receptor_abundances(sample_df, targ_cell_type=cell_type, min_mean_abundance=10)
 
@@ -85,25 +105,27 @@ for k, signal in enumerate(signal_receptors):
         targ_abun = receptor_abuns[targ_mask]
         off_targ_abun = receptor_abuns[off_targ_mask]
 
-        opt_selec, _, _ = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
+        opt_selec, _, _ = optimize_affs(
+            targ_abun, off_targ_abun, dose, valencies=valency
+        )
         selectivities[i, j, k] = 1 / opt_selec
 
     i_upper, j_upper = np.triu_indices(len(receptors), k=1)
     selectivities[i_upper, j_upper, k] = selectivities[j_upper, i_upper, k]
 
-    print(f"Total optimization time for signal {signal}: {time.time() - total_time_start:.2f} seconds")
+    print(
+        f"Total optimization time for signal {signal}: {time.time() - total_time_start:.2f} seconds"
+    )
 
 # print(selectivities[:,:,0])
 # print(selectivities[:,:,1])
 # print(selectivities.shape)
 # # print(selectivities)
-
 ```
 
 
 ```{python}
 #| fig-cap: "Compute frequency that each (i,j) pair is a max across the 3rd axis and plot heatmap"
-
 # tally matrix for counts (how many times each (i,j) is among the maxima)
 freq_counts = np.zeros((len(receptors), len(receptors)), dtype=int)
 
@@ -123,7 +145,14 @@ freq_frac = freq_counts / float(len(signal_receptors))
 
 # plot heatmap of counts and fractions
 plt.figure(figsize=(8, 6))
-sns.heatmap(freq_counts, annot=True, fmt="d", xticklabels=receptors, yticklabels=receptors, cmap="Reds")
+sns.heatmap(
+    freq_counts,
+    annot=True,
+    fmt="d",
+    xticklabels=receptors,
+    yticklabels=receptors,
+    cmap="Reds",
+)
 plt.title("Counts of maximal selectivity occurrences")
 
 plt.tick_params(axis="x", labelsize=12)
@@ -135,7 +164,14 @@ plt.tight_layout()
 plt.show()
 
 plt.figure(figsize=(8, 6))
-sns.heatmap(freq_frac, annot=True, fmt=".2f", xticklabels=receptors, yticklabels=receptors, cmap="Reds")
+sns.heatmap(
+    freq_frac,
+    annot=True,
+    fmt=".2f",
+    xticklabels=receptors,
+    yticklabels=receptors,
+    cmap="Reds",
+)
 plt.title("Fraction of maximal selectivity occurrences")
 
 plt.tick_params(axis="x", labelsize=12)
@@ -149,25 +185,36 @@ plt.show()
 
 ```{python}
 #| fig-cap: "Plot the variation in selectivity across different signal receptors for each (i,j) pair"
-
 variation_matrix = np.var(selectivities, axis=2)
 
 plt.figure(figsize=(8, 6))
-sns.heatmap(variation_matrix, annot=True, fmt=".2f", xticklabels=receptors, yticklabels=receptors, cmap="bwr")
+sns.heatmap(
+    variation_matrix,
+    annot=True,
+    fmt=".2f",
+    xticklabels=receptors,
+    yticklabels=receptors,
+    cmap="bwr",
+)
 plt.title("Variation in selectivity across signals")
 plt.xlabel("Receptor j")
 plt.ylabel("Receptor i")
 plt.tight_layout()
 plt.show()
-
 ```
 
 ```{python}
 #| fig-cap: "Plot the range of selectivity across different signal receptors for each (i,j) pair"
-
 range_matrix = np.nanmax(selectivities, axis=2) - np.nanmin(selectivities, axis=2)
 plt.figure(figsize=(8, 6))
-sns.heatmap(range_matrix, annot=True, fmt=".2f", xticklabels=receptors, yticklabels=receptors, cmap="bwr")
+sns.heatmap(
+    range_matrix,
+    annot=True,
+    fmt=".2f",
+    xticklabels=receptors,
+    yticklabels=receptors,
+    cmap="bwr",
+)
 plt.title("Range of selectivity across signal receptor definitions")
 plt.xlabel("Receptor j")
 plt.ylabel("Receptor i")

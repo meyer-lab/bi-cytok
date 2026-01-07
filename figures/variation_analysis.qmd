@@ -89,10 +89,11 @@ for sample_size in sample_sizes:
         if off_targ_cell_nums is not None:
             sampled_off_target_cells = pd.concat(
                 [
-                    sample_df[
-                        sample_df["Cell Type"] == cell_type
-                    ].sample(
-                        min(int(count * sample_size), sample_df[sample_df["Cell Type"] == cell_type].shape[0]),
+                    sample_df[sample_df["Cell Type"] == cell_type].sample(
+                        min(
+                            int(count * sample_size),
+                            sample_df[sample_df["Cell Type"] == cell_type].shape[0],
+                        ),
                         replace=True,
                     )
                     for cell_type, count in off_targ_cell_nums.items()

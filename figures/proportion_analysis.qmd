@@ -30,12 +30,10 @@ Performs bootstrap analysis to quantify how KL Divergence, EMD, and selectivity 
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import time
-import matplotlib.pyplot as plt
+
 import numpy as np
 import pandas as pd
-import seaborn as sns
 
 from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import importCITE
@@ -99,7 +97,9 @@ for target_prop in TARGET_PROPORTIONS:
             valencies=VALENCIES,
         )
         time_ellapsed_mod = time.time() - time_start_mod
-        print(f"Target Proportion: {target_prop:.2f}, Randomization: {i + 1}/{RANDOMIZATIONS}, Model Time: {time_ellapsed_mod:.4f}s")
+        print(
+            f"Target Proportion: {target_prop:.2f}, Randomization: {i + 1}/{RANDOMIZATIONS}, Model Time: {time_ellapsed_mod:.4f}s"
+        )
 
         metrics.append(
             {
@@ -132,7 +132,6 @@ affinities_melted = affinities_df.melt(
 
 ```{python}
 #| fig-cap: "Bootstrap variation in KL Divergence across target cell proportions"
-
 sns.boxplot(x="target_proportion", y="KL_div", data=metrics_df)
 plt.xlabel("Target Cell Proportion")
 plt.ylabel("KL Divergence")
@@ -141,7 +140,6 @@ plt.show()
 
 ```{python}
 #| fig-cap: "Bootstrap variation in EMD across target cell proportions"
-
 sns.boxplot(x="target_proportion", y="EMD", data=metrics_df)
 plt.xlabel("Target Cell Proportion")
 plt.ylabel("EMD")
@@ -150,7 +148,6 @@ plt.show()
 
 ```{python}
 #| fig-cap: "Bootstrap variation in selectivity across target cell proportions"
-
 sns.boxplot(x="target_proportion", y="selectivity", data=metrics_df)
 plt.xlabel("Target Cell Proportion")
 plt.ylabel("Selectivity")
@@ -159,7 +156,6 @@ plt.show()
 
 ```{python}
 #| fig-cap: "Bootstrap variation in optimal affinities across target cell proportions"
-
 sns.boxplot(x="target_proportion", y="Value", hue="Affinity", data=affinities_melted)
 plt.xlabel("Target Cell Proportion")
 plt.ylabel("Affinity Value")
@@ -179,7 +175,6 @@ print(avg_times.to_string(index=False))
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
 Analyzed how metrics vary with target cell proportion while keeping total sample size constant at **{TOTAL_SAMPLE_SIZE}** cells. The metrics were calculated for the target cell type **{TARG_CELL}** using the signal receptor **{SIGNAL_RECEPTOR}** and target receptors **{TARGETS}** at a dose of **{DOSE}**. The analyses were performed on **{RANDOMIZATIONS}** bootstrapped samplings for each target proportion, testing proportions of **{TARGET_PROPORTIONS}**.
 """

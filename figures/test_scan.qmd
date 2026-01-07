@@ -12,17 +12,24 @@ title: ""
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import numpy as np
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
-from bicytok.imports import importCITE, sample_receptor_abundances
-from bicytok.selectivity_funcs import optimize_affs
-from bicytok.scanning_funcs import scan_selectivity, scan_KL_EMD
+from bicytok.imports import importCITE
+from bicytok.scanning_funcs import scan_KL_EMD, scan_selectivity
 
-receptors = ["CD122", "CD25", "CD4-1", "CD27", "CD28", "CD45RA", "CD338", "CD3-1", "TIGIT", "TSLPR", "CD275-1"]
+receptors = [
+    "CD122",
+    "CD25",
+    "CD4-1",
+    "CD27",
+    "CD28",
+    "CD45RA",
+    "CD338",
+    "CD3-1",
+    "TIGIT",
+    "TSLPR",
+    "CD275-1",
+]
 signal_ind = 0
 cell_types = ["Treg", "dnT", "MAIT"]
 dose = 1e-10
@@ -83,13 +90,13 @@ for ci, cell in enumerate(cell_types):
         cmap="viridis",
         xticklabels=receptors,
         yticklabels=receptors,
-        cbar_kws={'label': 'Selectivity'},
+        cbar_kws={"label": "Selectivity"},
         square=True,
-        annot=False
+        annot=False,
     )
-    plt.title(f'{cell} Selectivity Heatmap')
-    plt.xlabel('Receptor 2')
-    plt.ylabel('Receptor 1')
+    plt.title(f"{cell} Selectivity Heatmap")
+    plt.xlabel("Receptor 2")
+    plt.ylabel("Receptor 1")
     plt.xticks(rotation=90, fontsize=8)
     plt.yticks(rotation=0, fontsize=8)
     plt.tight_layout()
@@ -105,13 +112,13 @@ for ci, cell in enumerate(cell_types):
         cmap="coolwarm",
         xticklabels=receptors,
         yticklabels=receptors,
-        cbar_kws={'label': 'KL Divergence'},
+        cbar_kws={"label": "KL Divergence"},
         square=True,
-        annot=False
+        annot=False,
     )
-    plt.title(f'{cell} KL Divergence Heatmap')
-    plt.xlabel('Receptor 2')
-    plt.ylabel('Receptor 1')
+    plt.title(f"{cell} KL Divergence Heatmap")
+    plt.xlabel("Receptor 2")
+    plt.ylabel("Receptor 1")
     plt.xticks(rotation=90, fontsize=8)
     plt.yticks(rotation=0, fontsize=8)
     plt.tight_layout()
@@ -127,32 +134,25 @@ for ci, cell in enumerate(cell_types):
         cmap="coolwarm",
         xticklabels=receptors,
         yticklabels=receptors,
-        cbar_kws={'label': 'EMD'},
+        cbar_kws={"label": "EMD"},
         square=True,
-        annot=False
+        annot=False,
     )
-    plt.title(f'{cell} EMD Heatmap')
-    plt.xlabel('Receptor 2')
-    plt.ylabel('Receptor 1')
+    plt.title(f"{cell} EMD Heatmap")
+    plt.xlabel("Receptor 2")
+    plt.ylabel("Receptor 1")
     plt.xticks(rotation=90, fontsize=8)
     plt.yticks(rotation=0, fontsize=8)
     plt.tight_layout()
     plt.show()
-
-
 ```
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import numpy as np
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
-from bicytok.imports import importCITE, sample_receptor_abundances
-from bicytok.selectivity_funcs import optimize_affs
-from bicytok.scanning_funcs import scan_selectivity, scan_KL_EMD
+from bicytok.imports import importCITE
+from bicytok.scanning_funcs import scan_selectivity
 
 dose = 1e-10
 valency = np.array([[2, 1, 1]])
@@ -160,7 +160,23 @@ cell_categorization = "CellType2"
 sample_size = 1000
 
 # receptors = ["CD122", "CD25", "CD4-1", "CD27", "CD28", "CD45RA", "CD338", "CD3-1", "TIGIT", "TSLPR", "CD275-1"]
-cell_types = ["Treg", "dnT", "CD4 CTL", "CD8 Proliferating", "CD4 TCM", "B memory", "CD8 TCM", "CD8 Naive", "CD4 Proliferating", "NK_CD56bright", "CD4 Naive", "CD8 TEM", "ILC", "CD4 TEM", "B naive"]
+cell_types = [
+    "Treg",
+    "dnT",
+    "CD4 CTL",
+    "CD8 Proliferating",
+    "CD4 TCM",
+    "B memory",
+    "CD8 TCM",
+    "CD8 Naive",
+    "CD4 Proliferating",
+    "NK_CD56bright",
+    "CD4 Naive",
+    "CD8 TEM",
+    "ILC",
+    "CD4 TEM",
+    "B naive",
+]
 receptors = None
 cell_types = None
 
@@ -183,7 +199,8 @@ epitopes_df = CITE_DF[selected_receptors + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
 receptors = selected_receptors
 
-prototype_signal_receptor = np.random.normal(loc=50, scale=5, size=(epitopes_df.shape[0],))
+rng = np.random.default_rng()
+prototype_signal_receptor = rng.normal(loc=50, scale=5, size=(epitopes_df.shape[0],))
 epitopes_df.insert(0, "Prototype_Signal_Receptor", prototype_signal_receptor)
 receptors = ["Prototype_Signal_Receptor"] + receptors
 signal_ind = 0
@@ -195,7 +212,7 @@ if cell_types is None:
 print(cell_types)
 
 print(f"Using receptors: {receptors}, total {len(receptors)} receptors.")
-print(f"Total possible receptor pairs: {len(receptors)*(len(receptors)+1)//2}.")
+print(f"Total possible receptor pairs: {len(receptors) * (len(receptors) + 1) // 2}.")
 print(f"Cell types considered: {cell_types}, total {len(cell_types)} cell types.")
 
 opt_selec, opt_affs, opt_Kx_star = scan_selectivity(
@@ -212,9 +229,9 @@ opt_selec, opt_affs, opt_Kx_star = scan_selectivity(
 
 ```{python}
 # Save results to CSV
+import os
 
 results_dir = "../bicytok/data/selectivity_scan_results"
-import os
 os.makedirs(results_dir, exist_ok=True)
 
 # Save flattened results
@@ -222,26 +239,28 @@ flattened_data = []
 row_indices, col_indices = np.tril_indices(len(receptors), k=0)
 
 for i, cell_type in enumerate(cell_types):
-    for rec1_idx, rec2_idx in zip(row_indices, col_indices):
+    for rec1_idx, rec2_idx in zip(row_indices, col_indices, strict=False):
         rec1_name = receptors[rec1_idx]
         rec2_name = receptors[rec2_idx]
-        
+
         selectivity_val = opt_selec[rec1_idx, rec2_idx, i]
         Kx_star_val = opt_Kx_star[rec1_idx, rec2_idx, i]
-        
-        affinities = [opt_affs[rec1_idx, rec2_idx, i, j] for j in range(opt_affs.shape[-1])]
-        
+
+        affinities = [
+            opt_affs[rec1_idx, rec2_idx, i, j] for j in range(opt_affs.shape[-1])
+        ]
+
         row_data = {
-            'Cell_Type': cell_type,
-            'Receptor_1': rec1_name,
-            'Receptor_2': rec2_name,
-            'Selectivity': selectivity_val,
-            'Kx_star': Kx_star_val,
+            "Cell_Type": cell_type,
+            "Receptor_1": rec1_name,
+            "Receptor_2": rec2_name,
+            "Selectivity": selectivity_val,
+            "Kx_star": Kx_star_val,
         }
-        
+
         for j, aff_val in enumerate(affinities):
-            row_data[f'Affinity_Receptor_{j}'] = aff_val
-        
+            row_data[f"Affinity_Receptor_{j}"] = aff_val
+
         flattened_data.append(row_data)
 
 flattened_df = pd.DataFrame(flattened_data)
@@ -263,20 +282,24 @@ if len(cell_types) == 1:
 
 for i, cell_type in enumerate(cell_types):
     selectivity_matrix = opt_selec[:, :, i]
-    
+
     row_indices, col_indices = np.tril_indices(len(receptors), k=0)
     pair_selectivities = []
-    for rec1_idx, rec2_idx in zip(row_indices, col_indices):
-        pair_selectivities.append((rec1_idx, rec2_idx, selectivity_matrix[rec1_idx, rec2_idx]))
-    
-    pair_selectivities.sort(key=lambda x: x[2] if not np.isnan(x[2]) else -np.inf, reverse=True)
+    for rec1_idx, rec2_idx in zip(row_indices, col_indices, strict=False):
+        pair_selectivities.append(
+            (rec1_idx, rec2_idx, selectivity_matrix[rec1_idx, rec2_idx])
+        )
+
+    pair_selectivities.sort(
+        key=lambda x: x[2] if not np.isnan(x[2]) else -np.inf, reverse=True
+    )
     top_pairs = pair_selectivities[:TOP_N_PAIRS]
-    
+
     unique_receptors = sorted(set([idx for pair in top_pairs for idx in pair[:2]]))
     receptor_labels = [receptors[idx] for idx in unique_receptors]
-    
+
     subset_matrix = selectivity_matrix[np.ix_(unique_receptors, unique_receptors)]
-    
+
     ax = axes[i]
     sns.heatmap(
         subset_matrix,
@@ -284,15 +307,15 @@ for i, cell_type in enumerate(cell_types):
         cmap="viridis",
         xticklabels=receptor_labels,
         yticklabels=receptor_labels,
-        cbar_kws={'label': 'Selectivity'},
+        cbar_kws={"label": "Selectivity"},
         square=True,
-        annot=False
+        annot=False,
     )
-    ax.set_title(f'{cell_type} Selectivity (Top {TOP_N_PAIRS} Pairs)')
-    ax.set_xlabel('Receptor 2')
-    ax.set_ylabel('Receptor 1')
-    ax.tick_params(axis='x', rotation=90, labelsize=8)
-    ax.tick_params(axis='y', rotation=0, labelsize=8)
+    ax.set_title(f"{cell_type} Selectivity (Top {TOP_N_PAIRS} Pairs)")
+    ax.set_xlabel("Receptor 2")
+    ax.set_ylabel("Receptor 1")
+    ax.tick_params(axis="x", rotation=90, labelsize=8)
+    ax.tick_params(axis="y", rotation=0, labelsize=8)
 
 plt.tight_layout()
 plt.show()
@@ -304,43 +327,48 @@ plt.show()
 top_pairs = []
 top_selectivities = []
 
-for i, cell_type in enumerate(cell_types):
+for (i,) in range(len(cell_types)):
     selectivity_matrix = opt_selec[:, :, i]
-    
-    max_idx = np.unravel_index(np.nanargmax(selectivity_matrix), selectivity_matrix.shape)
+
+    max_idx = np.unravel_index(
+        np.nanargmax(selectivity_matrix), selectivity_matrix.shape
+    )
     rec1_idx, rec2_idx = max_idx
-    
+
     top_selectivity = selectivity_matrix[rec1_idx, rec2_idx]
     pair_label = f"{receptors[rec1_idx]} + {receptors[rec2_idx]}"
-    
+
     top_pairs.append(pair_label)
     top_selectivities.append(top_selectivity)
 
-top_selec_df = pd.DataFrame({
-    'Cell Type': cell_types,
-    'Receptor Pair': top_pairs,
-    'Selectivity': top_selectivities
-})
+top_selec_df = pd.DataFrame(
+    {
+        "Cell Type": cell_types,
+        "Receptor Pair": top_pairs,
+        "Selectivity": top_selectivities,
+    }
+)
 
 fig, ax = plt.subplots(figsize=(10, 6))
-bars = ax.bar(top_selec_df['Cell Type'], top_selec_df['Selectivity'], color='steelblue')
+bars = ax.bar(top_selec_df["Cell Type"], top_selec_df["Selectivity"], color="steelblue")
 
-ax.set_xlabel('Cell Type')
-ax.set_ylabel('Optimal Selectivity')
-ax.set_title('Top Receptor Pair Selectivity by Target Cell Type')
-ax.tick_params(axis='x', rotation=45)
+ax.set_xlabel("Cell Type")
+ax.set_ylabel("Optimal Selectivity")
+ax.set_title("Top Receptor Pair Selectivity by Target Cell Type")
+ax.tick_params(axis="x", rotation=45)
 
-
-for i, (bar, pair) in enumerate(zip(bars, top_selec_df['Receptor Pair'])):
+for _i, (bar, pair) in enumerate(
+    zip(bars, top_selec_df["Receptor Pair"], strict=False)
+):
     height = bar.get_height()
     ax.text(
         bar.get_x() + bar.get_width() / 2,
         height,
         pair,
-        ha='center',
-        va='bottom',
+        ha="center",
+        va="bottom",
         fontsize=9,
-        rotation=0
+        rotation=0,
     )
 
 plt.xticks(rotation=45, ha="right")

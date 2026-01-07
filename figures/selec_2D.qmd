@@ -23,8 +23,8 @@ Generates a symmetric heatmap showing optimal selectivity values achieved by mul
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import time
+
 import numpy as np
 import pandas as pd
 
@@ -56,20 +56,29 @@ epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
 
 if receptors is None:
     receptors = [
-        col
-        for col in epitopes_df.columns
-        if col != "Cell Type" and col not in signal
+        col for col in epitopes_df.columns if col != "Cell Type" and col not in signal
     ]
 
 if include_prototype_signal_receptor:
-    prototype_signal_receptor = np.random.normal(loc=50, scale=5, size=(epitopes_df.shape[0],))
+    rng = np.random.default_rng()
+    prototype_signal_receptor = rng.normal(
+        loc=50, scale=5, size=(epitopes_df.shape[0],)
+    )
     epitopes_df.insert(0, "Prototype_Signal_Receptor", prototype_signal_receptor)
     receptors = ["Prototype_Signal_Receptor"] + receptors
 
-sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type, offTargCellTypes=off_targ_cell_types, rand_state=42)
+sample_df = sample_receptor_abundances(
+    epitopes_df,
+    sample_size,
+    cell_type,
+    offTargCellTypes=off_targ_cell_types,
+    rand_state=42,
+)
 
 print(f"Cell types in off-target sample: {sample_df['Cell Type'].unique()}")
-print(f"Number of diffrerent cell types in sample: {len(sample_df['Cell Type'].unique())}")
+print(
+    f"Number of diffrerent cell types in sample: {len(sample_df['Cell Type'].unique())}"
+)
 print(f"Composition of off-target sample:\n{sample_df['Cell Type'].value_counts()}")
 
 targ_mask = (sample_df["Cell Type"] == cell_type).to_numpy()
@@ -99,7 +108,9 @@ for i, j in zip(row, col, strict=False):
     targ_abun = receptor_abuns[targ_mask]
     off_targ_abun = receptor_abuns[off_targ_mask]
 
-    opt_selec, opt_affs, opt_Kx_star = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valency)
+    opt_selec, opt_affs, opt_Kx_star = optimize_affs(
+        targ_abun, off_targ_abun, dose, valencies=valency
+    )
     selectivities[i, j] = 1 / opt_selec
 
     print(f"Optimized selectivity for {rec1} and {rec2}: {1 / opt_selec:.4f}")
