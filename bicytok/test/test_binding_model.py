@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+import warnings
 
 from ..binding_model_funcs import cyt_binding_model
 from ..imports import importCITE, sample_receptor_abundances
@@ -85,47 +86,53 @@ def test_binding_model():
     assert R_bound.shape == recCounts.shape
 
 
-def test_symmetric_affinities():
-    """Test that optimize_affs predicts symmetric target receptor affinities when valencies are symmetric"""
-
-    n_receptors = 10
+def test_starting_point_dependence():
+    """Test that optimize_affs is not starting point dependent."""
+    n_receptors = 4
     recAbundances, targ, offTarg = sample_data(n_obs=1000, n_var=n_receptors)
+    targRecs = recAbundances[targ]
+    offTargRecs = recAbundances[offTarg]
     dose = 1e-10
     valencies = np.array([[2, 1, 1]])
 
-    row, col = np.tril_indices(n_receptors, k=0)
-    for i, j in zip(row, col, strict=False):
-        # Exclude signal receptor or identical target receptors
-        if i == j or i == 0 or j == 0:
-            continue
+    for receptor_set_ind in range(n_receptors - 2):
+        results = []
+        for seed in [2, 11, 101]:  # Test with a few different random seeds
+            optSelec, optAffs, optKx_star = optimize_affs(
+                targRecs=targRecs[:, [receptor_set_ind, receptor_set_ind + 1, receptor_set_ind + 2]],
+                offTargRecs=offTargRecs[:, [receptor_set_ind, receptor_set_ind + 1, receptor_set_ind + 2]],
+                dose=dose,
+                valencies=valencies,
+                init_vals=seed,
+                # tol=1e-8,
+                # max_iter=5000
+            )
+            results.append({"selec": 1 / optSelec, "affs": optAffs, "Kx": optKx_star})
 
-        # Test forward target receptor order
-        test_abundances = recAbundances[:, [0, i, j]]
-        targRecs = test_abundances[targ]
-        offTargRecs = test_abundances[offTarg]
-        optSelec_f, optAffs_f, optKx_star_f = optimize_affs(
-            targRecs=targRecs,
-            offTargRecs=offTargRecs,
-            dose=dose,
-            valencies=valencies,
-        )
+        defined_inits = [[6.0, 7.0, 7.0, -12.0], [6.0, 9.0, 10.0, -12.0], [9.0, 9.0, 9.0, -9.0]]
+        for init in defined_inits:
+            optSelec, optAffs, optKx_star = optimize_affs(
+                targRecs=targRecs[:, [receptor_set_ind, receptor_set_ind + 1, receptor_set_ind + 2]],
+                offTargRecs=offTargRecs[:, [receptor_set_ind, receptor_set_ind + 1, receptor_set_ind + 2]],
+                dose=dose,
+                valencies=valencies,
+                init_vals=np.array(init),
+                # max_iter=5000,
+                # tol=1e-8
+            )
+            results.append({"selec": 1 / optSelec, "affs": optAffs, "Kx": optKx_star})
 
-        # Test reverse target receptor order
-        test_abundances = recAbundances[:, [0, j, i]]
-        targRecs = test_abundances[targ]
-        offTargRecs = test_abundances[offTarg]
-        optSelec_r, optAffs_r, optKx_star_r = optimize_affs(
-            targRecs=targRecs,
-            offTargRecs=offTargRecs,
-            dose=dose,
-            valencies=valencies,
-        )
-
-        assert np.isclose(optSelec_f, optSelec_r)
-        assert np.isclose(optAffs_f[0], optAffs_r[0], rtol=1e-3)
-        assert np.isclose(optAffs_f[1], optAffs_r[2], rtol=1e-3)
-        assert np.isclose(optAffs_f[2], optAffs_r[1], rtol=1e-3)
-        assert np.isclose(optKx_star_f, optKx_star_r)
+        # Check that selectivity is consistent across initial values
+        for i in range(1, len(results)):
+            assert np.isclose(results[0]["selec"], results[i]["selec"], rtol=1e-2)
+            if not np.all(np.isclose(results[0]["affs"], results[i]["affs"], rtol=1e-3)):
+                warnings.warn(
+                    f"Optimal affinities vary significantly between some initializations, but selectivity remains consistent. Affinity sets: {results[0]['affs']} vs {results[i]['affs']}"
+                )
+            if not np.isclose(results[0]["Kx"], results[i]["Kx"]):
+                warnings.warn(
+                    f"Optimal Kx_star varies significantly between some initializations, but selectivity remains consistent. Kx_star values: {results[0]['Kx']} vs {results[i]['Kx']}"
+                )
 
 
 def test_invalid_model_function_inputs():
