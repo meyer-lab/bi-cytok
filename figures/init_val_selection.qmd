@@ -1,0 +1,219 @@
+---
+title: "Initial value selection"
+---
+
+# Summary
+Generates a line plot showing the average runtime of the affinity optimization process for various initial affinity values. This analysis helps in selecting an optimal starting point to improve solver efficiency.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- Selectivity optimization functions (`optimize_affs`)
+- Timing functions for performance measurement
+
+# Parameters
+- `receptors`: List of strings naming individual receptors for selectivity analysis
+- `cell_type`: String identifier for target cell type in selectivity optimization
+- `dose`: Float concentration of ligand complex in binding model
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `initial_affinities`: Range of initial affinity values to scan through
+
+# Outputs
+- **Line Plot**: Average runtime of affinity optimization versus initial affinity values.
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import time
+from itertools import combinations_with_replacement
+
+import numpy as np
+import pandas as pd
+
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+receptors = ["CD25", "CD4-1", "CD27", "CD4-2", "CD278", "CD338", "TIGIT", "CD45RA"]
+signal = ["CD122"]
+cell_type = "Treg"
+dose = 1e-10
+valencies = np.array([[2, 1, 1]])
+cell_categorization = "CellType2"
+sample_size = 1000
+initial_affinities = np.linspace(6, 12, 13)
+fixed_affinity = 6.0
+varying_affinity_ind = [1, 2]
+fixed_Kx_star = -9
+
+CITE_DF = importCITE()
+
+epitopes = [
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+
+sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
+
+targ_mask = (sample_df["Cell Type"] == cell_type).to_numpy()
+off_targ_mask = ~targ_mask
+signal_abun = sample_df[signal].to_numpy()
+
+rec1_abun = sample_df[[receptors[0]]].to_numpy()
+rec2_abun = sample_df[[receptors[1]]].to_numpy()
+warmup_receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+warmup_targ_abun = warmup_receptor_abuns[targ_mask]
+warmup_off_targ_abun = warmup_receptor_abuns[off_targ_mask]
+optimize_affs(
+    warmup_targ_abun,
+    warmup_off_targ_abun,
+    dose,
+    valencies=valencies,
+    init_vals=np.array([fixed_affinity, fixed_affinity, fixed_affinity, fixed_Kx_star]),
+)
+print("Warmup complete.")
+
+receptor_combinations = list(combinations_with_replacement(receptors, 2))
+
+runtimes = []
+for init_aff in initial_affinities:
+    runtimes_for_init_aff = []
+    for rec1, rec2 in receptor_combinations:
+        print(f"Testing initial affinity {init_aff} for receptors {rec1}, {rec2}")
+        rec1_abun = sample_df[[rec1]].to_numpy()
+        rec2_abun = sample_df[[rec2]].to_numpy()
+
+        receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+        init_vals = np.array([fixed_affinity, fixed_affinity, fixed_affinity, fixed_Kx_star])
+        init_vals[varying_affinity_ind] = init_aff
+
+        targ_abun = receptor_abuns[targ_mask]
+        off_targ_abun = receptor_abuns[off_targ_mask]
+
+        start_time = time.time()
+        optimize_affs(
+            targ_abun,
+            off_targ_abun,
+            dose,
+            valencies=valencies,
+            init_vals=init_vals,
+        )
+        end_time = time.time()
+        runtimes_for_init_aff.append(end_time - start_time)
+    runtimes.append(np.mean(runtimes_for_init_aff))
+```
+
+```{python}
+#| fig-cap: "Average runtime of affinity optimization vs. initial affinity"
+import matplotlib.pyplot as plt
+
+plt.plot(initial_affinities, runtimes, marker='o')
+plt.xlabel("Initial Affinity")
+plt.ylabel("Average Runtime (s)")
+plt.title("Effect of Initial Affinity on Optimization Runtime")
+plt.grid(True)
+plt.show()
+```
+
+```{python}
+# Analysis scanning Kx_star
+
+import time
+from itertools import combinations_with_replacement
+
+import numpy as np
+import pandas as pd
+
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+receptors = ["CD25", "CD4-1", "CD27", "CD4-2", "CD278", "CD338", "TIGIT", "CD45RA"]
+signal = ["CD122"]
+cell_type = "Treg"
+dose = 1e-10
+valencies = np.array([[2, 1, 1]])
+cell_categorization = "CellType2"
+sample_size = 1000
+initial_kx_stars = np.linspace(-14, -9, 13)
+fixed_affinity = [6.0, 8.0, 8.0]
+
+CITE_DF = importCITE()
+
+epitopes = [
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+
+sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
+
+targ_mask = (sample_df["Cell Type"] == cell_type).to_numpy()
+off_targ_mask = ~targ_mask
+signal_abun = sample_df[signal].to_numpy()
+
+rec1_abun = sample_df[[receptors[0]]].to_numpy()
+rec2_abun = sample_df[[receptors[1]]].to_numpy()
+warmup_receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+warmup_targ_abun = warmup_receptor_abuns[targ_mask]
+warmup_off_targ_abun = warmup_receptor_abuns[off_targ_mask]
+optimize_affs(
+    warmup_targ_abun,
+    warmup_off_targ_abun,
+    dose,
+    valencies=valencies,
+    init_vals=np.array([fixed_affinity[0], fixed_affinity[1], fixed_affinity[2], initial_kx_stars[0]]),
+)
+print("Warmup complete.")
+
+receptor_combinations = list(combinations_with_replacement(receptors, 2))
+
+runtimes_kx = []
+for init_kx in initial_kx_stars:
+    runtimes_for_init_kx = []
+    for rec1, rec2 in receptor_combinations:
+        print(f"Testing initial Kx_star {init_kx} for receptors {rec1}, {rec2}"
+        )
+        rec1_abun = sample_df[[rec1]].to_numpy()
+        rec2_abun = sample_df[[rec2]].to_numpy()
+
+        receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+        init_vals = np.array([fixed_affinity[0], fixed_affinity[1], fixed_affinity[2], init_kx])
+
+        targ_abun = receptor_abuns[targ_mask]
+        off_targ_abun = receptor_abuns[off_targ_mask]
+
+        start_time = time.time()
+        optimize_affs(
+            targ_abun,
+            off_targ_abun,
+            dose,
+            valencies=valencies,
+            init_vals=init_vals,
+        )
+        end_time = time.time()
+        runtimes_for_init_kx.append(end_time - start_time)
+    runtimes_kx.append(np.mean(runtimes_for_init_kx))
+```
+
+```{python}
+#| fig-cap: "Average runtime of affinity optimization vs. initial Kx_star"
+import matplotlib.pyplot as plt
+
+plt.plot(initial_kx_stars, runtimes_kx, marker='o')
+plt.xlabel("Initial log10(Kx_star)")
+plt.ylabel("Average Runtime (s)")
+plt.title("Effect of Initial Kx_star on Optimization Runtime")
+plt.grid(True)
+plt.show()
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+text = f"""
+Analyzed the effect of initial affinity values on the runtime of the optimization process for monovalent complexes. The analysis was performed for the target cell type **{cell_type}** at a dose of **{dose}**. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
+
+The receptors analyzed were **{", ".join(receptors)}**. The initial affinity values were scanned from **{initial_affinities[0]}** to **{initial_affinities[-1]}**.
+"""
+
+print(text)
+```
