@@ -29,20 +29,20 @@ Generates scatter plots examining the correlation between 2D distance metrics (K
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
+import time
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 from bicytok.distance_metric_funcs import KL_EMD_2D
-from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.imports import (
+    filter_receptor_abundances,
+    importCITE,
+    sample_receptor_abundances,
+)
 from bicytok.selectivity_funcs import optimize_affs
 
-import time
-
-receptors = ["CD25", "CD4-1", "CD27", "CD338"]
-# receptors = None
+receptors = ["CD25", "CD4-1", "CD27"]
 signal_receptor = "CD122"
 sample_size = 1000
 targ_cell = "Treg"
@@ -51,6 +51,7 @@ cell_categorization = "CellType2"
 model_valencies_main = np.array([[2, 1, 1]])
 model_valencies_diag = np.array([[2, 2]])
 
+
 def generate_receptor_pairs(receptors):
     pairs = []
     for r1 in receptors:
@@ -58,13 +59,13 @@ def generate_receptor_pairs(receptors):
             pairs.append([r1, r2])
     return pairs
 
+receptor_pairs = generate_receptor_pairs(receptors)
+
 CITE_DF = importCITE()
 assert targ_cell in CITE_DF[cell_categorization].unique()
 
 epitopes = [
-    col
-    for col in CITE_DF.columns
-    if col not in ["CellType1", "CellType2", "CellType3"]
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
 ]
 
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
@@ -122,7 +123,7 @@ for i, receptor_pair in enumerate(receptor_pairs):
         targ_recs = df_targ_cell[[signal_receptor] + receptor_pair].to_numpy()
         off_targ_recs = df_off_targ_cell[[signal_receptor] + receptor_pair].to_numpy()
 
-    opt_selec, _, _ = optimize_affs(
+    opt_selec, opt_affs, opt_Kx_star = optimize_affs(
         targRecs=targ_recs,
         offTargRecs=off_targ_recs,
         dose=dose,
@@ -131,7 +132,6 @@ for i, receptor_pair in enumerate(receptor_pairs):
         tol=1e-9,
     )
     selectivity_vals.append(1 / opt_selec)
-    print(f"Optimization time for {receptor_pair}: {time.time() - time_start_opt} seconds")
 
     time_end = time.time()
     print(f"Processing time for {receptor_pair}, pair {i} out of {len(receptor_pairs)}: {time_end - time_start} seconds")
@@ -149,6 +149,11 @@ metrics_df = pd.DataFrame(
 
 ```{python}
 #| fig-cap: "KL Divergence vs Selectivity for receptor pairs"
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+fig, ax = plt.subplots(figsize=(10, 6))
 
 def label_top_n(ax, data, x_col, y_col, n=10):
     """Label top n points by y-value on scatter plot."""
@@ -175,7 +180,6 @@ def label_top_n(ax, data, x_col, y_col, n=10):
                 textcoords="offset points"
             )
 
-fig, ax = plt.subplots(figsize=(10, 6))
 sns.scatterplot(
     data=metrics_df,
     x="KL Divergence",
@@ -217,11 +221,10 @@ plt.show()
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
 Visualized the relationship between 2D distance metrics (KL Divergence and EMD) and 3D selectivity. Target cells were **{targ_cell}**s, compared against all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
 \n\n
-For selectivity optimization, the signal receptor was **{signal_receptor}**, with tetravalent complexes at a dose of **{dose}**. Tetravalent complexes consisted of two signal receptor ligands, and one ligand each for the two target receptors. The epitope pairs that were analyzed were **{', '.join(map(str, receptor_pairs))}**, which served as the target receptors for selectivity optimization and as the double receptor distributions for 2D EMD and KL div. calculations.
+For selectivity optimization, the signal receptor was **{signal_receptor}**, with tetravalent complexes at a dose of **{dose}**. Tetravalent complexes consisted of two signal receptor ligands, and one ligand each for the two target receptors. The epitope pairs that were analyzed were **{", ".join(map(str, receptor_pairs))}**, which served as the target receptors for selectivity optimization and as the double receptor distributions for 2D EMD and KL div. calculations.
 """
 
 print(text)

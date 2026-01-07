@@ -28,12 +28,7 @@ Generates a 3×3 grid of plots comparing KL Divergence and EMD metrics for syste
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
-import matplotlib.pyplot as plt
 import numpy as np
-
-from scipy import stats
-from bicytok.distance_metric_funcs import KL_EMD_1D
 
 rng = np.random.default_rng(1)
 
@@ -55,6 +50,10 @@ n_samples = 1500
 
 ```{python}
 #| fig-cap: "Comparison of KL divergence and EMD for different Gaussian distributions"
+import matplotlib.pyplot as plt
+from scipy import stats
+
+from bicytok.distance_metric_funcs import KL_EMD_1D
 
 fig, axs = plt.subplots(3, 3, figsize=(15, 10))
 axs = axs.flatten()
@@ -78,10 +77,7 @@ for i, (title, target_mean, target_sigma) in enumerate(off_target_configs):
 
     # Only show legend in the first panel
     if i == 0:
-        axs[i].legend([f"Reference", 
-                      f"Target",
-                      "Overlapping Area"],
-                      loc="upper right")
+        axs[i].legend(["Reference", "Target", "Overlapping Area"], loc="upper right")
 
     kl_value = KL_div[0] if not np.isnan(KL_div[0]) else float("nan")
     emd_value = EMD[0] if not np.isnan(EMD[0]) else float("nan")

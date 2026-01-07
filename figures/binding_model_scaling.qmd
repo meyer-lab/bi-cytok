@@ -32,12 +32,10 @@ Generates a comprehensive analysis of how scaling factors applied to raw recepto
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
+import time
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import time
-import matplotlib.pyplot as plt
 
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import get_cell_bindings, optimize_affs
@@ -57,9 +55,7 @@ conversion_factors = np.logspace(-1, 8, num=num_conv_factors)
 CITE_DF = importCITE()
 
 epitopes_all = [
-    col
-    for col in CITE_DF.columns
-    if col not in ["CellType1", "CellType2", "CellType3"]
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
 ]
 epitopes_df = CITE_DF[epitopes_all + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
@@ -154,6 +150,8 @@ for receptor_valency in receptors_of_interest:
 
 ```{python}
 #| fig-cap: "Binding model scaling factor analysis showing receptor binding, selectivity, and optimization parameters"
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 fig, axes = plt.subplots(2, 3, figsize=(18, 10))
 ax = axes.flatten()
@@ -206,9 +204,9 @@ for plot_idx, config in enumerate(plot_configs):
             results[config["data_key"]][i],
             marker="o",
             ls="-",
-            label=f"{targ_cell}: {receptor} (Valency: {valency*2})"
+            label=f"{targ_cell}: {receptor} (Valency: {valency * 2})"
             if "off_data_key" in config
-            else f"{receptor} (Valency: {valency*2})",
+            else f"{receptor} (Valency: {valency * 2})",
             color=palette[i],
         )
 
@@ -248,11 +246,10 @@ plt.show()
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
 Analyzed the effects of scaling factors on binding model parameters for **{targ_cell}** cell selectivity optimization. The analysis tested **{num_conv_factors}** conversion factors ranging from 0.1 to 1e8 on **{sample_size}** cells sampled from the CITE-seq dataset.
 \n\n
-The signal receptor used was **{signal_receptor}** at a dose of **{dose}**. Target receptors analyzed were **{', '.join([r[0] for r in receptors_of_interest])}** with respective valencies of **{', '.join([str(r[1]*2) for r in receptors_of_interest])}**. Affinity optimization bounds were set to **{affinity_bounds}** and Kx_star bounds to **{kx_star_bounds}**.
+The signal receptor used was **{signal_receptor}** at a dose of **{dose}**. Target receptors analyzed were **{", ".join([r[0] for r in receptors_of_interest])}** with respective valencies of **{", ".join([str(r[1] * 2) for r in receptors_of_interest])}**. Affinity optimization bounds were set to **{affinity_bounds}** and Kx_star bounds to **{kx_star_bounds}**.
 """
 
 print(text)

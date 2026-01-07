@@ -24,12 +24,14 @@ Generates comparative bar plots showing the highest-performing receptor for each
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import numpy as np
-import matplotlib.pyplot as plt
 
 from bicytok.distance_metric_funcs import KL_EMD_1D
-from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.imports import (
+    filter_receptor_abundances,
+    importCITE,
+    sample_receptor_abundances,
+)
 
 sample_size = 100
 cell_categorization = "CellType2"
@@ -81,9 +83,7 @@ for cell_type in cell_types:
     on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
     off_target_mask = ~on_target_mask
     rec_abundances = filtered_sample_df[epitopes].to_numpy()
-    KL_values, EMD_values = KL_EMD_1D(
-        rec_abundances, on_target_mask, off_target_mask
-    )
+    KL_values, EMD_values = KL_EMD_1D(rec_abundances, on_target_mask, off_target_mask)
 
     KL_values = np.nan_to_num(KL_values)
     EMD_values = np.nan_to_num(EMD_values)
@@ -115,6 +115,7 @@ KL_labs = np.array(KL_labs)[KL_sort_ind]
 
 ```{python}
 #| fig-cap: "Epitopes with the top KL Divergence values for each cell type"
+import matplotlib.pyplot as plt
 
 plt.bar(KL_labs, top_KL, color="k")
 plt.xlabel("Cell Type: Epitope")
@@ -125,7 +126,6 @@ plt.show()
 
 ```{python}
 #| fig-cap: "Epitopes with the top EMD values for each cell type"
-
 plt.bar(EMD_labs, top_EMD, color="k")
 plt.xlabel("Cell Type: Epitope")
 plt.ylabel("EMD")
@@ -136,13 +136,12 @@ plt.show()
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
 Identified epitopes with the top 1D KL Divergence and EMD values for each cell type compared to all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
 \n\n
-The cell types considered were **{', '.join(cell_types)}**.
+The cell types considered were **{", ".join(cell_types)}**.
 \n\n
-The receptors included were **{', '.join(epitopes)}**.
+The receptors included were **{", ".join(epitopes)}**.
 """
 
 print(text)

@@ -15,6 +15,14 @@ jobs:
       run: uv run ruff check bicytok
     - name: Check formatting
       run: uv run ruff format --check bicytok
+    - name: Check tools linting
+      run: uv run ruff check tools
+    - name: Check tools formatting
+      run: uv run ruff format --check tools
+    - name: Check Quarto figures linting
+      run: uv run python tools/format_qmd.py check --check figures
+    - name: Check Quarto figures formatting
+      run: uv run python tools/format_qmd.py format --check figures
     - name: Test with pytest
       run: make coverage.xml
     - name: Upload coverage to Codecov

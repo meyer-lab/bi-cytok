@@ -25,14 +25,15 @@ Generates symmetric heatmaps visualizing 2D KL Divergence and EMD values for all
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 from bicytok.distance_metric_funcs import KL_EMD_2D
-from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.imports import (
+    filter_receptor_abundances,
+    importCITE,
+    sample_receptor_abundances,
+)
 
 targ_cell = "dnT"
 sample_size = 1000
@@ -78,7 +79,6 @@ df_EMD = df_EMD.dropna(how="all").dropna(how="all", axis=1)
 df_KL = df_KL.dropna(how="all").dropna(how="all", axis=1)
 ```
 
-
 ```{python}
 # Filter receptors based on nth percentile of row and column means
 cutoff_percentile = 82
@@ -87,47 +87,41 @@ emd_col_means = df_EMD.mean(axis=0)
 kl_row_means = df_KL.mean(axis=1)
 kl_col_means = df_KL.mean(axis=0)
 
-emd_threshold = np.percentile(np.concatenate([emd_row_means, emd_col_means]), cutoff_percentile)
-kl_threshold = np.percentile(np.concatenate([kl_row_means, kl_col_means]), cutoff_percentile)
+emd_threshold = np.percentile(
+    np.concatenate([emd_row_means, emd_col_means]), cutoff_percentile
+)
+kl_threshold = np.percentile(
+    np.concatenate([kl_row_means, kl_col_means]), cutoff_percentile
+)
 
 df_EMD_filt = df_EMD.loc[emd_row_means >= emd_threshold, emd_col_means >= emd_threshold]
 df_KL_filt = df_KL.loc[kl_row_means >= kl_threshold, kl_col_means >= kl_threshold]
-
-df_EMD_filt = df_EMD
-df_KL_filt = df_KL
-
-# common_receptors = sorted(set(df_EMD.index).intersection(set(df_KL.index)))
-# df_EMD = df_EMD.loc[common_receptors, common_receptors]
-# df_KL = df_KL.loc[common_receptors, common_receptors]
 ```
 
 ```{python}
 #| fig-cap: "EMD heatmap for receptor pairs"
-
-# Create custom continuous colormap using specified colors
 import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 colors = ["#2774AE", "white", "#CF4D6F"]
 positions = [0, 0.5, 1]
-cmap = mcolors.LinearSegmentedColormap.from_list("custom_cmap", list(zip(positions, colors)))
-
-# Plot heatmap with custom colormap
-sns.heatmap(
-    df_EMD_filt, cmap=cmap, cbar=True, xticklabels=True, yticklabels=True
+cmap = mcolors.LinearSegmentedColormap.from_list(
+    "custom_cmap", list(zip(positions, colors, strict=False))
 )
+
+sns.heatmap(df_EMD_filt, cmap=cmap, cbar=True, xticklabels=True, yticklabels=True)
 plt.tick_params(axis="x", labelsize=20, rotation=90)
 plt.tick_params(axis="y", labelsize=20, rotation=0)
 cbar = plt.gcf().axes[-1]
 cbar.set_title("EMD", fontsize=25)
-cbar.tick_params(labelsize=20)  # Increase font size of colorbar numbers
+cbar.tick_params(labelsize=20)
 plt.show()
 ```
 
 ```{python}
 #| fig-cap: "KL Divergence heatmap for receptor pairs"
-
-sns.heatmap(
-    df_KL_filt, cmap=cmap, cbar=True, xticklabels=True, yticklabels=True
-)
+sns.heatmap(df_KL_filt, cmap=cmap, cbar=True, xticklabels=True, yticklabels=True)
 plt.tick_params(axis="x", labelsize=20, rotation=90)
 plt.tick_params(axis="y", labelsize=20, rotation=0)
 cbar = plt.gcf().axes[-1]
@@ -139,11 +133,10 @@ plt.show()
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
 Generated heatmaps visualizing the 2D EMD and KL Divergence of all receptor pairs that pass filtering criteria. The distance values were calculated between **{targ_cell}**s and all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
 \n\n
-The receptors analyzed were **{', '.join(epitopes)}**.
+The receptors analyzed were **{", ".join(epitopes)}**.
 """
 
 print(text)

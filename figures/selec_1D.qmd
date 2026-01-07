@@ -21,9 +21,7 @@ Generates a  bar plot ranking individual receptors by their optimal selectivity 
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import numpy as np
-import matplotlib.pyplot as plt
 
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
@@ -39,9 +37,7 @@ sample_size = 1000
 CITE_DF = importCITE()
 
 epitopes = [
-    col
-    for col in CITE_DF.columns
-    if col not in ["CellType1", "CellType2", "CellType3"]
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
 ]
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
@@ -79,6 +75,7 @@ sort_indices = np.argsort(selectivities)
 
 ```{python}
 #| fig-cap: "Optimal selectivity of various epitopes"
+import matplotlib.pyplot as plt
 
 plt.barh(
     np.array(receptors)[sort_indices],
@@ -95,11 +92,10 @@ plt.show()
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
 Analyzed the optimal selectivities of monovalent complexes of ligands for receptors in the target cell type **{cell_type}** at a dose of **{dose}**. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
 \n\n
-The receptors analyzed were **{', '.join(receptors)}**.
+The receptors analyzed were **{", ".join(receptors)}**.
 """
 
 print(text)

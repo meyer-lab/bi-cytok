@@ -29,20 +29,21 @@ Generates scatter plots examining the correlation between 1D distance metrics (K
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
+import os
+import time
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 from bicytok.distance_metric_funcs import KL_EMD_1D
-from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.imports import (
+    filter_receptor_abundances,
+    importCITE,
+    sample_receptor_abundances,
+)
 from bicytok.selectivity_funcs import optimize_affs
 
-import time
-
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 signal_receptor = "CD122"
 sample_size = 100
@@ -102,12 +103,13 @@ for receptor in epitopes:
             offTargRecs=off_targ_recs,
             dose=dose,
             valencies=model_valencies,
-            
         )
         selectivity_vals.append(1 / opt_selec)
 
         time_end = time.time()
-        print(f"Processing time for {receptor} (Valency {valency}): {time_end - time_start} seconds")
+        print(
+            f"Processing time for {receptor} (Valency {valency}): {time_end - time_start} seconds"
+        )
 
 valency_map = {1: "Valency 2", 2: "Valency 4"}
 valency_labels = [valency_map[v] for _ in epitopes for v in test_valencies]
@@ -137,17 +139,18 @@ unique_receptors_df = unique_receptors_df.fillna(0)
 ```{python}
 # Get top 7 receptors for each metric (each receptor counted once)
 top_kl_indices = unique_receptors_df["KL Divergence"].nlargest(7).index.tolist()
-top_kl_receptors = unique_receptors_df.iloc[top_kl_indices][
-    "Receptor Pair"
-].tolist()
+top_kl_receptors = unique_receptors_df.iloc[top_kl_indices]["Receptor Pair"].tolist()
 
 top_emd_indices = unique_receptors_df["EMD"].nlargest(7).index.tolist()
-top_emd_receptors = unique_receptors_df.iloc[top_emd_indices][
-    "Receptor Pair"
-].tolist()
+top_emd_receptors = unique_receptors_df.iloc[top_emd_indices]["Receptor Pair"].tolist()
 
 # Get top 7 selectivity receptors (taking best selectivity per receptor across valencies)
-selectivity_per_receptor = metrics_df.dropna(subset=["Selectivity"]).groupby("Receptor Pair")["Selectivity"].max().reset_index()
+selectivity_per_receptor = (
+    metrics_df.dropna(subset=["Selectivity"])
+    .groupby("Receptor Pair")["Selectivity"]
+    .max()
+    .reset_index()
+)
 top_selectivity_data = selectivity_per_receptor.nlargest(7, "Selectivity")
 top_selectivity_receptors = top_selectivity_data["Receptor Pair"].tolist()
 
@@ -164,16 +167,21 @@ selectivity_only_emd = set(top_selectivity_receptors) - set(top_emd_receptors)
 # Filter dataframes for KL plot categories
 metrics_df_kl_both = metrics_df[metrics_df["Receptor Pair"].isin(kl_both)]
 metrics_df_kl_only = metrics_df[metrics_df["Receptor Pair"].isin(kl_only)]
-metrics_df_selectivity_only_kl = metrics_df[metrics_df["Receptor Pair"].isin(selectivity_only_kl)]
+metrics_df_selectivity_only_kl = metrics_df[
+    metrics_df["Receptor Pair"].isin(selectivity_only_kl)
+]
 
 # Filter dataframes for EMD plot categories
 metrics_df_emd_both = metrics_df[metrics_df["Receptor Pair"].isin(emd_both)]
 metrics_df_emd_only = metrics_df[metrics_df["Receptor Pair"].isin(emd_only)]
-metrics_df_selectivity_only_emd = metrics_df[metrics_df["Receptor Pair"].isin(selectivity_only_emd)]
+metrics_df_selectivity_only_emd = metrics_df[
+    metrics_df["Receptor Pair"].isin(selectivity_only_emd)
+]
 ```
 
 ```{python}
 #| fig-cap: "KL Divergence vs Selectivity with categorized top 5 receptors"
+import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -181,21 +189,21 @@ fig, ax = plt.subplots(figsize=(10, 8))
 # Plot all receptors in gray with specific markers by valency
 for valency in metrics_df["Valency"].unique():
     subset = metrics_df[metrics_df["Valency"] == valency]
-    marker = 'o' if valency == "Valency 2" else 'X'
+    marker = "o" if valency == "Valency 2" else "X"
     ax.scatter(
         subset["KL Divergence"],
         subset["Selectivity"],
         marker=marker,
         s=200,
-        color='gray',
-        alpha=0.5
+        color="gray",
+        alpha=0.5,
     )
 
 # Plot receptors identified by both KL and selectivity (blue)
 if len(metrics_df_kl_both) > 0:
     for valency in metrics_df_kl_both["Valency"].unique():
         subset = metrics_df_kl_both[metrics_df_kl_both["Valency"] == valency]
-        marker = 'o' if valency == "Valency 2" else 'X'
+        marker = "o" if valency == "Valency 2" else "X"
         ax.scatter(
             subset["KL Divergence"],
             subset["Selectivity"],
@@ -203,14 +211,16 @@ if len(metrics_df_kl_both) > 0:
             s=200,
             alpha=0.9,
             marker=marker,
-            label="Both KL & Selectivity" if valency == metrics_df_kl_both["Valency"].unique()[0] else ""
+            label="Both KL & Selectivity"
+            if valency == metrics_df_kl_both["Valency"].unique()[0]
+            else "",
         )
 
 # Plot receptors identified only by KL (red)
 if len(metrics_df_kl_only) > 0:
     for valency in metrics_df_kl_only["Valency"].unique():
         subset = metrics_df_kl_only[metrics_df_kl_only["Valency"] == valency]
-        marker = 'o' if valency == "Valency 2" else 'X'
+        marker = "o" if valency == "Valency 2" else "X"
         ax.scatter(
             subset["KL Divergence"],
             subset["Selectivity"],
@@ -218,14 +228,18 @@ if len(metrics_df_kl_only) > 0:
             s=200,
             alpha=0.9,
             marker=marker,
-            label="KL Only" if valency == metrics_df_kl_only["Valency"].unique()[0] else ""
+            label="KL Only"
+            if valency == metrics_df_kl_only["Valency"].unique()[0]
+            else "",
         )
 
 # Plot receptors identified only by selectivity (yellow)
 if len(metrics_df_selectivity_only_kl) > 0:
     for valency in metrics_df_selectivity_only_kl["Valency"].unique():
-        subset = metrics_df_selectivity_only_kl[metrics_df_selectivity_only_kl["Valency"] == valency]
-        marker = 'o' if valency == "Valency 2" else 'X'
+        subset = metrics_df_selectivity_only_kl[
+            metrics_df_selectivity_only_kl["Valency"] == valency
+        ]
+        marker = "o" if valency == "Valency 2" else "X"
         ax.scatter(
             subset["KL Divergence"],
             subset["Selectivity"],
@@ -233,42 +247,43 @@ if len(metrics_df_selectivity_only_kl) > 0:
             s=200,
             alpha=0.9,
             marker=marker,
-            label="Selectivity Only" if valency == metrics_df_selectivity_only_kl["Valency"].unique()[0] else ""
+            label="Selectivity Only"
+            if valency == metrics_df_selectivity_only_kl["Valency"].unique()[0]
+            else "",
         )
 
-ax.grid(True, linestyle='--', alpha=0.7)
+ax.grid(True, linestyle="--", alpha=0.7)
 ax.set_xlabel("KL Divergence", fontsize=30)
 ax.set_ylabel("Binding Model Selectivity", fontsize=30)
-ax.tick_params(axis='x', labelsize=25)
-ax.tick_params(axis='y', labelsize=25)
-ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=5)
+ax.tick_params(axis="x", labelsize=25)
+ax.tick_params(axis="y", labelsize=25)
+ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left", fontsize=5)
 plt.tight_layout()
 plt.show()
 ```
 
 ```{python}
 #| fig-cap: "EMD vs Selectivity with categorized top 5 receptors"
-
 fig, ax = plt.subplots(figsize=(10, 8))
 
 # Plot all receptors in gray
 for valency in metrics_df["Valency"].unique():
     subset = metrics_df[metrics_df["Valency"] == valency]
-    marker = 'o' if valency == "Valency 2" else 'X'
+    marker = "o" if valency == "Valency 2" else "X"
     ax.scatter(
         subset["EMD"],
         subset["Selectivity"],
         marker=marker,
         s=200,
-        color='gray',
-        alpha=0.5
+        color="gray",
+        alpha=0.5,
     )
 
 # Plot receptors identified by both EMD and selectivity (blue)
 if len(metrics_df_emd_both) > 0:
     for valency in metrics_df_emd_both["Valency"].unique():
         subset = metrics_df_emd_both[metrics_df_emd_both["Valency"] == valency]
-        marker = 'o' if valency == "Valency 2" else 'X'
+        marker = "o" if valency == "Valency 2" else "X"
         ax.scatter(
             subset["EMD"],
             subset["Selectivity"],
@@ -276,14 +291,16 @@ if len(metrics_df_emd_both) > 0:
             s=200,
             alpha=0.9,
             marker=marker,
-            label="Both EMD & Selectivity" if valency == metrics_df_emd_both["Valency"].unique()[0] else ""
+            label="Both EMD & Selectivity"
+            if valency == metrics_df_emd_both["Valency"].unique()[0]
+            else "",
         )
 
 # Plot receptors identified only by EMD (red)
 if len(metrics_df_emd_only) > 0:
     for valency in metrics_df_emd_only["Valency"].unique():
         subset = metrics_df_emd_only[metrics_df_emd_only["Valency"] == valency]
-        marker = 'o' if valency == "Valency 2" else 'X'
+        marker = "o" if valency == "Valency 2" else "X"
         ax.scatter(
             subset["EMD"],
             subset["Selectivity"],
@@ -291,14 +308,18 @@ if len(metrics_df_emd_only) > 0:
             s=200,
             alpha=0.9,
             marker=marker,
-            label="EMD Only" if valency == metrics_df_emd_only["Valency"].unique()[0] else ""
+            label="EMD Only"
+            if valency == metrics_df_emd_only["Valency"].unique()[0]
+            else "",
         )
 
 # Plot receptors identified only by selectivity (yellow)
 if len(metrics_df_selectivity_only_emd) > 0:
     for valency in metrics_df_selectivity_only_emd["Valency"].unique():
-        subset = metrics_df_selectivity_only_emd[metrics_df_selectivity_only_emd["Valency"] == valency]
-        marker = 'o' if valency == "Valency 2" else 'X'
+        subset = metrics_df_selectivity_only_emd[
+            metrics_df_selectivity_only_emd["Valency"] == valency
+        ]
+        marker = "o" if valency == "Valency 2" else "X"
         ax.scatter(
             subset["EMD"],
             subset["Selectivity"],
@@ -306,30 +327,29 @@ if len(metrics_df_selectivity_only_emd) > 0:
             s=200,
             alpha=0.9,
             marker=marker,
-            label="Selectivity Only" if valency == metrics_df_selectivity_only_emd["Valency"].unique()[0] else ""
+            label="Selectivity Only"
+            if valency == metrics_df_selectivity_only_emd["Valency"].unique()[0]
+            else "",
         )
 
-ax.grid(True, linestyle='--', alpha=0.7)
+ax.grid(True, linestyle="--", alpha=0.7)
 ax.set_xlabel("EMD", fontsize=30)
 ax.set_ylabel("Binding Model Selectivity", fontsize=30)
-ax.tick_params(axis='x', labelsize=25)
-ax.tick_params(axis='y', labelsize=25)
+ax.tick_params(axis="x", labelsize=25)
+ax.tick_params(axis="y", labelsize=25)
 ax.set_title("EMD vs Selectivity (Top 5 Receptors by Category)", fontsize=30)
-ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=4)
+ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left", fontsize=4)
 plt.tight_layout()
 plt.show()
 ```
 
-
-
 ## Parameter Summary
 ```{python}
 #| output: asis
-
 text = f"""
 Visualized the relationship between 1D distance metrics (KL Divergence and EMD) and 2D selectivity. Target cells were **{targ_cell}**s, compared against all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset.
 \n\n
-For selectivity optimization, the signal receptor was **{signal_receptor}**, with bivalent and tetravalent complexes at a dose of **{dose}**. The epitopes analyzed were **{', '.join(epitopes)}**, which served as the target receptors for selectivity optimization and as the single receptor distributions for 1D EMD and KL div. calculations.
+For selectivity optimization, the signal receptor was **{signal_receptor}**, with bivalent and tetravalent complexes at a dose of **{dose}**. The epitopes analyzed were **{", ".join(epitopes)}**, which served as the target receptors for selectivity optimization and as the single receptor distributions for 1D EMD and KL div. calculations.
 """
 
 print(text)
