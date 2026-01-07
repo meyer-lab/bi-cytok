@@ -103,7 +103,6 @@ def min_off_targ_selec(
 
 
 # Affinity optimization constants
-INIT_AFF_SEED = 42
 REC_COUNT_EPS = 1e-6
 
 
@@ -116,6 +115,7 @@ def _optimize_affs_jax(
     Kx_star_bounds: tuple[float, float],
     max_iter: int,
     tol: float,
+    init_params: Float64[Array, "receptors_plus_one"],
 ) -> tuple[Scalar, Float64[Array, "receptors"], Scalar]:
     """
     JAX-optimized core optimization function using L-BFGS-B.
@@ -123,17 +123,6 @@ def _optimize_affs_jax(
 
     minAffs = jnp.full(targRecs_jax.shape[1], affinity_bounds[0])
     maxAffs = jnp.full(targRecs_jax.shape[1], affinity_bounds[1])
-
-    # Start optimization at random values between min and max bounds
-    key = jax.random.PRNGKey(INIT_AFF_SEED)
-    key1, key2 = jax.random.split(key)
-    initAffs = jax.random.uniform(
-        key1, shape=(targRecs_jax.shape[1],), minval=minAffs, maxval=maxAffs
-    )
-    initKx_star = jax.random.uniform(
-        key2, minval=jnp.log10(Kx_star_bounds[0]), maxval=jnp.log10(Kx_star_bounds[1])
-    )
-    params = jnp.concatenate((initAffs, jnp.array([initKx_star])))
 
     # Set optimization bounds
     bounds = (
@@ -154,7 +143,7 @@ def _optimize_affs_jax(
 
     # Run optimization with bounds passed to run method
     result = solver.run(
-        init_params=params,
+        init_params=init_params,
         bounds=bounds,
         targRecs=targRecs_clean,
         offTargRecs=offTargRecs_clean,
@@ -173,10 +162,11 @@ def optimize_affs(
     offTargRecs: np.ndarray,
     dose: float,
     valencies: np.ndarray,
+    init_vals: np.ndarray | int = 42,
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
     max_iter: int = 1000,
-    tol: float = 1e-6,
+    tol: float = 1e-5,
 ) -> tuple[float, list, float]:
     """
     NumPy-compatible wrapper for optimize_affs that handles conversions to/from JAX.
@@ -188,6 +178,7 @@ def optimize_affs(
         offTargRecs: receptors count of off-target cell types
         dose: ligand concentration/dose
         valencies: array of valencies of each distinct ligand in the ligand complex
+        init_vals: seed for random initial parameters or array of initial parameters
         affinity_bounds: minimum and maximum optimization bounds for affinity values
         Kx_star_bounds: minimum and maximum optimization bounds for Kx_star
         max_iter: maximum number of iterations
@@ -203,11 +194,27 @@ def optimize_affs(
     assert offTargRecs.size > 0
     assert targRecs.shape[1] == offTargRecs.shape[1]
 
+    # Set up initial parameters
+    if isinstance(init_vals, int):
+        rng = np.random.default_rng(init_vals)
+        init_affs = rng.uniform(
+            low=affinity_bounds[0],
+            high=affinity_bounds[1],
+            size=targRecs.shape[1],
+        )
+        init_kx_star = rng.uniform(
+            low=np.log10(Kx_star_bounds[0]), high=np.log10(Kx_star_bounds[1])
+        )
+        init_params = np.concatenate((init_affs, np.array([init_kx_star])))
+    else:
+        init_params = init_vals
+
     # Convert inputs to JAX arrays
     targRecs_jax = jnp.array(targRecs, dtype=jnp.float64)
     dose_jax = jnp.array(dose, dtype=jnp.float64)
     offTargRecs_jax = jnp.array(offTargRecs, dtype=jnp.float64)
     valencies_jax = jnp.array(valencies, dtype=jnp.float64)
+    init_params_jax = jnp.array(init_params, dtype=jnp.float64)
 
     _optimize_affs_jax_jit = jax.jit(_optimize_affs_jax)
 
@@ -221,6 +228,7 @@ def optimize_affs(
         Kx_star_bounds,
         max_iter,
         tol,
+        init_params_jax,
     )
 
     # Convert outputs back to Python types
