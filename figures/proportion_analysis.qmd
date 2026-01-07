@@ -132,6 +132,9 @@ affinities_melted = affinities_df.melt(
 
 ```{python}
 #| fig-cap: "Bootstrap variation in KL Divergence across target cell proportions"
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 sns.boxplot(x="target_proportion", y="KL_div", data=metrics_df)
 plt.xlabel("Target Cell Proportion")
 plt.ylabel("KL Divergence")

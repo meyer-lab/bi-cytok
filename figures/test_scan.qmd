@@ -75,8 +75,11 @@ KL_results, EMD_results = scan_KL_EMD(
 
 ```{python}
 # Plot KL, EMD, and selectivity heatmaps per cell type using scanning results
-%config InlineBackend.figure_formats = ['svg']
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
+%config InlineBackend.figure_formats = ['svg']
 print(KL_results.shape, opt_selec.shape)
 
 for ci, cell in enumerate(cell_types):

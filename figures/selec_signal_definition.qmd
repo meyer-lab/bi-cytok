@@ -126,6 +126,9 @@ for k, signal in enumerate(signal_receptors):
 
 ```{python}
 #| fig-cap: "Compute frequency that each (i,j) pair is a max across the 3rd axis and plot heatmap"
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 # tally matrix for counts (how many times each (i,j) is among the maxima)
 freq_counts = np.zeros((len(receptors), len(receptors)), dtype=int)
 
