@@ -206,6 +206,15 @@ def optimize_affs(
             low=Kx_star_bounds[0], high=Kx_star_bounds[1]
         )
         init_params = np.concatenate((init_affs, np.array([init_kx_star])))
+    elif isinstance(init_vals, str) and init_vals == "search":
+        init_params, init_selectivity = search_initialization(
+            targ_counts=targRecs,
+            off_targ_counts=offTargRecs,
+            dose=dose,
+            valencies=valencies,
+            affinity_bounds=affinity_bounds,
+            Kx_star_bounds=Kx_star_bounds,
+        )
     else:
         init_params = init_vals
 
@@ -232,11 +241,20 @@ def optimize_affs(
     )
 
     # Convert outputs back to Python types
-    return (
-        float(final_loss),
-        [float(x) for x in final_affs],
-        float(final_kx_star),
-    )
+    if isinstance(init_vals, str) and init_vals == "search":
+        return (
+            float(final_loss),
+            [float(x) for x in final_affs],
+            float(final_kx_star),
+            init_params,
+            init_selectivity,
+        )    
+    else:
+        return (
+            float(final_loss),
+            [float(x) for x in final_affs],
+            float(final_kx_star),
+        )
 
 
 cyt_binding_model_jit = jax.jit(cyt_binding_model)
@@ -337,3 +355,49 @@ def compute_selectivity(
 
     # Return selectivity ratio
     return (targetBound + offTargetBound) / targetBound
+
+
+def search_initialization(
+    targ_counts: np.ndarray,
+    off_targ_counts: np.ndarray,
+    dose: float,
+    valencies: np.ndarray,
+    grid_size: int = 5,
+    affinity_bounds: tuple[float, float] = (6.0, 12.0),
+    Kx_star_bounds: tuple[float, float] = (-15, -9),
+) -> list:
+    """
+
+    """
+    # Create grid of initial affinities and Kx_star values
+    signal_aff_grid = np.linspace(
+        affinity_bounds[0], affinity_bounds[1], grid_size
+    )
+    target_aff_grid = np.linspace(
+        affinity_bounds[0], affinity_bounds[1], grid_size
+    )
+    Kx_star_grid = np.linspace(
+        Kx_star_bounds[0], Kx_star_bounds[1], grid_size
+    )
+
+    optimal_loss = np.inf
+    optimal_initialization = None
+
+    for sig_aff in signal_aff_grid:
+        for targ_aff in target_aff_grid:
+            for Kx in Kx_star_grid:
+                selectivity = compute_selectivity(
+                    targ_counts=targ_counts,
+                    off_targ_counts=off_targ_counts,
+                    affinities=np.array([sig_aff, targ_aff, targ_aff]),
+                    dose=dose,
+                    valencies=valencies,
+                    Kx_star=Kx,
+                )
+                if selectivity < optimal_loss:
+                    optimal_loss = selectivity
+                    optimal_initialization = np.array(
+                        [sig_aff, targ_aff, targ_aff, Kx]
+                    )
+            
+    return optimal_initialization, optimal_loss

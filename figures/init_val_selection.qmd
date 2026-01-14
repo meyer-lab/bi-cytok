@@ -305,7 +305,7 @@ import pandas as pd
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
-receptors = ["CD4-1", "CD27"]
+receptors = ["CD338", "CD45RA"]
 signal = ["CD122"]
 cell_type = "Treg"
 dose = 1e-10
@@ -333,6 +333,15 @@ rec2_abun = sample_df[[receptors[1]]].to_numpy()
 receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
 targ_abun = receptor_abuns[targ_mask]
 off_targ_abun = receptor_abuns[off_targ_mask]
+
+# Check initialization search method
+selec_init, affs_init, Kx_init, opt_init_params, _ = optimize_affs(
+    targ_abun,
+    off_targ_abun,
+    dose,
+    valencies=valencies,
+    init_vals="search",
+)
 
 # Calculate the optimal selectivity value using multiple random starting points
 print("Finding optimal selectivity value...")
@@ -368,6 +377,8 @@ for sig_aff in signal_aff_range:
                 print(f"Progress: {iteration}/{total_iterations}")
 
             init_vals = np.array([sig_aff, targ_aff, targ_aff, Kx])
+            print(init_vals)
+            print(isinstance(init_vals, str))
 
             try:
                 selec, opt_affs, opt_Kx = optimize_affs(
@@ -476,11 +487,21 @@ ax1.scatter(
     s=50,
     label="Exception (Model Failure)",
 )
+ax1.scatter(
+    opt_init_params[0],
+    opt_init_params[1],
+    opt_init_params[3],
+    c="blue",
+    marker="*",
+    s=300,
+    edgecolors="black",
+    linewidths=1.5,
+    label="Search Method Optimal Start",
+)
 ax1.set_xlabel("Signal Affinity Init")
 ax1.set_ylabel("Target Affinity Init")
 ax1.set_zlabel("log10(Kx_star) Init")
 ax1.set_title("Optimizer Results in Parameter Space")
-# ax1.legend()
 ax1.legend(loc="upper left")
 
 # Plot 2: Heatmap of failure rate for Signal vs Target affinity (averaged over Kx_star)
