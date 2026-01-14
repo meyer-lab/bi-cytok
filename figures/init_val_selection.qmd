@@ -334,7 +334,7 @@ receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
 targ_abun = receptor_abuns[targ_mask]
 off_targ_abun = receptor_abuns[off_targ_mask]
 
-# First, find the optimal selectivity value using multiple random starting points
+# Calculate the optimal selectivity value using multiple random starting points
 print("Finding optimal selectivity value...")
 best_selec = float("inf")
 for seed in range(n):

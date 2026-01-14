@@ -308,20 +308,24 @@ def compute_selectivity(
     """
 
     # Get bound receptors for target and off-target cell types
-    targ_bound = np.array(get_cell_bindings(
-        recCounts=targ_counts,
-        monomerAffs=affinities,
-        dose=dose,
-        valencies=valencies,
-        Kx_star=Kx_star,
-    ))
-    off_targ_bound = np.array(get_cell_bindings(
-        recCounts=off_targ_counts,
-        monomerAffs=affinities,
-        dose=dose,
-        valencies=valencies,
-        Kx_star=Kx_star,
-    ))
+    targ_bound = np.array(
+        get_cell_bindings(
+            recCounts=targ_counts,
+            monomerAffs=affinities,
+            dose=dose,
+            valencies=valencies,
+            Kx_star=Kx_star,
+        )
+    )
+    off_targ_bound = np.array(
+        get_cell_bindings(
+            recCounts=off_targ_counts,
+            monomerAffs=affinities,
+            dose=dose,
+            valencies=valencies,
+            Kx_star=Kx_star,
+        )
+    )
 
     # Summarize bound receptors based on method
     if method == "mean":

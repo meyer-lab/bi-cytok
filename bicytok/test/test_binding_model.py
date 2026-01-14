@@ -2,12 +2,12 @@
 Unit test file for binding model functions.
 """
 
+import warnings
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
-import warnings
 
 from ..binding_model_funcs import cyt_binding_model
 from ..imports import importCITE, sample_receptor_abundances
@@ -99,8 +99,12 @@ def test_starting_point_dependence():
         results = []
         for seed in [2, 11, 101]:  # Test with a few different random seeds
             optSelec, optAffs, optKx_star = optimize_affs(
-                targRecs=targRecs[:, [receptor_set_ind, receptor_set_ind + 1, receptor_set_ind + 2]],
-                offTargRecs=offTargRecs[:, [receptor_set_ind, receptor_set_ind + 1, receptor_set_ind + 2]],
+                targRecs=targRecs[
+                    :, [receptor_set_ind, receptor_set_ind + 1, receptor_set_ind + 2]
+                ],
+                offTargRecs=offTargRecs[
+                    :, [receptor_set_ind, receptor_set_ind + 1, receptor_set_ind + 2]
+                ],
                 dose=dose,
                 valencies=valencies,
                 init_vals=seed,
@@ -109,11 +113,19 @@ def test_starting_point_dependence():
             )
             results.append({"selec": 1 / optSelec, "affs": optAffs, "Kx": optKx_star})
 
-        defined_inits = [[6.0, 7.0, 7.0, -12.0], [6.0, 9.0, 10.0, -12.0], [9.0, 9.0, 9.0, -9.0]]
+        defined_inits = [
+            [6.0, 7.0, 7.0, -12.0],
+            [6.0, 9.0, 10.0, -12.0],
+            [9.0, 9.0, 9.0, -9.0],
+        ]
         for init in defined_inits:
             optSelec, optAffs, optKx_star = optimize_affs(
-                targRecs=targRecs[:, [receptor_set_ind, receptor_set_ind + 1, receptor_set_ind + 2]],
-                offTargRecs=offTargRecs[:, [receptor_set_ind, receptor_set_ind + 1, receptor_set_ind + 2]],
+                targRecs=targRecs[
+                    :, [receptor_set_ind, receptor_set_ind + 1, receptor_set_ind + 2]
+                ],
+                offTargRecs=offTargRecs[
+                    :, [receptor_set_ind, receptor_set_ind + 1, receptor_set_ind + 2]
+                ],
                 dose=dose,
                 valencies=valencies,
                 init_vals=np.array(init),
@@ -125,13 +137,17 @@ def test_starting_point_dependence():
         # Check that selectivity is consistent across initial values
         for i in range(1, len(results)):
             assert np.isclose(results[0]["selec"], results[i]["selec"], rtol=1e-2)
-            if not np.all(np.isclose(results[0]["affs"], results[i]["affs"], rtol=1e-3)):
+            if not np.all(
+                np.isclose(results[0]["affs"], results[i]["affs"], rtol=1e-3)
+            ):
                 warnings.warn(
-                    f"Optimal affinities vary significantly between some initializations, but selectivity remains consistent. Affinity sets: {results[0]['affs']} vs {results[i]['affs']}"
+                    f"Optimal affinities vary significantly between some initializations, but selectivity remains consistent. Affinity sets: {results[0]['affs']} vs {results[i]['affs']}",
+                    stacklevel=2,
                 )
             if not np.isclose(results[0]["Kx"], results[i]["Kx"]):
                 warnings.warn(
-                    f"Optimal Kx_star varies significantly between some initializations, but selectivity remains consistent. Kx_star values: {results[0]['Kx']} vs {results[i]['Kx']}"
+                    f"Optimal Kx_star varies significantly between some initializations, but selectivity remains consistent. Kx_star values: {results[0]['Kx']} vs {results[i]['Kx']}",
+                    stacklevel=2,
                 )
 
 
