@@ -247,7 +247,7 @@ def get_cell_bindings(
     monomerAffs: np.ndarray,
     dose: float,
     valencies: np.ndarray,
-    Kx_star: float = 2.24e-12,
+    Kx_star: float = -12,
 ) -> np.ndarray:
     """
     Predicts the amount of bound receptors across cells based on set affinities.
@@ -269,6 +269,7 @@ def get_cell_bindings(
 
     # Reformat input affinities to 10^aff and diagonalize
     modelAffs = restructure_affs(monomerAffs)
+    Kx_star_mod = jnp.power(10, Kx_star)
 
     # Use the binding model to calculate bound receptors for each cell
     Rbound = cyt_binding_model_jit(
@@ -276,7 +277,59 @@ def get_cell_bindings(
         recCounts=recCounts,
         valencies=valencies,
         monomerAffs=modelAffs,
-        Kx_star=Kx_star,
+        Kx_star=Kx_star_mod,
     )
 
     return Rbound
+
+
+def compute_selectivity(
+    targ_counts: np.ndarray,
+    off_targ_counts: np.ndarray,
+    affinities: np.ndarray,
+    dose: float,
+    valencies: np.ndarray,
+    Kx_star: float = -12,
+    method: str = "mean",
+) -> float:
+    """
+    Computes the selectivity based on given affinities and Kx_star.
+
+    Arguments:
+        targ_counts: receptor counts of target cell type
+        off_targ_counts: receptors count of off-target cell types
+        affinities: array of receptor affinities in log10(M)
+        dose: ligand concentration/dose
+        valencies: array of valencies of each distinct ligand in the ligand complex
+        Kx_star: cross-linking constant for the binding model
+
+    Outputs:
+        selectivity: ratio of off-target to on-target binding
+    """
+
+    # Get bound receptors for target and off-target cell types
+    targ_bound = np.array(get_cell_bindings(
+        recCounts=targ_counts,
+        monomerAffs=affinities,
+        dose=dose,
+        valencies=valencies,
+        Kx_star=Kx_star,
+    ))
+    off_targ_bound = np.array(get_cell_bindings(
+        recCounts=off_targ_counts,
+        monomerAffs=affinities,
+        dose=dose,
+        valencies=valencies,
+        Kx_star=Kx_star,
+    ))
+
+    # Summarize bound receptors based on method
+    if method == "mean":
+        targetBound = np.sum(targ_bound[:, 0]) / targ_bound.shape[0]
+        offTargetBound = np.sum(off_targ_bound[:, 0]) / off_targ_bound.shape[0]
+    elif method == "geometric_mean":
+        targetBound = np.exp(np.mean(np.log(targ_bound[:, 0] + 1e-12)))
+        offTargetBound = np.exp(np.mean(np.log(off_targ_bound[:, 0] + 1e-12)))
+
+    # Return selectivity ratio
+    return (targetBound + offTargetBound) / targetBound
