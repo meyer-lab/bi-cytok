@@ -126,12 +126,8 @@ def _optimize_affs_jax(
 
     # Set optimization bounds
     bounds = (
-        jnp.concatenate(
-            [minAffs, jnp.array([Kx_star_bounds[0]])]
-        ),  # lower bounds
-        jnp.concatenate(
-            [maxAffs, jnp.array([Kx_star_bounds[1]])]
-        ),  # upper bounds
+        jnp.concatenate([minAffs, jnp.array([Kx_star_bounds[0]])]),  # lower bounds
+        jnp.concatenate([maxAffs, jnp.array([Kx_star_bounds[1]])]),  # upper bounds
     )
 
     # Replace zero receptor counts with small epsilon to avoid instability
@@ -202,9 +198,7 @@ def optimize_affs(
             high=affinity_bounds[1],
             size=targRecs.shape[1],
         )
-        init_kx_star = rng.uniform(
-            low=Kx_star_bounds[0], high=Kx_star_bounds[1]
-        )
+        init_kx_star = rng.uniform(low=Kx_star_bounds[0], high=Kx_star_bounds[1])
         init_params = np.concatenate((init_affs, np.array([init_kx_star])))
     elif isinstance(init_vals, str) and init_vals == "search":
         init_params, init_selectivity = search_initialization(
@@ -248,7 +242,7 @@ def optimize_affs(
             float(final_kx_star),
             init_params,
             init_selectivity,
-        )    
+        )
     else:
         return (
             float(final_loss),
@@ -366,19 +360,11 @@ def search_initialization(
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (-15, -9),
 ) -> list:
-    """
-
-    """
+    """ """
     # Create grid of initial affinities and Kx_star values
-    signal_aff_grid = np.linspace(
-        affinity_bounds[0], affinity_bounds[1], grid_size
-    )
-    target_aff_grid = np.linspace(
-        affinity_bounds[0], affinity_bounds[1], grid_size
-    )
-    Kx_star_grid = np.linspace(
-        Kx_star_bounds[0], Kx_star_bounds[1], grid_size
-    )
+    signal_aff_grid = np.linspace(affinity_bounds[0], affinity_bounds[1], grid_size)
+    target_aff_grid = np.linspace(affinity_bounds[0], affinity_bounds[1], grid_size)
+    Kx_star_grid = np.linspace(Kx_star_bounds[0], Kx_star_bounds[1], grid_size)
 
     optimal_loss = np.inf
     optimal_initialization = None
@@ -396,8 +382,6 @@ def search_initialization(
                 )
                 if selectivity < optimal_loss:
                     optimal_loss = selectivity
-                    optimal_initialization = np.array(
-                        [sig_aff, targ_aff, targ_aff, Kx]
-                    )
-            
+                    optimal_initialization = np.array([sig_aff, targ_aff, targ_aff, Kx])
+
     return optimal_initialization, optimal_loss
