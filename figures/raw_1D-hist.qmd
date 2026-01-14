@@ -48,6 +48,9 @@ normalize = False
 
 CITE_DF = importCITE()
 
+print(f"List of cell types in dataset: {CITE_DF[cell_categorization].unique()}")
+print(f"List of receptors in dataset: {CITE_DF.columns.tolist()}")
+
 assert targ_cell in CITE_DF[cell_categorization].unique()
 
 epitopes = [

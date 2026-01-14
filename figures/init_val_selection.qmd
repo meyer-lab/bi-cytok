@@ -27,7 +27,6 @@ import time
 from itertools import combinations_with_replacement
 
 import numpy as np
-import pandas as pd
 
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
@@ -83,7 +82,9 @@ for init_aff in initial_affinities:
         rec2_abun = sample_df[[rec2]].to_numpy()
 
         receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
-        init_vals = np.array([fixed_affinity, fixed_affinity, fixed_affinity, fixed_Kx_star])
+        init_vals = np.array(
+            [fixed_affinity, fixed_affinity, fixed_affinity, fixed_Kx_star]
+        )
         init_vals[varying_affinity_ind] = init_aff
 
         targ_abun = receptor_abuns[targ_mask]
@@ -106,7 +107,7 @@ for init_aff in initial_affinities:
 #| fig-cap: "Average runtime of affinity optimization vs. initial affinity"
 import matplotlib.pyplot as plt
 
-plt.plot(initial_affinities, runtimes, marker='o')
+plt.plot(initial_affinities, runtimes, marker="o")
 plt.xlabel("Initial Affinity")
 plt.ylabel("Average Runtime (s)")
 plt.title("Effect of Initial Affinity on Optimization Runtime")
@@ -121,7 +122,6 @@ import time
 from itertools import combinations_with_replacement
 
 import numpy as np
-import pandas as pd
 
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
@@ -160,7 +160,9 @@ optimize_affs(
     warmup_off_targ_abun,
     dose,
     valencies=valencies,
-    init_vals=np.array([fixed_affinity[0], fixed_affinity[1], fixed_affinity[2], initial_kx_stars[0]]),
+    init_vals=np.array(
+        [fixed_affinity[0], fixed_affinity[1], fixed_affinity[2], initial_kx_stars[0]]
+    ),
 )
 print("Warmup complete.")
 
@@ -170,13 +172,14 @@ runtimes_kx = []
 for init_kx in initial_kx_stars:
     runtimes_for_init_kx = []
     for rec1, rec2 in receptor_combinations:
-        print(f"Testing initial Kx_star {init_kx} for receptors {rec1}, {rec2}"
-        )
+        print(f"Testing initial Kx_star {init_kx} for receptors {rec1}, {rec2}")
         rec1_abun = sample_df[[rec1]].to_numpy()
         rec2_abun = sample_df[[rec2]].to_numpy()
 
         receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
-        init_vals = np.array([fixed_affinity[0], fixed_affinity[1], fixed_affinity[2], init_kx])
+        init_vals = np.array(
+            [fixed_affinity[0], fixed_affinity[1], fixed_affinity[2], init_kx]
+        )
 
         targ_abun = receptor_abuns[targ_mask]
         off_targ_abun = receptor_abuns[off_targ_mask]
@@ -198,7 +201,7 @@ for init_kx in initial_kx_stars:
 #| fig-cap: "Average runtime of affinity optimization vs. initial Kx_star"
 import matplotlib.pyplot as plt
 
-plt.plot(initial_kx_stars, runtimes_kx, marker='o')
+plt.plot(initial_kx_stars, runtimes_kx, marker="o")
 plt.xlabel("Initial log10(Kx_star)")
 plt.ylabel("Average Runtime (s)")
 plt.title("Effect of Initial Kx_star on Optimization Runtime")
@@ -208,9 +211,6 @@ plt.show()
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-import time
-from itertools import combinations_with_replacement
-
 import numpy as np
 import pandas as pd
 
@@ -263,42 +263,45 @@ for i in range(reps):
     affinities.append(affs)
     Kx_stars.append(Kx_star)
 
-    print(f"Randomization {i+1}/{reps} complete.")
-    print(f"Selectivity: {1/selec}, Affinities: {affs}, Kx_star: {Kx_star}\n\n")
+    print(f"Randomization {i + 1}/{reps} complete.")
+    print(f"Selectivity: {1 / selec}, Affinities: {affs}, Kx_star: {Kx_star}\n\n")
 
-metrics_df = pd.DataFrame({
-    "Randomization": list(range(reps)),
-    "Selectivity": selectivities,
-    "Affinity_Signal": [aff[0] for aff in affinities],
-    "Affinity_Target_Rec1": [aff[1] for aff in affinities],
-    "Affinity_Target_Rec2": [aff[2] for aff in affinities],
-    "Kx_star": Kx_stars,
-})
+metrics_df = pd.DataFrame(
+    {
+        "Randomization": list(range(reps)),
+        "Selectivity": selectivities,
+        "Affinity_Signal": [aff[0] for aff in affinities],
+        "Affinity_Target_Rec1": [aff[1] for aff in affinities],
+        "Affinity_Target_Rec2": [aff[2] for aff in affinities],
+        "Kx_star": Kx_stars,
+    }
+)
 ```
 
 ```{python}
 #| fig-cap: "Distributions of optimized metrics across random initializations"
 import matplotlib.pyplot as plt
 import seaborn as sns
-import scipy.stats as stats
+
 sns.violinplot(data=metrics_df[["Selectivity"]])
 plt.show()
-sns.violinplot(data=metrics_df[["Affinity_Signal", "Affinity_Target_Rec1", "Affinity_Target_Rec2"]])
+sns.violinplot(
+    data=metrics_df[["Affinity_Signal", "Affinity_Target_Rec1", "Affinity_Target_Rec2"]]
+)
 plt.show()
 sns.violinplot(data=metrics_df[["Kx_star"]])
-plt.yscale('log')
+plt.yscale("log")
 plt.ylim(1e-15, 1e-7)
 plt.show()
 
 print(min(metrics_df["Kx_star"]), max(metrics_df["Kx_star"]))
-
 ```
 
 ```{python}
 # Systematic scan across initial parameter space to identify optimizer failure modes
-import time
 import numpy as np
 import pandas as pd
+
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
@@ -309,7 +312,7 @@ dose = 1e-10
 valencies = np.array([[2, 1, 1]])
 cell_categorization = "CellType2"
 sample_size = 1000
-n=7  # Number of points per parameter to scan
+n = 7  # Number of points per parameter to scan
 
 CITE_DF = importCITE()
 
@@ -333,7 +336,7 @@ off_targ_abun = receptor_abuns[off_targ_mask]
 
 # First, find the optimal selectivity value using multiple random starting points
 print("Finding optimal selectivity value...")
-best_selec = float('inf')
+best_selec = float("inf")
 for seed in range(n):
     selec, _, _ = optimize_affs(
         targ_abun,
@@ -363,9 +366,9 @@ for sig_aff in signal_aff_range:
             iteration += 1
             if iteration % 10 == 0:
                 print(f"Progress: {iteration}/{total_iterations}")
-            
+
             init_vals = np.array([sig_aff, targ_aff, targ_aff, Kx])
-            
+
             try:
                 selec, opt_affs, opt_Kx = optimize_affs(
                     targ_abun,
@@ -374,102 +377,149 @@ for sig_aff in signal_aff_range:
                     valencies=valencies,
                     init_vals=init_vals,
                 )
-                
-                scan_results.append({
-                    'signal_aff_init': sig_aff,
-                    'target_aff_init': targ_aff,
-                    'Kx_star_init': Kx,
-                    'selectivity': 1 / selec,
-                    'opt_signal_aff': opt_affs[0],
-                    'opt_target_aff_1': opt_affs[1],
-                    'opt_target_aff_2': opt_affs[2],
-                    'opt_Kx_star': opt_Kx,
-                    'exception_raised': False,
-                })
-            except Exception as e:
-                scan_results.append({
-                    'signal_aff_init': sig_aff,
-                    'target_aff_init': targ_aff,
-                    'Kx_star_init': Kx,
-                    'selectivity': np.nan,
-                    'opt_signal_aff': np.nan,
-                    'opt_target_aff_1': np.nan,
-                    'opt_target_aff_2': np.nan,
-                    'opt_Kx_star': np.nan,
-                    'exception_raised': True,
-                })
+
+                scan_results.append(
+                    {
+                        "signal_aff_init": sig_aff,
+                        "target_aff_init": targ_aff,
+                        "Kx_star_init": Kx,
+                        "selectivity": 1 / selec,
+                        "opt_signal_aff": opt_affs[0],
+                        "opt_target_aff_1": opt_affs[1],
+                        "opt_target_aff_2": opt_affs[2],
+                        "opt_Kx_star": opt_Kx,
+                        "exception_raised": False,
+                    }
+                )
+            except Exception:
+                scan_results.append(
+                    {
+                        "signal_aff_init": sig_aff,
+                        "target_aff_init": targ_aff,
+                        "Kx_star_init": Kx,
+                        "selectivity": np.nan,
+                        "opt_signal_aff": np.nan,
+                        "opt_target_aff_1": np.nan,
+                        "opt_target_aff_2": np.nan,
+                        "opt_Kx_star": np.nan,
+                        "exception_raised": True,
+                    }
+                )
 
 scan_df = pd.DataFrame(scan_results)
-scan_df['selectivity_error'] = np.abs(scan_df['selectivity'] - optimal_selectivity)
-scan_df['wrong_optimum'] = (scan_df['selectivity_error'] > 0.05 * optimal_selectivity) & (~scan_df['exception_raised'])
-scan_df['failed'] = scan_df['exception_raised'] | scan_df['wrong_optimum']
+scan_df["selectivity_error"] = np.abs(scan_df["selectivity"] - optimal_selectivity)
+scan_df["wrong_optimum"] = (
+    scan_df["selectivity_error"] > 0.05 * optimal_selectivity
+) & (~scan_df["exception_raised"])
+scan_df["failed"] = scan_df["exception_raised"] | scan_df["wrong_optimum"]
 
-print(f"\nScan complete!")
+print("\nScan complete!")
 print(f"Total runs: {len(scan_df)}")
-print(f"Successful optimizations: {(~scan_df['failed']).sum()} ({100*(~scan_df['failed']).sum()/len(scan_df):.1f}%)")
-print(f"Exception raised (true model failure): {scan_df['exception_raised'].sum()} ({100*scan_df['exception_raised'].sum()/len(scan_df):.1f}%)")
-print(f"Wrong optimum (>5% error): {scan_df['wrong_optimum'].sum()} ({100*scan_df['wrong_optimum'].sum()/len(scan_df):.1f}%)")
+print(
+    f"Successful optimizations: {(~scan_df['failed']).sum()} ({100 * (~scan_df['failed']).sum() / len(scan_df):.1f}%)"
+)
+print(
+    f"Exception raised (true model failure): {scan_df['exception_raised'].sum()} ({100 * scan_df['exception_raised'].sum() / len(scan_df):.1f}%)"
+)
+print(
+    f"Wrong optimum (>5% error): {scan_df['wrong_optimum'].sum()} ({100 * scan_df['wrong_optimum'].sum() / len(scan_df):.1f}%)"
+)
 ```
 
 ```{python}
 #| fig-cap: "Optimizer failure analysis across initial parameter space"
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 fig = plt.figure(figsize=(15, 5))
 
 # Print cases where model failed
 print("\nCases where model failed:")
-failed_cases = scan_df[scan_df['exception_raised']]
-for idx, row in failed_cases.iterrows():
-    print(f"Init Signal Aff: {row['signal_aff_init']}, Init Target Aff: {row['target_aff_init']}, Init Kx_star: {row['Kx_star_init']}")
+failed_cases = scan_df[scan_df["exception_raised"]]
+for _, row in failed_cases.iterrows():
+    print(
+        f"Init Signal Aff: {row['signal_aff_init']}, Init Target Aff: {row['target_aff_init']}, Init Kx_star: {row['Kx_star_init']}"
+    )
 
 # Plot 1: 3D scatter of all points, colored by failure type
-ax1 = fig.add_subplot(131, projection='3d')
-succeeded = scan_df[~scan_df['failed']]
-exception_failures = scan_df[scan_df['exception_raised']]
-wrong_optimum = scan_df[scan_df['wrong_optimum']]
+ax1 = fig.add_subplot(131, projection="3d")
+succeeded = scan_df[~scan_df["failed"]]
+exception_failures = scan_df[scan_df["exception_raised"]]
+wrong_optimum = scan_df[scan_df["wrong_optimum"]]
 
-ax1.scatter(succeeded['signal_aff_init'], succeeded['target_aff_init'], 
-           succeeded['Kx_star_init'], c='green', marker='o', alpha=0.6, s=20, label='Success')
-ax1.scatter(wrong_optimum['signal_aff_init'], wrong_optimum['target_aff_init'], 
-           wrong_optimum['Kx_star_init'], c='orange', marker='s', alpha=0.7, s=30, label='Wrong Optimum')
-ax1.scatter(exception_failures['signal_aff_init'], exception_failures['target_aff_init'], 
-           exception_failures['Kx_star_init'], c='red', marker='x', alpha=0.8, s=50, label='Exception (Model Failure)')
-ax1.set_xlabel('Signal Affinity Init')
-ax1.set_ylabel('Target Affinity Init')
-ax1.set_zlabel('log10(Kx_star) Init')
-ax1.set_title('Optimizer Results in Parameter Space')
+ax1.scatter(
+    succeeded["signal_aff_init"],
+    succeeded["target_aff_init"],
+    succeeded["Kx_star_init"],
+    c="green",
+    marker="o",
+    alpha=0.6,
+    s=20,
+    label="Success",
+)
+ax1.scatter(
+    wrong_optimum["signal_aff_init"],
+    wrong_optimum["target_aff_init"],
+    wrong_optimum["Kx_star_init"],
+    c="orange",
+    marker="s",
+    alpha=0.7,
+    s=30,
+    label="Wrong Optimum",
+)
+ax1.scatter(
+    exception_failures["signal_aff_init"],
+    exception_failures["target_aff_init"],
+    exception_failures["Kx_star_init"],
+    c="red",
+    marker="x",
+    alpha=0.8,
+    s=50,
+    label="Exception (Model Failure)",
+)
+ax1.set_xlabel("Signal Affinity Init")
+ax1.set_ylabel("Target Affinity Init")
+ax1.set_zlabel("log10(Kx_star) Init")
+ax1.set_title("Optimizer Results in Parameter Space")
 # ax1.legend()
-ax1.legend(loc='upper left')
+ax1.legend(loc="upper left")
 
 # Plot 2: Heatmap of failure rate for Signal vs Target affinity (averaged over Kx_star)
 ax2 = fig.add_subplot(132)
-pivot_sig_targ = scan_df.groupby(['signal_aff_init', 'target_aff_init'])['failed'].mean().reset_index()
-pivot_matrix = pivot_sig_targ.pivot(index='target_aff_init', columns='signal_aff_init', values='failed')
-im2 = ax2.imshow(pivot_matrix, aspect='auto', cmap='RdYlGn_r', vmin=0, vmax=1)
-ax2.set_xlabel('Signal Affinity Init')
-ax2.set_ylabel('Target Affinity Init')
-ax2.set_title('Failure Rate: Signal vs Target Affinity')
+pivot_sig_targ = (
+    scan_df.groupby(["signal_aff_init", "target_aff_init"])["failed"]
+    .mean()
+    .reset_index()
+)
+pivot_matrix = pivot_sig_targ.pivot(
+    index="target_aff_init", columns="signal_aff_init", values="failed"
+)
+im2 = ax2.imshow(pivot_matrix, aspect="auto", cmap="RdYlGn_r", vmin=0, vmax=1)
+ax2.set_xlabel("Signal Affinity Init")
+ax2.set_ylabel("Target Affinity Init")
+ax2.set_title("Failure Rate: Signal vs Target Affinity")
 ax2.set_xticks(range(len(signal_aff_range)))
-ax2.set_xticklabels([f'{x:.1f}' for x in signal_aff_range])
+ax2.set_xticklabels([f"{x:.1f}" for x in signal_aff_range])
 ax2.set_yticks(range(len(target_aff_range)))
-ax2.set_yticklabels([f'{x:.1f}' for x in target_aff_range])
-plt.colorbar(im2, ax=ax2, label='Failure Rate')
+ax2.set_yticklabels([f"{x:.1f}" for x in target_aff_range])
+plt.colorbar(im2, ax=ax2, label="Failure Rate")
 
 # Plot 3: Heatmap of failure rate for Target affinity vs Kx_star (averaged over signal)
 ax3 = fig.add_subplot(133)
-pivot_targ_kx = scan_df.groupby(['target_aff_init', 'Kx_star_init'])['failed'].mean().reset_index()
-pivot_matrix2 = pivot_targ_kx.pivot(index='Kx_star_init', columns='target_aff_init', values='failed')
-im3 = ax3.imshow(pivot_matrix2, aspect='auto', cmap='RdYlGn_r', vmin=0, vmax=1)
-ax3.set_xlabel('Target Affinity Init')
-ax3.set_ylabel('log10(Kx_star) Init')
-ax3.set_title('Failure Rate: Target Affinity vs Kx_star')
+pivot_targ_kx = (
+    scan_df.groupby(["target_aff_init", "Kx_star_init"])["failed"].mean().reset_index()
+)
+pivot_matrix2 = pivot_targ_kx.pivot(
+    index="Kx_star_init", columns="target_aff_init", values="failed"
+)
+im3 = ax3.imshow(pivot_matrix2, aspect="auto", cmap="RdYlGn_r", vmin=0, vmax=1)
+ax3.set_xlabel("Target Affinity Init")
+ax3.set_ylabel("log10(Kx_star) Init")
+ax3.set_title("Failure Rate: Target Affinity vs Kx_star")
 ax3.set_xticks(range(len(target_aff_range)))
-ax3.set_xticklabels([f'{x:.1f}' for x in target_aff_range])
+ax3.set_xticklabels([f"{x:.1f}" for x in target_aff_range])
 ax3.set_yticks(range(len(Kx_star_range)))
-ax3.set_yticklabels([f'{x:.1f}' for x in Kx_star_range])
-plt.colorbar(im3, ax=ax3, label='Failure Rate')
+ax3.set_yticklabels([f"{x:.1f}" for x in Kx_star_range])
+plt.colorbar(im3, ax=ax3, label="Failure Rate")
 
 plt.tight_layout()
 plt.show()
@@ -482,33 +532,52 @@ import matplotlib.pyplot as plt
 fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 
 # Plot selectivity error histogram
-axes[0].hist(scan_df[~scan_df['failed']]['selectivity_error'], bins=30, edgecolor='black')
-axes[0].set_xlabel('Selectivity Error')
-axes[0].set_ylabel('Count')
-axes[0].set_title('Distribution of Selectivity Error (Successful Runs)')
-axes[0].axvline(0.01 * optimal_selectivity, color='red', linestyle='--', label='1% threshold')
+axes[0].hist(
+    scan_df[~scan_df["failed"]]["selectivity_error"], bins=30, edgecolor="black"
+)
+axes[0].set_xlabel("Selectivity Error")
+axes[0].set_ylabel("Count")
+axes[0].set_title("Distribution of Selectivity Error (Successful Runs)")
+axes[0].axvline(
+    0.01 * optimal_selectivity, color="red", linestyle="--", label="1% threshold"
+)
 axes[0].legend()
 
 # Plot selectivity vs initial parameters for successful runs
-successful = scan_df[~scan_df['failed']]
-axes[1].scatter(successful['signal_aff_init'], successful['selectivity'], 
-               alpha=0.5, label='vs Signal Aff', s=10)
-axes[1].scatter(successful['target_aff_init'], successful['selectivity'], 
-               alpha=0.5, label='vs Target Aff', s=10)
-axes[1].axhline(optimal_selectivity, color='red', linestyle='--', label='Optimal')
-axes[1].set_xlabel('Initial Affinity Value')
-axes[1].set_ylabel('Final Selectivity')
-axes[1].set_title('Final Selectivity vs Initial Affinities')
+successful = scan_df[~scan_df["failed"]]
+axes[1].scatter(
+    successful["signal_aff_init"],
+    successful["selectivity"],
+    alpha=0.5,
+    label="vs Signal Aff",
+    s=10,
+)
+axes[1].scatter(
+    successful["target_aff_init"],
+    successful["selectivity"],
+    alpha=0.5,
+    label="vs Target Aff",
+    s=10,
+)
+axes[1].axhline(optimal_selectivity, color="red", linestyle="--", label="Optimal")
+axes[1].set_xlabel("Initial Affinity Value")
+axes[1].set_ylabel("Final Selectivity")
+axes[1].set_title("Final Selectivity vs Initial Affinities")
 axes[1].set_ylim(optimal_selectivity * 0.95, optimal_selectivity * 1.05)
 axes[1].legend()
 
 # Plot selectivity vs initial Kx_star for successful runs
-axes[2].scatter(successful['Kx_star_init'], successful['selectivity'], 
-               alpha=0.5, label='vs Kx_star', s=10)
-axes[2].axhline(optimal_selectivity, color='red', linestyle='--', label='Optimal')
-axes[2].set_xlabel('Initial log10(Kx_star) Value')
-axes[2].set_ylabel('Final Selectivity')
-axes[2].set_title('Final Selectivity vs Initial log10(Kx_star)')
+axes[2].scatter(
+    successful["Kx_star_init"],
+    successful["selectivity"],
+    alpha=0.5,
+    label="vs Kx_star",
+    s=10,
+)
+axes[2].axhline(optimal_selectivity, color="red", linestyle="--", label="Optimal")
+axes[2].set_xlabel("Initial log10(Kx_star) Value")
+axes[2].set_ylabel("Final Selectivity")
+axes[2].set_title("Final Selectivity vs Initial log10(Kx_star)")
 axes[2].set_ylim(optimal_selectivity * 0.95, optimal_selectivity * 1.05)
 axes[2].legend()
 
@@ -516,14 +585,118 @@ plt.tight_layout()
 plt.show()
 
 # Print summary statistics
-print(f"\nSummary Statistics:")
+print("\nSummary Statistics:")
 print(f"Optimal selectivity: {optimal_selectivity:.4f}")
 print(f"Mean selectivity (successful): {successful['selectivity'].mean():.4f}")
 print(f"Std selectivity (successful): {successful['selectivity'].std():.4f}")
-print(f"\nFailure analysis:")
-print(scan_df.groupby('failed').size())
-print(f"Average selectivity of failures: {scan_df[scan_df['failed']]['selectivity'].mean():.4f}")
-print(f"Standard deviation of selectivity of failures: {scan_df[scan_df['failed']]['selectivity'].std():.4f}")
+print("\nFailure analysis:")
+print(scan_df.groupby("failed").size())
+print(
+    f"Average selectivity of failures: {scan_df[scan_df['failed']]['selectivity'].mean():.4f}"
+)
+print(
+    f"Standard deviation of selectivity of failures: {scan_df[scan_df['failed']]['selectivity'].std():.4f}"
+)
+```
+
+```{python}
+# Characterize objective function landscape within affinity/Kx_star space
+import numpy as np
+import pandas as pd
+
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import compute_selectivity
+
+receptors = ["CD45RA", "CD338"]
+signal = ["CD122"]
+cell_type = "Treg"
+dose = 1e-10
+valencies = np.array([[2, 1, 1]])
+cell_categorization = "CellType2"
+sample_size = 1000
+n = 12  # Number of points per parameter to scan
+
+CITE_DF = importCITE()
+
+epitopes = [
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+
+sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
+
+targ_mask = (sample_df["Cell Type"] == cell_type).to_numpy()
+off_targ_mask = ~targ_mask
+signal_abun = sample_df[signal].to_numpy()
+
+rec1_abun = sample_df[[receptors[0]]].to_numpy()
+rec2_abun = sample_df[[receptors[1]]].to_numpy()
+receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+targ_abun = receptor_abuns[targ_mask]
+off_targ_abun = receptor_abuns[off_targ_mask]
+
+# Define parameter ranges to scan
+signal_aff_range = np.linspace(6, 12, n)
+target_aff_range = np.linspace(6, 12, n)
+Kx_star_range = np.linspace(-15, -9, n)
+
+scan_results = []
+total_iterations = len(signal_aff_range) * len(target_aff_range) * len(Kx_star_range)
+iteration = 0
+
+print(f"Starting parameter scan ({total_iterations} total combinations)...")
+for sig_aff in signal_aff_range:
+    for targ_aff in target_aff_range:
+        for Kx in Kx_star_range:
+            iteration += 1
+            if iteration % 10 == 0:
+                print(f"Progress: {iteration}/{total_iterations}")
+
+            loss = compute_selectivity(
+                targ_abun,
+                off_targ_abun,
+                affinities=[sig_aff, targ_aff, targ_aff],
+                dose=dose,
+                valencies=valencies,
+                Kx_star=Kx,
+                method="mean",
+            )
+
+            scan_results.append(
+                {
+                    "signal_affinity": sig_aff,
+                    "target_affinity": targ_aff,
+                    "Kx_star": Kx,
+                    "selectivity": 1 / loss,
+                }
+            )
+
+landscape_df = pd.DataFrame(scan_results)
+print(landscape_df)
+```
+
+```{python}
+#| fig-cap: "Selectivity landscape across affinity and Kx_star space"
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Plot affinity landscapes across Kx_star slices
+fig, axes = plt.subplots(1, n, figsize=(4 * n, 4), sharey=True)
+for i, Kx in enumerate(np.linspace(-15, -9, n)):
+    ax = axes[i]
+    subset = landscape_df[landscape_df["Kx_star"] == Kx]
+    pivot_matrix = subset.pivot(
+        index="target_affinity", columns="signal_affinity", values="selectivity"
+    )
+    sns.heatmap(pivot_matrix, ax=ax, cmap="viridis")
+    ax.set_title(f"log10(Kx_star) = {Kx:.11f}")
+    ax.set_xlabel("Signal Affinity")
+    if i == 0:
+        ax.set_ylabel("Target Affinity")
+    else:
+        ax.set_ylabel("")
+plt.suptitle("Selectivity Landscape Across Affinity and Kx_star Space")
 ```
 
 ## Parameter Summary
