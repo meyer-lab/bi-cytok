@@ -50,7 +50,7 @@ def min_off_targ_selec(
     offTargRecs: Float64[Array, "cells receptors"],
     dose: Scalar,
     valencies: Float64[Array, "receptors"],
-):
+) -> Scalar:
     """
     The objective function to optimize selectivity by varying affinities. The output
         (selectivity) is calculated based on the amounts of bound receptors of only the
@@ -72,10 +72,10 @@ def min_off_targ_selec(
     assert targRecs.shape[1] == offTargRecs.shape[1]
 
     monomerAffs = params[:-1]
-    Kx_star = jnp.power(10, params[-1])
 
     # Reformat input affinities
     modelAffs = restructure_affs(monomerAffs)
+    Kx_star = jnp.power(10, params[-1])
 
     # Use the binding model to calculate bound receptors
     targRbound = cyt_binding_model(
@@ -127,10 +127,10 @@ def _optimize_affs_jax(
     # Set optimization bounds
     bounds = (
         jnp.concatenate(
-            [minAffs, jnp.array([jnp.log10(Kx_star_bounds[0])])]
+            [minAffs, jnp.array([Kx_star_bounds[0]])]
         ),  # lower bounds
         jnp.concatenate(
-            [maxAffs, jnp.array([jnp.log10(Kx_star_bounds[1])])]
+            [maxAffs, jnp.array([Kx_star_bounds[1]])]
         ),  # upper bounds
     )
 
@@ -162,9 +162,9 @@ def optimize_affs(
     offTargRecs: np.ndarray,
     dose: float,
     valencies: np.ndarray,
-    init_vals: np.ndarray | int = 42,
+    init_vals: np.ndarray | str | int = 42,
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
-    Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
+    Kx_star_bounds: tuple[float, float] = (-15, -9),
     max_iter: int = 1000,
     tol: float = 1e-5,
 ) -> tuple[float, list, float]:
@@ -196,14 +196,14 @@ def optimize_affs(
 
     # Set up initial parameters
     if isinstance(init_vals, int):
-        rng = np.random.default_rng(init_vals)
+        rng = np.random.default_rng(seed=init_vals)
         init_affs = rng.uniform(
             low=affinity_bounds[0],
             high=affinity_bounds[1],
             size=targRecs.shape[1],
         )
         init_kx_star = rng.uniform(
-            low=np.log10(Kx_star_bounds[0]), high=np.log10(Kx_star_bounds[1])
+            low=Kx_star_bounds[0], high=Kx_star_bounds[1]
         )
         init_params = np.concatenate((init_affs, np.array([init_kx_star])))
     else:
