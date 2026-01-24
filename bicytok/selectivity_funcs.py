@@ -363,7 +363,7 @@ def search_initialization(
     """
     Searches for optimal initialization parameters using a vectorized grid search.
     Uses JAX vmap to evaluate all parameter combinations in parallel.
-    
+
     Arguments:
         targ_counts: receptor counts of target cell type
         off_targ_counts: receptor counts of off-target cell types
@@ -372,7 +372,7 @@ def search_initialization(
         grid_size: number of points to sample along each dimension
         affinity_bounds: minimum and maximum bounds for affinity values
         Kx_star_bounds: minimum and maximum bounds for Kx_star
-    
+
     Outputs:
         optimal_initialization: array of optimal [affinities, Kx_star]
         optimal_loss: minimum selectivity value found
@@ -380,20 +380,24 @@ def search_initialization(
     n_receptors = targ_counts.shape[1]
 
     # Create grid of initial affinities and Kx_star values
-    signal_aff_grid = jnp.linspace(affinity_bounds[0]+1, affinity_bounds[1]-1, grid_size)
-    target_aff_grid = jnp.linspace(affinity_bounds[0]+1, affinity_bounds[1]-1, grid_size)
-    Kx_star_grid = jnp.linspace(Kx_star_bounds[0]-1, Kx_star_bounds[1]+1, grid_size)
+    signal_aff_grid = jnp.linspace(
+        affinity_bounds[0] + 1, affinity_bounds[1] - 1, grid_size
+    )
+    target_aff_grid = jnp.linspace(
+        affinity_bounds[0] + 1, affinity_bounds[1] - 1, grid_size
+    )
+    Kx_star_grid = jnp.linspace(Kx_star_bounds[0] - 1, Kx_star_bounds[1] + 1, grid_size)
 
     # Create meshgrid of all parameter combinations
     sig_mesh, targ_mesh, Kx_mesh = jnp.meshgrid(
-        signal_aff_grid, target_aff_grid, Kx_star_grid, indexing='ij'
+        signal_aff_grid, target_aff_grid, Kx_star_grid, indexing="ij"
     )
-    
+
     # Flatten meshgrids to 1D arrays
     sig_flat = sig_mesh.flatten()
     targ_flat = targ_mesh.flatten()
     Kx_flat = Kx_mesh.flatten()
-    
+
     # Build parameter array for all combinations
     n_combinations = sig_flat.shape[0]
     all_params = jnp.zeros((n_combinations, n_receptors + 1))
@@ -415,8 +419,7 @@ def search_initialization(
 
     # Create vmapped version of min_off_targ_selec
     vmapped_objective = jax.vmap(
-        min_off_targ_selec,
-        in_axes=(0, None, None, None, None)
+        min_off_targ_selec, in_axes=(0, None, None, None, None)
     )
 
     # Evaluate all parameter combinations in parallel
