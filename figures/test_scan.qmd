@@ -381,3 +381,154 @@ plt.show()
 print("\nTop selectivity pairs by cell type:")
 print(top_selec_df)
 ```
+
+```{python}
+# Load saved selectivity scan results
+import pandas as pd
+
+RESULTS_DIR = "../bicytok/data/selectivity_scan_results_14Nov2025"
+scan_data = pd.read_csv(f"{RESULTS_DIR}/selectivity_scan_flattened.csv")
+
+print(f"Loaded {len(scan_data)} receptor pair-cell type combinations")
+print(f"\nColumns: {scan_data.columns.tolist()}")
+print(f"\nShape: {scan_data.shape}")
+print(f"\nCell types: {sorted(scan_data['Cell_Type'].unique())}")
+print(f"\nUnique receptors in Receptor_1: {scan_data['Receptor_1'].nunique()}")
+print(f"Unique receptors in Receptor_2: {scan_data['Receptor_2'].nunique()}")
+
+scan_data.head(10)
+```
+
+```{python}
+# Create heatmap with each cell type placed at its optimal receptor pair
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+%config InlineBackend.figure_formats = ['svg']
+
+# For each cell type, find the receptor pair with maximum selectivity
+optimal_pairs = {}
+involved_receptors = set()
+
+for cell_type in scan_data['Cell_Type'].unique():
+    cell_data = scan_data[scan_data['Cell_Type'] == cell_type]
+    max_idx = cell_data['Selectivity'].idxmax()
+    max_row = cell_data.loc[max_idx]
+    
+    rec1 = max_row['Receptor_1']
+    rec2 = max_row['Receptor_2']
+    max_selec = max_row['Selectivity']
+    
+    optimal_pairs[cell_type] = (rec1, rec2, max_selec)
+    involved_receptors.add(rec1)
+    involved_receptors.add(rec2)
+
+# Filter to only receptors involved in optimal pairs
+filtered_receptors = sorted(involved_receptors)
+N_RECEPTORS = len(filtered_receptors)
+receptor_to_idx = {rec: i for i, rec in enumerate(filtered_receptors)}
+
+# Initialize matrices - track cell types at each position
+selectivity_matrix = np.full((N_RECEPTORS, N_RECEPTORS), np.nan)
+position_to_cell_types = {}
+
+# Populate matrices with filtered receptors
+for cell_type, (rec1, rec2, max_selec) in optimal_pairs.items():
+    i = receptor_to_idx[rec1]
+    j = receptor_to_idx[rec2]
+    
+    # Always use lower triangle (i >= j)
+    i_lower, j_lower = (i, j) if i >= j else (j, i)
+    
+    if (i_lower, j_lower) not in position_to_cell_types:
+        position_to_cell_types[(i_lower, j_lower)] = []
+        selectivity_matrix[i_lower, j_lower] = max_selec
+    
+    position_to_cell_types[(i_lower, j_lower)].append(cell_type)
+
+# Mask upper triangle
+mask = np.triu(np.ones_like(selectivity_matrix, dtype=bool), k=1)
+selectivity_matrix[mask] = np.nan
+
+print(f"Found optimal receptor pairs for {len(optimal_pairs)} cell types")
+print(f"Creating lower triangle heatmap for {N_RECEPTORS} receptors...")
+
+# Calculate vmin and vmax to ensure better contrast with black text
+# Shift the range to use the lighter portion of the colormap
+max_selec_val = np.nanmax(selectivity_matrix)
+min_selec_val = np.nanmin(selectivity_matrix)
+range_selec = max_selec_val - min_selec_val
+
+# Set vmin below the actual min and vmax above actual max to use middle/lighter colors
+vmin_plot = min_selec_val - 0.9 * range_selec
+vmax_plot = max_selec_val + 0.9 * range_selec
+
+fig, ax = plt.subplots(figsize=(18, 16))
+
+heatmap = sns.heatmap(
+    selectivity_matrix,
+    cmap='Reds',
+    xticklabels=filtered_receptors,
+    yticklabels=filtered_receptors,
+    cbar_kws={'label': 'Selectivity'},
+    square=True,
+    annot=False,
+    ax=ax,
+    vmin=vmin_plot,
+    vmax=vmax_plot,
+    linewidths=0.5,
+    linecolor='lightgray',
+    mask=mask,
+)
+
+# Adjust colorbar to show only actual data range
+cbar = heatmap.collections[0].colorbar
+tick_values = np.linspace(min_selec_val, max_selec_val, num=6)
+cbar.set_ticks(tick_values)
+cbar.set_ticklabels([f'{val:.3f}' for val in tick_values])
+
+# Add cell type labels at their optimal positions
+mean_selectivity = np.nanmean(selectivity_matrix)
+for (i, j), cell_types in position_to_cell_types.items():
+    # Join multiple cell types with newlines
+    label = '\n'.join(cell_types)
+    selec = selectivity_matrix[i, j]
+    
+    ax.text(
+        j + 0.5,
+        i + 0.5,
+        label,
+        ha='center',
+        va='center',
+        fontsize=22,
+        color='black',
+        weight='bold'
+    )
+
+ax.set_title('Cell Types at Their Optimal Receptor Pair Positions\n(Color = Selectivity Value)', 
+             fontsize=14, pad=20)
+ax.set_xlabel('Receptor 2', fontsize=25)
+ax.set_ylabel('Receptor 1', fontsize=25)
+ax.tick_params(axis='x', rotation=90, labelsize=25)
+ax.tick_params(axis='y', rotation=0, labelsize=25)
+
+plt.tight_layout()
+plt.show()
+
+print(f"\nHeatmap dimensions: {N_RECEPTORS} x {N_RECEPTORS} receptors (lower triangle only)")
+print(f"Max selectivity value: {np.nanmax(selectivity_matrix):.3f}")
+print(f"Min selectivity value: {np.nanmin(selectivity_matrix):.3f}")
+
+# Check for positions with multiple cell types
+multi_cell_positions = {pos: cts for pos, cts in position_to_cell_types.items() if len(cts) > 1}
+if multi_cell_positions:
+    print(f"\n{len(multi_cell_positions)} positions have multiple cell types:")
+    for (i, j), cell_types in multi_cell_positions.items():
+        print(f"  {filtered_receptors[i]} + {filtered_receptors[j]}: {', '.join(cell_types)}")
+
+print(f"\nTop 5 cell types by selectivity:")
+for cell_type, (rec1, rec2, selec) in sorted(optimal_pairs.items(), key=lambda x: x[1][2], reverse=True)[:5]:
+    print(f"  {cell_type}: {rec1} + {rec2} = {selec:.3f}")
+```
