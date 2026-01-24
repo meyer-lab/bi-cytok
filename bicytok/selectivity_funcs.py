@@ -356,32 +356,77 @@ def search_initialization(
     off_targ_counts: np.ndarray,
     dose: float,
     valencies: np.ndarray,
-    grid_size: int = 5,
+    grid_size: int = 3,
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (-15, -9),
 ) -> list:
-    """ """
+    """
+    Searches for optimal initialization parameters using a vectorized grid search.
+    Uses JAX vmap to evaluate all parameter combinations in parallel.
+    
+    Arguments:
+        targ_counts: receptor counts of target cell type
+        off_targ_counts: receptor counts of off-target cell types
+        dose: ligand concentration/dose
+        valencies: array of valencies of each distinct ligand in the ligand complex
+        grid_size: number of points to sample along each dimension
+        affinity_bounds: minimum and maximum bounds for affinity values
+        Kx_star_bounds: minimum and maximum bounds for Kx_star
+    
+    Outputs:
+        optimal_initialization: array of optimal [affinities, Kx_star]
+        optimal_loss: minimum selectivity value found
+    """
+    n_receptors = targ_counts.shape[1]
+
     # Create grid of initial affinities and Kx_star values
-    signal_aff_grid = np.linspace(affinity_bounds[0], affinity_bounds[1], grid_size)
-    target_aff_grid = np.linspace(affinity_bounds[0], affinity_bounds[1], grid_size)
-    Kx_star_grid = np.linspace(Kx_star_bounds[0], Kx_star_bounds[1], grid_size)
+    signal_aff_grid = jnp.linspace(affinity_bounds[0]+1, affinity_bounds[1]-1, grid_size)
+    target_aff_grid = jnp.linspace(affinity_bounds[0]+1, affinity_bounds[1]-1, grid_size)
+    Kx_star_grid = jnp.linspace(Kx_star_bounds[0]-1, Kx_star_bounds[1]+1, grid_size)
 
-    optimal_loss = np.inf
-    optimal_initialization = None
+    # Create meshgrid of all parameter combinations
+    sig_mesh, targ_mesh, Kx_mesh = jnp.meshgrid(
+        signal_aff_grid, target_aff_grid, Kx_star_grid, indexing='ij'
+    )
+    
+    # Flatten meshgrids to 1D arrays
+    sig_flat = sig_mesh.flatten()
+    targ_flat = targ_mesh.flatten()
+    Kx_flat = Kx_mesh.flatten()
+    
+    # Build parameter array for all combinations
+    n_combinations = sig_flat.shape[0]
+    all_params = jnp.zeros((n_combinations, n_receptors + 1))
+    all_params = all_params.at[:, 0].set(sig_flat)
+    all_params = all_params.at[:, 1:n_receptors].set(
+        jnp.tile(targ_flat[:, None], (1, n_receptors - 1))
+    )
+    all_params = all_params.at[:, n_receptors].set(Kx_flat)
 
-    for sig_aff in signal_aff_grid:
-        for targ_aff in target_aff_grid:
-            for Kx in Kx_star_grid:
-                selectivity = compute_selectivity(
-                    targ_counts=targ_counts,
-                    off_targ_counts=off_targ_counts,
-                    affinities=np.array([sig_aff, targ_aff, targ_aff]),
-                    dose=dose,
-                    valencies=valencies,
-                    Kx_star=Kx,
-                )
-                if selectivity < optimal_loss:
-                    optimal_loss = selectivity
-                    optimal_initialization = np.array([sig_aff, targ_aff, targ_aff, Kx])
+    # Convert inputs to JAX arrays and clean receptor counts
+    targRecs_clean = jnp.where(
+        jnp.array(targ_counts) == 0, REC_COUNT_EPS, jnp.array(targ_counts)
+    )
+    offTargRecs_clean = jnp.where(
+        jnp.array(off_targ_counts) == 0, REC_COUNT_EPS, jnp.array(off_targ_counts)
+    )
+    valencies_jax = jnp.array(valencies)
+    dose_jax = jnp.array(dose)
 
-    return optimal_initialization, optimal_loss
+    # Create vmapped version of min_off_targ_selec
+    vmapped_objective = jax.vmap(
+        min_off_targ_selec,
+        in_axes=(0, None, None, None, None)
+    )
+
+    # Evaluate all parameter combinations in parallel
+    all_selectivities = vmapped_objective(
+        all_params, targRecs_clean, offTargRecs_clean, dose_jax, valencies_jax
+    )
+
+    # Find minimum selectivity and corresponding parameters
+    min_idx = jnp.argmin(all_selectivities)
+    optimal_loss = all_selectivities[min_idx]
+    optimal_initialization = all_params[min_idx]
+
+    return np.array(optimal_initialization), float(optimal_loss)
