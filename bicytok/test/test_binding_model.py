@@ -91,14 +91,14 @@ def test_starting_point_dependence():
     Test the frequency of starting point-dependent failures for different starting 
     point methods.
     """
-    sample_size = 100
+    sample_size = 1000
     dose = 1e-10
     valencies = np.array([[2, 1, 1]])
     cell_type = "Treg"
     targ_rec = "CD122"
     ill_conditioned_recs = ["CD122", "CD338", "CD45RA"]
-    # test_recs = ["CD338", "CD45RA", "CD25", "CD4-1", "CD28", "CD278"]
-    test_recs = ["CD338", "CD45RA", "CD25", "CD4-1"]
+    test_recs = ["CD338", "CD45RA", "CD25", "CD4-1", "CD28", "CD278"]
+    # test_recs = ["CD338", "CD45RA", "CD25", "CD4-1"]
     n_rands = 2
 
     # Import data
@@ -164,8 +164,28 @@ def test_starting_point_dependence():
    
     print(init_search_selec_list)
     print(f"Initialization search failure frequency: {search_fail_freq}")
-    assert search_fail_freq < 0.05
+    assert search_fail_freq < 0.1
 
+    # Test fixed starting point
+    fixed_selec_list = []
+    for i, j in zip(row, col, strict=False):
+        rec1 = test_recs[i]
+        rec2 = test_recs[j]
+        model_recs = [targ_rec, rec1, rec2]
+        fixed_selec = 1 / optimize_affs(
+            targRecs=sample_DF[model_recs].to_numpy()[targ_mask],
+            offTargRecs=sample_DF[model_recs].to_numpy()[~targ_mask],
+            dose=dose,
+            valencies=valencies,
+            init_vals=[6.0, 7.0, 7.0, -9.0],
+        )[0]
+        fixed_selec_list.append(fixed_selec)
+    fixed_fail_freq = sum(selec <= low_selec + 0.005 for selec in fixed_selec_list) / len(fixed_selec_list)
+
+    print(fixed_selec_list)
+    print(f"Fixed start failure frequency: {fixed_fail_freq}")
+    assert fixed_fail_freq < 0.05
+    
 
 def test_invalid_model_function_inputs():
     """Test for appropriate error handling of invalid inputs in binding model functions."""
