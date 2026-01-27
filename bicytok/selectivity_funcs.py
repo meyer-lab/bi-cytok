@@ -50,6 +50,7 @@ def min_off_targ_selec(
     offTargRecs: Float64[Array, "cells receptors"],
     dose: Scalar,
     valencies: Float64[Array, "receptors"],
+    reg_weight: float,
 ):
     """
     The objective function to optimize selectivity by varying affinities. The output
@@ -62,11 +63,13 @@ def min_off_targ_selec(
         offTargRecs: receptors count of off-target cell types
         dose: ligand concentration/dose
         valencies: array of valencies of each distinct ligand in the ligand complex
+        reg_weight: regularization weight for variance in target binding
 
     Outputs:
         selectivity: value to be minimized. Defined as ratio of off target to on target
             binding. By minimizing the selectivity for off-target cells, we maximize
-            the selectivity for target cells.
+            the selectivity for target cells. Can include regularization term to
+            penalize high variance in target binding.
     """
 
     assert targRecs.shape[1] == offTargRecs.shape[1]
@@ -99,7 +102,7 @@ def min_off_targ_selec(
     offTargetBound = jnp.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
 
     # Return selectivity ratio
-    return (targetBound + offTargetBound) / targetBound
+    return (targetBound + offTargetBound) / targetBound + reg_weight * jnp.var(targRbound[:, 0])
 
 
 # Affinity optimization constants
@@ -116,6 +119,7 @@ def _optimize_affs_jax(
     Kx_star_bounds: tuple[float, float],
     max_iter: int,
     tol: float,
+    reg_weight: float,
 ) -> tuple[Scalar, Float64[Array, "receptors"], Scalar]:
     """
     JAX-optimized core optimization function using L-BFGS-B.
@@ -160,6 +164,7 @@ def _optimize_affs_jax(
         offTargRecs=offTargRecs_clean,
         dose=dose,
         valencies=valencies_jax,
+        reg_weight=reg_weight,
     )
 
     final_params = result.params
@@ -177,6 +182,7 @@ def optimize_affs(
     Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
     max_iter: int = 1000,
     tol: float = 1e-6,
+    reg_weight: float = 0.0,
 ) -> tuple[float, list, float]:
     """
     NumPy-compatible wrapper for optimize_affs that handles conversions to/from JAX.
@@ -192,7 +198,8 @@ def optimize_affs(
         Kx_star_bounds: minimum and maximum optimization bounds for Kx_star
         max_iter: maximum number of iterations
         tol: parameter tolerance for convergence
-
+        reg_weight: regularization weight for variance in target binding
+        
     Outputs:
         optSelec: optimized selectivity value
         optAffs: optimized affinity values
@@ -221,6 +228,7 @@ def optimize_affs(
         Kx_star_bounds,
         max_iter,
         tol,
+        reg_weight,
     )
 
     # Convert outputs back to Python types
