@@ -1,0 +1,181 @@
+---
+title: ""
+---
+
+# Summary
+
+# Imports
+
+# Parameters
+
+# Outputs
+
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+# Test effect of regularization strength within a single receptor pair
+import time
+
+import numpy as np
+import pandas as pd
+
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+receptors = ["CD25", "CD25", "CD27", "CD28"]
+signal = ["CD122"]
+cell_type = "Treg"
+dose = 1e-10
+valencies = np.array([[2, 1, 1]])
+cell_categorization = "CellType2"
+sample_size = 1000
+reg_weights = [0.0, 0.001, 0.01, 0.1]
+
+CITE_DF = importCITE()
+
+epitopes = [
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
+
+targ_mask = (sample_df["Cell Type"] == cell_type).to_numpy()
+off_targ_mask = ~targ_mask
+
+signal_abun = sample_df[signal].to_numpy()
+rec1_abun = sample_df[[receptors[0]]].to_numpy()
+rec2_abun = sample_df[[receptors[1]]].to_numpy()
+receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+targ_abun = receptor_abuns[targ_mask]
+off_targ_abun = receptor_abuns[off_targ_mask]
+
+selectivities = np.full((len(reg_weights)), np.nan)
+affs = np.full((len(reg_weights), receptor_abuns.shape[1]), np.nan)
+kxs = np.full((len(reg_weights)), np.nan)
+
+for i, reg_weight in enumerate(reg_weights):
+    time_start = time.time()
+    opt_selec, opt_affs, opt_kx = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valencies, reg_weight=reg_weight)
+    selec = 1 / opt_selec
+    selectivities[i] = selec
+    affs[i, :] = opt_affs
+    kxs[i] = opt_kx
+    print(f"Reg weight {reg_weight}: Selectivity {selec:.4f} (Time: {time.time() - time_start:.2f} s)")
+```
+
+``` {python}
+from bicytok.selectivity_funcs import get_cell_bindings
+import matplotlib.pyplot as plt
+
+bound_signal = np.full((len(reg_weights), targ_abun.shape[0]), np.nan)
+
+print(affs)
+
+for i, reg_weight in enumerate(reg_weights):
+    bound_receptors = get_cell_bindings(targ_abun, affs[i, :], dose, valencies=valencies, Kx_star=kxs[i])
+    variance = np.var(bound_receptors[:, 0])
+    print(f"Reg weight {reg_weight}: Variance in bound signal receptor: {variance:.4f}")
+    bound_signal[i, :] = bound_receptors[:, 0]
+
+fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+axes = axes.flatten()
+
+for i, reg_weight in enumerate(reg_weights):
+    axes[i].hist(bound_signal[i, :], bins=30, edgecolor='black', alpha=0.7)
+    axes[i].set_xlabel('Bound Signal Receptor (CD122)', fontsize=20)
+    axes[i].set_ylabel('Frequency', fontsize=20)
+    axes[i].set_title(f'Regularization Weight: {reg_weight}', fontsize=22)
+    axes[i].tick_params(axis='both', which='major', labelsize=16)
+    axes[i].grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+```
+
+``` {python}
+# Calculate selectivity/affinity/Kx for all possible receptor pairs
+from itertools import combinations_with_replacement
+
+available_receptors = ["CD25", "CD4-1", "CD27", "CD28", "CD122", "CD107a", "CD338", "CD278", "CD109", "CD2", "CD194", "CD357"]
+receptor_pairs = list(combinations_with_replacement(available_receptors, 2))
+reg_weights = [0.0, 0.1, 1.0, 10.0]
+
+pair_results = {}
+
+for pair in receptor_pairs:
+    pair_name = f"{pair[0]}_{pair[1]}"
+    pair_results[pair_name] = {
+        'selectivities': np.full((len(reg_weights)), np.nan),
+        'affs': np.full((len(reg_weights), 3), np.nan),
+        'kxs': np.full((len(reg_weights)), np.nan)
+    }
+    
+    rec1_abun = sample_df[[pair[0]]].to_numpy()
+    rec2_abun = sample_df[[pair[1]]].to_numpy()
+    receptor_abuns_pair = np.hstack((signal_abun, rec1_abun, rec2_abun))
+    targ_abun_pair = receptor_abuns_pair[targ_mask]
+    off_targ_abun_pair = receptor_abuns_pair[off_targ_mask]
+    
+    for i, reg_weight in enumerate(reg_weights):
+        opt_selec, opt_affs, opt_kx = optimize_affs(
+            targ_abun_pair, off_targ_abun_pair, dose, 
+            valencies=valencies, reg_weight=reg_weight
+        )
+        selec = 1 / opt_selec
+        pair_results[pair_name]['selectivities'][i] = selec
+        pair_results[pair_name]['affs'][i, :] = opt_affs
+        pair_results[pair_name]['kxs'][i] = opt_kx
+    
+    print(f"{pair_name}: Selectivities = {pair_results[pair_name]['selectivities']}")
+```
+
+``` {python}
+# Determine max selectivity pair for each reg weight and plot bound signal distributions
+max_selec_pairs = []
+
+for i, reg_weight in enumerate(reg_weights):
+    max_selec = -np.inf
+    max_pair = None
+    
+    for pair_name, results in pair_results.items():
+        if results['selectivities'][i] > max_selec:
+            max_selec = results['selectivities'][i]
+            max_pair = pair_name
+    
+    max_selec_pairs.append(max_pair)
+    print(f"Reg weight {reg_weight}: Max selectivity pair = {max_pair} (Selectivity = {max_selec:.4f})")
+
+fig, axes = plt.subplots(2, 2, figsize=(14, 12))
+axes = axes.flatten()
+
+for i, reg_weight in enumerate(reg_weights):
+    pair_name = max_selec_pairs[i]
+    pair = pair_name.split('_')
+    
+    rec1_abun = sample_df[[pair[0]]].to_numpy()
+    rec2_abun = sample_df[[pair[1]]].to_numpy()
+    receptor_abuns_pair = np.hstack((signal_abun, rec1_abun, rec2_abun))
+    targ_abun_pair = receptor_abuns_pair[targ_mask]
+    
+    bound_receptors = get_cell_bindings(
+        targ_abun_pair, 
+        pair_results[pair_name]['affs'][i, :], 
+        dose, 
+        valencies=valencies, 
+        Kx_star=pair_results[pair_name]['kxs'][i]
+    )
+    bound_signal_pair = bound_receptors[:, 0]
+    
+    axes[i].hist(bound_signal_pair, bins=30, edgecolor='black', alpha=0.7, color='steelblue')
+    axes[i].set_xlabel('Bound Signal Receptor (CD122)', fontsize=24)
+    axes[i].set_ylabel('Frequency', fontsize=30)
+    axes[i].set_title(f'Reg Weight: {reg_weight} | Pair: {pair_name}\nSelectivity: {pair_results[pair_name]["selectivities"][i]:.4f}', fontsize=22)
+    axes[i].tick_params(axis='both', which='major', labelsize=24)
+    axes[i].grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+```
+
+
