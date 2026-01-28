@@ -98,8 +98,10 @@ def min_off_targ_selec(
 
     # Calculate total bound receptors for target and off-target cell types, normalized
     #   by number of cells
-    targetBound = jnp.sum(targRbound[:, 0]) / targRbound.shape[0]
-    offTargetBound = jnp.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
+    n_targets = targRbound.shape[0]
+    n_off_targets = offTargRbound.shape[0]
+    targetBound = jnp.exp(jnp.sum(jnp.log(targRbound[:, 0]) / n_targets))
+    offTargetBound = jnp.exp(jnp.sum(jnp.log(offTargRbound[:, 0]) / n_off_targets))
 
     # Return selectivity ratio
     return (targetBound + offTargetBound) / targetBound + reg_weight * jnp.var(targRbound[:, 0])
@@ -129,15 +131,16 @@ def _optimize_affs_jax(
     maxAffs = jnp.full(targRecs_jax.shape[1], affinity_bounds[1])
 
     # Start optimization at random values between min and max bounds
-    key = jax.random.PRNGKey(INIT_AFF_SEED)
-    key1, key2 = jax.random.split(key)
-    initAffs = jax.random.uniform(
-        key1, shape=(targRecs_jax.shape[1],), minval=minAffs, maxval=maxAffs
-    )
-    initKx_star = jax.random.uniform(
-        key2, minval=jnp.log10(Kx_star_bounds[0]), maxval=jnp.log10(Kx_star_bounds[1])
-    )
-    params = jnp.concatenate((initAffs, jnp.array([initKx_star])))
+    # key = jax.random.PRNGKey(INIT_AFF_SEED)
+    # key1, key2 = jax.random.split(key)
+    # initAffs = jax.random.uniform(
+    #     key1, shape=(targRecs_jax.shape[1],), minval=minAffs, maxval=maxAffs
+    # )
+    # initKx_star = jax.random.uniform(
+    #     key2, minval=jnp.log10(Kx_star_bounds[0]), maxval=jnp.log10(Kx_star_bounds[1])
+    # )
+    # params = jnp.concatenate((initAffs, jnp.array([initKx_star])))
+    params = jnp.concatenate([jnp.array([6.0]), jnp.full(targRecs_jax.shape[1] - 1, 7.0), jnp.array([ -9.0 ])])
 
     # Set optimization bounds
     bounds = (
@@ -264,6 +267,7 @@ def get_cell_bindings(
     """
 
     monomerAffs = jnp.array(monomerAffs, dtype=jnp.float64)
+    print(monomerAffs)
     recCounts = jnp.array(recCounts, dtype=jnp.float64)
     valencies = jnp.array(valencies, dtype=jnp.float64)
 
