@@ -103,9 +103,12 @@ def min_off_targ_selec(
     targetBound = jnp.exp(jnp.sum(jnp.log(targRbound[:, 0]) / n_targets))
     offTargetBound = jnp.exp(jnp.sum(jnp.log(offTargRbound[:, 0]) / n_off_targets))
 
-    # Return selectivity ratio
-    return (targetBound + offTargetBound) / targetBound + reg_weight * jnp.var(targRbound[:, 0])
+    reg_metric = jnp.var(targRbound[:, 0]) # Variance
+    # reg_metric = jnp.median(jnp.abs(targRbound[:, 0] - jnp.median(targRbound[:, 0]))) # MAD
+    # reg_metric = jnp.subtract(*jnp.percentile(targRbound[:, 0], [75, 25])) # IQR
 
+    # Return selectivity ratio
+    return (targetBound + offTargetBound) / targetBound + reg_weight * reg_metric
 
 # Affinity optimization constants
 INIT_AFF_SEED = 42
@@ -184,7 +187,7 @@ def optimize_affs(
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (2.24e-15, 2.24e-9),
     max_iter: int = 1000,
-    tol: float = 1e-6,
+    tol: float = 1e-5,
     reg_weight: float = 0.0,
 ) -> tuple[float, list, float]:
     """
