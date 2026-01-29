@@ -88,8 +88,11 @@ def test_binding_model():
 
 def test_starting_point_dependence():
     """
-    Test the frequency of starting point-dependent failures for different starting 
-    point methods.
+    Test that the frequency of starting point-dependent failures for different
+    starting point methods is not too high.
+
+    Frequency thresholds are representative of the current state of the methods
+    and may be adjusted as methods improve/worsen.
     """
     sample_size = 1000
     dose = 1e-10
@@ -98,14 +101,20 @@ def test_starting_point_dependence():
     targ_rec = "CD122"
     ill_conditioned_recs = ["CD122", "CD338", "CD45RA"]
     test_recs = ["CD338", "CD45RA", "CD25", "CD4-1", "CD28", "CD278"]
-    # test_recs = ["CD338", "CD45RA", "CD25", "CD4-1"]
-    n_rands = 2
+    n_rands = 5
+    fixed_starting_point = [6.0, 7.0, 7.0, -9.0]
+
+    # Frequency thresholds
+    failed_selec_cutoff = 0.005
+    random_init_fail_threshold = 0.6
+    init_search_fail_threshold = 0.1
+    fixed_start_fail_threshold = 0.05
 
     # Import data
     CITE_DF = importCITE()
     CITE_DF = CITE_DF.rename(columns={"CellType2": "Cell Type"})
-    CITE_DF = CITE_DF.drop(columns="CellType1", errors="ignore")
-    CITE_DF = CITE_DF.drop(columns="CellType3", errors="ignore")
+    CITE_DF = CITE_DF.drop(columns="CellType1")
+    CITE_DF = CITE_DF.drop(columns="CellType3")
     sample_DF = sample_receptor_abundances(
         CITE_DF=CITE_DF,
         numCells=sample_size,
@@ -115,16 +124,19 @@ def test_starting_point_dependence():
 
     # Identify failure selectivity from ill-conditioned starting points
     init_params = [12, 12, 12, -15]
-    low_selec = 1 / optimize_affs(
-        targRecs=sample_DF[ill_conditioned_recs].to_numpy()[targ_mask],
-        offTargRecs=sample_DF[ill_conditioned_recs].to_numpy()[~targ_mask],
-        dose=dose,
-        valencies=valencies,
-        init_vals=init_params,
-    )[0]
-    print(f"Failed optimization yields selectivity: {low_selec}")
+    low_selec = (
+        1
+        / optimize_affs(
+            targRecs=sample_DF[ill_conditioned_recs].to_numpy()[targ_mask],
+            offTargRecs=sample_DF[ill_conditioned_recs].to_numpy()[~targ_mask],
+            dose=dose,
+            valencies=valencies,
+            init_vals=init_params,
+        )[0]
+    )
+    print(f"Ill-conditioned optimization yields selectivity: {low_selec}")
 
-    # Test random starting
+    # Test random initialization
     random_selec_list = []
     row, col = np.tril_indices(len(test_recs), k=0)
     for rand_state in range(n_rands):
@@ -132,19 +144,21 @@ def test_starting_point_dependence():
             rec1 = test_recs[i]
             rec2 = test_recs[j]
             model_recs = [targ_rec, rec1, rec2]
-            random_selec = 1 / optimize_affs(
-                targRecs=sample_DF[model_recs].to_numpy()[targ_mask],
-                offTargRecs=sample_DF[model_recs].to_numpy()[~targ_mask],
-                dose=dose,
-                valencies=valencies,
-                init_vals=rand_state,
-            )[0]
+            random_selec = (
+                1
+                / optimize_affs(
+                    targRecs=sample_DF[model_recs].to_numpy()[targ_mask],
+                    offTargRecs=sample_DF[model_recs].to_numpy()[~targ_mask],
+                    dose=dose,
+                    valencies=valencies,
+                    init_vals=rand_state,
+                )[0]
+            )
             random_selec_list.append(random_selec)
-    rand_fail_freq = sum(selec <= low_selec + 0.005 for selec in random_selec_list) / len(random_selec_list)
-    
-    print(random_selec_list)
-    print(f"Random start failure frequency: {rand_fail_freq}")
-    assert rand_fail_freq < 0.6
+    rand_fail_freq = sum(
+        selec <= low_selec + failed_selec_cutoff for selec in random_selec_list
+    ) / len(random_selec_list)
+    assert rand_fail_freq < random_init_fail_threshold
 
     # Test initialization search
     init_search_selec_list = []
@@ -152,19 +166,21 @@ def test_starting_point_dependence():
         rec1 = test_recs[i]
         rec2 = test_recs[j]
         model_recs = [targ_rec, rec1, rec2]
-        init_search_selec = 1 / optimize_affs(
-            targRecs=sample_DF[model_recs].to_numpy()[targ_mask],
-            offTargRecs=sample_DF[model_recs].to_numpy()[~targ_mask],
-            dose=dose,
-            valencies=valencies,
-            init_vals="search",
-        )[0]
+        init_search_selec = (
+            1
+            / optimize_affs(
+                targRecs=sample_DF[model_recs].to_numpy()[targ_mask],
+                offTargRecs=sample_DF[model_recs].to_numpy()[~targ_mask],
+                dose=dose,
+                valencies=valencies,
+                init_vals="search",
+            )[0]
+        )
         init_search_selec_list.append(init_search_selec)
-    search_fail_freq = sum(selec <= low_selec + 0.005 for selec in init_search_selec_list) / len(init_search_selec_list)
-   
-    print(init_search_selec_list)
-    print(f"Initialization search failure frequency: {search_fail_freq}")
-    assert search_fail_freq < 0.1
+    search_fail_freq = sum(
+        selec <= low_selec + failed_selec_cutoff for selec in init_search_selec_list
+    ) / len(init_search_selec_list)
+    assert search_fail_freq < init_search_fail_threshold
 
     # Test fixed starting point
     fixed_selec_list = []
@@ -172,20 +188,22 @@ def test_starting_point_dependence():
         rec1 = test_recs[i]
         rec2 = test_recs[j]
         model_recs = [targ_rec, rec1, rec2]
-        fixed_selec = 1 / optimize_affs(
-            targRecs=sample_DF[model_recs].to_numpy()[targ_mask],
-            offTargRecs=sample_DF[model_recs].to_numpy()[~targ_mask],
-            dose=dose,
-            valencies=valencies,
-            init_vals=[6.0, 7.0, 7.0, -9.0],
-        )[0]
+        fixed_selec = (
+            1
+            / optimize_affs(
+                targRecs=sample_DF[model_recs].to_numpy()[targ_mask],
+                offTargRecs=sample_DF[model_recs].to_numpy()[~targ_mask],
+                dose=dose,
+                valencies=valencies,
+                init_vals=fixed_starting_point,
+            )[0]
+        )
         fixed_selec_list.append(fixed_selec)
-    fixed_fail_freq = sum(selec <= low_selec + 0.005 for selec in fixed_selec_list) / len(fixed_selec_list)
+    fixed_fail_freq = sum(
+        selec <= low_selec + failed_selec_cutoff for selec in fixed_selec_list
+    ) / len(fixed_selec_list)
+    assert fixed_fail_freq < fixed_start_fail_threshold
 
-    print(fixed_selec_list)
-    print(f"Fixed start failure frequency: {fixed_fail_freq}")
-    assert fixed_fail_freq < 0.05
-    
 
 def test_invalid_model_function_inputs():
     """Test for appropriate error handling of invalid inputs in binding model functions."""
