@@ -1,0 +1,100 @@
+---
+title: ""
+---
+
+# Summary
+
+# Imports
+
+# Parameters
+
+# Outputs
+
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+# Test effect of regularization strength within a single receptor pair
+import time
+
+import numpy as np
+import pandas as pd
+
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs, get_cell_bindings
+
+from itertools import combinations_with_replacement
+
+receptors = ["CD25", "CD4-1", "CD27", "CD338"]
+signal = ["CD122"]
+cell_type = "Treg"
+dose = 1e-10
+valencies_main = np.array([[2, 1, 1]])
+valencies_diag = np.array([[2, 2]])
+cell_categorization = "CellType2"
+sample_size = 1000
+reg_weight = 0.0
+
+receptor_pairs = receptor_pairs = list(combinations_with_replacement(receptors, 2))
+CITE_DF = importCITE()
+
+epitopes = [
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
+
+targ_mask = (sample_df["Cell Type"] == cell_type).to_numpy()
+off_targ_mask = ~targ_mask
+
+signal_abun = sample_df[signal].to_numpy()
+
+selectivities = []
+affinities = []
+kxs = []
+Rbound_signal = []
+for i, pair in enumerate(receptor_pairs):
+    pair_name = f"{pair[0]}_{pair[1]}"
+    rec1_abun = sample_df[[pair[0]]].to_numpy()
+    rec2_abun = sample_df[[pair[1]]].to_numpy()
+    if pair[0] == pair[1]:
+        valencies = valencies_diag
+        receptor_abuns = np.hstack((signal_abun, rec1_abun))
+    else:
+        valencies = valencies_main
+        receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+    targ_abun = receptor_abuns[targ_mask]
+    off_targ_abun = receptor_abuns[off_targ_mask]
+
+    opt_selec, opt_affs, opt_kx = optimize_affs(targ_abun, off_targ_abun, dose, valencies=valencies, reg_weight=reg_weight)
+    selectivities.append(1 / opt_selec)
+    affinities.append(opt_affs)
+    kxs.append(opt_kx)
+
+    Rbound = get_cell_bindings(targ_abun, opt_affs, dose, valencies, opt_kx)
+    Rbound_signal.append(Rbound[:, 0])
+```
+
+```{python}
+import matplotlib.pyplot as plt
+from scipy.stats import iqr
+from scipy.stats import median_abs_deviation as mad
+
+reg_strength = 1.0
+
+n_figs = len(receptor_pairs)
+fig, axes = plt.subplots(figsize=(45, 3), nrows=1, ncols=n_figs, sharey=True)
+
+for i, pair in enumerate(receptor_pairs):
+    pair_name = f"{pair[0]}_{pair[1]}"
+    Rbound = np.array(Rbound_signal[i]).reshape(-1, 1)
+
+    var_metric = float(mad(Rbound))
+    print(var_metric)
+    adjusted_selectivity = 1 / (1 / selectivities[i] + reg_strength * var_metric)
+
+    axes[i].hist(Rbound, bins=30, color="gray")
+    axes[i].set_title(f"Receptor pair: {pair_name}\nSelectivity: {selectivities[i]:.2f}, Summary metric: {var_metric:.2f}\nAdjusted Selectivity: {adjusted_selectivity:.2f}", fontsize=10)
+    axes[i].set_xlabel("Signal Receptor Bound")
+    axes[i].set_ylabel("Cell Count")
+```
