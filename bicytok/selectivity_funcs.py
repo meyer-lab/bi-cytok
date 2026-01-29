@@ -3,7 +3,6 @@ Functions used in binding and selectivity analysis
 """
 
 import os
-import time
 
 import jax
 import jax.numpy as jnp
@@ -319,12 +318,8 @@ def init_search(
     n_receptors = targ_counts.shape[1]
 
     # Create grid of initial affinities and Kx_star values
-    signal_aff_grid = jnp.linspace(
-        affinity_bounds[0], affinity_bounds[1], grid_size
-    )
-    target_aff_grid = jnp.linspace(
-        affinity_bounds[0], affinity_bounds[1], grid_size
-    )
+    signal_aff_grid = jnp.linspace(affinity_bounds[0], affinity_bounds[1], grid_size)
+    target_aff_grid = jnp.linspace(affinity_bounds[0], affinity_bounds[1], grid_size)
     Kx_star_grid = jnp.linspace(Kx_star_bounds[0], Kx_star_bounds[1], grid_size)
 
     # Create meshgrid of all parameter combinations

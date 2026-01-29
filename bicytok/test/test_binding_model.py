@@ -2,7 +2,6 @@
 Unit test file for binding model functions.
 """
 
-import warnings
 from pathlib import Path
 
 import numpy as np
@@ -89,7 +88,7 @@ def test_binding_model():
 def test_rand_init():
     """
     Test that random initialization starting point method does not fail for too many receptor combinations.
-    
+
     Frequency threshold is representative of the current state of the method
     and may need to be adjusted as the method improves/worsens.
     """
@@ -101,10 +100,10 @@ def test_rand_init():
     ill_conditioned_recs = ["CD122", "CD338", "CD45RA"]
     test_recs = ["CD338", "CD45RA", "CD25", "CD4-1", "CD28", "CD278"]
     n_rands = 5
-    
+
     failed_selec_cutoff = 0.005
     random_init_fail_threshold = 0.6
-    
+
     CITE_DF = importCITE()
     CITE_DF = CITE_DF.rename(columns={"CellType2": "Cell Type"})
     CITE_DF = CITE_DF.drop(columns="CellType1")
@@ -167,10 +166,10 @@ def test_search_init():
     targ_rec = "CD122"
     ill_conditioned_recs = ["CD122", "CD338", "CD45RA"]
     test_recs = ["CD338", "CD45RA", "CD25", "CD4-1", "CD28", "CD278"]
-    
+
     failed_selec_cutoff = 0.005
     init_search_fail_threshold = 0.1
-    
+
     CITE_DF = importCITE()
     CITE_DF = CITE_DF.rename(columns={"CellType2": "Cell Type"})
     CITE_DF = CITE_DF.drop(columns="CellType1")
@@ -181,7 +180,7 @@ def test_search_init():
         targCellType=cell_type,
     )
     targ_mask = (sample_DF["Cell Type"] == cell_type).to_numpy()
-    
+
     init_params = [12, 12, 12, -15]
     low_selec = (
         1
@@ -194,7 +193,7 @@ def test_search_init():
         )[0]
     )
     print(f"Ill-conditioned optimization yields selectivity: {low_selec}")
-    
+
     init_search_selec_list = []
     row, col = np.tril_indices(len(test_recs), k=0)
     for i, j in zip(row, col, strict=False):
@@ -231,10 +230,10 @@ def test_fixed_init():
     ill_conditioned_recs = ["CD122", "CD338", "CD45RA"]
     test_recs = ["CD338", "CD45RA", "CD25", "CD4-1", "CD28", "CD278"]
     fixed_starting_point = [6.0, 7.0, 7.0, -9.0]
-    
+
     failed_selec_cutoff = 0.005
     fixed_start_fail_threshold = 0.05
-    
+
     CITE_DF = importCITE()
     CITE_DF = CITE_DF.rename(columns={"CellType2": "Cell Type"})
     CITE_DF = CITE_DF.drop(columns="CellType1")
@@ -245,7 +244,7 @@ def test_fixed_init():
         targCellType=cell_type,
     )
     targ_mask = (sample_DF["Cell Type"] == cell_type).to_numpy()
-    
+
     init_params = [12, 12, 12, -15]
     low_selec = (
         1
@@ -258,7 +257,7 @@ def test_fixed_init():
         )[0]
     )
     print(f"Ill-conditioned optimization yields selectivity: {low_selec}")
-    
+
     fixed_selec_list = []
     row, col = np.tril_indices(len(test_recs), k=0)
     for i, j in zip(row, col, strict=False):
