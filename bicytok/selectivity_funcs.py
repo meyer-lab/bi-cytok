@@ -175,7 +175,10 @@ def optimize_affs(
         offTargRecs: receptors count of off-target cell types
         dose: ligand concentration/dose
         valencies: array of valencies of each distinct ligand in the ligand complex
-        init_vals: seed for random initial parameters or array of initial parameters
+        init_vals: initialization values for optimization. Can be:
+            - int: random seed for generating random initial affinities and Kx_star
+            - "search": use grid search to find initial parameters
+            - np.ndarray: specific initial values for [affinities, Kx_star]
         affinity_bounds: minimum and maximum optimization bounds for affinity values
         Kx_star_bounds: minimum and maximum optimization bounds for Kx_star
         max_iter: maximum number of iterations
@@ -202,7 +205,7 @@ def optimize_affs(
         init_kx_star = rng.uniform(low=Kx_star_bounds[0], high=Kx_star_bounds[1])
         init_params = np.concatenate((init_affs, np.array([init_kx_star])))
     elif isinstance(init_vals, str) and init_vals == "search":
-        init_params, init_selectivity = search_initialization(
+        init_params, _ = init_search(
             targ_counts=targRecs,
             off_targ_counts=offTargRecs,
             dose=dose,
@@ -236,20 +239,11 @@ def optimize_affs(
     )
 
     # Convert outputs back to Python types
-    if isinstance(init_vals, str) and init_vals == "search":
-        return (
-            float(final_loss),
-            [float(x) for x in final_affs],
-            float(final_kx_star),
-            init_params,
-            init_selectivity,
-        )
-    else:
-        return (
-            float(final_loss),
-            [float(x) for x in final_affs],
-            float(final_kx_star),
-        )
+    return (
+        float(final_loss),
+        [float(x) for x in final_affs],
+        float(final_kx_star),
+    )
 
 
 cyt_binding_model_jit = jax.jit(cyt_binding_model)
@@ -296,68 +290,12 @@ def get_cell_bindings(
     return Rbound
 
 
-def compute_selectivity(
-    targ_counts: np.ndarray,
-    off_targ_counts: np.ndarray,
-    affinities: np.ndarray,
-    dose: float,
-    valencies: np.ndarray,
-    Kx_star: float = -12,
-    method: str = "mean",
-) -> float:
-    """
-    Computes the selectivity based on given affinities and Kx_star.
-
-    Arguments:
-        targ_counts: receptor counts of target cell type
-        off_targ_counts: receptors count of off-target cell types
-        affinities: array of receptor affinities in log10(M)
-        dose: ligand concentration/dose
-        valencies: array of valencies of each distinct ligand in the ligand complex
-        Kx_star: cross-linking constant for the binding model
-
-    Outputs:
-        selectivity: ratio of off-target to on-target binding
-    """
-
-    # Get bound receptors for target and off-target cell types
-    targ_bound = np.array(
-        get_cell_bindings(
-            recCounts=targ_counts,
-            monomerAffs=affinities,
-            dose=dose,
-            valencies=valencies,
-            Kx_star=Kx_star,
-        )
-    )
-    off_targ_bound = np.array(
-        get_cell_bindings(
-            recCounts=off_targ_counts,
-            monomerAffs=affinities,
-            dose=dose,
-            valencies=valencies,
-            Kx_star=Kx_star,
-        )
-    )
-
-    # Summarize bound receptors based on method
-    if method == "mean":
-        targetBound = np.sum(targ_bound[:, 0]) / targ_bound.shape[0]
-        offTargetBound = np.sum(off_targ_bound[:, 0]) / off_targ_bound.shape[0]
-    elif method == "geometric_mean":
-        targetBound = np.exp(np.mean(np.log(targ_bound[:, 0] + 1e-12)))
-        offTargetBound = np.exp(np.mean(np.log(off_targ_bound[:, 0] + 1e-12)))
-
-    # Return selectivity ratio
-    return (targetBound + offTargetBound) / targetBound
-
-
-def search_initialization_vmap(
+def init_search(
     targ_counts: np.ndarray,
     off_targ_counts: np.ndarray,
     dose: float,
     valencies: np.ndarray,
-    grid_size: int = 3,
+    grid_size: int = 10,
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (-15, -9),
 ) -> list:
@@ -382,12 +320,12 @@ def search_initialization_vmap(
 
     # Create grid of initial affinities and Kx_star values
     signal_aff_grid = jnp.linspace(
-        affinity_bounds[0] + 1, affinity_bounds[1] - 1, grid_size
+        affinity_bounds[0], affinity_bounds[1], grid_size
     )
     target_aff_grid = jnp.linspace(
-        affinity_bounds[0] + 1, affinity_bounds[1] - 1, grid_size
+        affinity_bounds[0], affinity_bounds[1], grid_size
     )
-    Kx_star_grid = jnp.linspace(Kx_star_bounds[0] - 1, Kx_star_bounds[1] + 1, grid_size)
+    Kx_star_grid = jnp.linspace(Kx_star_bounds[0], Kx_star_bounds[1], grid_size)
 
     # Create meshgrid of all parameter combinations
     sig_mesh, targ_mesh, Kx_mesh = jnp.meshgrid(
@@ -408,13 +346,6 @@ def search_initialization_vmap(
     )
     all_params = all_params.at[:, n_receptors].set(Kx_flat)
 
-    # Convert inputs to JAX arrays and clean receptor counts
-    # targRecs_clean = jnp.where(
-    #     jnp.array(targ_counts) == 0, REC_COUNT_EPS, jnp.array(targ_counts)
-    # )
-    # offTargRecs_clean = jnp.where(
-    #     jnp.array(off_targ_counts) == 0, REC_COUNT_EPS, jnp.array(off_targ_counts)
-    # )
     targRecs_clean = jnp.array(targ_counts)
     offTargRecs_clean = jnp.array(off_targ_counts)
     valencies_jax = jnp.array(valencies)
@@ -436,268 +367,3 @@ def search_initialization_vmap(
     optimal_initialization = all_params[min_idx]
 
     return np.array(optimal_initialization), float(optimal_loss)
-
-
-
-def search_initialization(
-    targ_counts: np.ndarray,
-    off_targ_counts: np.ndarray,
-    dose: float,
-    valencies: np.ndarray,
-    grid_size: int = 3,
-    affinity_bounds: tuple[float, float] = (6.0, 12.0),
-    Kx_star_bounds: tuple[float, float] = (-15, -9),
-) -> list:
-    """ """
-    time_start = time.time()
-    signal_aff_grid = np.linspace(affinity_bounds[0], affinity_bounds[1], grid_size)
-    target_aff_grid = np.linspace(affinity_bounds[0], affinity_bounds[1], grid_size)
-    Kx_star_grid = np.linspace(Kx_star_bounds[0], Kx_star_bounds[1], grid_size)
-
-    optimal_loss = np.inf
-    optimal_initialization = None
-
-    for sig_aff in signal_aff_grid:
-        for targ_aff in target_aff_grid:
-            for Kx in Kx_star_grid:
-                selectivity = compute_selectivity(
-                    targ_counts=targ_counts,
-                    off_targ_counts=off_targ_counts,
-                    affinities=np.array([sig_aff, targ_aff, targ_aff]),
-                    dose=dose,
-                    valencies=valencies,
-                    Kx_star=Kx,
-                )
-                if selectivity < optimal_loss:
-                    optimal_loss = selectivity
-                    optimal_initialization = np.array([sig_aff, targ_aff, targ_aff, Kx])
-
-    print(f"Search initialization time: {time.time() - time_start:.2f} seconds")
-    return optimal_initialization, optimal_loss
-
-
-
-def search_initialization_2(
-    targ_counts: np.ndarray,
-    off_targ_counts: np.ndarray,
-    dose: float,
-    valencies: np.ndarray,
-    grid_size: int = 5,
-    affinity_bounds: tuple[float, float] = (6.0, 12.0),
-    Kx_star_bounds: tuple[float, float] = (-15, -9),
-) -> list:
-    """ """
-    time_start = time.time()   
-    signal_aff_grid = np.linspace(affinity_bounds[0], affinity_bounds[1], grid_size)
-    target_aff_grid = np.linspace(affinity_bounds[0], affinity_bounds[1], grid_size)
-    Kx_star_grid = np.linspace(Kx_star_bounds[0], Kx_star_bounds[1], grid_size)
-
-    optimal_sig_loss = np.inf
-    optimal_sig_init = None
-    for sig_aff in signal_aff_grid:
-        selectivity = compute_selectivity(
-            targ_counts=targ_counts[:, 0].reshape(-1, 1),
-            off_targ_counts=off_targ_counts[:, 0].reshape(-1, 1),
-            affinities=np.array([sig_aff]),
-            dose=dose,
-            valencies=np.array([[valencies[0][0]]]),
-            Kx_star=Kx_star_grid[-1],
-        )
-        if selectivity < optimal_sig_loss:
-            optimal_sig_loss = selectivity
-            optimal_sig_init = sig_aff
-
-    optimal_targ_loss = np.inf
-    optimal_targ_init = None
-    for targ_aff in target_aff_grid:
-        selectivity = compute_selectivity(
-            targ_counts=targ_counts,
-            off_targ_counts=off_targ_counts,
-            affinities=np.array([optimal_sig_init, targ_aff, targ_aff]),
-            dose=dose,
-            valencies=valencies,
-            Kx_star=Kx_star_grid[-1],
-        )
-        if selectivity < optimal_targ_loss:
-            optimal_targ_loss = selectivity
-            optimal_targ_init = targ_aff
-
-    optimal_Kx_loss = np.inf
-    optimal_Kx_init = None
-    for Kx in Kx_star_grid:
-        selectivity = compute_selectivity(
-            targ_counts=targ_counts,
-            off_targ_counts=off_targ_counts,
-            affinities=np.array([optimal_sig_init, optimal_targ_init, optimal_targ_init]),
-            dose=dose,
-            valencies=valencies,
-            Kx_star=Kx,
-        )
-        if selectivity < optimal_Kx_loss:
-            optimal_Kx_loss = selectivity
-            optimal_Kx_init = Kx
-
-    optimal_initialization = np.array(
-        [optimal_sig_init, optimal_targ_init, optimal_targ_init, optimal_Kx_init]
-    )
-    optimal_loss = optimal_Kx_loss
-
-    print(f"Search initialization time: {time.time() - time_start:.2f} seconds")
-
-    return optimal_initialization, optimal_loss
-
-
-
-def search_initialization_3(
-    targ_counts: np.ndarray,
-    off_targ_counts: np.ndarray,
-    dose: float,
-    valencies: np.ndarray,
-    grid_size: int = 3,
-    affinity_bounds: tuple[float, float] = (6.0, 12.0),
-    Kx_star_bounds: tuple[float, float] = (-15, -9),
-) -> list:
-    """ """
-    time_start = time.time()   
-    signal_aff_grid = np.linspace(affinity_bounds[0], affinity_bounds[1], grid_size)
-    target_aff_grid = np.linspace(affinity_bounds[0], affinity_bounds[1], grid_size)
-    Kx_star_grid = np.linspace(Kx_star_bounds[0], Kx_star_bounds[1], grid_size)
-
-    optimal_sig_loss = np.inf
-    optimal_sig_init = None
-    for sig_aff in signal_aff_grid:
-        selectivity = compute_selectivity(
-            targ_counts=targ_counts[:, 0].reshape(-1, 1),
-            off_targ_counts=off_targ_counts[:, 0].reshape(-1, 1),
-            affinities=np.array([sig_aff]),
-            dose=dose,
-            valencies=np.array([[valencies[0][0]]]),
-            Kx_star=Kx_star_grid[-1],
-        )
-        if selectivity < optimal_sig_loss:
-            optimal_sig_loss = selectivity
-            optimal_sig_init = sig_aff
-
-    optimal_targ_loss_1 = np.inf
-    optimal_targ_init_1 = None
-    for targ_aff in target_aff_grid:
-        selectivity = compute_selectivity(
-            targ_counts=targ_counts[:, 1].reshape(-1, 1),
-            off_targ_counts=off_targ_counts[ :, 1].reshape(-1, 1),
-            affinities=np.array([targ_aff]),
-            dose=dose,
-            valencies=np.array([[valencies[0][1]]]),
-            Kx_star=Kx_star_grid[-1],
-        )
-        if selectivity < optimal_targ_loss_1:
-            optimal_targ_loss_1 = selectivity
-            optimal_targ_init_1 = targ_aff
-
-    optimal_targ_loss_2 = np.inf
-    optimal_targ_init_2 = None
-    for targ_aff in target_aff_grid:
-        selectivity = compute_selectivity(
-            targ_counts=targ_counts[:, 2].reshape(-1, 1),
-            off_targ_counts=off_targ_counts[:, 2].reshape(-1, 1),
-            affinities=np.array([targ_aff]),
-            dose=dose,
-            valencies=np.array([[valencies[0][2]]]),
-            Kx_star=Kx_star_grid[-1],
-        )
-        if selectivity < optimal_targ_loss_2:
-            optimal_targ_loss_2 = selectivity
-            optimal_targ_init_2 = targ_aff
-
-    optimal_Kx_loss = np.inf
-    optimal_Kx_init = None
-    for Kx in Kx_star_grid:
-        selectivity = compute_selectivity(
-            targ_counts=targ_counts,
-            off_targ_counts=off_targ_counts,
-            affinities=np.array([optimal_sig_init, optimal_targ_init_1, optimal_targ_init_2]),
-            dose=dose,
-            valencies=valencies,
-            Kx_star=Kx,
-        )
-        if selectivity < optimal_Kx_loss:
-            optimal_Kx_loss = selectivity
-            optimal_Kx_init = Kx
-
-    optimal_initialization = np.array(
-        [optimal_sig_init, optimal_targ_init_1, optimal_targ_init_2, optimal_Kx_init]
-    )
-    optimal_loss = optimal_Kx_loss
-
-    print(f"Search initialization time: {time.time() - time_start:.2f} seconds")
-
-    return optimal_initialization, optimal_loss
-
-
-def search_initialization_4(
-    targ_counts: np.ndarray,
-    off_targ_counts: np.ndarray,
-    dose: float,
-    valencies: np.ndarray,
-    grid_size: int = 3,
-    affinity_bounds: tuple[float, float] = (6.0, 12.0),
-    Kx_star_bounds: tuple[float, float] = (-15, -9),
-) -> list:
-    """ """
-    time_start = time.time()   
-    signal_aff_grid = np.linspace(affinity_bounds[0], affinity_bounds[1], grid_size)
-    target_aff_grid = np.linspace(affinity_bounds[0], affinity_bounds[1], grid_size)
-    Kx_star_grid = np.linspace(Kx_star_bounds[0], Kx_star_bounds[1], grid_size)
-
-    optimal_sig_loss = np.inf
-    optimal_sig_init = None
-    for sig_aff in signal_aff_grid:
-        selectivity = compute_selectivity(
-            targ_counts=targ_counts[:, 0].reshape(-1, 1),
-            off_targ_counts=off_targ_counts[:, 0].reshape(-1, 1),
-            affinities=np.array([sig_aff]),
-            dose=dose,
-            valencies=np.array([[valencies[0][0]]]),
-            Kx_star=Kx_star_grid[-1],
-        )
-        if selectivity < optimal_sig_loss:
-            optimal_sig_loss = selectivity
-            optimal_sig_init = sig_aff
-
-    optimal_targ_loss_1 = np.inf
-    optimal_targ_init_1 = None
-    for targ_aff in target_aff_grid:
-        selectivity = compute_selectivity(
-            targ_counts=targ_counts[:, 1].reshape(-1, 1),
-            off_targ_counts=off_targ_counts[ :, 1].reshape(-1, 1),
-            affinities=np.array([targ_aff]),
-            dose=dose,
-            valencies=np.array([[valencies[0][1]]]),
-            Kx_star=Kx_star_grid[-1],
-        )
-        if selectivity < optimal_targ_loss_1:
-            optimal_targ_loss_1 = selectivity
-            optimal_targ_init_1 = targ_aff
-
-    optimal_targ_loss_2 = np.inf
-    optimal_targ_init_2 = None
-    for targ_aff in target_aff_grid:
-        selectivity = compute_selectivity(
-            targ_counts=targ_counts[:, 2].reshape(-1, 1),
-            off_targ_counts=off_targ_counts[:, 2].reshape(-1, 1),
-            affinities=np.array([targ_aff]),
-            dose=dose,
-            valencies=np.array([[valencies[0][2]]]),
-            Kx_star=Kx_star_grid[-1],
-        )
-        if selectivity < optimal_targ_loss_2:
-            optimal_targ_loss_2 = selectivity
-            optimal_targ_init_2 = targ_aff
-
-    optimal_initialization = np.array(
-        [optimal_sig_init, optimal_targ_init_1, optimal_targ_init_2, Kx_star_grid[-1]]
-    )
-    optimal_loss = optimal_targ_loss_2
-
-    print(f"Search initialization time: {time.time() - time_start:.2f} seconds")
-
-    return optimal_initialization, optimal_loss
