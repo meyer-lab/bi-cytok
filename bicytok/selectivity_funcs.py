@@ -150,7 +150,7 @@ def _optimize_affs_jax(
     final_params = result.params
     final_loss = result.state.value
 
-    return final_loss, final_params[:-1], jnp.power(10, final_params[-1])
+    return final_loss, final_params[:-1], final_params[-1]
 
 
 def optimize_affs(
@@ -185,8 +185,8 @@ def optimize_affs(
 
     Outputs:
         optSelec: optimized selectivity value
-        optAffs: optimized affinity values
-        optKx_star: optimized Kx_star value
+        optAffs: optimized affinity values in log10(M)
+        optKx_star: optimized Kx_star value in log10(M)
     """
 
     assert targRecs.size > 0
@@ -260,10 +260,10 @@ def get_cell_bindings(
 
     Arguments:
         recCounts: single cell abundances of receptors
-        monomerAffs: monomer ligand-receptor affinities
+        monomerAffs: monomer ligand-receptor affinities in log10(M)
         dose: ligand concentration/dose that is being modeled
         valencies: array of valencies of each distinct ligand in the ligand complex
-        Kx_star: cross-linking constant for the binding model
+        Kx_star: cross-linking constant for the binding model in log10(M)
 
     Outputs:
         Rbound: number of bound receptors for each cell
@@ -297,10 +297,11 @@ def init_search(
     grid_size: int = 10,
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
     Kx_star_bounds: tuple[float, float] = (-15, -9),
-) -> list:
+) -> tuple[np.ndarray, float]:
     """
     Searches for optimal initialization parameters using a vectorized grid search.
-    Uses JAX vmap to evaluate all parameter combinations in parallel.
+    Uses JAX vmap to evaluate all parameter combinations in parallel. Applies a single
+    optimal initial affinity to all target receptors for simplicity and efficiency.
 
     Arguments:
         targ_counts: receptor counts of target cell type
