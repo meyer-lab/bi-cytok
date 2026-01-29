@@ -731,3 +731,195 @@ The receptors analyzed were **{", ".join(receptors)}**. The initial affinity val
 
 print(text)
 ```
+
+```{python}
+# Sweep across receptor pairs with fixed initialization to identify suboptimal failures
+import numpy as np
+import pandas as pd
+from itertools import combinations_with_replacement
+
+from bicytok.imports import importCITE, sample_receptor_abundances, filter_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+receptors = ["CD25", "CD4-1", "CD27", "CD4-2", "CD278", "CD338", "TIGIT", "CD45RA"]
+signal = ["CD122"]
+cell_type = "Treg"
+dose = 1e-10
+valencies = np.array([[2, 1, 1]])
+cell_categorization = "CellType2"
+sample_size = 1000
+
+# Ill-conditioned starting point
+ill_conditioned_init = np.array([12.0, 12.0, 12.0, -15.0])
+well_conditioned_init = np.array([6.0, 7.0, 7.0, -9.0])
+
+CITE_DF = importCITE()
+
+epitopes = [
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+
+sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
+filtered_df = filter_receptor_abundances(sample_df, targ_cell_type=cell_type, whitelist=signal + receptors)
+receptors = filtered_df.columns.tolist()
+receptors.remove("Cell Type")
+
+targ_mask = (filtered_df["Cell Type"] == cell_type).to_numpy()
+off_targ_mask = ~targ_mask
+signal_abun = filtered_df[signal].to_numpy()
+
+receptor_combinations = list(combinations_with_replacement(receptors, 2))
+
+# Store results for both initialization conditions
+results = []
+
+print(f"Testing {len(receptor_combinations)} receptor pairs...\n")
+
+for rec1, rec2 in receptor_combinations:
+    print(f"Testing receptors {rec1}, {rec2}")
+    
+    rec1_abun = filtered_df[[rec1]].to_numpy()
+    rec2_abun = filtered_df[[rec2]].to_numpy()
+    receptor_abuns = np.hstack((signal_abun, rec1_abun, rec2_abun))
+    
+    targ_abun = receptor_abuns[targ_mask]
+    off_targ_abun = receptor_abuns[off_targ_mask]
+    
+    # Test with well-conditioned initialization
+    try:
+        selec_good, affs_good, Kx_good = optimize_affs(
+            targ_abun,
+            off_targ_abun,
+            dose,
+            valencies=valencies,
+            init_vals=well_conditioned_init,
+        )
+        selectivity_good = 1 / selec_good
+    except Exception as e:
+        print(f"  Well-conditioned failed with exception: {e}")
+        selectivity_good = np.nan
+        affs_good = np.full(3, np.nan)
+        Kx_good = np.nan
+    
+    # Test with ill-conditioned initialization
+    try:
+        selec_ill, affs_ill, Kx_ill = optimize_affs(
+            targ_abun,
+            off_targ_abun,
+            dose,
+            valencies=valencies,
+            init_vals=ill_conditioned_init,
+        )
+        selectivity_ill = 1 / selec_ill
+    except Exception as e:
+        print(f"  Ill-conditioned failed with exception: {e}")
+        selectivity_ill = np.nan
+        affs_ill = np.full(3, np.nan)
+        Kx_ill = np.nan
+    
+    results.append({
+        "receptor_1": rec1,
+        "receptor_2": rec2,
+        "selectivity_good_init": selectivity_good,
+        "selectivity_ill_init": selectivity_ill,
+        "affs_good_init": affs_good,
+        "affs_ill_init": affs_ill,
+        "Kx_good_init": Kx_good,
+        "Kx_ill_init": Kx_ill,
+    })
+
+results_df = pd.DataFrame(results)
+
+# Identify failures (where ill-conditioned init gives significantly worse or NaN selectivity)
+results_df["selectivity_diff"] = (
+    results_df["selectivity_ill_init"] - results_df["selectivity_good_init"]
+)
+results_df["relative_diff"] = (
+    np.abs(results_df["selectivity_diff"]) / results_df["selectivity_good_init"]
+)
+
+# Define failure as <0.5% difference or NaN
+results_df["suboptimal_failure"] = (
+    (results_df["relative_diff"] < 0.005) | 
+    (results_df["selectivity_ill_init"].isna())
+)
+
+failed_pairs = results_df[results_df["suboptimal_failure"]]
+
+print("\n" + "="*80)
+print("SUMMARY")
+print("="*80)
+print(f"Total receptor pairs tested: {len(results_df)}")
+print(f"Pairs with suboptimal failures: {len(failed_pairs)} ({100 * len(failed_pairs) / len(results_df):.1f}%)")
+print("\nFailed receptor pairs:")
+for _, row in failed_pairs.iterrows():
+    print(f"  {row['receptor_1']}, {row['receptor_2']}: "
+          f"Good init = {row['selectivity_good_init']:.4f}, "
+          f"Ill init = {row['selectivity_ill_init']:.4f}, "
+          f"Diff = {row['relative_diff']:.4f}")
+```
+
+```{python}
+#| fig-cap: "Receptor abundance distributions for failed receptor pairs"
+import matplotlib.pyplot as plt
+
+# Generate histograms for each failed receptor pair
+N_FAILED = len(failed_pairs)
+
+if N_FAILED > 0:
+    fig, axes = plt.subplots(N_FAILED, 2, figsize=(12, 4 * N_FAILED))
+    
+    # Ensure axes is 2D even with single failure
+    if N_FAILED == 1:
+        axes = axes.reshape(1, -1)
+    
+    for idx, (_, row) in enumerate(failed_pairs.iterrows()):
+        rec1 = row["receptor_1"]
+        rec2 = row["receptor_2"]
+        
+        # Get receptor abundances
+        rec1_abun = sample_df[[rec1]].to_numpy().flatten()
+        rec2_abun = sample_df[[rec2]].to_numpy().flatten()
+        
+        # Split by target and off-target
+        rec1_targ = rec1_abun[targ_mask]
+        rec1_off_targ = rec1_abun[off_targ_mask]
+        rec2_targ = rec2_abun[targ_mask]
+        rec2_off_targ = rec2_abun[off_targ_mask]
+        
+        # Plot receptor 1 distributions
+        ax1 = axes[idx, 0]
+        ax1.hist(rec1_targ, bins=30, alpha=0.6, label=f"{cell_type} (target)", 
+                 color="blue", edgecolor="black")
+        ax1.hist(rec1_off_targ, bins=30, alpha=0.6, label="Off-target", 
+                 color="red", edgecolor="black")
+        ax1.set_xlabel(f"{rec1} Abundance")
+        ax1.set_ylabel("Count")
+        ax1.set_title(f"{rec1} Distribution")
+        ax1.legend()
+        # ax1.set_yscale("log")
+        
+        # Plot receptor 2 distributions
+        ax2 = axes[idx, 1]
+        ax2.hist(rec2_targ, bins=30, alpha=0.6, label=f"{cell_type} (target)", 
+                 color="blue", edgecolor="black")
+        ax2.hist(rec2_off_targ, bins=30, alpha=0.6, label="Off-target", 
+                 color="red", edgecolor="black")
+        ax2.set_xlabel(f"{rec2} Abundance")
+        ax2.set_ylabel("Count")
+        ax2.set_title(f"{rec2} Distribution")
+        ax2.legend()
+        # ax2.set_yscale("log")
+        
+        # Add suptitle for this pair
+        fig.text(0.5, 1.0 - (idx / N_FAILED) + 0.02, 
+                 f"Failed Pair: {rec1} + {rec2}", 
+                 ha="center", va="top", fontsize=12, fontweight="bold")
+    
+    plt.tight_layout()
+    plt.show()
+else:
+    print("No failed receptor pairs to display.")
+```
