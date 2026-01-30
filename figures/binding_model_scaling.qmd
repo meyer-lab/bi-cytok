@@ -48,7 +48,7 @@ dose = 1e-10
 signal_receptor = "CD122"
 receptors_of_interest = [("CD25", 2), ("CD4-1", 2)]
 affinity_bounds = (6, 12)
-kx_star_bounds = (2.24e-15, 2.24e-3)
+kx_star_bounds = (-15, -3)
 num_conv_factors = 10
 conversion_factors = np.logspace(-1, 8, num=num_conv_factors)
 
@@ -189,7 +189,7 @@ plot_configs = [
     },
     {
         "data_key": "optimal_kx_stars",
-        "ylabel": "Optimal Kx_star",
+        "ylabel": "Optimal Kx_star (log10 M)",
         "title": "Optimal Kx_star vs Conversion Factor",
     },
 ]
@@ -224,7 +224,7 @@ for plot_idx, config in enumerate(plot_configs):
     # Configure axes
     ax[plot_idx].axvline(x=10**0, linestyle="--", color="black", alpha=0.5)
     ax[plot_idx].set_xscale("log")
-    if plot_idx in [0, 1, 2, 5]:  # Log scale for specific plots
+    if plot_idx in [0, 1, 2]:  # Log scale for specific plots (not Kx_star which is already in log10)
         ax[plot_idx].set_yscale("log")
     ax[plot_idx].set_xlabel("Conversion Factor")
     ax[plot_idx].set_ylabel(config["ylabel"])
