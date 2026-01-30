@@ -132,6 +132,7 @@ def scan_selectivity(
     valencies: np.ndarray,
     sample_size: int = 100,
     signal_col: int | None = 0,
+    init_method: np.ndarray | str | int = 42,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Optimize binding selectivity for all receptor combinations across target cell
@@ -204,7 +205,7 @@ def scan_selectivity(
                 off_targ_recs = rec_abun_pruned[off_targ_mask, :]
 
                 opt_selec, opt_aff_vals, opt_Kx_star = optimize_affs(
-                    targ_recs, off_targ_recs, dose, valencies
+                    targ_recs, off_targ_recs, dose, valencies, init_vals=init_method
                 )
 
                 selec_vals_scan[j, i] = 1 / opt_selec
@@ -215,8 +216,12 @@ def scan_selectivity(
             # Triangular indices assume symmetry across the diagonal which is not
             #   true if there is no designated signal receptor or if valencies are
             #   asymmetric
+            count = 0
+            time_init = time.time()
+            intervals = []
             row, col = np.tril_indices(sampled_rec_abundances.shape[1], k=0)
             for rec1_ind, rec2_ind in zip(row, col, strict=False):
+
                 rec_abun_pruned = sampled_rec_abundances[:, [rec1_ind, rec2_ind]]
 
                 if signal_col is not None:
@@ -226,12 +231,25 @@ def scan_selectivity(
                 off_targ_recs = rec_abun_pruned[off_targ_mask, :]
 
                 opt_selec, opt_aff_vals, opt_Kx_star = optimize_affs(
-                    targ_recs, off_targ_recs, dose, valencies
+                    targ_recs, off_targ_recs, dose, valencies, init_vals=init_method
                 )
 
                 selec_vals_scan[rec1_ind, rec2_ind, i] = 1 / opt_selec
                 opt_affs_scan[rec1_ind, rec2_ind, i, :] = opt_aff_vals
                 opt_Kx_star_scan[rec1_ind, rec2_ind, i] = opt_Kx_star
+                if count % 500 == 0:
+                    if count == 0:
+                        print(f"Compilation time for {cell_type}: {time.time() - time_start:.2f} seconds.")
+                    else:
+                        intervals.append(time.time() - time_init)
+                        print(f"Completed last 500 of {count} out of {len(row)} combinations in {intervals[-1]:.2f} s.")
+                        average_interval_per_combo = sum(intervals) / len(intervals) / 500
+                        estimated_time_remaining = average_interval_per_combo * (len(row) - count)
+                        print(f"Estimated time remaining for {cell_type}: {estimated_time_remaining:.2f} seconds.")
+                       
+                    time_init = time.time()
+                count += 1
+
 
         if dim == 3:
             pass
