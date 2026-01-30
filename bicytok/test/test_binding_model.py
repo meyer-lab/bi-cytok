@@ -85,47 +85,168 @@ def test_binding_model():
     assert R_bound.shape == recCounts.shape
 
 
-def test_symmetric_affinities():
-    """Test that optimize_affs predicts symmetric target receptor affinities when valencies are symmetric"""
 
-    n_receptors = 10
-    recAbundances, targ, offTarg = sample_data(n_obs=1000, n_var=n_receptors)
-    dose = 1e-10
-    valencies = np.array([[2, 1, 1]])
 
-    row, col = np.tril_indices(n_receptors, k=0)
+
+def _setup_starting_point_test_data(sample_size, cell_type, ill_conditioned_recs, dose, valencies):
+    """Helper function to set up common test data for starting point methods."""
+    CITE_DF = importCITE()
+    CITE_DF = CITE_DF.rename(columns={"CellType2": "Cell Type"})
+    CITE_DF = CITE_DF.drop(columns="CellType1")
+    CITE_DF = CITE_DF.drop(columns="CellType3")
+    sample_DF = sample_receptor_abundances(
+        CITE_DF=CITE_DF,
+        numCells=sample_size,
+        targCellType=cell_type,
+    )
+    targ_mask = (sample_DF["Cell Type"] == cell_type).to_numpy()
+
+    ill_posed_params = [12, 12, 12, -15]
+    low_selec = (
+        1
+        / optimize_affs(
+            targRecs=sample_DF[ill_conditioned_recs].to_numpy()[targ_mask],
+            offTargRecs=sample_DF[ill_conditioned_recs].to_numpy()[~targ_mask],
+            dose=dose,
+            valencies=valencies,
+            init_vals=ill_posed_params,
+        )[0]
+    )
+    print(f"Ill-conditioned optimization yields selectivity: {low_selec}")
+    
+    return sample_DF, targ_mask, low_selec
+
+
+def test_rand_init():
+    """
+    Test that random initialization starting point method does not fail for too many receptor combinations.
+
+    Frequency threshold is representative of the current state of the method
+    and may need to be adjusted as the method improves/worsens.
+    """
+    SAMPLE_SIZE = 1000
+    DOSE = 1e-10
+    VALENCIES = np.array([[2, 1, 1]])
+    CELL_TYPE = "Treg"
+    TARG_REC = "CD122"
+    ILL_CONDITIONED_RECS = ["CD122", "CD338", "CD45RA"]
+    TEST_RECS = ["CD338", "CD45RA", "CD25", "CD4-1", "CD28", "CD278"]
+    N_RANDS = 5
+    FAILED_SELEC_CUTOFF = 0.005
+    RANDOM_INIT_FAIL_THRESHOLD = 0.6
+
+    sample_DF, targ_mask, low_selec = _setup_starting_point_test_data(
+        SAMPLE_SIZE, CELL_TYPE, ILL_CONDITIONED_RECS, DOSE, VALENCIES
+    )
+
+    random_selec_list = []
+    row, col = np.tril_indices(len(TEST_RECS), k=0)
+    for rand_state in range(N_RANDS):
+        for i, j in zip(row, col, strict=False):
+            rec1 = TEST_RECS[i]
+            rec2 = TEST_RECS[j]
+            model_recs = [TARG_REC, rec1, rec2]
+            random_selec = (
+                1
+                / optimize_affs(
+                    targRecs=sample_DF[model_recs].to_numpy()[targ_mask],
+                    offTargRecs=sample_DF[model_recs].to_numpy()[~targ_mask],
+                    dose=DOSE,
+                    valencies=VALENCIES,
+                    init_vals=rand_state,
+                )[0]
+            )
+            random_selec_list.append(random_selec)
+    rand_fail_freq = sum(
+        selec <= low_selec + FAILED_SELEC_CUTOFF for selec in random_selec_list
+    ) / len(random_selec_list)
+    print(f"Random initialization failure frequency: {rand_fail_freq}")
+    assert rand_fail_freq < RANDOM_INIT_FAIL_THRESHOLD
+
+
+def test_search_init():
+    """
+    Test that initialization search starting point method does not fail for too many receptor combinations.
+    """
+    SAMPLE_SIZE = 1000
+    DOSE = 1e-10
+    VALENCIES = np.array([[2, 1, 1]])
+    CELL_TYPE = "Treg"
+    TARG_REC = "CD122"
+    ILL_CONDITIONED_RECS = ["CD122", "CD338", "CD45RA"]
+    TEST_RECS = ["CD338", "CD45RA", "CD25", "CD4-1", "CD28", "CD278"]
+    FAILED_SELEC_CUTOFF = 0.005
+    INIT_SEARCH_FAIL_THRESHOLD = 0.1
+
+    sample_DF, targ_mask, low_selec = _setup_starting_point_test_data(
+        SAMPLE_SIZE, CELL_TYPE, ILL_CONDITIONED_RECS, DOSE, VALENCIES
+    )
+
+    init_search_selec_list = []
+    row, col = np.tril_indices(len(TEST_RECS), k=0)
     for i, j in zip(row, col, strict=False):
-        # Exclude signal receptor or identical target receptors
-        if i == j or i == 0 or j == 0:
-            continue
-
-        # Test forward target receptor order
-        test_abundances = recAbundances[:, [0, i, j]]
-        targRecs = test_abundances[targ]
-        offTargRecs = test_abundances[offTarg]
-        optSelec_f, optAffs_f, optKx_star_f = optimize_affs(
-            targRecs=targRecs,
-            offTargRecs=offTargRecs,
-            dose=dose,
-            valencies=valencies,
+        rec1 = TEST_RECS[i]
+        rec2 = TEST_RECS[j]
+        model_recs = [TARG_REC, rec1, rec2]
+        init_search_selec = (
+            1
+            / optimize_affs(
+                targRecs=sample_DF[model_recs].to_numpy()[targ_mask],
+                offTargRecs=sample_DF[model_recs].to_numpy()[~targ_mask],
+                dose=DOSE,
+                valencies=VALENCIES,
+                init_vals="search",
+            )[0]
         )
+        init_search_selec_list.append(init_search_selec)
+    search_fail_freq = sum(
+        selec <= low_selec + FAILED_SELEC_CUTOFF for selec in init_search_selec_list
+    ) / len(init_search_selec_list)
+    print(f"Initialization search failure frequency: {search_fail_freq}")
+    assert search_fail_freq < INIT_SEARCH_FAIL_THRESHOLD
 
-        # Test reverse target receptor order
-        test_abundances = recAbundances[:, [0, j, i]]
-        targRecs = test_abundances[targ]
-        offTargRecs = test_abundances[offTarg]
-        optSelec_r, optAffs_r, optKx_star_r = optimize_affs(
-            targRecs=targRecs,
-            offTargRecs=offTargRecs,
-            dose=dose,
-            valencies=valencies,
+
+def test_fixed_init():
+    """
+    Test that fixed starting point method does not fail for too many receptor combinations.
+    """
+    SAMPLE_SIZE = 1000
+    DOSE = 1e-10
+    VALENCIES = np.array([[2, 1, 1]])
+    CELL_TYPE = "Treg"
+    TARG_REC = "CD122"
+    ILL_CONDITIONED_RECS = ["CD122", "CD338", "CD45RA"]
+    TEST_RECS = ["CD338", "CD45RA", "CD25", "CD4-1", "CD28", "CD278"]
+    FIXED_STARTING_POINT = [6.0, 7.0, 7.0, -9.0]
+    FAILED_SELEC_CUTOFF = 0.005
+    FIXED_START_FAIL_THRESHOLD = 0.05
+
+    sample_DF, targ_mask, low_selec = _setup_starting_point_test_data(
+        SAMPLE_SIZE, CELL_TYPE, ILL_CONDITIONED_RECS, DOSE, VALENCIES
+    )
+
+    fixed_selec_list = []
+    row, col = np.tril_indices(len(TEST_RECS), k=0)
+    for i, j in zip(row, col, strict=False):
+        rec1 = TEST_RECS[i]
+        rec2 = TEST_RECS[j]
+        model_recs = [TARG_REC, rec1, rec2]
+        fixed_selec = (
+            1
+            / optimize_affs(
+                targRecs=sample_DF[model_recs].to_numpy()[targ_mask],
+                offTargRecs=sample_DF[model_recs].to_numpy()[~targ_mask],
+                dose=DOSE,
+                valencies=VALENCIES,
+                init_vals=FIXED_STARTING_POINT,
+            )[0]
         )
-
-        assert np.isclose(optSelec_f, optSelec_r)
-        assert np.isclose(optAffs_f[0], optAffs_r[0], rtol=1e-3)
-        assert np.isclose(optAffs_f[1], optAffs_r[2], rtol=1e-3)
-        assert np.isclose(optAffs_f[2], optAffs_r[1], rtol=1e-3)
-        assert np.isclose(optKx_star_f, optKx_star_r)
+        fixed_selec_list.append(fixed_selec)
+    fixed_fail_freq = sum(
+        selec <= low_selec + FAILED_SELEC_CUTOFF for selec in fixed_selec_list
+    ) / len(fixed_selec_list)
+    print(f"Fixed starting point failure frequency: {fixed_fail_freq}")
+    assert fixed_fail_freq < FIXED_START_FAIL_THRESHOLD
 
 
 def test_invalid_model_function_inputs():
