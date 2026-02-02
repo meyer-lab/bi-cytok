@@ -12,6 +12,8 @@ title: ""
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
+# Test scanning functions for selectivity, KL divergence, and EMD on a subset of receptors and cell types
+
 import numpy as np
 
 from bicytok.imports import importCITE
@@ -152,6 +154,8 @@ for ci, cell in enumerate(cell_types):
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
+# Run selectivity scan on all receptors pairs and a subset of cell types, save and plot results
+
 import numpy as np
 
 from bicytok.imports import importCITE
@@ -161,8 +165,8 @@ dose = 1e-10
 valency = np.array([[2, 1, 1]])
 cell_categorization = "CellType2"
 sample_size = 1000
+MIN_AVG_COUNT = 5
 
-# receptors = ["CD122", "CD25", "CD4-1", "CD27", "CD28", "CD45RA", "CD338", "CD3-1", "TIGIT", "TSLPR", "CD275-1"]
 cell_types = [
     "Treg",
     "dnT",
@@ -181,11 +185,8 @@ cell_types = [
     "B naive",
 ]
 receptors = None
-cell_types = None
 
 CITE_DF = importCITE()
-
-MIN_AVG_COUNT = 5
 
 epitopes = CITE_DF.columns.tolist()
 exclude_cols = ["Cell", "CellType1", "CellType2", "CellType3"]
@@ -227,12 +228,14 @@ opt_selec, opt_affs, opt_Kx_star = scan_selectivity(
     valencies=valency,
     sample_size=sample_size,
     signal_col=signal_ind,
+    init_method=[6.0, 7.0, 7.0, -9.0],
 )
 ```
 
 ```{python}
-# Save results to CSV
+# Save selectivity scan results to CSV
 import os
+import pandas as pd
 
 results_dir = "../bicytok/data/selectivity_scan_results"
 os.makedirs(results_dir, exist_ok=True)
@@ -275,6 +278,8 @@ print(f"Flattened results: {len(flattened_data)} receptor pair-cell type combina
 
 ```{python}
 # Plotting heatmaps of optimal selectivity across cell types
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 TOP_N_PAIRS = 50
 
@@ -386,7 +391,7 @@ print(top_selec_df)
 # Load saved selectivity scan results
 import pandas as pd
 
-RESULTS_DIR = "../bicytok/data/selectivity_scan_results_14Nov2025"
+RESULTS_DIR = "../bicytok/data/selectivity_scan_results_30Jan2026"
 scan_data = pd.read_csv(f"{RESULTS_DIR}/selectivity_scan_flattened.csv")
 
 print(f"Loaded {len(scan_data)} receptor pair-cell type combinations")
