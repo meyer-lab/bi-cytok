@@ -28,8 +28,8 @@ receptors = ["CD25", "CD4-1", "CD27", "CD338"]
 signal = ["CD122"]
 cell_type = "Treg"
 dose = 1e-10
-valencies_main = np.array([[2, 1, 1]])
-valencies_diag = np.array([[2, 2]])
+valencies_main = np.array([[1, 2, 2]])
+valencies_diag = np.array([[1, 4]])
 cell_categorization = "CellType2"
 sample_size = 1000
 reg_weight = 0.0
@@ -53,6 +53,7 @@ selectivities = []
 affinities = []
 kxs = []
 Rbound_signal = []
+off_targ_Rbound_signal = []
 for i, pair in enumerate(receptor_pairs):
     pair_name = f"{pair[0]}_{pair[1]}"
     rec1_abun = sample_df[[pair[0]]].to_numpy()
@@ -71,8 +72,10 @@ for i, pair in enumerate(receptor_pairs):
     affinities.append(opt_affs)
     kxs.append(opt_kx)
 
-    Rbound = get_cell_bindings(targ_abun, opt_affs, dose, valencies, opt_kx)
+    Rbound = get_cell_bindings(targ_abun, opt_affs, dose, valencies, opt_kx, clean_zeros=True)
     Rbound_signal.append(Rbound[:, 0])
+    Rbound_off = get_cell_bindings(off_targ_abun, opt_affs, dose, valencies, opt_kx, clean_zeros=True)
+    off_targ_Rbound_signal.append(Rbound_off[:, 0])
 ```
 
 ```{python}
@@ -88,13 +91,69 @@ fig, axes = plt.subplots(figsize=(45, 3), nrows=1, ncols=n_figs, sharey=True)
 for i, pair in enumerate(receptor_pairs):
     pair_name = f"{pair[0]}_{pair[1]}"
     Rbound = np.array(Rbound_signal[i]).reshape(-1, 1)
+    Rbound_off = np.array(off_targ_Rbound_signal[i]).reshape(-1, 1)
 
     var_metric = float(mad(Rbound))
     print(var_metric)
     adjusted_selectivity = 1 / (1 / selectivities[i] + reg_strength * var_metric)
 
-    axes[i].hist(Rbound, bins=30, color="gray")
+    axes[i].hist(Rbound, bins=50, color="steelblue")
+    axes[i].hist(Rbound_off, bins=50, color="coral", alpha=0.6)
     axes[i].set_title(f"Receptor pair: {pair_name}\nSelectivity: {selectivities[i]:.2f}, Summary metric: {var_metric:.2f}\nAdjusted Selectivity: {adjusted_selectivity:.2f}", fontsize=10)
     axes[i].set_xlabel("Signal Receptor Bound")
     axes[i].set_ylabel("Cell Count")
 ```
+
+```{python}
+# Test pairs
+
+# receptor_pairs = [
+#     ("CD25", "CD25"),
+#     ("CD25", "CD4-1"),
+#     ("CD4-1", "CD4-1"),
+#     ("CD4-1", "CD109"),
+# ]
+# reg_weights = [0.0, 0.01, 0.1, 1.0]
+# affs = [[6.0, 8.19], [6.0, 8.45, 6.76], [6.0, 7.86], [6.0, 9.44, 7.86]]
+# Kx_stars = [2.24e-9, 2.24e-9, 2.74e-10, 2.21e-9]
+
+receptor_pairs = [
+    ("CD25", "CD25"),
+    ("CD25", "CD4-1"),
+    ("CD25", "CD4-1"),
+    ("CD25", "CD4-1"),
+]
+reg_weights = [0.0, 0.0, 0.1, 0.01]
+affs = [[6.0, 8.19], [6.0, 8.42, 6.71], [6.0, 8.45, 6.76], [6.0, 8.39, 7.04]]
+Kx_stars = [2.24e-9, 2.24e-9, 2.24e-9, 2.0e-9]
+
+for i in range(len(receptor_pairs)):
+    pair = receptor_pairs[i]
+    rec1_abun = sample_df[[pair[0]]].to_numpy()
+    rec2_abun = sample_df[[pair[1]]].to_numpy()
+    if pair[0] == pair[1]:
+        receptor_abuns_pair = np.hstack((signal_abun, rec1_abun))
+        valencies = np.array([[2, 2]])
+    else:
+        receptor_abuns_pair = np.hstack((signal_abun, rec1_abun, rec2_abun))
+        valencies = np.array([[2, 1, 1]])
+    targ_abun_pair = receptor_abuns_pair[targ_mask]
+    off_targ_abun_pair = receptor_abuns_pair[off_targ_mask]
+
+    Rbound = get_cell_bindings(
+        receptor_abuns_pair,
+        affs[i],
+        dose,
+        valencies=valencies,
+        Kx_star=Kx_stars[i],
+        clean_zeros=True,
+    )
+    Rbound_on = Rbound[targ_mask]
+    Rbound_off = Rbound[off_targ_mask]
+    targ_mean = np.exp(np.sum(np.log(Rbound_on[:, 0]) / Rbound_on[:, 0].shape[0]))
+    off_targ_mean = np.exp(np.sum(np.log(Rbound_off[:, 0]) / Rbound_off[:, 0].shape[0]))
+    selec = 1 / ((off_targ_mean + targ_mean) / targ_mean)
+    var = np.var(Rbound[:, 0])
+    avg = np.mean(Rbound[:, 0])
+
+    print(f"Pair: {pair}, Reg weight: {reg_weights[i]}, Selectivity: {selec:.4f}, Variance: {var:.4f}, Mean bound: {avg:.4f}")
