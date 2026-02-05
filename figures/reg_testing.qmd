@@ -29,7 +29,7 @@ dose = 1e-10
 valencies = np.array([[2, 1, 1]])
 cell_categorization = "CellType2"
 sample_size = 1000
-reg_weights = [0.0, 0.01, 1.0, 10.0]
+reg_weights = [0.0, 0.001, 0.01, 0.05]
 
 CITE_DF = importCITE()
 
@@ -69,24 +69,50 @@ from bicytok.selectivity_funcs import get_cell_bindings
 import matplotlib.pyplot as plt
 
 bound_signal = np.full((len(reg_weights), targ_abun.shape[0]), np.nan)
+bound_signal_off_targ = np.full((len(reg_weights), off_targ_abun.shape[0]), np.nan)
+true_selecs = np.full((len(reg_weights)), np.nan)
+variances = np.full((len(reg_weights)), np.nan)
+means = np.full((len(reg_weights)), np.nan)
 
 print(affs)
 
 for i, reg_weight in enumerate(reg_weights):
-    bound_receptors = get_cell_bindings(targ_abun, affs[i, :], dose, valencies=valencies, Kx_star=kxs[i])
-    variance = np.var(bound_receptors[:, 0])
-    print(f"Reg weight {reg_weight}: Variance in bound signal receptor: {variance:.4f}")
-    bound_signal[i, :] = bound_receptors[:, 0]
+    # Calculate bound receptors for all cells
+    receptor_abuns_all = np.vstack((targ_abun, off_targ_abun))
+    bound_receptors_all = get_cell_bindings(receptor_abuns_all, affs[i, :], dose, valencies=valencies, Kx_star=kxs[i], clean_zeros=True)
+    
+    # Split by target/off-target
+    Rbound_on = bound_receptors_all[:targ_abun.shape[0]]
+    Rbound_off = bound_receptors_all[targ_abun.shape[0]:]
+    
+    # Calculate true selectivity using geometric mean
+    targ_mean = np.exp(np.sum(np.log(Rbound_on[:, 0]) / Rbound_on[:, 0].shape[0]))
+    off_targ_mean = np.exp(np.sum(np.log(Rbound_off[:, 0]) / Rbound_off[:, 0].shape[0]))
+    true_selec = 1 / ((off_targ_mean + targ_mean) / targ_mean)
+    
+    # Calculate variance and mean
+    var = np.var(bound_receptors_all[:, 0])
+    avg = np.mean(bound_receptors_all[:, 0])
+    
+    true_selecs[i] = true_selec
+    variances[i] = var
+    means[i] = avg
+    bound_signal[i, :] = Rbound_on[:, 0]
+    bound_signal_off_targ[i, :] = Rbound_off[:, 0]
+    
+    print(f"Reg weight {reg_weight}: True Selectivity {true_selec:.4f}, Variance: {var:.4e}, Mean: {avg:.4e}")
 
 fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 axes = axes.flatten()
 
 for i, reg_weight in enumerate(reg_weights):
-    axes[i].hist(bound_signal[i, :], bins=30, edgecolor='black', alpha=0.7)
+    axes[i].hist(bound_signal[i, :], bins=50, edgecolor='black', alpha=0.6, color='steelblue', label='Target')
+    axes[i].hist(bound_signal_off_targ[i, :], bins=50, edgecolor='black', alpha=0.6, color='coral', label='Off-target')
     axes[i].set_xlabel('Bound Signal Receptor (CD122)', fontsize=20)
     axes[i].set_ylabel('Frequency', fontsize=20)
-    axes[i].set_title(f'Regularization Weight: {reg_weight}', fontsize=22)
+    axes[i].set_title(f'Reg Weight: {reg_weight} | Reg Selectivity: {selectivities[i]:.4f}\nTrue Selectivity: {true_selecs[i]:.4f} | Var: {variances[i]:.3f} | Mean: {means[i]:.3f}', fontsize=14)
     axes[i].tick_params(axis='both', which='major', labelsize=16)
+    axes[i].legend(fontsize=14)
     axes[i].grid(True, alpha=0.3)
 
 plt.tight_layout()
@@ -101,6 +127,7 @@ from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
 available_receptors = ["CD25", "CD4-1", "CD27", "CD28", "CD122", "CD107a", "CD338", "CD278", "CD109", "CD2", "CD194", "CD357"]
+# available_receptors = ["CD25", "CD4-1", "CD109"]
 signal = ["CD122"]
 cell_type = "Treg"
 dose = 1e-10
@@ -108,7 +135,7 @@ valencies_main = np.array([[2, 1, 1]])
 valencies_diag = np.array([[2, 2]])
 cell_categorization = "CellType2"
 sample_size = 1000
-reg_weights = [0.0, 0.1, 1.0, 10.0]
+reg_weights = [0.0, 0.01, 0.1, 1.0]
 
 receptor_pairs = list(combinations_with_replacement(available_receptors, 2))
 CITE_DF = importCITE()
@@ -159,6 +186,8 @@ for pair in receptor_pairs:
         pair_results[pair_name]['selectivities'][i] = selec
         pair_results[pair_name]['affs'][i, :] = opt_affs
         pair_results[pair_name]['kxs'][i] = opt_kx
+
+        print(f"Pair {pair_name}, Affs: {opt_affs}, Kx: {opt_kx}")
     
     print(f"{pair_name}: Selectivities = {pair_results[pair_name]['selectivities']}")
 ```
@@ -180,7 +209,6 @@ for i, reg_weight in enumerate(reg_weights):
             max_pair = pair_name
     
     max_selec_pairs.append(max_pair)
-    print(f"Reg weight {reg_weight}: Max selectivity pair = {max_pair} (Selectivity = {max_selec:.4f})")
 
 fig, axes = plt.subplots(2, 2, figsize=(14, 12))
 axes = axes.flatten()
@@ -197,26 +225,43 @@ for i, reg_weight in enumerate(reg_weights):
     else:
         valencies = valencies_main
         receptor_abuns_pair = np.hstack((signal_abun, rec1_abun, rec2_abun))
-    targ_abun_pair = receptor_abuns_pair[targ_mask]
     
-    bound_receptors = get_cell_bindings(
-        targ_abun_pair, 
+    # Calculate bound receptors with proper zero handling
+    bound_receptors_all = get_cell_bindings(
+        receptor_abuns_pair, 
         pair_results[pair_name]['affs'][i, :], 
         dose, 
         valencies=valencies, 
-        Kx_star=pair_results[pair_name]['kxs'][i]
+        Kx_star=pair_results[pair_name]['kxs'][i],
+        clean_zeros=True,
     )
-    bound_signal_pair = bound_receptors[:, 0]
     
-    axes[i].hist(bound_signal_pair, bins=30, edgecolor='black', alpha=0.7, color='steelblue')
+    # Split by target/off-target
+    Rbound_on = bound_receptors_all[targ_mask]
+    Rbound_off = bound_receptors_all[off_targ_mask]
+    
+    # Calculate true selectivity using geometric mean
+    targ_mean = np.exp(np.sum(np.log(Rbound_on[:, 0]) / Rbound_on[:, 0].shape[0]))
+    off_targ_mean = np.exp(np.sum(np.log(Rbound_off[:, 0]) / Rbound_off[:, 0].shape[0]))
+    true_selec = 1 / ((off_targ_mean + targ_mean) / targ_mean)
+    
+    # Calculate variance and mean
+    var = np.var(bound_receptors_all[:, 0])
+    avg = np.mean(bound_receptors_all[:, 0])
+    
+    bound_signal_pair = Rbound_on[:, 0]
+    bound_signal_pair_off = Rbound_off[:, 0]
+    
+    axes[i].hist(bound_signal_pair, bins=50, edgecolor='black', alpha=0.6, color='steelblue', label='Target')
+    axes[i].hist(bound_signal_pair_off, bins=50, edgecolor='black', alpha=0.6, color='coral', label='Off-target')
     axes[i].set_xlabel('Bound Signal Receptor (CD122)', fontsize=24)
     axes[i].set_ylabel('Frequency', fontsize=30)
-    axes[i].set_title(f'Reg Weight: {reg_weight} | Pair: {pair_name}\nSelectivity: {pair_results[pair_name]["selectivities"][i]:.4f}', fontsize=22)
+    axes[i].set_title(f'Reg Weight: {reg_weight} | Pair: {pair_name} | Reg Selectivity: {pair_results[pair_name]["selectivities"][i]:.4f}\nTrue Selectivity: {true_selec:.4f} | Var: {var:.3f} | Mean: {avg:.3f}', fontsize=14)
     axes[i].tick_params(axis='both', which='major', labelsize=24)
+    axes[i].legend(fontsize=18)
     axes[i].grid(True, alpha=0.3)
 
 plt.tight_layout()
 plt.show()
 ```
-
 
