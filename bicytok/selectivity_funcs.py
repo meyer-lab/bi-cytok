@@ -103,7 +103,8 @@ def min_off_targ_selec(
     targetBound = jnp.exp(jnp.sum(jnp.log(targRbound[:, 0]) / n_targets))
     offTargetBound = jnp.exp(jnp.sum(jnp.log(offTargRbound[:, 0]) / n_off_targets))
 
-    reg_metric = jnp.var(targRbound[:, 0]) # Variance
+    # reg_metric = jnp.var(targRbound[:, 0]) + 1 / jnp.mean(targRbound[:, 0]) # Variance + inverse mean
+    reg_metric = 1 / jnp.mean(targRbound[:, 0])  # Inverse mean
     # reg_metric = jnp.median(jnp.abs(targRbound[:, 0] - jnp.median(targRbound[:, 0]))) # MAD
     # reg_metric = jnp.subtract(*jnp.percentile(targRbound[:, 0], [75, 25])) # IQR
 
@@ -254,6 +255,7 @@ def get_cell_bindings(
     dose: float,
     valencies: np.ndarray,
     Kx_star: float = 2.24e-12,
+    clean_zeros: bool = False,
 ) -> np.ndarray:
     """
     Predicts the amount of bound receptors across cells based on set affinities.
@@ -270,12 +272,14 @@ def get_cell_bindings(
     """
 
     monomerAffs = jnp.array(monomerAffs, dtype=jnp.float64)
-    print(monomerAffs)
     recCounts = jnp.array(recCounts, dtype=jnp.float64)
     valencies = jnp.array(valencies, dtype=jnp.float64)
 
     # Reformat input affinities to 10^aff and diagonalize
     modelAffs = restructure_affs(monomerAffs)
+
+    if clean_zeros:
+        recCounts = jnp.where(recCounts == 0, REC_COUNT_EPS, recCounts)
 
     # Use the binding model to calculate bound receptors for each cell
     Rbound = cyt_binding_model_jit(
@@ -285,5 +289,5 @@ def get_cell_bindings(
         monomerAffs=modelAffs,
         Kx_star=Kx_star,
     )
-
+    
     return Rbound
