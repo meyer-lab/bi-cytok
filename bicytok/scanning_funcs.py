@@ -230,11 +230,18 @@ def scan_selectivity(
                 targ_recs = rec_abun_pruned[targ_mask, :]
                 off_targ_recs = rec_abun_pruned[off_targ_mask, :]
 
-                opt_selec, opt_aff_vals, opt_Kx_star = optimize_affs(
-                    targ_recs, off_targ_recs, dose, valencies, init_vals=init_method
-                )
+                try:
+                    opt_selec, opt_aff_vals, opt_Kx_star = optimize_affs(
+                        targ_recs, off_targ_recs, dose, valencies, init_vals=init_method
+                    )
+                    selec_vals_scan[rec1_ind, rec2_ind, i] = 1 / opt_selec
+                except Exception as e:
+                    print(
+                        f"Optimization failed for {cell_type} with receptors {rec1_ind} and {rec2_ind}: {e}"
+                    )
+                    opt_selec, opt_aff_vals, opt_Kx_star = np.nan, np.full(rec_abun_pruned.shape[1], np.nan), np.nan
+                    selec_vals_scan[rec1_ind, rec2_ind, i] = opt_selec
 
-                selec_vals_scan[rec1_ind, rec2_ind, i] = 1 / opt_selec
                 opt_affs_scan[rec1_ind, rec2_ind, i, :] = opt_aff_vals
                 opt_Kx_star_scan[rec1_ind, rec2_ind, i] = opt_Kx_star
                 if count % 500 == 0:
