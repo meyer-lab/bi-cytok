@@ -24,6 +24,7 @@ valency = np.array([[2, 1, 1]])
 cell_categorization = "CellType2"
 sample_size = 1000
 MIN_AVG_COUNT = 5
+init = [6.0, 7.0, 7.0, -9.0]
 
 cell_types = [
     "Treg",
@@ -86,7 +87,8 @@ opt_selec, opt_affs, opt_Kx_star = scan_selectivity(
     valencies=valency,
     sample_size=sample_size,
     signal_col=signal_ind,
-    init_method=[6.0, 7.0, 7.0, -9.0],
+    init_method=init,
+    split_multivalent_recs=False,
 )
 ```
 
@@ -242,6 +244,8 @@ plt.show()
 
 ```{python}
 # Plotting bar plots of the top optimal selectivity pair in each cell type
+import matplotlib.pyplot as plt
+import pandas as pd
 
 top_pairs = []
 top_selectivities = []
@@ -292,7 +296,7 @@ for _i, (bar, pair) in enumerate(
         rotation=90,
     )
 
-plt.ylim(0.7, 1.0)
+plt.ylim(0.6, 1.0)
 plt.xticks(rotation=45, ha="right")
 plt.tight_layout()
 plt.show()

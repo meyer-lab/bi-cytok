@@ -211,6 +211,8 @@ def optimize_affs(
     assert targRecs.size > 0
     assert offTargRecs.size > 0
     assert targRecs.shape[1] == offTargRecs.shape[1]
+    if isinstance(init_vals, np.ndarray):
+        assert init_vals.shape[0] == targRecs.shape[1] + 1
 
     # Set up initial parameters
     if isinstance(init_vals, int):

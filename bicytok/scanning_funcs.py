@@ -133,6 +133,7 @@ def scan_selectivity(
     sample_size: int = 100,
     signal_col: int | None = 0,
     init_method: np.ndarray | str | int = 42,
+    split_multivalent_recs: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Optimize binding selectivity for all receptor combinations across target cell
@@ -152,6 +153,12 @@ def scan_selectivity(
         sample_size: number of cells to sample per cell type
         signal_col: column index of designated signal receptor to include in all
             combinations, or None to exclude signal receptor
+        init_method: method for initializing optimization (integer seed for random
+            initialization, "search" to initialize with grid search, or array of
+            initial affinity and Kx_star values)
+        split_multivalent_recs: whether to treat multivalent receptors as separate
+            entities with split valencies (True) or as a single entity with combined
+            valency (False)
 
     Outputs:
         selec_vals_scan: optimized selectivity values for all receptor combinations
@@ -216,13 +223,17 @@ def scan_selectivity(
             # Triangular indices assume symmetry across the diagonal which is not
             #   true if there is no designated signal receptor or if valencies are
             #   asymmetric
-            count = 0
             time_init = time.time()
             intervals = []
             row, col = np.tril_indices(sampled_rec_abundances.shape[1], k=0)
-            for rec1_ind, rec2_ind in zip(row, col, strict=False):
-
+            for i, (rec1_ind, rec2_ind) in enumerate(zip(row, col, strict=False)):
                 rec_abun_pruned = sampled_rec_abundances[:, [rec1_ind, rec2_ind]]
+
+                model_valencies = valencies.copy()
+                if not split_multivalent_recs and rec1_ind == rec2_ind:
+                    total_target_valency = valencies[:, 1:2].sum()
+                    model_valencies[:, 1] = total_target_valency
+                    model_valencies[:, 2] = 0
 
                 if signal_col is not None:
                     rec_abun_pruned = np.hstack((signal_rec_abun, rec_abun_pruned))
@@ -232,31 +243,47 @@ def scan_selectivity(
 
                 try:
                     opt_selec, opt_aff_vals, opt_Kx_star = optimize_affs(
-                        targ_recs, off_targ_recs, dose, valencies, init_vals=init_method
+                        targ_recs,
+                        off_targ_recs,
+                        dose,
+                        model_valencies,
+                        init_vals=init_method,
                     )
                     selec_vals_scan[rec1_ind, rec2_ind, i] = 1 / opt_selec
                 except Exception as e:
                     print(
                         f"Optimization failed for {cell_type} with receptors {rec1_ind} and {rec2_ind}: {e}"
                     )
-                    opt_selec, opt_aff_vals, opt_Kx_star = np.nan, np.full(rec_abun_pruned.shape[1], np.nan), np.nan
+                    opt_selec, opt_aff_vals, opt_Kx_star = (
+                        np.nan,
+                        np.full(rec_abun_pruned.shape[1], np.nan),
+                        np.nan,
+                    )
                     selec_vals_scan[rec1_ind, rec2_ind, i] = opt_selec
 
                 opt_affs_scan[rec1_ind, rec2_ind, i, :] = opt_aff_vals
                 opt_Kx_star_scan[rec1_ind, rec2_ind, i] = opt_Kx_star
-                if count % 500 == 0:
-                    if count == 0:
-                        print(f"Compilation time for {cell_type}: {time.time() - time_start:.2f} seconds.")
+                if i % 500 == 0:
+                    if i == 0:
+                        print(
+                            f"Compilation time for {cell_type}: {time.time() - time_start:.2f} seconds."
+                        )
                     else:
                         intervals.append(time.time() - time_init)
-                        print(f"Completed last 500 of {count} out of {len(row)} combinations in {intervals[-1]:.2f} s.")
-                        average_interval_per_combo = sum(intervals) / len(intervals) / 500
-                        estimated_time_remaining = average_interval_per_combo * (len(row) - count)
-                        print(f"Estimated time remaining for {cell_type}: {estimated_time_remaining:.2f} seconds.")
-                       
-                    time_init = time.time()
-                count += 1
+                        print(
+                            f"Completed last 500 of {i} out of {len(row)} combinations in {intervals[-1]:.2f} s."
+                        )
+                        average_interval_per_combo = (
+                            sum(intervals) / len(intervals) / 500
+                        )
+                        estimated_time_remaining = average_interval_per_combo * (
+                            len(row) - i
+                        )
+                        print(
+                            f"Estimated time remaining for {cell_type}: {estimated_time_remaining:.2f} seconds."
+                        )
 
+                    time_init = time.time()
 
         if dim == 3:
             pass
@@ -266,31 +293,3 @@ def scan_selectivity(
         )
 
     return selec_vals_scan, opt_affs_scan, opt_Kx_star_scan
-
-
-# def scan_selectivity_signal(
-#     rec_abundances: np.ndarray,
-#     cell_type_labels: np.ndarray,
-#     targ_cell_type: str,
-#     dose: float,
-#     valencies: np.ndarray,
-#     signal_rec_inds: list[int] | None = None,
-#     sample_size: int = 100,
-# ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-#     """
-#     Optimize binding selectivity for all receptor pairs across all possible signal
-#     receptor designations for a single target cell type.
-#     """
-
-#     n_receptors = rec_abundances.shape[1]
-
-#     if signal_rec_inds == None:
-#         signal_rec_inds = range(n_receptors)
-
-#     output_shape = (n_receptors, n_receptors, len(signal_rec_inds))
-#     selec_vals_scan = np.full(output_shape, np.nan)
-#     opt_Kx_star_scan = np.full(output_shape, np.nan)
-#     affs_output_shape = (n_receptors, n_receptors, len(signal_rec_inds), 3)
-#     opt_affs_scan = np.full(affs_output_shape, np.nan)
-
-#     for signal_ind in
