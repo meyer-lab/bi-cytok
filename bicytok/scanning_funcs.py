@@ -226,7 +226,7 @@ def scan_selectivity(
             time_init = time.time()
             intervals = []
             row, col = np.tril_indices(sampled_rec_abundances.shape[1], k=0)
-            for i, (rec1_ind, rec2_ind) in enumerate(zip(row, col, strict=False)):
+            for count, (rec1_ind, rec2_ind) in enumerate(zip(row, col, strict=False)):
                 rec_abun_pruned = sampled_rec_abundances[:, [rec1_ind, rec2_ind]]
 
                 model_valencies = valencies.copy()
@@ -263,21 +263,21 @@ def scan_selectivity(
 
                 opt_affs_scan[rec1_ind, rec2_ind, i, :] = opt_aff_vals
                 opt_Kx_star_scan[rec1_ind, rec2_ind, i] = opt_Kx_star
-                if i % 500 == 0:
-                    if i == 0:
+                if count % 500 == 0:
+                    if count == 0:
                         print(
                             f"Compilation time for {cell_type}: {time.time() - time_start:.2f} seconds."
                         )
                     else:
                         intervals.append(time.time() - time_init)
                         print(
-                            f"Completed last 500 of {i} out of {len(row)} combinations in {intervals[-1]:.2f} s."
+                            f"Completed last 500 of {count} out of {len(row)} combinations in {intervals[-1]:.2f} s."
                         )
                         average_interval_per_combo = (
                             sum(intervals) / len(intervals) / 500
                         )
                         estimated_time_remaining = average_interval_per_combo * (
-                            len(row) - i
+                            len(row) - count
                         )
                         print(
                             f"Estimated time remaining for {cell_type}: {estimated_time_remaining:.2f} seconds."
