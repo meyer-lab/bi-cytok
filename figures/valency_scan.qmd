@@ -26,9 +26,9 @@ This analysis calculates selectivity across varying compositions of binding subu
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
+
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -52,7 +52,9 @@ fixed_valencies = range(signal_valency, max_valency + 1)
 CITE_DF = importCITE()
 
 assert targ_cell in CITE_DF[cell_categorization].unique()
-assert len(receptors) == 3, "Must specify exactly 3 receptors: [signal, target1, target2]"
+assert len(receptors) == 3, (
+    "Must specify exactly 3 receptors: [signal, target1, target2]"
+)
 
 signal_receptor = receptors[0]
 target_receptor_1 = receptors[1]
@@ -69,7 +71,9 @@ sample_df = sample_receptor_abundances(
     targCellType=targ_cell,
     insert_mock_signal_rec=True,
 )
-filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell, whitelist=receptors)
+filtered_sample_df = filter_receptor_abundances(
+    sample_df, targ_cell, whitelist=receptors
+)
 
 on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
 off_target_mask = ~on_target_mask
@@ -94,35 +98,48 @@ for total_valency in fixed_valencies:
         
         model_valencies = np.array([[signal_valency, n_target1, n_target2]])
         
-        opt_selec, _, _ = optimize_affs(
+        opt_selec, opt_affs, opt_kx_star = optimize_affs(
             targRecs=targ_recs,
             offTargRecs=off_targ_recs,
             dose=dose,
             valencies=model_valencies,
-            init_vals=[6.0, 7.0, 7.0, -9.0]
+            init_vals=init_mod,
+            Kx_star_bounds=(-15, -5),
         )
         selectivity = 1 / opt_selec
         
-        results.append({
-            'Total_Valency': total_valency,
+        print(f"(Signal: {signal_valency}, Target1: {n_target1}, Target2: {n_target2})")
+        print(
+            f"Affinities: {opt_affs}, Kx*: {opt_kx_star:.2e}, Selectivity: {selectivity:.4f}\n"
+        )
+
+        results.append(
+            {
+                "Total_Valency": total_valency,
             signal_receptor: signal_valency,
             target_receptor_1: n_target1,
             target_receptor_2: n_target2,
-            'Selectivity': selectivity
-        })
+                "Selectivity": selectivity,
+            }
+        )
 
 time_end = time.time()
 print(f"\nTotal processing time: {time_end - time_start:.2f} seconds")
 print(f"Calculated selectivity for {len(results)} different compositions")
 
 results_df = pd.DataFrame(results)
-print(f"\nSelectivity range: {results_df['Selectivity'].min():.2f} - {results_df['Selectivity'].max():.2f}")
+print(
+    f"\nSelectivity range: {results_df['Selectivity'].min():.2f} - {results_df['Selectivity'].max():.2f}"
+)
 print(f"Mean selectivity: {results_df['Selectivity'].mean():.2f}")
 ```
 
 
 ## Line Plot by Valency
 ```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots(figsize=(7, 5.5))
 
@@ -134,7 +151,7 @@ for idx, total_valency in enumerate(fixed_valencies):
     if total_valency == min_valency:
         continue
     
-    subset_df = results_df[results_df['Total_Valency'] == total_valency].copy()
+    subset_df = results_df[results_df["Total_Valency"] == total_valency].copy()
     
     if len(subset_df) == 0:
         continue
@@ -142,27 +159,40 @@ for idx, total_valency in enumerate(fixed_valencies):
     binding_valency = total_valency - signal_valency
     
     if binding_valency == 0:
-        subset_df['percentage'] = 0
+        subset_df["percentage"] = 0
     else:
-        subset_df['percentage'] = (subset_df[target_receptor_1] / binding_valency) * 100
+        subset_df["percentage"] = (subset_df[target_receptor_1] / binding_valency) * 100
     
-    subset_df = subset_df.sort_values(by='percentage')
+    subset_df = subset_df.sort_values(by="percentage")
     
-    ax.plot(subset_df['percentage'], subset_df['Selectivity'], 
-            marker='o', linewidth=2, markersize=8, 
-            label=f'Valency {total_valency}', color=colors[idx])
+    ax.plot(
+        subset_df["percentage"],
+        subset_df["Selectivity"],
+        marker="o",
+        linewidth=2,
+        markersize=8,
+        label=f"Valency {total_valency}",
+        color=colors[idx],
+    )
 
-signal_only_df = results_df[results_df['Total_Valency'] == min_valency]
+signal_only_df = results_df[results_df["Total_Valency"] == min_valency]
 if len(signal_only_df) > 0:
-    signal_only_selectivity = signal_only_df['Selectivity'].iloc[0]
+    signal_only_selectivity = signal_only_df["Selectivity"].iloc[0]
     # ax.axhline(y=signal_only_selectivity, color='red', linestyle='--', linewidth=2, 
     #            label=f'Signal only baseline (V={min_valency})', alpha=0.7)
 
-ax.set_xlabel(f'Percentage of binding subunits that are {target_receptor_1}\n(100% - {target_receptor_2})', fontsize=14)
-ax.set_ylabel('Selectivity', fontsize=14)
-ax.set_title(f'Selectivity vs Receptor Composition\n(Signal Valency of {signal_receptor} = {signal_valency})', 
-             fontsize=16, fontweight='bold', pad=20)
-ax.legend(fontsize=11, loc='best')
+ax.set_xlabel(
+    f"Percentage of binding subunits that are {target_receptor_1}\n(100% - {target_receptor_2})",
+    fontsize=14,
+)
+ax.set_ylabel("Selectivity", fontsize=14)
+ax.set_title(
+    f"Selectivity vs Receptor Composition\n(Signal Valency of {signal_receptor} = {signal_valency})",
+    fontsize=16,
+    fontweight="bold",
+    pad=20,
+)
+ax.legend(fontsize=11, loc="best")
 ax.grid(True, alpha=0.3)
 ax.set_xlim(-5, 105)
 
@@ -179,22 +209,24 @@ max_target2 = results_df[target_receptor_2].max()
 heatmap_data = np.full((int(max_target2) + 1, int(max_target1) + 1), np.nan)
 
 for _, row in results_df.iterrows():
-    heatmap_data[int(row[target_receptor_2]), int(row[target_receptor_1])] = row['Selectivity']
+    heatmap_data[int(row[target_receptor_2]), int(row[target_receptor_1])] = row[
+        "Selectivity"
+    ]
 
 fig, ax = plt.subplots(figsize=(6, 6))
 
 im = ax.imshow(
-    heatmap_data,
-    cmap='viridis',
-    aspect='auto',
-    origin='lower',
-    interpolation='nearest'
+    heatmap_data, cmap="viridis", aspect="auto", origin="lower", interpolation="nearest"
 )
 
-ax.set_xlabel(f'Number of {target_receptor_1} subunits', fontsize=14)
-ax.set_ylabel(f'Number of {target_receptor_2} subunits', fontsize=14)
-ax.set_title(f'Selectivity Across Valency Compositions\n({signal_receptor} = {signal_valency})', 
-             fontsize=16, fontweight='bold', pad=20)
+ax.set_xlabel(f"Number of {target_receptor_1} subunits", fontsize=14)
+ax.set_ylabel(f"Number of {target_receptor_2} subunits", fontsize=14)
+ax.set_title(
+    f"Selectivity Across Valency Compositions\n({signal_receptor} = {signal_valency})",
+    fontsize=16,
+    fontweight="bold",
+    pad=20,
+)
 
 ax.set_xticks(range(int(max_target1) + 1))
 ax.set_yticks(range(int(max_target2) + 1))
@@ -207,16 +239,23 @@ vmid = (vmin + vmax) / 2
 for i in range(int(max_target2) + 1):
     for j in range(int(max_target1) + 1):
         if not mask[i, j]:
-            text_color = 'white' if heatmap_data[i, j] < vmid else 'black'
+            text_color = "white" if heatmap_data[i, j] < vmid else "black"
             
             total_val = signal_valency + j + i
             
-            ax.text(j, i, f'{heatmap_data[i, j]:.3f}\n(V={total_val})',
-                   ha='center', va='center', color=text_color, fontsize=9,
-                   fontweight='bold')
+            ax.text(
+                j,
+                i,
+                f"{heatmap_data[i, j]:.3f}\n(V={total_val})",
+                ha="center",
+                va="center",
+                color=text_color,
+                fontsize=9,
+                fontweight="bold",
+            )
 
 cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-cbar.set_label('Selectivity', rotation=270, labelpad=20, fontsize=12)
+cbar.set_label("Selectivity", rotation=270, labelpad=20, fontsize=12)
 
 plt.tight_layout()
 plt.show()
