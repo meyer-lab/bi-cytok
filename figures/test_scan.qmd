@@ -92,14 +92,14 @@ opt_selec, opt_affs, opt_Kx_star = scan_selectivity(
 )
 ```
 
+
 ```{python}
 # Save selectivity scan results to CSV
-import os
 
 import pandas as pd
 
-results_dir = "../bicytok/data/selectivity_scan_results"
-os.makedirs(results_dir, exist_ok=True)
+SWEEP_NAME = "selectivity_scan_results__"
+results_dir = "/home/sama/receptor_sweep_data"
 
 # Save flattened results
 flattened_data = []
@@ -131,32 +131,21 @@ for i, cell_type in enumerate(cell_types):
         flattened_data.append(row_data)
 
 flattened_df = pd.DataFrame(flattened_data)
-flattened_df.to_csv(f"{results_dir}/selectivity_scan_flattened.csv", index=False)
+flattened_df.to_csv(f"{results_dir}/{SWEEP_NAME}_flattened.csv", index=False)
 
 print(f"Results saved to {results_dir}/")
 print(f"Flattened results: {len(flattened_data)} receptor pair-cell type combinations")
 ```
 
+
 ```{python}
-# Load saved selectivity scan results
+# Load and reconstruct data structures for plotting
+import numpy as np
 import pandas as pd
 
-RESULTS_DIR = "../bicytok/data/selectivity_scan_results_05Feb2026"
-scan_data = pd.read_csv(f"{RESULTS_DIR}/selectivity_scan_flattened.csv")
+results_path = "/home/sama/receptor_sweep_data/selectivity_scan_results__flattened.csv"
 
-print(f"Loaded {len(scan_data)} receptor pair-cell type combinations")
-print(f"\nColumns: {scan_data.columns.tolist()}")
-print(f"\nShape: {scan_data.shape}")
-print(f"\nCell types: {sorted(scan_data['Cell_Type'].unique())}")
-print(f"\nUnique receptors in Receptor_1: {scan_data['Receptor_1'].nunique()}")
-print(f"Unique receptors in Receptor_2: {scan_data['Receptor_2'].nunique()}")
-
-scan_data.head(10)
-```
-
-```{python}
-# Reconstruct data structures from loaded scan_data for plotting
-import numpy as np
+scan_data = pd.read_csv(results_path)
 
 # Extract unique receptors and cell types
 all_receptors = sorted(
@@ -180,10 +169,6 @@ for _, row in scan_data.iterrows():
 
 receptors = all_receptors
 cell_types = cell_types_loaded
-
-print(f"Reconstructed opt_selec matrix: {opt_selec.shape}")
-print(f"Receptors: {len(receptors)}")
-print(f"Cell types: {len(cell_types)}")
 ```
 
 ```{python}
@@ -330,11 +315,11 @@ for cell_type in scan_data["Cell_Type"].unique():
     cell_data = scan_data[scan_data["Cell_Type"] == cell_type]
     max_idx = cell_data["Selectivity"].idxmax()
     max_row = cell_data.loc[max_idx]
-    
+
     rec1 = max_row["Receptor_1"]
     rec2 = max_row["Receptor_2"]
     max_selec = max_row["Selectivity"]
-    
+
     optimal_pairs[cell_type] = (rec1, rec2, max_selec)
     involved_receptors.add(rec1)
     involved_receptors.add(rec2)
@@ -352,14 +337,14 @@ position_to_cell_types = {}
 for cell_type, (rec1, rec2, max_selec) in optimal_pairs.items():
     i = receptor_to_idx[rec1]
     j = receptor_to_idx[rec2]
-    
+
     # Always use lower triangle (i >= j)
     i_lower, j_lower = (i, j) if i >= j else (j, i)
-    
+
     if (i_lower, j_lower) not in position_to_cell_types:
         position_to_cell_types[(i_lower, j_lower)] = []
         selectivity_matrix[i_lower, j_lower] = max_selec
-    
+
     position_to_cell_types[(i_lower, j_lower)].append(cell_type)
 
 # Mask upper triangle
@@ -409,7 +394,7 @@ for (i, j), cell_types in position_to_cell_types.items():
     # Join multiple cell types with newlines
     label = "\n".join(cell_types)
     selec = selectivity_matrix[i, j]
-    
+
     ax.text(
         j + 0.5,
         i + 0.5,
