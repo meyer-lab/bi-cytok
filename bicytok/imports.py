@@ -11,9 +11,7 @@ path_here = Path(__file__).parent.parent
 
 def importCITE():
     """Downloads all surface markers and cell types"""
-    CITEmarkerDF = pd.read_csv(
-        path_here / "data" / "CITEdata_SurfMarkers.zip"
-    )
+    CITEmarkerDF = pd.read_csv(path_here / "data" / "CITEdata_SurfMarkers.zip")
     return CITEmarkerDF
 
 

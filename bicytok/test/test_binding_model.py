@@ -85,10 +85,9 @@ def test_binding_model():
     assert R_bound.shape == recCounts.shape
 
 
-
-
-
-def _setup_starting_point_test_data(sample_size, cell_type, ill_conditioned_recs, dose, valencies):
+def _setup_starting_point_test_data(
+    sample_size, cell_type, ill_conditioned_recs, dose, valencies
+):
     """Helper function to set up common test data for starting point methods."""
     CITE_DF = importCITE()
     CITE_DF = CITE_DF.rename(columns={"CellType2": "Cell Type"})
@@ -113,7 +112,7 @@ def _setup_starting_point_test_data(sample_size, cell_type, ill_conditioned_recs
         )[0]
     )
     print(f"Ill-conditioned optimization yields selectivity: {low_selec}")
-    
+
     return sample_DF, targ_mask, low_selec
 
 
