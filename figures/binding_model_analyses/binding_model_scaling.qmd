@@ -224,7 +224,11 @@ for plot_idx, config in enumerate(plot_configs):
     # Configure axes
     ax[plot_idx].axvline(x=10**0, linestyle="--", color="black", alpha=0.5)
     ax[plot_idx].set_xscale("log")
-    if plot_idx in [0, 1, 2]:  # Log scale for specific plots (not Kx_star which is already in log10)
+    if plot_idx in [
+        0,
+        1,
+        2,
+    ]:  # Log scale for specific plots (not Kx_star which is already in log10)
         ax[plot_idx].set_yscale("log")
     ax[plot_idx].set_xlabel("Conversion Factor")
     ax[plot_idx].set_ylabel(config["ylabel"])

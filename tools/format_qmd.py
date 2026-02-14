@@ -302,7 +302,7 @@ def main():
     for file_arg in args.files:
         path = Path(file_arg)
         if path.is_dir():
-            files_to_process.extend(path.glob("*.qmd"))
+            files_to_process.extend(path.glob("**/*.qmd"))
         elif path.is_file():
             files_to_process.append(path)
 
