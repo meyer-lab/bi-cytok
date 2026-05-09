@@ -61,6 +61,7 @@ def scan_KL_EMD(
     targ_cell_types: list[str],
     dim: int,
     sample_size: int = 100,
+    filter_by_target_expr: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculate KL divergence and EMD for all receptor combinations across target cell
@@ -74,6 +75,10 @@ def scan_KL_EMD(
         targ_cell_types: list of target cell types to evaluate
         dim: dimensionality of receptor combinations (1, 2, or 3)
         sample_size: number of cells to sample per cell type
+        filter_by_target_expr: if True, restrict scan to receptors with higher mean
+            expression in target cells than off-target cells. Results for excluded
+            receptors are left as NaN. Filtering is applied per cell type after
+            sampling, so valid receptors may differ across cell types.
 
     Outputs:
         KL_div_vals_scan: KL divergence values for all receptor combinations and cell types
@@ -104,18 +109,35 @@ def scan_KL_EMD(
         targ_mask = sampled_cell_type_labels == cell_type
         off_targ_mask = ~targ_mask
 
-        if dim == 1:
-            KL_div_vals_scan[:, i], EMD_vals_scan[:, i] = KL_EMD_1D(
-                sampled_rec_abundances, targ_mask, off_targ_mask
-            )
-        elif dim == 2:
-            KL_div_vals_scan[:, :, i], EMD_vals_scan[:, :, i] = KL_EMD_2D(
-                sampled_rec_abundances, targ_mask, off_targ_mask
+        if filter_by_target_expr:
+            mean_targ = sampled_rec_abundances[targ_mask, :].mean(axis=0)
+            mean_off_targ = sampled_rec_abundances[off_targ_mask, :].mean(axis=0)
+            valid_indices = np.where(mean_targ > mean_off_targ)[0]
+            filtered_abundances = sampled_rec_abundances[:, valid_indices]
+            print(
+                f"  Filtered to {len(valid_indices)} / {n_receptors} receptors with "
+                f"higher target expression for {cell_type}."
             )
         else:
-            KL_div_vals_scan[:, :, :, i], EMD_vals_scan[:, :, :, i] = KL_EMD_3D(
-                sampled_rec_abundances, targ_mask, off_targ_mask
-            )
+            valid_indices = np.arange(n_receptors)
+            filtered_abundances = sampled_rec_abundances
+
+        if dim == 1:
+            kl, emd = KL_EMD_1D(filtered_abundances, targ_mask, off_targ_mask)
+            KL_div_vals_scan[valid_indices, i] = kl
+            EMD_vals_scan[valid_indices, i] = emd
+        elif dim == 2:
+            kl, emd = KL_EMD_2D(filtered_abundances, targ_mask, off_targ_mask)
+            for li, gi in enumerate(valid_indices):
+                KL_div_vals_scan[gi, valid_indices, i] = kl[li, :]
+                EMD_vals_scan[gi, valid_indices, i] = emd[li, :]
+        else:
+            kl, emd = KL_EMD_3D(filtered_abundances, targ_mask, off_targ_mask)
+            for li, gi in enumerate(valid_indices):
+                for lj, gj in enumerate(valid_indices):
+                    KL_div_vals_scan[gi, gj, valid_indices, i] = kl[li, lj, :]
+                    EMD_vals_scan[gi, gj, valid_indices, i] = emd[li, lj, :]
+
         print(
             f"Completed KL/EMD scan for {cell_type} in {time.time() - time_start:.2f} seconds."
         )
