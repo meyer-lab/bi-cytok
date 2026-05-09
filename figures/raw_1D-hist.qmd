@@ -18,6 +18,7 @@ Generates a histogram with kernel density estimation (KDE) overlay to visualize 
 - `stat`: String specifying histogram statistic ('count', 'density', 'probability')
 - `x_limit`: Boolean flag to limit x-axis to 99th percentile of target cell distribution
 - `normalize`: Boolean flag to normalize receptor counts by mean expression
+- `fig_size`: Tuple of (width, height) in inches for figure dimensions
 
 # Outputs
 - **Histogram with KDE**: Single receptor expression distribution showing:
@@ -37,13 +38,14 @@ from bicytok.imports import importCITE, sample_receptor_abundances
 
 plt.rcParams["svg.fonttype"] = "none"
 
-receptor = "CD27"
-targ_cell = "Treg"
-sample_size = 5000
+receptor = "CD307e"
+targ_cell = "CD4 TEM"
+off_targ_cell_types = None
+sample_size = 1000
 cell_categorization = "CellType2"
 plot_cell_types = [targ_cell, "other"]
 stat = "count"
-x_limit = True
+x_limit = False
 normalize = False
 
 CITE_DF = importCITE()
@@ -69,6 +71,7 @@ sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,
     numCells=min(sample_size, epitopes_df.shape[0]),
     targCellType=targ_cell,
+    offTargCellTypes=off_targ_cell_types,
     balance=True,
     rand_state=42,
 )
@@ -84,6 +87,7 @@ sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,
     numCells=min(sample_size, epitopes_df.shape[0]),
     targCellType=targ_cell,
+    offTargCellTypes=off_targ_cell_types,
     balance=False,
     rand_state=42,
 )
@@ -109,8 +113,12 @@ for cell_type in plot_cell_types:
 #| fig-cap: "1D distribution of receptor with histogram and KDE overlay"
 import seaborn as sns
 
-colors = ["#CF4D6F", "#2774AE"]
-cell_type_labels = ["Target", "Off-target"]
+fig_size = (5, 3)
+plt.figure(figsize=fig_size)
+
+# colors = ["#CF4D6F", "#2774AE"]
+colors = ["#1d75bc", "#f7941d"]
+cell_type_labels = ["Treg", "NK"]
 for i, abundances in enumerate(all_cell_abundances):
     if len(abundances) == 0:
         continue
@@ -122,28 +130,28 @@ for i, abundances in enumerate(all_cell_abundances):
         stat=stat,
         kde=True,
         kde_kws={"bw_method": "scott"},
+        edgecolor="black",
     )
 
 plt.title(f"{receptor} Distribution\nKL: {kl_val:.2f}, EMD: {emd_val:.2f}", fontsize=10)
 if normalize:
-    plt.xlabel("Normalized receptor count", fontsize=28)
+    plt.xlabel("Normalized receptor count", fontsize=18)
 else:
-    plt.xlabel(f"Number of {receptor} Receptors", fontsize=28)
+    plt.xlabel(f"Number of {receptor} Receptor", fontsize=18)
 
 if stat == "density":
-    plt.ylabel("Density", fontsize=28)
+    plt.ylabel("Density", fontsize=18)
 elif stat == "count":
-    plt.ylabel("Number of Cells", fontsize=28)
+    plt.ylabel("Number of Cells", fontsize=18)
 elif stat == "probability":
-    plt.ylabel("Proportion of cells", fontsize=28)
+    plt.ylabel("Proportion of cells", fontsize=18)
 
-x_max = np.percentile(targ_abundances, 99.5)
 if x_limit:
-    plt.xlim(0, x_max * 1.1)
-plt.xlim(0, 240)
-plt.tick_params(axis="x", labelsize=25)
-plt.tick_params(axis="y", labelsize=25)
-plt.legend(loc="upper right", fontsize=25)
+    x_max = np.percentile(targ_abundances, 99.5)
+    plt.xlim(0, x_max * 0.6)
+plt.tick_params(axis="x", labelsize=15)
+plt.tick_params(axis="y", labelsize=15)
+plt.legend(loc="upper right", fontsize=18)
 plt.grid(alpha=0.3, linestyle="--")
 plt.tight_layout()
 plt.show()

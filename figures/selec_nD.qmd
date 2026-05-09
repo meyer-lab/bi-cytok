@@ -55,7 +55,9 @@ sample_df = sample_receptor_abundances(
     numCells=min(sample_size, epitopes_df.shape[0]),
     targCellType=targ_cell,
 )
-filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
+filtered_sample_df = filter_receptor_abundances(
+    sample_df, targ_cell, whitelist=receptors
+)
 
 on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
 off_target_mask = ~on_target_mask
