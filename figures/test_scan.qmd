@@ -12,7 +12,7 @@ title: ""
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-# Run selectivity scan on all receptors pairs and a subset of cell types, save and plot results
+# Run selectivity scan on all receptors pairs and a subset of cell types
 
 import numpy as np
 
@@ -43,6 +43,7 @@ cell_types = [
     "CD4 TEM",
     "B naive",
 ]
+exclude_cell_types = True
 receptors = None
 
 CITE_DF = importCITE()
@@ -68,15 +69,20 @@ epitopes_df.insert(0, "Prototype_Signal_Receptor", prototype_signal_receptor)
 receptors = ["Prototype_Signal_Receptor"] + receptors
 signal_ind = 0
 
+#Filter out unused cell types
+if cell_types is not None and exclude_cell_types:
+    epitopes_df = epitopes_df[epitopes_df["Cell Type"].isin(cell_types)]
+
 rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
 cell_type_labels = epitopes_df["Cell Type"].tolist()
 if cell_types is None:
     cell_types = list(set(cell_type_labels))
-print(cell_types)
+
+cell_types_final = sorted(set(cell_type_labels))
 
 print(f"Using receptors: {receptors}, total {len(receptors)} receptors.")
 print(f"Total possible receptor pairs: {len(receptors) * (len(receptors) + 1) // 2}.")
-print(f"Cell types considered: {cell_types}, total {len(cell_types)} cell types.")
+print(f"Cell types considered: {cell_types_final}, total {len(cell_types_final)} cell types.")
 
 opt_selec, opt_affs, opt_Kx_star = scan_selectivity(
     rec_abundances,
@@ -98,7 +104,7 @@ opt_selec, opt_affs, opt_Kx_star = scan_selectivity(
 
 import pandas as pd
 
-SWEEP_NAME = "selectivity_scan_results__"
+SWEEP_NAME = "20260319_CD4-geom-sweep+Treg_"
 results_dir = "/home/sama/receptor_sweep_data"
 
 # Save flattened results
@@ -143,7 +149,7 @@ print(f"Flattened results: {len(flattened_data)} receptor pair-cell type combina
 import numpy as np
 import pandas as pd
 
-results_path = "/home/sama/receptor_sweep_data/selectivity_scan_results__flattened.csv"
+results_path = "/home/sama/receptor_sweep_data/20260319_CD4-geom-sweep+Treg__flattened.csv"
 
 scan_data = pd.read_csv(results_path)
 
@@ -176,16 +182,16 @@ cell_types = cell_types_loaded
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-TOP_N_PAIRS = 50
-CELL_TYPES_TO_DISPLAY = (
-    None  # Set to None to display all, or provide a list like ["Treg", "dnT"]
-)
+TOP_N_PAIRS = 20
+CELL_TYPES_TO_DISPLAY = None
+receptors_to_include = None
 
 # Filter cell types if specified
 if CELL_TYPES_TO_DISPLAY is not None:
     display_cell_types = [ct for ct in cell_types if ct in CELL_TYPES_TO_DISPLAY]
 else:
     display_cell_types = cell_types
+print(f"Displaying selectivity heatmaps for cell types: {display_cell_types}")
 
 fig, axes = plt.subplots(
     1, len(display_cell_types), figsize=(8 * len(display_cell_types), 7)
@@ -210,93 +216,108 @@ for plot_idx, cell_type in enumerate(display_cell_types):
     )
     top_pairs = pair_selectivities[:TOP_N_PAIRS]
 
-    unique_receptors = sorted(set([idx for pair in top_pairs for idx in pair[:2]]))
-    receptor_labels = [receptors[idx] for idx in unique_receptors]
+    if receptors_to_include is None:
+        unique_receptors = sorted(set([idx for pair in top_pairs for idx in pair[:2]]))
+        receptor_labels = [receptors[idx] for idx in unique_receptors]
+    else:
+        unique_receptors = [idx for idx, rec in enumerate(receptors) if rec in receptors_to_include]
+        receptor_labels = [receptors[idx] for idx in unique_receptors]
 
     subset_matrix = selectivity_matrix[np.ix_(unique_receptors, unique_receptors)]
 
     ax = axes[plot_idx]
-    sns.heatmap(
+    heatmap = sns.heatmap(
         subset_matrix,
         ax=ax,
-        cmap="viridis",
+        cmap="Reds",
         xticklabels=receptor_labels,
         yticklabels=receptor_labels,
-        cbar_kws={"label": "Selectivity"},
         square=True,
         annot=False,
+        cbar=False,
+        linewidths=0.1,
+        linecolor="lightgray",
     )
-    ax.set_title(f"{cell_type} Selectivity (Top {TOP_N_PAIRS} Pairs)")
-    ax.set_xlabel("Receptor 2")
-    ax.set_ylabel("Receptor 1")
-    ax.tick_params(axis="x", rotation=90, labelsize=8)
-    ax.tick_params(axis="y", rotation=0, labelsize=8)
+
+    n_recs = len(unique_receptors)
+    for i in range(n_recs):
+        for j in range(i + 1, n_recs):
+            ax.add_patch(plt.Rectangle((j, i), 1, 1, fill=True, color='lightgray', zorder=3))
+    ax.tick_params(axis="x", rotation=90, labelsize=20, width=2, length=6)
+    ax.tick_params(axis="y", rotation=0, labelsize=20, width=2, length=6)
 
 plt.tight_layout()
+
+# Add colorbars aligned exactly with each heatmap grid
+norm = plt.Normalize(vmin=0.50, vmax=0.95)
+sm = plt.cm.ScalarMappable(cmap="Reds", norm=norm)
+sm.set_array([])
+for ax in axes:
+    pos = ax.get_position()
+    cbar_ax = fig.add_axes([pos.x1 + pos.width * 0.03, pos.y0, pos.width * 0.05, pos.height])
+    cbar = fig.colorbar(sm, cax=cbar_ax)
+    cbar.ax.tick_params(labelsize=20, width=2, length=6)
+
 plt.show()
 ```
 
 ```{python}
-# Plotting bar plots of the top optimal selectivity pair in each cell type
+# Plotting bar plot of the top 5 selectivity receptor pairs per cell type
 import matplotlib.pyplot as plt
 import pandas as pd
 
-top_pairs = []
-top_selectivities = []
+TOP_N = 5
 
-for i in range(len(cell_types)):
+row_indices, col_indices = np.tril_indices(len(receptors), k=0)
+
+# Build per-cell-type top-N dataframes
+top_per_cell = {}
+for i, cell_type in enumerate(cell_types):
     selectivity_matrix = opt_selec[:, :, i]
-
-    max_idx = np.unravel_index(
-        np.nanargmax(selectivity_matrix), selectivity_matrix.shape
-    )
-    rec1_idx, rec2_idx = max_idx
-
-    top_selectivity = selectivity_matrix[rec1_idx, rec2_idx]
-    pair_label = f"{receptors[rec1_idx]} + {receptors[rec2_idx]}"
-
-    top_pairs.append(pair_label)
-    top_selectivities.append(top_selectivity)
-
-top_selec_df = pd.DataFrame(
-    {
-        "Cell Type": cell_types,
-        "Receptor Pair": top_pairs,
-        "Selectivity": top_selectivities,
-    }
-)
-
-top_selec_df = top_selec_df.sort_values("Selectivity", ascending=False)
-
-fig, ax = plt.subplots(figsize=(7, 4))
-bars = ax.bar(top_selec_df["Cell Type"], top_selec_df["Selectivity"], color="steelblue")
-
-ax.set_xlabel("Cell Type")
-ax.set_ylabel("Optimal Selectivity")
-ax.set_title("Top Receptor Pair Selectivity by Target Cell Type")
-ax.tick_params(axis="x", rotation=45)
-
-for _i, (bar, pair) in enumerate(
-    zip(bars, top_selec_df["Receptor Pair"], strict=False)
-):
-    height = bar.get_height()
-    ax.text(
-        bar.get_x() + bar.get_width() / 2,
-        height * 0.95,
-        pair,
-        ha="center",
-        va="top",
-        fontsize=9,
-        rotation=90,
+    rows = []
+    for rec1_idx, rec2_idx in zip(row_indices, col_indices, strict=False):
+        selec_val = selectivity_matrix[rec1_idx, rec2_idx]
+        if not np.isnan(selec_val):
+            rows.append({
+                "Receptor Pair": f"{receptors[rec1_idx]} + {receptors[rec2_idx]}",
+                "Selectivity": selec_val,
+            })
+    top_per_cell[cell_type] = (
+        pd.DataFrame(rows).nlargest(TOP_N, "Selectivity").reset_index(drop=True)
     )
 
-plt.ylim(0.6, 1.0)
-plt.xticks(rotation=45, ha="right")
+n_cell_types = len(cell_types)
+fig, axes = plt.subplots(1, n_cell_types, figsize=(4 * n_cell_types, 5), sharey=True)
+
+if n_cell_types == 1:
+    axes = [axes]
+
+for ax, cell_type in zip(axes, cell_types, strict=False):
+    df = top_per_cell[cell_type]
+    bars = ax.bar(range(TOP_N), df["Selectivity"], color="steelblue")
+
+    for bar, pair in zip(bars, df["Receptor Pair"], strict=False):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() * 0.95,
+            pair,
+            ha="center",
+            va="top",
+            fontsize=9,
+            rotation=90,
+        )
+
+    ax.set_title(cell_type)
+    ax.set_xticks(range(TOP_N))
+    ax.set_xticklabels([f"#{k+1}" for k in range(TOP_N)])
+
+axes[0].set_ylabel("Optimal Selectivity")
 plt.tight_layout()
 plt.show()
 
-print("\nTop selectivity pairs by cell type:")
-print(top_selec_df)
+for cell_type, df in top_per_cell.items():
+    print(f"\nTop {TOP_N} pairs for {cell_type}:")
+    print(df.to_string(index=False))
 ```
 
 ```{python}
@@ -361,49 +382,43 @@ min_selec_val = np.nanmin(selectivity_matrix)
 range_selec = max_selec_val - min_selec_val
 
 # Set vmin below the actual min and vmax above actual max to use middle/lighter colors
-vmin_plot = min_selec_val - 0.9 * range_selec
-vmax_plot = max_selec_val + 0.9 * range_selec
+vmin_plot = min_selec_val - 0.01
+vmax_plot = max_selec_val + 0.01
 
-fig, ax = plt.subplots(figsize=(18, 16))
+fig, ax = plt.subplots(figsize=(8, 8))
 
 heatmap = sns.heatmap(
     selectivity_matrix,
     cmap="Reds",
     xticklabels=filtered_receptors,
     yticklabels=filtered_receptors,
-    cbar_kws={"label": "Selectivity"},
     square=True,
     annot=False,
     ax=ax,
-    vmin=vmin_plot,
-    vmax=vmax_plot,
-    linewidths=0.5,
+    cbar=False,
+    vmin=0.90,
+    vmax=1.0,
+    linewidths=4.0,
     linecolor="lightgray",
-    mask=mask,
+    mask=False,
 )
 
-# Adjust colorbar to show only actual data range
-cbar = heatmap.collections[0].colorbar
-tick_values = np.linspace(min_selec_val, max_selec_val, num=6)
-cbar.set_ticks(tick_values)
-cbar.set_ticklabels([f"{val:.3f}" for val in tick_values])
+# Gray out the upper triangle by drawing rectangles
+for i in range(N_RECEPTORS):
+    for j in range(i + 1, N_RECEPTORS):
+        ax.add_patch(plt.Rectangle((j, i), 1, 1, fill=True, color='lightgray', zorder=3))
 
 # Add cell type labels at their optimal positions
-mean_selectivity = np.nanmean(selectivity_matrix)
-for (i, j), cell_types in position_to_cell_types.items():
-    # Join multiple cell types with newlines
-    label = "\n".join(cell_types)
-    selec = selectivity_matrix[i, j]
-
+for (i, j), cts in position_to_cell_types.items():
+    label = "\n".join(cts)
     ax.text(
         j + 0.5,
         i + 0.5,
         label,
         ha="center",
         va="center",
-        fontsize=22,
+        fontsize=10,
         color="black",
-        weight="bold",
     )
 
 ax.set_title(
@@ -411,12 +426,26 @@ ax.set_title(
     fontsize=14,
     pad=20,
 )
-ax.set_xlabel("Receptor 2", fontsize=25)
-ax.set_ylabel("Receptor 1", fontsize=25)
-ax.tick_params(axis="x", rotation=90, labelsize=25)
-ax.tick_params(axis="y", rotation=0, labelsize=25)
+ax.set_xlabel("Receptor 2", fontsize=18)
+ax.set_ylabel("Receptor 1", fontsize=18)
+ax.tick_params(axis="x", rotation=90, labelsize=20, width=2, length=6)
+ax.tick_params(axis="y", rotation=0, labelsize=20, width=2, length=6)
 
 plt.tight_layout()
+
+# Add colorbar aligned exactly with heatmap grid extents
+pos = ax.get_position()
+cbar_ax = fig.add_axes([pos.x1 + pos.width * 0.03, pos.y0, pos.width * 0.05, pos.height])
+norm = plt.Normalize(vmin=0.90, vmax=1.0)
+sm = plt.cm.ScalarMappable(cmap="Reds", norm=norm)
+sm.set_array([])
+cbar = fig.colorbar(sm, cax=cbar_ax)
+tick_values = np.linspace(0.90, 1.0, num=6)
+cbar.set_ticks(tick_values)
+cbar.set_ticklabels([f"{val:.2f}" for val in tick_values])
+cbar.ax.tick_params(labelsize=20, width=2, length=6)
+cbar.set_label("Optimal Selectivity", fontsize=18)
+
 plt.show()
 
 print(
@@ -441,161 +470,4 @@ for cell_type, (rec1, rec2, selec) in sorted(
     optimal_pairs.items(), key=lambda x: x[1][2], reverse=True
 )[:5]:
     print(f"  {cell_type}: {rec1} + {rec2} = {selec:.3f}")
-```
-
-
-
-
-
-
-
-## Scan test for selectivity, KL divergence, and EMD
-## [OLD IMPLEMENTATION]
-
-
-
-
-
-
-
-```{python}
-%config InlineBackend.figure_formats = ['svg']
-# Test scanning functions for selectivity, KL divergence, and EMD on a subset of receptors and cell types
-
-import numpy as np
-
-from bicytok.imports import importCITE
-from bicytok.scanning_funcs import scan_KL_EMD, scan_selectivity
-
-receptors = [
-    "CD122",
-    "CD25",
-    "CD4-1",
-    "CD27",
-    "CD28",
-    "CD45RA",
-    "CD338",
-    "CD3-1",
-    "TIGIT",
-    "TSLPR",
-    "CD275-1",
-]
-signal_ind = 0
-cell_types = ["Treg", "dnT", "MAIT"]
-dose = 1e-10
-valency = np.array([[2, 1, 1]])
-# valency = np.array([[2, 2]])
-cell_categorization = "CellType2"
-sample_size = 1000
-
-CITE_DF = importCITE()
-
-epitopes_df = CITE_DF[receptors + [cell_categorization]]
-epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
-
-rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
-cell_type_labels = epitopes_df["Cell Type"].tolist()
-
-opt_selec, opt_affs, opt_Kx_star = scan_selectivity(
-    rec_abundances,
-    cell_type_labels,
-    cell_types,
-    dim=2,
-    dose=dose,
-    valencies=valency,
-    sample_size=sample_size,
-    signal_col=signal_ind,
-)
-
-# print("Optimal selectivity values:", opt_selec)
-# print("Optimal affinities (M):", opt_affs)
-# print("Optimal Kx* values:", opt_Kx_star)
-
-KL_results, EMD_results = scan_KL_EMD(
-    rec_abundances,
-    cell_type_labels,
-    cell_types,
-    dim=2,
-    sample_size=sample_size,
-)
-
-# print("KL Divergence results:\n", KL_results)
-# print("EMD results:\n", EMD_results)
-```
-
-```{python}
-# Plot KL, EMD, and selectivity heatmaps per cell type using scanning results
-import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
-
-%config InlineBackend.figure_formats = ['svg']
-print(KL_results.shape, opt_selec.shape)
-
-for ci, cell in enumerate(cell_types):
-    # Selectivity heatmap
-    selec_matrix = opt_selec[:, :, ci]
-    selec_df = pd.DataFrame(selec_matrix, index=receptors, columns=receptors)
-
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(
-        selec_df,
-        cmap="viridis",
-        xticklabels=receptors,
-        yticklabels=receptors,
-        cbar_kws={"label": "Selectivity"},
-        square=True,
-        annot=False,
-    )
-    plt.title(f"{cell} Selectivity Heatmap")
-    plt.xlabel("Receptor 2")
-    plt.ylabel("Receptor 1")
-    plt.xticks(rotation=90, fontsize=8)
-    plt.yticks(rotation=0, fontsize=8)
-    plt.tight_layout()
-    plt.show()
-
-    # KL Divergence heatmap
-    KL_matrix = KL_results[:, :, ci]
-    KL_df = pd.DataFrame(KL_matrix, index=receptors, columns=receptors)
-
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(
-        KL_df,
-        cmap="coolwarm",
-        xticklabels=receptors,
-        yticklabels=receptors,
-        cbar_kws={"label": "KL Divergence"},
-        square=True,
-        annot=False,
-    )
-    plt.title(f"{cell} KL Divergence Heatmap")
-    plt.xlabel("Receptor 2")
-    plt.ylabel("Receptor 1")
-    plt.xticks(rotation=90, fontsize=8)
-    plt.yticks(rotation=0, fontsize=8)
-    plt.tight_layout()
-    plt.show()
-
-    # EMD heatmap
-    EMD_matrix = EMD_results[:, :, ci]
-    EMD_df = pd.DataFrame(EMD_matrix, index=receptors, columns=receptors)
-
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(
-        EMD_df,
-        cmap="coolwarm",
-        xticklabels=receptors,
-        yticklabels=receptors,
-        cbar_kws={"label": "EMD"},
-        square=True,
-        annot=False,
-    )
-    plt.title(f"{cell} EMD Heatmap")
-    plt.xlabel("Receptor 2")
-    plt.ylabel("Receptor 1")
-    plt.xticks(rotation=90, fontsize=8)
-    plt.yticks(rotation=0, fontsize=8)
-    plt.tight_layout()
-    plt.show()
 ```

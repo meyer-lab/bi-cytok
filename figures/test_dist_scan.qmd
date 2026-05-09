@@ -1,0 +1,427 @@
+
+---
+title: ""
+---
+
+# Summary
+
+# Imports
+
+# Parameters
+
+# Outputs
+
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+# Run KL divergence and EMD scan on all receptor pairs and a subset of cell types
+
+import numpy as np
+
+from bicytok.imports import importCITE
+from bicytok.scanning_funcs import scan_KL_EMD
+
+receptors = None
+cell_types = [
+    "Treg",
+    "dnT",
+    "CD4 CTL",
+    "CD8 Proliferating",
+    "CD4 TCM",
+    "B memory",
+    "CD8 TCM",
+    "CD8 Naive",
+    "CD4 Proliferating",
+    "NK_CD56bright",
+    "CD4 Naive",
+    "CD8 TEM",
+    "ILC",
+    "CD4 TEM",
+    "B naive",
+]
+cell_categorization = "CellType2"
+sample_size = 1000
+MIN_AVG_COUNT = 5
+filter_by_target_expr = True
+
+CITE_DF = importCITE()
+
+epitopes = CITE_DF.columns.tolist()
+exclude_cols = ["Cell", "CellType1", "CellType2", "CellType3"]
+if receptors is None:
+    receptors = [ep for ep in epitopes if ep not in exclude_cols]
+assert len(receptors) > 0, "No receptor columns found in CITE_DF"
+
+# filter receptors by mean expression
+mean_expr = CITE_DF[receptors].mean(axis=0)
+selected_receptors = mean_expr[mean_expr >= MIN_AVG_COUNT].index.tolist()
+assert len(selected_receptors) > 0, "No receptors pass the expression threshold"
+
+epitopes_df = CITE_DF[selected_receptors + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+receptors = selected_receptors
+
+rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
+cell_type_labels = epitopes_df["Cell Type"].tolist()
+
+print(f"Using receptors: {receptors}, total {len(receptors)} receptors.")
+print(f"Total possible receptor pairs: {len(receptors) * (len(receptors) + 1) // 2}.")
+print(f"Cell types considered: {cell_types}, total {len(cell_types)} cell types.")
+
+KL_results, EMD_results = scan_KL_EMD(
+    rec_abundances,
+    cell_type_labels,
+    cell_types,
+    dim=2,
+    sample_size=sample_size,
+    filter_by_target_expr=filter_by_target_expr,
+)
+```
+
+
+```{python}
+# Save KL divergence and EMD scan results to CSV
+
+import pandas as pd
+
+SWEEP_NAME = "dist_scan_results__"
+results_dir = "/home/sama/receptor_sweep_data"
+
+flattened_data = []
+row_indices, col_indices = np.tril_indices(len(receptors), k=0)
+
+for i, cell_type in enumerate(cell_types):
+    for rec1_idx, rec2_idx in zip(row_indices, col_indices, strict=False):
+        rec1_name = receptors[rec1_idx]
+        rec2_name = receptors[rec2_idx]
+
+        KL_val = KL_results[rec1_idx, rec2_idx, i]
+        EMD_val = EMD_results[rec1_idx, rec2_idx, i]
+
+        flattened_data.append({
+            "Cell_Type": cell_type,
+            "Receptor_1": rec1_name,
+            "Receptor_2": rec2_name,
+            "KL_Divergence": KL_val,
+            "EMD": EMD_val,
+        })
+
+flattened_df = pd.DataFrame(flattened_data)
+flattened_df.to_csv(f"{results_dir}/{SWEEP_NAME}_flattened.csv", index=False)
+
+print(f"Results saved to {results_dir}/")
+print(f"Flattened results: {len(flattened_data)} receptor pair-cell type combinations")
+```
+
+
+```{python}
+# Load and reconstruct data structures for plotting
+import numpy as np
+import pandas as pd
+
+results_path = "/home/sama/receptor_sweep_data/20260319_dist_scan.csv"
+
+scan_data = pd.read_csv(results_path)
+
+# Extract unique receptors and cell types
+all_receptors = sorted(
+    set(scan_data["Receptor_1"].unique()) | set(scan_data["Receptor_2"].unique())
+)
+cell_types_loaded = sorted(scan_data["Cell_Type"].unique())
+
+# Create receptor index mapping
+receptor_to_idx = {rec: idx for idx, rec in enumerate(all_receptors)}
+
+# Reconstruct KL and EMD matrices
+KL_results = np.full(
+    (len(all_receptors), len(all_receptors), len(cell_types_loaded)), np.nan
+)
+EMD_results = np.full(
+    (len(all_receptors), len(all_receptors), len(cell_types_loaded)), np.nan
+)
+
+for _, row in scan_data.iterrows():
+    rec1_idx = receptor_to_idx[row["Receptor_1"]]
+    rec2_idx = receptor_to_idx[row["Receptor_2"]]
+    cell_type_idx = cell_types_loaded.index(row["Cell_Type"])
+    KL_results[rec1_idx, rec2_idx, cell_type_idx] = row["KL_Divergence"]
+    EMD_results[rec1_idx, rec2_idx, cell_type_idx] = row["EMD"]
+
+receptors = all_receptors
+cell_types = cell_types_loaded
+```
+
+```{python}
+# Plotting heatmaps of top receptor pairs per cell type for KL divergence and EMD
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+TOP_N_PAIRS = 20
+CELL_TYPES_TO_DISPLAY = cell_types
+receptors_to_include = None
+
+if CELL_TYPES_TO_DISPLAY is not None:
+    display_cell_types = [ct for ct in cell_types if ct in CELL_TYPES_TO_DISPLAY]
+else:
+    display_cell_types = cell_types
+
+for metric_name, metric_results in [("KL Divergence", KL_results), ("EMD", EMD_results)]:
+    fig, axes = plt.subplots(
+        1, len(display_cell_types), figsize=(8 * len(display_cell_types), 7)
+    )
+
+    if len(display_cell_types) == 1:
+        axes = [axes]
+
+    for plot_idx, cell_type in enumerate(display_cell_types):
+        cell_type_idx = cell_types.index(cell_type)
+        metric_matrix = metric_results[:, :, cell_type_idx]
+
+        row_indices, col_indices = np.tril_indices(len(receptors), k=0)
+        pair_vals = []
+        for rec1_idx, rec2_idx in zip(row_indices, col_indices, strict=False):
+            pair_vals.append(
+                (rec1_idx, rec2_idx, metric_matrix[rec1_idx, rec2_idx])
+            )
+
+        pair_vals.sort(
+            key=lambda x: x[2] if not np.isnan(x[2]) else -np.inf, reverse=True
+        )
+        top_pairs = pair_vals[:TOP_N_PAIRS]
+
+        if receptors_to_include is None:
+            unique_receptors = sorted(set([idx for pair in top_pairs for idx in pair[:2]]))
+            receptor_labels = [receptors[idx] for idx in unique_receptors]
+        else:
+            unique_receptors = [idx for idx, rec in enumerate(receptors) if rec in receptors_to_include]
+            receptor_labels = [receptors[idx] for idx in unique_receptors]
+
+        subset_matrix = metric_matrix[np.ix_(unique_receptors, unique_receptors)]
+
+        ax = axes[plot_idx]
+        heatmap = sns.heatmap(
+            subset_matrix,
+            ax=ax,
+            cmap="Reds",
+            xticklabels=receptor_labels,
+            yticklabels=receptor_labels,
+            square=True,
+            annot=False,
+            linewidths=0.5,
+            linecolor="lightgray",
+        )
+
+        n_recs = len(unique_receptors)
+        for i in range(n_recs):
+            for j in range(i + 1, n_recs):
+                ax.add_patch(plt.Rectangle((j, i), 1, 1, fill=True, color='lightgray', zorder=3))
+
+        ax.tick_params(axis="x", rotation=90, labelsize=20)
+        ax.tick_params(axis="y", rotation=0, labelsize=20)
+
+        cbar = heatmap.collections[0].colorbar
+        cbar.ax.tick_params(labelsize=20)
+
+    plt.suptitle(metric_name, fontsize=16, y=1.01)
+    plt.tight_layout()
+    plt.show()
+```
+
+```{python}
+# Plotting bar plots of the top receptor pair per cell type for KL divergence and EMD
+import matplotlib.pyplot as plt
+import pandas as pd
+
+for metric_name, metric_results in [("KL Divergence", KL_results), ("EMD", EMD_results)]:
+    top_pairs = []
+    top_vals = []
+
+    for i in range(len(cell_types)):
+        metric_matrix = metric_results[:, :, i]
+
+        max_idx = np.unravel_index(
+            np.nanargmax(metric_matrix), metric_matrix.shape
+        )
+        rec1_idx, rec2_idx = max_idx
+
+        top_val = metric_matrix[rec1_idx, rec2_idx]
+        pair_label = f"{receptors[rec1_idx]} + {receptors[rec2_idx]}"
+
+        top_pairs.append(pair_label)
+        top_vals.append(top_val)
+
+    top_df = pd.DataFrame(
+        {
+            "Cell Type": cell_types,
+            "Receptor Pair": top_pairs,
+            metric_name: top_vals,
+        }
+    )
+
+    top_df = top_df.sort_values(metric_name, ascending=False)
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+    bars = ax.bar(top_df["Cell Type"], top_df[metric_name], color="steelblue")
+
+    ax.set_xlabel("Cell Type")
+    ax.set_ylabel(f"Optimal {metric_name}")
+    ax.set_title(f"Top Receptor Pair {metric_name} by Target Cell Type")
+    ax.tick_params(axis="x", rotation=45)
+
+    for _i, (bar, pair) in enumerate(
+        zip(bars, top_df["Receptor Pair"], strict=False)
+    ):
+        height = bar.get_height()
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            height * 0.95,
+            pair,
+            ha="center",
+            va="top",
+            fontsize=9,
+            rotation=90,
+        )
+
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    plt.show()
+
+    print(f"\nTop {metric_name} pairs by cell type:")
+    print(top_df)
+```
+
+```{python}
+# Create heatmap with each cell type placed at its optimal receptor pair
+%config InlineBackend.figure_formats = ['svg']
+
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+
+for metric_name, metric_col in [("KL Divergence", "KL_Divergence"), ("EMD", "EMD")]:
+    # For each cell type, find the receptor pair with maximum metric value
+    optimal_pairs = {}
+    involved_receptors = set()
+
+    for cell_type in scan_data["Cell_Type"].unique():
+        cell_data = scan_data[scan_data["Cell_Type"] == cell_type]
+        max_idx = cell_data[metric_col].idxmax()
+        max_row = cell_data.loc[max_idx]
+
+        rec1 = max_row["Receptor_1"]
+        rec2 = max_row["Receptor_2"]
+        max_val = max_row[metric_col]
+
+        optimal_pairs[cell_type] = (rec1, rec2, max_val)
+        involved_receptors.add(rec1)
+        involved_receptors.add(rec2)
+
+    # Filter to only receptors involved in optimal pairs
+    filtered_receptors = sorted(involved_receptors)
+    N_RECEPTORS = len(filtered_receptors)
+    receptor_to_idx_local = {rec: i for i, rec in enumerate(filtered_receptors)}
+
+    # Initialize matrices - track cell types at each position
+    metric_matrix = np.full((N_RECEPTORS, N_RECEPTORS), np.nan)
+    position_to_cell_types = {}
+
+    for cell_type, (rec1, rec2, max_val) in optimal_pairs.items():
+        i = receptor_to_idx_local[rec1]
+        j = receptor_to_idx_local[rec2]
+
+        # Always use lower triangle (i >= j)
+        i_lower, j_lower = (i, j) if i >= j else (j, i)
+
+        if (i_lower, j_lower) not in position_to_cell_types:
+            position_to_cell_types[(i_lower, j_lower)] = []
+            metric_matrix[i_lower, j_lower] = max_val
+
+        position_to_cell_types[(i_lower, j_lower)].append(cell_type)
+
+    # Mask upper triangle
+    mask = np.triu(np.ones_like(metric_matrix, dtype=bool), k=1)
+    metric_matrix[mask] = np.nan
+
+    print(f"Found optimal receptor pairs for {len(optimal_pairs)} cell types ({metric_name})")
+    print(f"Creating lower triangle heatmap for {N_RECEPTORS} receptors...")
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+
+    vmin_val = np.nanmin(metric_matrix)
+    vmax_val = np.nanmax(metric_matrix)
+
+    heatmap = sns.heatmap(
+        metric_matrix,
+        cmap="Reds",
+        xticklabels=filtered_receptors,
+        yticklabels=filtered_receptors,
+        square=True,
+        annot=False,
+        ax=ax,
+        cbar=False,
+        vmin=vmin_val,
+        vmax=vmax_val,
+        linewidths=4.0,
+        linecolor="lightgray",
+        mask=False,
+    )
+
+    # Gray out the upper triangle by drawing rectangles
+    for i in range(N_RECEPTORS):
+        for j in range(i + 1, N_RECEPTORS):
+            ax.add_patch(plt.Rectangle((j, i), 1, 1, fill=True, color='lightgray', zorder=3))
+
+    # Add cell type labels at their optimal positions
+    for (i, j), cts in position_to_cell_types.items():
+        label = "\n".join(cts)
+        ax.text(
+            j + 0.5,
+            i + 0.5,
+            label,
+            ha="center",
+            va="center",
+            fontsize=10,
+            color="black",
+        )
+
+    # ax.set_title(
+    #     f"Cell Types at Their Optimal Receptor Pair Positions\n(Color = {metric_name} Value)",
+    #     fontsize=14,
+    #     pad=20,
+    # )
+    ax.set_xlabel("Receptor 2", fontsize=18)
+    ax.set_ylabel("Receptor 1", fontsize=18)
+    ax.tick_params(axis="x", rotation=90, labelsize=20, width=2, length=6)
+    ax.tick_params(axis="y", rotation=0, labelsize=20, width=2, length=6)
+
+    plt.tight_layout()
+
+    # Add colorbar aligned exactly with heatmap grid extents
+    pos = ax.get_position()
+    cbar_ax = fig.add_axes([pos.x1 + 0.02, pos.y0, 0.03, pos.height])
+    norm = plt.Normalize(vmin=vmin_val, vmax=vmax_val)
+    sm = plt.cm.ScalarMappable(cmap="Reds", norm=norm)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, cax=cbar_ax)
+    cbar.ax.tick_params(labelsize=20, width=2, length=6)
+    cbar.set_label(f"Optimal {metric_name}", fontsize=18)
+
+    plt.show()
+
+    print(f"\nTop 5 cell types by {metric_name}:")
+    for cell_type, (rec1, rec2, val) in sorted(
+        optimal_pairs.items(), key=lambda x: x[1][2], reverse=True
+    )[:5]:
+        print(f"  {cell_type}: {rec1} + {rec2} = {val:.3f}")
+
+    # Check for positions with multiple cell types
+    multi_cell_positions = {
+        pos: cts for pos, cts in position_to_cell_types.items() if len(cts) > 1
+    }
+    if multi_cell_positions:
+        print(f"\n{len(multi_cell_positions)} positions have multiple cell types:")
+        for (i, j), cts in multi_cell_positions.items():
+            print(
+                f"  {filtered_receptors[i]} + {filtered_receptors[j]}: {', '.join(cts)}"
+            )
+```
