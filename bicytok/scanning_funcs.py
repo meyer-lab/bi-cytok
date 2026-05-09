@@ -231,7 +231,7 @@ def scan_selectivity(
 
                 model_valencies = valencies.copy()
                 if not split_multivalent_recs and rec1_ind == rec2_ind:
-                    total_target_valency = valencies[:, 1:2].sum()
+                    total_target_valency = valencies[:, 1:3].sum()
                     model_valencies[:, 1] = total_target_valency
                     model_valencies[:, 2] = 0
 
