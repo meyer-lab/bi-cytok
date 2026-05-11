@@ -123,7 +123,7 @@ def run_selectivity_scan():
                 row_data[f"Affinity_Receptor_{j}"] = aff_val
             flattened_data.append(row_data)
     flattened_df = pd.DataFrame(flattened_data)
-    flattened_df.to_csv(f"{results_dir}/{scan_name}_flattened.csv", index=False)
+    flattened_df.to_csv(f"{results_dir}/{scan_name}.csv", index=False)
 
 
 def run_KL_EMD_scan():
@@ -217,7 +217,7 @@ def run_KL_EMD_scan():
                 "EMD": EMD_val,
             })
     flattened_df = pd.DataFrame(flattened_data)
-    flattened_df.to_csv(f"{results_dir}/{scan_name}_flattened.csv", index=False)
+    flattened_df.to_csv(f"{results_dir}/{scan_name}.csv", index=False)
 
 
 def load_selec_scan_results(results_path):
