@@ -1,0 +1,195 @@
+---
+title: "Receptor Scan Summary Heatmaps"
+---
+
+# Summary
+Generates lower-triangular heatmaps placing each cell type at its optimal receptor pair position for selectivity, KL Divergence, and EMD. Visualizes which receptor pairs are most discriminating for each cell type and reveals overlap in optimal pairs across cell types.
+
+# Imports
+- Receptor scan result loading functions (`load_selec_scan_results`, `load_KL_EMD_scan_results`)
+- Visualization libraries (matplotlib, seaborn, numpy)
+
+# Parameters
+- `scan_data_path`: String path to directory containing receptor scan result files
+
+# Outputs
+- **Heatmap 1**: Selectivity summary placing each cell type at its optimal receptor pair position, colored by selectivity value
+- **Heatmap 2**: KL Divergence summary with identical formatting
+- **Heatmap 3**: EMD summary with identical formatting
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+
+from figures.scanning_analyses.scan_runners import load_selec_scan_results
+
+scan_data_path = "/home/sama/receptor_sweep_data/20260212_full_geom_sweep.csv"
+
+opt_selec, _, _, receptors, cell_types = load_selec_scan_results(scan_data_path)
+
+optimal_pairs = {}
+involved_receptors = set()
+for i, cell_type in enumerate(cell_types):
+    selectivity_matrix = opt_selec[:, :, i]
+    max_idx = np.unravel_index(np.nanargmax(selectivity_matrix), selectivity_matrix.shape)
+    rec1_idx, rec2_idx = max_idx
+    max_selec = selectivity_matrix[rec1_idx, rec2_idx]
+    optimal_pairs[cell_type] = (receptors[rec1_idx], receptors[rec2_idx], max_selec)
+    involved_receptors.add(receptors[rec1_idx])
+    involved_receptors.add(receptors[rec2_idx])
+
+filtered_receptors = sorted(involved_receptors)
+N_RECEPTORS = len(filtered_receptors)
+receptor_to_idx = {rec: i for i, rec in enumerate(filtered_receptors)}
+
+summary_matrix = np.full((N_RECEPTORS, N_RECEPTORS), np.nan)
+position_to_cell_types = {}
+for cell_type, (rec1, rec2, max_selec) in optimal_pairs.items():
+    i = receptor_to_idx[rec1]
+    j = receptor_to_idx[rec2]
+    i_lower, j_lower = (i, j) if i >= j else (j, i)
+    if (i_lower, j_lower) not in position_to_cell_types:
+        position_to_cell_types[(i_lower, j_lower)] = []
+        summary_matrix[i_lower, j_lower] = max_selec
+    position_to_cell_types[(i_lower, j_lower)].append(cell_type)
+
+mask = np.triu(np.ones_like(summary_matrix, dtype=bool), k=1)
+summary_matrix[mask] = np.nan
+
+fig, ax = plt.subplots(figsize=(8, 8))
+sns.heatmap(
+    summary_matrix,
+    cmap="Reds",
+    xticklabels=filtered_receptors,
+    yticklabels=filtered_receptors,
+    square=True,
+    annot=False,
+    ax=ax,
+    cbar=False,
+    vmin=0.90,
+    vmax=1.0,
+    linewidths=4.0,
+    linecolor="lightgray",
+    mask=False,
+)
+for i in range(N_RECEPTORS):
+    for j in range(i + 1, N_RECEPTORS):
+        ax.add_patch(plt.Rectangle((j, i), 1, 1, fill=True, color='lightgray', zorder=3))
+for (i, j), cts in position_to_cell_types.items():
+    label = "\n".join(cts)
+    ax.text(j + 0.5, i + 0.5, label, ha="center", va="center", fontsize=10, color="black")
+ax.set_title(
+    "Cell Types at Their Optimal Receptor Pair Positions\n(Color = Selectivity Value)",
+    fontsize=14,
+    pad=20,
+)
+ax.set_xlabel("Receptor 2", fontsize=18)
+ax.set_ylabel("Receptor 1", fontsize=18)
+ax.tick_params(axis="x", rotation=90, labelsize=20, width=2, length=6)
+ax.tick_params(axis="y", rotation=0, labelsize=20, width=2, length=6)
+plt.tight_layout()
+
+pos = ax.get_position()
+cbar_ax = fig.add_axes([pos.x1 + pos.width * 0.03, pos.y0, pos.width * 0.05, pos.height])
+norm = plt.Normalize(vmin=0.90, vmax=1.0)
+sm = plt.cm.ScalarMappable(cmap="Reds", norm=norm)
+sm.set_array([])
+cbar = fig.colorbar(sm, cax=cbar_ax)
+tick_values = np.linspace(0.90, 1.0, num=6)
+cbar.set_ticks(tick_values)
+cbar.set_ticklabels([f"{val:.2f}" for val in tick_values])
+cbar.ax.tick_params(labelsize=20, width=2, length=6)
+cbar.set_label("Optimal Selectivity", fontsize=18)
+plt.show()
+```
+
+```{python}
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+
+from figures.scanning_analyses.scan_runners import load_KL_EMD_scan_results
+
+scan_data_path = "/home/sama/receptor_sweep_data/20260319_dist_scan.csv"
+
+KL_results, EMD_results, receptors, cell_types = load_KL_EMD_scan_results(scan_data_path)
+
+for metric_name, metric_results in [("KL Divergence", KL_results), ("EMD", EMD_results)]:
+    optimal_pairs = {}
+    involved_receptors = set()
+    for i, cell_type in enumerate(cell_types):
+        metric_matrix = metric_results[:, :, i]
+        max_idx = np.unravel_index(np.nanargmax(metric_matrix), metric_matrix.shape)
+        rec1_idx, rec2_idx = max_idx
+        max_val = metric_matrix[rec1_idx, rec2_idx]
+        optimal_pairs[cell_type] = (receptors[rec1_idx], receptors[rec2_idx], max_val)
+        involved_receptors.add(receptors[rec1_idx])
+        involved_receptors.add(receptors[rec2_idx])
+
+    filtered_receptors = sorted(involved_receptors)
+    N_RECEPTORS = len(filtered_receptors)
+    receptor_to_idx_local = {rec: i for i, rec in enumerate(filtered_receptors)}
+
+    summary_matrix = np.full((N_RECEPTORS, N_RECEPTORS), np.nan)
+    position_to_cell_types = {}
+    for cell_type, (rec1, rec2, max_val) in optimal_pairs.items():
+        i = receptor_to_idx_local[rec1]
+        j = receptor_to_idx_local[rec2]
+        i_lower, j_lower = (i, j) if i >= j else (j, i)
+        if (i_lower, j_lower) not in position_to_cell_types:
+            position_to_cell_types[(i_lower, j_lower)] = []
+            summary_matrix[i_lower, j_lower] = max_val
+        position_to_cell_types[(i_lower, j_lower)].append(cell_type)
+
+    mask = np.triu(np.ones_like(summary_matrix, dtype=bool), k=1)
+    summary_matrix[mask] = np.nan
+
+    vmin_val = np.nanmin(summary_matrix)
+    vmax_val = np.nanmax(summary_matrix)
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    sns.heatmap(
+        summary_matrix,
+        cmap="Reds",
+        xticklabels=filtered_receptors,
+        yticklabels=filtered_receptors,
+        square=True,
+        annot=False,
+        ax=ax,
+        cbar=False,
+        vmin=vmin_val,
+        vmax=vmax_val,
+        linewidths=4.0,
+        linecolor="lightgray",
+        mask=False,
+    )
+    for i in range(N_RECEPTORS):
+        for j in range(i + 1, N_RECEPTORS):
+            ax.add_patch(plt.Rectangle((j, i), 1, 1, fill=True, color='lightgray', zorder=3))
+    for (i, j), cts in position_to_cell_types.items():
+        label = "\n".join(cts)
+        ax.text(j + 0.5, i + 0.5, label, ha="center", va="center", fontsize=10, color="black")
+    ax.set_title(
+        f"Cell Types at Their Optimal Receptor Pair Positions\n(Color = {metric_name} Value)",
+        fontsize=14,
+        pad=20,
+    )
+    ax.set_xlabel("Receptor 2", fontsize=18)
+    ax.set_ylabel("Receptor 1", fontsize=18)
+    ax.tick_params(axis="x", rotation=90, labelsize=20, width=2, length=6)
+    ax.tick_params(axis="y", rotation=0, labelsize=20, width=2, length=6)
+    plt.tight_layout()
+
+    pos = ax.get_position()
+    cbar_ax = fig.add_axes([pos.x1 + pos.width * 0.03, pos.y0, pos.width * 0.05, pos.height])
+    norm = plt.Normalize(vmin=vmin_val, vmax=vmax_val)
+    sm = plt.cm.ScalarMappable(cmap="Reds", norm=norm)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, cax=cbar_ax)
+    cbar.ax.tick_params(labelsize=20, width=2, length=6)
+    cbar.set_label(f"Optimal {metric_name}", fontsize=18)
+    plt.show()
+```
