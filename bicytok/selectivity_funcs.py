@@ -50,6 +50,7 @@ def min_off_targ_selec(
     offTargRecs: Float64[Array, "cells receptors"],
     dose: Scalar,
     valencies: Float64[Array, "receptors"],
+    selec_def: str = "geometric_mean",
 ) -> Scalar:
     """
     The objective function to optimize selectivity by varying affinities. The output
@@ -62,6 +63,8 @@ def min_off_targ_selec(
         offTargRecs: receptors count of off-target cell types
         dose: ligand concentration/dose
         valencies: array of valencies of each distinct ligand in the ligand complex
+        selec_def: summary statistic used to aggregate binding across cells. Options:
+            mean (arithmetic), geometric_mean, median
 
     Outputs:
         selectivity: value to be minimized. Defined as ratio of off target to on target
@@ -73,7 +76,7 @@ def min_off_targ_selec(
 
     monomerAffs = params[:-1]
 
-    # Reformat input affinities
+    # Reformat input affinities to match binding model syntax
     modelAffs = restructure_affs(monomerAffs)
     Kx_star = jnp.power(10, params[-1])
 
@@ -93,13 +96,21 @@ def min_off_targ_selec(
         Kx_star=Kx_star,
     )
 
-    # Calculate total bound receptors for target and off-target cell types, normalized
-    #   by number of cells
-    targetBound = jnp.sum(targRbound[:, 0]) / targRbound.shape[0]
-    offTargetBound = jnp.sum(offTargRbound[:, 0]) / offTargRbound.shape[0]
-
+    # Summarize bound receptors for target and off-target cell types
+    n_targets = targRbound.shape[0]
+    n_off_targets = offTargRbound.shape[0]
+    if selec_def == "mean":
+        targ_bound = jnp.sum(targRbound[:, 0]) / n_targets
+        off_targ_bound = jnp.sum(offTargRbound[:, 0]) / n_off_targets
+    elif selec_def == "geometric_mean":
+        targ_bound = jnp.exp(jnp.sum(jnp.log(targRbound[:, 0]) / n_targets))
+        off_targ_bound = jnp.exp(jnp.sum(jnp.log(offTargRbound[:, 0]) / n_off_targets))
+    elif selec_def == "median":
+        targ_bound = jnp.median(targRbound[:, 0])
+        off_targ_bound = jnp.median(offTargRbound[:, 0])
+    
     # Return selectivity ratio
-    return (targetBound + offTargetBound) / targetBound
+    return (targ_bound + off_targ_bound) / targ_bound
 
 
 # Affinity optimization constants
@@ -192,6 +203,8 @@ def optimize_affs(
     assert targRecs.size > 0
     assert offTargRecs.size > 0
     assert targRecs.shape[1] == offTargRecs.shape[1]
+    if isinstance(init_vals, np.ndarray):
+        assert init_vals.shape[0] == targRecs.shape[1] + 1
 
     # Set up initial parameters
     if isinstance(init_vals, int):
