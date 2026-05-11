@@ -1,0 +1,168 @@
+---
+title: "Valency Composition Scan"
+---
+
+# Summary
+This analysis calculates selectivity across varying compositions of binding subunits for fixed total valencies. The first receptor is the signaling subunit, and the remaining two receptors are binding targets. Results are displayed in a single comprehensive heatmap.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- Selectivity optimization functions (`optimize_affs`)
+
+# Parameters
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `targ_cell`: String identifier for target cell type in selectivity optimization
+- `dose`: Float concentration of ligand complex in binding model
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `receptors`: List of 3 strings naming receptors [signal_receptor, binding_target_1, binding_target_2]
+- `fixed_valencies`: List of total valencies to test (e.g., [3, 4, 5, 6])
+- `signal_valency`: Integer number of signaling receptor subunits (fixed for all compositions)
+
+# Outputs
+- **Heatmap**: Single comprehensive heatmap showing selectivity values for all compositions across all valencies
+- **Printed Output**: Processing time and summary statistics
+
+## Calculate Selectivity for all compositions
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import time
+import numpy as np
+import pandas as pd
+from bicytok.imports import (
+    filter_receptor_abundances,
+    importCITE,
+    sample_receptor_abundances,
+)
+from bicytok.selectivity_funcs import optimize_affs
+
+sample_size = 1000
+targ_cell = "CD4 TEM"
+dose = 1e-10
+cell_categorization = "CellType2"
+receptors = ["sim_signal", "CD4-2", "CD195"]
+off_targ_cells = ["CD4 Proliferating", "CD4 TCM", "CD4 Naive", "Treg", "CD4 CTL"]
+signal_valency = 1
+max_valency = 6
+init_mod = [6.0, 7.0, 7.0, -9.0]
+fixed_valencies = range(signal_valency, max_valency + 1)
+
+CITE_DF = importCITE()
+assert targ_cell in CITE_DF[cell_categorization].unique()
+assert len(receptors) == 3, (
+    "Must specify exactly 3 receptors: [signal, target1, target2]"
+)
+
+signal_receptor = receptors[0]
+target_receptor_1 = receptors[1]
+target_receptor_2 = receptors[2]
+epitopes = [
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=min(sample_size, epitopes_df.shape[0]),
+    targCellType=targ_cell,
+    insert_mock_signal_rec=True,
+    offTargCellTypes=off_targ_cells,
+)
+filtered_sample_df = filter_receptor_abundances(
+    sample_df, targ_cell, whitelist=receptors
+)
+on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
+off_target_mask = ~on_target_mask
+df_targ_cell = filtered_sample_df.loc[on_target_mask]
+df_off_targ_cell = filtered_sample_df.loc[off_target_mask]
+targ_recs = df_targ_cell[receptors].to_numpy()
+off_targ_recs = df_off_targ_cell[receptors].to_numpy()
+
+results = []
+time_start = time.time()
+for total_valency in fixed_valencies:
+    print(f"Calculating selectivity for total valency {total_valency}...")
+    for n_target1 in range(total_valency - signal_valency + 1):
+        n_target2 = total_valency - signal_valency - n_target1
+        if n_target2 < 0:
+            continue
+        model_valencies = np.array([[signal_valency, n_target1, n_target2]])
+
+        opt_selec, opt_affs, opt_kx_star = optimize_affs(
+            targRecs=targ_recs,
+            offTargRecs=off_targ_recs,
+            dose=dose,
+            valencies=model_valencies,
+            init_vals=init_mod,
+            Kx_star_bounds=(-15, -5),
+        )
+        selectivity = 1 / opt_selec
+        print(f"(Signal: {signal_valency}, Target1: {n_target1}, Target2: {n_target2})")
+        print(
+            f"Affinities: {opt_affs}, Kx*: {opt_kx_star:.2e}, Selectivity: {selectivity:.4f}\n"
+        )
+        results.append(
+            {
+                "Total_Valency": total_valency,
+                signal_receptor: signal_valency,
+                target_receptor_1: n_target1,
+                target_receptor_2: n_target2,
+                "Selectivity": selectivity,
+            }
+        )
+time_end = time.time()
+print(f"\nTotal processing time: {time_end - time_start:.2f} seconds")
+
+results_df = pd.DataFrame(results)
+```
+
+
+## Line Plot by Valency
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(5, 4))
+colors = plt.cm.Reds(np.linspace(0, 1, len(fixed_valencies)))
+
+min_valency = min(fixed_valencies)
+for idx, total_valency in enumerate(fixed_valencies):
+    if total_valency == min_valency:
+        continue
+    subset_df = results_df[results_df["Total_Valency"] == total_valency].copy()
+    if len(subset_df) == 0:
+        continue
+    binding_valency = total_valency - signal_valency
+    if binding_valency == 0:
+        subset_df["percentage"] = 0
+    else:
+        subset_df["percentage"] = (subset_df[target_receptor_1] / binding_valency) * 100
+    subset_df = subset_df.sort_values(by="percentage")
+    ax.plot(
+        subset_df["percentage"],
+        subset_df["Selectivity"],
+        marker="o",
+        linewidth=2,
+        markersize=8,
+        label=f"Valency {total_valency}",
+        color=colors[idx],
+    )
+
+ax.set_xlabel(
+    f"Percentage of binding subunits that are {target_receptor_1}\n(100% - {target_receptor_2})",
+    fontsize=14,
+)
+ax.set_ylabel("Selectivity", fontsize=14)
+ax.set_title(
+    f"Selectivity vs Receptor Composition\n(Signal Valency of {signal_receptor} = {signal_valency})",
+    fontsize=16,
+    fontweight="bold",
+    pad=20,
+)
+ax.legend(fontsize=11, loc="best")
+ax.grid(True, alpha=0.3)
+ax.set_xlim(-5, 105)
+
+plt.tight_layout()
+plt.show()
+```
