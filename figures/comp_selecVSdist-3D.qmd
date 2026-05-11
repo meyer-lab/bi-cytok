@@ -75,12 +75,17 @@ sample_df = sample_receptor_abundances(
     numCells=min(sample_size, epitopes_df.shape[0]),
     targCellType=targ_cell,
 )
-filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
 
-all_receptors = set([r for pair in receptor_pairs for r in pair] + [signal_receptor])
-missing_receptors = all_receptors - set(filtered_sample_df.columns)
-if missing_receptors:
-    raise ValueError(f"Missing receptors in filtered dataset: {missing_receptors}")
+if receptors is not None:
+    filtered_sample_df = filter_receptor_abundances(
+        sample_df, targ_cell, whitelist=receptors
+    )
+    receptor_pairs = generate_receptor_pairs(receptors)
+else:
+    filtered_sample_df = filter_receptor_abundances(sample_df, targ_cell)
+    receptors = [col for col in filtered_sample_df.columns if col != "Cell Type"]
+    receptor_pairs = generate_receptor_pairs(receptors)
+print(f"Receptors analyzed: {receptors}")
 
 on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
 off_target_mask = ~on_target_mask
@@ -91,11 +96,12 @@ df_off_targ_cell = filtered_sample_df.loc[off_target_mask]
 selectivity_vals = []
 KL_div_vals = []
 EMD_vals = []
-for receptor_pair in receptor_pairs:
+for i, receptor_pair in enumerate(receptor_pairs):
     time_start = time.time()
 
     rec_abundances = filtered_sample_df[receptor_pair].to_numpy()
 
+    time_start_metric = time.time()
     KL_div_mat, EMD_mat = KL_EMD_2D(
         rec_abundances, on_target_mask, off_target_mask, calc_1D=False
     )
@@ -103,7 +109,11 @@ for receptor_pair in receptor_pairs:
     EMD = EMD_mat[1, 0]
     KL_div_vals.append(KL_div)
     EMD_vals.append(EMD)
+    print(
+        f"Metric calculation time for {receptor_pair}: {time.time() - time_start_metric} seconds"
+    )
 
+    time_start_opt = time.time()
     if receptor_pair[0] == receptor_pair[1]:
         model_valencies = model_valencies_diag
         targ_recs = df_targ_cell[[signal_receptor, receptor_pair[0]]].to_numpy()
@@ -112,7 +122,6 @@ for receptor_pair in receptor_pairs:
         model_valencies = model_valencies_main
         targ_recs = df_targ_cell[[signal_receptor] + receptor_pair].to_numpy()
         off_targ_recs = df_off_targ_cell[[signal_receptor] + receptor_pair].to_numpy()
-
     opt_selec, _, _ = optimize_affs(
         targRecs=targ_recs,
         offTargRecs=off_targ_recs,
@@ -120,9 +129,9 @@ for receptor_pair in receptor_pairs:
         valencies=model_valencies,
     )
     selectivity_vals.append(1 / opt_selec)
-
-    time_end = time.time()
-    print(f"Processing time for {receptor_pair}: {time_end - time_start} seconds")
+    print(
+        f"Optimization time for {receptor_pair}: {time.time() - time_start_opt} seconds"
+    )
 
 metrics_df = pd.DataFrame(
     {
@@ -139,34 +148,94 @@ metrics_df = pd.DataFrame(
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+fig, ax = plt.subplots(figsize=(10, 6))
+
+def label_top_n(ax, data, x_col, y_col, n=10):
+    """Label top n points by y-value on scatter plot."""
+    top_indices_y = data.nlargest(n, y_col).index
+    for idx in top_indices_y:
+        ax.annotate(
+            data.loc[idx, "Receptor Pair"],
+            (data.loc[idx, x_col], data.loc[idx, y_col]),
+            fontsize=8,
+            alpha=0.7,
+            xytext=(5, 5),
+            textcoords="offset points",
+        )
+    top_indices_x = data.nlargest(n, x_col).index
+    for idx in top_indices_x:
+        if idx not in top_indices_y:
+            ax.annotate(
+                data.loc[idx, "Receptor Pair"],
+                (data.loc[idx, x_col], data.loc[idx, y_col]),
+                fontsize=8,
+                alpha=0.7,
+                xytext=(5, 5),
+                textcoords="offset points",
+            )
+
 sns.scatterplot(
     data=metrics_df,
     x="KL Divergence",
     y="Selectivity",
     hue="Receptor Pair",
     s=70,
-    legend=True,
+    legend=False,
+    ax=ax,
 )
 
-plt.grid(True, linestyle="--", alpha=0.7)
-plt.legend(bbox_to_anchor=(1.05, 1), title="Receptor Pair")
+label_top_n(ax, metrics_df, "KL Divergence", "Selectivity", n=5)
+ax.grid(True, linestyle="--", alpha=0.7)
+ax.legend(bbox_to_anchor=(1.05, 1), title="Receptor Pair")
+
+plt.tight_layout()
 plt.show()
 ```
 
 ```{python}
 #| fig-cap: "EMD vs Selectivity for receptor pairs"
+
+fig, ax = plt.subplots(figsize=(10, 6))
+
+def label_top_n(ax, data, x_col, y_col, n=10):
+    """Label top n points by y-value on scatter plot."""
+    top_indices_y = data.nlargest(n, y_col).index
+    for idx in top_indices_y:
+        ax.annotate(
+            data.loc[idx, "Receptor Pair"],
+            (data.loc[idx, x_col], data.loc[idx, y_col]),
+            fontsize=8,
+            alpha=0.7,
+            xytext=(5, 5),
+            textcoords="offset points",
+        )
+    top_indices_x = data.nlargest(n, x_col).index
+    for idx in top_indices_x:
+        if idx not in top_indices_y:
+            ax.annotate(
+                data.loc[idx, "Receptor Pair"],
+                (data.loc[idx, x_col], data.loc[idx, y_col]),
+                fontsize=8,
+                alpha=0.7,
+                xytext=(5, 5),
+                textcoords="offset points",
+            )
+
 sns.scatterplot(
     data=metrics_df,
     x="EMD",
     y="Selectivity",
     hue="Receptor Pair",
     s=70,
-    legend=True,
+    legend=False,
+    ax=ax,
 )
 
-plt.grid(True, linestyle="--", alpha=0.7)
-plt.legend(loc="upper left", title="Receptor Pair")
-plt.legend(bbox_to_anchor=(1.05, 1), title="Receptor Pair")
+label_top_n(ax, metrics_df, "EMD", "Selectivity", n=5)
+ax.grid(True, linestyle="--", alpha=0.7)
+ax.legend(bbox_to_anchor=(1.05, 1), title="Receptor Pair")
+
+plt.tight_layout()
 plt.show()
 ```
 
