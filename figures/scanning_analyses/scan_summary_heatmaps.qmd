@@ -19,7 +19,6 @@ Generates lower-triangular heatmaps placing each cell type at its optimal recept
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -34,7 +33,9 @@ optimal_pairs = {}
 involved_receptors = set()
 for i, cell_type in enumerate(cell_types):
     selectivity_matrix = opt_selec[:, :, i]
-    max_idx = np.unravel_index(np.nanargmax(selectivity_matrix), selectivity_matrix.shape)
+    max_idx = np.unravel_index(
+        np.nanargmax(selectivity_matrix), selectivity_matrix.shape
+    )
     rec1_idx, rec2_idx = max_idx
     max_selec = selectivity_matrix[rec1_idx, rec2_idx]
     optimal_pairs[cell_type] = (receptors[rec1_idx], receptors[rec2_idx], max_selec)
@@ -77,10 +78,14 @@ sns.heatmap(
 )
 for i in range(N_RECEPTORS):
     for j in range(i + 1, N_RECEPTORS):
-        ax.add_patch(plt.Rectangle((j, i), 1, 1, fill=True, color='lightgray', zorder=3))
+        ax.add_patch(
+            plt.Rectangle((j, i), 1, 1, fill=True, color="lightgray", zorder=3)
+        )
 for (i, j), cts in position_to_cell_types.items():
     label = "\n".join(cts)
-    ax.text(j + 0.5, i + 0.5, label, ha="center", va="center", fontsize=10, color="black")
+    ax.text(
+        j + 0.5, i + 0.5, label, ha="center", va="center", fontsize=10, color="black"
+    )
 ax.set_title(
     "Cell Types at Their Optimal Receptor Pair Positions\n(Color = Selectivity Value)",
     fontsize=14,
@@ -93,7 +98,9 @@ ax.tick_params(axis="y", rotation=0, labelsize=20, width=2, length=6)
 plt.tight_layout()
 
 pos = ax.get_position()
-cbar_ax = fig.add_axes([pos.x1 + pos.width * 0.03, pos.y0, pos.width * 0.05, pos.height])
+cbar_ax = fig.add_axes(
+    [pos.x1 + pos.width * 0.03, pos.y0, pos.width * 0.05, pos.height]
+)
 norm = plt.Normalize(vmin=0.90, vmax=1.0)
 sm = plt.cm.ScalarMappable(cmap="Reds", norm=norm)
 sm.set_array([])
@@ -115,9 +122,14 @@ from figures.scanning_analyses.scan_runners import load_KL_EMD_scan_results
 
 scan_data_path = "/home/sama/receptor_sweep_data/20260319_dist_scan.csv"
 
-KL_results, EMD_results, receptors, cell_types = load_KL_EMD_scan_results(scan_data_path)
+KL_results, EMD_results, receptors, cell_types = load_KL_EMD_scan_results(
+    scan_data_path
+)
 
-for metric_name, metric_results in [("KL Divergence", KL_results), ("EMD", EMD_results)]:
+for metric_name, metric_results in [
+    ("KL Divergence", KL_results),
+    ("EMD", EMD_results),
+]:
     optimal_pairs = {}
     involved_receptors = set()
     for i, cell_type in enumerate(cell_types):
@@ -168,10 +180,20 @@ for metric_name, metric_results in [("KL Divergence", KL_results), ("EMD", EMD_r
     )
     for i in range(N_RECEPTORS):
         for j in range(i + 1, N_RECEPTORS):
-            ax.add_patch(plt.Rectangle((j, i), 1, 1, fill=True, color='lightgray', zorder=3))
+            ax.add_patch(
+                plt.Rectangle((j, i), 1, 1, fill=True, color="lightgray", zorder=3)
+            )
     for (i, j), cts in position_to_cell_types.items():
         label = "\n".join(cts)
-        ax.text(j + 0.5, i + 0.5, label, ha="center", va="center", fontsize=10, color="black")
+        ax.text(
+            j + 0.5,
+            i + 0.5,
+            label,
+            ha="center",
+            va="center",
+            fontsize=10,
+            color="black",
+        )
     ax.set_title(
         f"Cell Types at Their Optimal Receptor Pair Positions\n(Color = {metric_name} Value)",
         fontsize=14,
@@ -184,7 +206,9 @@ for metric_name, metric_results in [("KL Divergence", KL_results), ("EMD", EMD_r
     plt.tight_layout()
 
     pos = ax.get_position()
-    cbar_ax = fig.add_axes([pos.x1 + pos.width * 0.03, pos.y0, pos.width * 0.05, pos.height])
+    cbar_ax = fig.add_axes(
+        [pos.x1 + pos.width * 0.03, pos.y0, pos.width * 0.05, pos.height]
+    )
     norm = plt.Normalize(vmin=vmin_val, vmax=vmax_val)
     sm = plt.cm.ScalarMappable(cmap="Reds", norm=norm)
     sm.set_array([])

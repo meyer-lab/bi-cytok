@@ -26,9 +26,9 @@ Generates heatmaps of optimal selectivity, KL Divergence, and EMD across recepto
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 # Plotting heatmaps of optimal selectivity across cell types
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
 
 from figures.scanning_analyses.scan_runners import load_selec_scan_results
@@ -70,7 +70,9 @@ for plot_idx, cell_type in enumerate(display_cell_types):
         unique_receptors = sorted(set([idx for pair in top_pairs for idx in pair[:2]]))
         receptor_labels = [receptors[idx] for idx in unique_receptors]
     else:
-        unique_receptors = [idx for idx, rec in enumerate(receptors) if rec in receptors_to_include]
+        unique_receptors = [
+            idx for idx, rec in enumerate(receptors) if rec in receptors_to_include
+        ]
         receptor_labels = [receptors[idx] for idx in unique_receptors]
 
     subset_matrix = selectivity_matrix[np.ix_(unique_receptors, unique_receptors)]
@@ -90,7 +92,9 @@ for plot_idx, cell_type in enumerate(display_cell_types):
     n_recs = len(unique_receptors)
     for i in range(n_recs):
         for j in range(i + 1, n_recs):
-            ax.add_patch(plt.Rectangle((j, i), 1, 1, fill=True, color='lightgray', zorder=3))
+            ax.add_patch(
+                plt.Rectangle((j, i), 1, 1, fill=True, color="lightgray", zorder=3)
+            )
     ax.tick_params(axis="x", rotation=90, labelsize=20, width=2, length=6)
     ax.tick_params(axis="y", rotation=0, labelsize=20, width=2, length=6)
 
@@ -98,18 +102,18 @@ plt.tight_layout()
 plt.show()
 ```
 
-
 ```{python}
 # Plotting heatmaps of top receptor pairs per cell type for KL divergence and EMD
 
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
 
 from figures.scanning_analyses.scan_runners import load_KL_EMD_scan_results
 
 # Parameters
 TOP_N_PAIRS = 20
-CELL_TYPES_TO_DISPLAY = cell_types
+CELL_TYPES_TO_DISPLAY = None
 receptors_to_include = None
 pathname = "/home/sama/receptor_sweep_data/20260319_dist_scan.csv"
 
@@ -120,7 +124,7 @@ if CELL_TYPES_TO_DISPLAY is not None:
 else:
     display_cell_types = cell_types
 
-for metric_name, metric_results in [("KL Divergence", KL_results), ("EMD", EMD_results)]:
+for metric_results in [KL_results, EMD_results]:
     fig, axes = plt.subplots(
         1, len(display_cell_types), figsize=(8 * len(display_cell_types), 7)
     )
@@ -132,18 +136,20 @@ for metric_name, metric_results in [("KL Divergence", KL_results), ("EMD", EMD_r
         row_indices, col_indices = np.tril_indices(len(receptors), k=0)
         pair_vals = []
         for rec1_idx, rec2_idx in zip(row_indices, col_indices, strict=False):
-            pair_vals.append(
-                (rec1_idx, rec2_idx, metric_matrix[rec1_idx, rec2_idx])
-            )
+            pair_vals.append((rec1_idx, rec2_idx, metric_matrix[rec1_idx, rec2_idx]))
         pair_vals.sort(
             key=lambda x: x[2] if not np.isnan(x[2]) else -np.inf, reverse=True
         )
         top_pairs = pair_vals[:TOP_N_PAIRS]
         if receptors_to_include is None:
-            unique_receptors = sorted(set([idx for pair in top_pairs for idx in pair[:2]]))
+            unique_receptors = sorted(
+                set([idx for pair in top_pairs for idx in pair[:2]])
+            )
             receptor_labels = [receptors[idx] for idx in unique_receptors]
         else:
-            unique_receptors = [idx for idx, rec in enumerate(receptors) if rec in receptors_to_include]
+            unique_receptors = [
+                idx for idx, rec in enumerate(receptors) if rec in receptors_to_include
+            ]
             receptor_labels = [receptors[idx] for idx in unique_receptors]
         subset_matrix = metric_matrix[np.ix_(unique_receptors, unique_receptors)]
         ax = axes[plot_idx]
@@ -162,7 +168,9 @@ for metric_name, metric_results in [("KL Divergence", KL_results), ("EMD", EMD_r
         n_recs = len(unique_receptors)
         for i in range(n_recs):
             for j in range(i + 1, n_recs):
-                ax.add_patch(plt.Rectangle((j, i), 1, 1, fill=True, color='lightgray', zorder=3))
+                ax.add_patch(
+                    plt.Rectangle((j, i), 1, 1, fill=True, color="lightgray", zorder=3)
+                )
         ax.tick_params(axis="x", rotation=90, labelsize=20, width=2, length=6)
         ax.tick_params(axis="y", rotation=0, labelsize=20, width=2, length=6)
 

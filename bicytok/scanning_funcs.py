@@ -31,7 +31,7 @@ def _sample_cells(
             off-target populations
         balance: whether to balance number of cells in target and off-target
             populations
-    
+
     Outputs:
         sampled_rec_abundances: subset of rec_abundances after sampling
         sampled_cell_type_labels: subset of cell_type_labels corresponding to
@@ -80,7 +80,7 @@ def scan_KL_EMD(
             expression in target cells than off-target cells. Filtering is applied
             per cell type after sampling, so valid receptors may differ across cell
             types.
-    
+
     Outputs:
         KL_div_vals_scan: KL divergence values for all receptor combinations and cell types
         EMD_vals_scan: EMD values for all receptor combinations and cell types
@@ -183,7 +183,7 @@ def scan_selectivity(
         init_method: method for initializing optimization (integer seed for random
             initialization, "search" to initialize with grid search, or array of
             initial affinity and Kx_star values)
-    
+
     Outputs:
         selec_vals_scan: optimized selectivity values for all receptor combinations
         opt_affs_scan: optimized monomer affinities in log10(M) for all combinations
@@ -204,7 +204,10 @@ def scan_selectivity(
     output_shape = (n_receptors,) * dim + (len(targ_cell_types),)
     selec_vals_scan = np.full(output_shape, np.nan)
     opt_Kx_star_scan = np.full(output_shape, np.nan)
-    affs_output_shape = (n_receptors,) * dim + (len(targ_cell_types), dim + 1,)
+    affs_output_shape = (n_receptors,) * dim + (
+        len(targ_cell_types),
+        dim + 1,
+    )
     opt_affs_scan = np.full(affs_output_shape, np.nan)
 
     for i, cell_type in enumerate(targ_cell_types):
@@ -215,7 +218,7 @@ def scan_selectivity(
             cell_type_labels,
             targ_cell_type=cell_type,
             sample_size=sample_size,
-            balance=False, # Binding model is not biased by cell type proportions
+            balance=False,  # Binding model is not biased by cell type proportions
         )
 
         targ_mask = sampled_cell_type_labels == cell_type
@@ -286,7 +289,7 @@ def scan_selectivity(
 
                 opt_affs_scan[rec1_ind, rec2_ind, i, :] = opt_aff_vals
                 opt_Kx_star_scan[rec1_ind, rec2_ind, i] = opt_Kx_star
-                
+
                 # Progress logging:
                 if count % 500 == 0:
                     if count == 0:

@@ -108,7 +108,7 @@ def min_off_targ_selec(
     elif selec_def == "median":
         targ_bound = jnp.median(targRbound[:, 0])
         off_targ_bound = jnp.median(offTargRbound[:, 0])
-    
+
     # Return selectivity ratio
     return (targ_bound + off_targ_bound) / targ_bound
 
