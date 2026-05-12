@@ -48,6 +48,7 @@ def run_selectivity_scan():
     valency = np.array([[2, 1, 1]])
     init = [6.0, 7.0, 7.0, -9.0] # Initial optimization values
     signal = "prototype" # Define signal receptor; "prototype" or receptor name
+    asym_targs = False # Calculates both symmetric cases (rec1, rec2) and (rec2, rec1)
 
     # Load and define receptor set
     CITE_DF = importCITE()
@@ -99,6 +100,7 @@ def run_selectivity_scan():
         sample_size=sample_size,
         signal_col=signal_ind,
         init_method=init,
+        asym_targs=asym_targs,
     )
 
     # Save flattened results

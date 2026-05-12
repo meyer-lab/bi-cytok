@@ -4,6 +4,7 @@ receptor combinations and target cell types.
 """
 
 import time
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -162,6 +163,7 @@ def scan_selectivity(
     sample_size: int = 100,
     signal_col: int = 0,
     init_method: np.ndarray | str | int = 42,
+    asym_targs: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Optimize binding selectivity for all receptor combinations across target cell
@@ -183,6 +185,9 @@ def scan_selectivity(
         init_method: method for initializing optimization (integer seed for random
             initialization, "search" to initialize with grid search, or array of
             initial affinity and Kx_star values)
+        asym_targs: whether to independently optimize selectivity for (rec1, rec2) and
+            (rec2, rec1) when dim=2. Only useful when valencies are asymmetric,
+            otherwise (rec1, rec2) and (rec2, rec1) will yield the same selectivity.
 
     Outputs:
         selec_vals_scan: optimized selectivity values for all receptor combinations
@@ -196,6 +201,15 @@ def scan_selectivity(
     assert rec_abundances.shape[1] >= dim
     assert len(valencies[0]) == dim + 1
     assert 0 <= signal_col < rec_abundances.shape[1]
+
+    if dim == 2 and not asym_targs and np.any(valencies[:, 1] != valencies[:, 2]):
+        warnings.warn(
+            "Valencies are asymmetric across target receptors but asym_targs=False. "
+            "The upper triangle won't be computed, but (rec1, rec2) and (rec2, rec1) "
+            "may differ. Set asym_targs=True to compute the full matrix.",
+            UserWarning,
+            stacklevel=2,
+        )
 
     # Define array shapes for each output based on analysis dimensionality. Arrays
     #   contain one n-dimensional receptor x receptor hypercube per cell type. Affinity
@@ -246,9 +260,10 @@ def scan_selectivity(
             time_init = time.time()
             intervals = []
 
-            # Triangular indices assume symmetry across the diagonal which is not
-            #   true if valencies are asymmetric
-            row, col = np.tril_indices(sampled_rec_abundances.shape[1], k=0)
+            # Iterate over entire receptor space if target receptors are asymmetric
+            n = sampled_rec_abundances.shape[1]
+            k = n - 1 if asym_targs else 0  # 'k' close to 'n' yields whole matrix space
+            row, col = np.tril_indices(n, k=k)
             for count, (rec1_ind, rec2_ind) in enumerate(zip(row, col, strict=False)):
                 rec_abun_pruned = sampled_rec_abundances[:, [rec1_ind, rec2_ind]]
 
