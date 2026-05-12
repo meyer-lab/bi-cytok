@@ -30,10 +30,11 @@ Performs bootstrap analysis to quantify how KL Divergence, EMD, and selectivity 
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import time
+
 import numpy as np
 import pandas as pd
+
 from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import importCITE
 from bicytok.selectivity_funcs import optimize_affs
@@ -121,6 +122,7 @@ affinities_melted = affinities_df.melt(
 #| fig-cap: "Bootstrap variation in KL Divergence across target cell proportions"
 import matplotlib.pyplot as plt
 import seaborn as sns
+
 sns.boxplot(x="target_proportion", y="KL_div", data=metrics_df)
 plt.xlabel("Target Cell Proportion")
 plt.ylabel("KL Divergence")

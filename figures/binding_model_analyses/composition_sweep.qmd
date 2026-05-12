@@ -26,8 +26,10 @@ This analysis calculates selectivity across varying compositions of binding subu
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
 import time
+
 import numpy as np
 import pandas as pd
+
 from bicytok.imports import (
     filter_receptor_abundances,
     importCITE,
@@ -119,7 +121,6 @@ results_df = pd.DataFrame(results)
 ## Line Plot by Valency
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-
 import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots(figsize=(5, 4))

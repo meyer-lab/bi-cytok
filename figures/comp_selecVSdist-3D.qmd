@@ -96,7 +96,7 @@ df_off_targ_cell = filtered_sample_df.loc[off_target_mask]
 selectivity_vals = []
 KL_div_vals = []
 EMD_vals = []
-for i, receptor_pair in enumerate(receptor_pairs):
+for receptor_pair in receptor_pairs:
     time_start = time.time()
 
     rec_abundances = filtered_sample_df[receptor_pair].to_numpy()
@@ -150,6 +150,7 @@ import seaborn as sns
 
 fig, ax = plt.subplots(figsize=(10, 6))
 
+
 def label_top_n(ax, data, x_col, y_col, n=10):
     """Label top n points by y-value on scatter plot."""
     top_indices_y = data.nlargest(n, y_col).index
@@ -173,6 +174,7 @@ def label_top_n(ax, data, x_col, y_col, n=10):
                 xytext=(5, 5),
                 textcoords="offset points",
             )
+
 
 sns.scatterplot(
     data=metrics_df,
@@ -194,8 +196,8 @@ plt.show()
 
 ```{python}
 #| fig-cap: "EMD vs Selectivity for receptor pairs"
-
 fig, ax = plt.subplots(figsize=(10, 6))
+
 
 def label_top_n(ax, data, x_col, y_col, n=10):
     """Label top n points by y-value on scatter plot."""
@@ -220,6 +222,7 @@ def label_top_n(ax, data, x_col, y_col, n=10):
                 xytext=(5, 5),
                 textcoords="offset points",
             )
+
 
 sns.scatterplot(
     data=metrics_df,

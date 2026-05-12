@@ -101,7 +101,6 @@ df_KL_filt = df_KL.loc[kl_row_means >= kl_threshold, kl_col_means >= kl_threshol
 
 ```{python}
 #| fig-cap: "EMD heatmap for receptor pairs"
-
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import seaborn as sns

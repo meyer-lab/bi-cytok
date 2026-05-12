@@ -29,8 +29,20 @@ import pandas as pd
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
-receptors = ["CD122", "CD25", "CD4-1", "CD107a", "CD109", "CD278", "CD28", "CD338", "CD2", "CD194", "CD357"]
-signal = ["CD122"] # Could be "Prototype_Signal_Receptor"
+receptors = [
+    "CD122",
+    "CD25",
+    "CD4-1",
+    "CD107a",
+    "CD109",
+    "CD278",
+    "CD28",
+    "CD338",
+    "CD2",
+    "CD194",
+    "CD357",
+]
+signal = ["CD122"]  # Could be "Prototype_Signal_Receptor"
 cell_type = "Treg"
 off_targ_cell_types = None
 dose = 1e-10
