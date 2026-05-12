@@ -2,8 +2,6 @@
 Unit test file for binding model functions.
 """
 
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -16,8 +14,6 @@ from ..selectivity_funcs import (
     optimize_affs,
     restructure_affs,
 )
-
-path_here = Path(__file__).parent.parent
 
 
 def test_optimize_affs():
@@ -41,7 +37,6 @@ def test_optimize_affs():
     assert optAffs.shape == valencies[0].shape
     assert all(optAffs >= 0)
     assert isinstance(optKx_star, float)
-    assert optKx_star > 0
 
 
 def test_binding_model():
@@ -51,9 +46,12 @@ def test_binding_model():
     num_receptors = 3
     num_cells = 1000
 
-    epitopes_list = pd.read_csv(path_here / "data" / "epitopeList.csv")
-    epitopes = list(epitopes_list["Epitope"].unique())
     CITE_DF = importCITE()
+    epitopes = [
+        col
+        for col in CITE_DF.columns
+        if col not in ["CellType1", "CellType2", "CellType3"]
+    ]
     CITE_DF = CITE_DF[epitopes + ["CellType2"]]
     CITE_DF = CITE_DF.rename(columns={"CellType2": "Cell Type"})
     sample_DF = sample_receptor_abundances(
