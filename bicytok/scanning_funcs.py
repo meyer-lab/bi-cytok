@@ -89,7 +89,7 @@ def scan_KL_EMD(
 
     assert rec_abundances.shape[0] == len(cell_type_labels)
     assert all([cell_type in cell_type_labels for cell_type in targ_cell_types])
-    assert dim in [1, 2, 3]
+    assert dim in [1, 2]
     assert rec_abundances.shape[1] >= dim
 
     # Define array shapes based on analysis dimensionality. Arrays contain one
@@ -123,7 +123,7 @@ def scan_KL_EMD(
             valid_indices = np.where(mean_targ > mean_off_targ)[0]
             filtered_abundances = sampled_rec_abundances[:, valid_indices]
             print(
-                f"  Filtered to {len(valid_indices)} / {n_receptors} receptors with "
+                f"Filtered to {len(valid_indices)} / {n_receptors} receptors with "
                 f"higher target expression for {cell_type}."
             )
         else:
