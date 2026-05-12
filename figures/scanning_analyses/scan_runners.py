@@ -3,6 +3,7 @@ Functions for scanning across receptor-cell type combinations and saving/loading
 results.
 """
 
+import argparse
 import numpy as np
 import pandas as pd
 
@@ -12,12 +13,16 @@ from bicytok.scanning_funcs import scan_selectivity, scan_KL_EMD
 def run_selectivity_scan():
     """
     Process CITE-seq data and run selectivity scanning functions and saves results.
-    Called with "uv run selectivity_scan".
+
+    Takes input parameter "output-path" from command line.
+
+    Called with "uv run selectivity_scan --output-path <path>".
     """
 
-    # File names
-    results_dir = "/home/sama/receptor_sweep_data"
-    scan_name = "20260511_example_scan"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output-path", default="/home/sama/receptor_sweep_data/tmp_selectivity_scan.csv")
+    args = parser.parse_args()
+    output_path = args.output_path
 
     # General parameters (match distribution metric scans)
     cell_categorization = "CellType2" # Cell types column to use
@@ -126,18 +131,24 @@ def run_selectivity_scan():
                 row_data[f"Affinity_Receptor_{j}"] = aff_val
             flattened_data.append(row_data)
     flattened_df = pd.DataFrame(flattened_data)
-    flattened_df.to_csv(f"{results_dir}/{scan_name}.csv", index=False)
+    flattened_df.to_csv(output_path, index=False)
+
+    return opt_selec, opt_affs, opt_Kx_star, receptors, cell_types
 
 
 def run_KL_EMD_scan():
     """
     Process CITE-seq data and run KL and EMD scanning functions and saves results.
-    Called with "uv run KL_EMD_scan".
+
+    Takes input parameter "output-path" from command line.
+
+    Called with "uv run KL_EMD_scan --output-path <path>".
     """
 
-    # File names
-    results_dir = "/home/sama/receptor_sweep_data"
-    scan_name = "20260511_example_scan"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output-path", default="/home/sama/receptor_sweep_data/tmp_KL-EMD_scan.csv")
+    args = parser.parse_args()
+    output_path = args.output_path
     
     # General parameters (match selectivity scans)
     cell_categorization = "CellType2" # Cell types column to use
@@ -220,7 +231,9 @@ def run_KL_EMD_scan():
                 "EMD": EMD_val,
             })
     flattened_df = pd.DataFrame(flattened_data)
-    flattened_df.to_csv(f"{results_dir}/{scan_name}.csv", index=False)
+    flattened_df.to_csv(output_path, index=False)
+
+    return KL_results, EMD_results, receptors, cell_types
 
 
 def load_selec_scan_results(results_path):
