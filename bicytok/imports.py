@@ -29,6 +29,7 @@ def sample_receptor_abundances(
     offTargCellTypes: list[str] = None,
     rand_state: int = 42,
     balance: bool = False,
+    insert_mock_signal_rec: bool = False,
 ) -> pd.DataFrame:
     """
     Samples a subset of cells and converts unprocessed CITE-seq receptor values
@@ -46,6 +47,8 @@ def sample_receptor_abundances(
         rand_state: random seed for reproducibility
         balance: if True, forces sampling of an equal number of target and off-target
             cells
+        insert_mock_signal_rec: if True, inserts a prototypical signal receptor with
+            a normally distributed count distribution
     Return:
         sampleDF: dataframe containing single cell abundances of
             receptors (column) for each individual cell (row).
@@ -80,6 +83,12 @@ def sample_receptor_abundances(
     )
 
     sampleDF = pd.concat([sampled_target_cells, sampled_off_target_cells])
+
+    if insert_mock_signal_rec:
+        rng = np.random.default_rng(rand_state)
+        mock_signal_rec = rng.normal(loc=50, scale=5, size=(sampleDF.shape[0],))
+        mock_signal_rec = np.clip(mock_signal_rec, a_min=0, a_max=None)
+        sampleDF.insert(0, column="sim_signal", value=mock_signal_rec)
 
     return sampleDF
 
