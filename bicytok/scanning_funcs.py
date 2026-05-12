@@ -252,7 +252,7 @@ def scan_selectivity(
             for count, (rec1_ind, rec2_ind) in enumerate(zip(row, col, strict=False)):
                 rec_abun_pruned = sampled_rec_abundances[:, [rec1_ind, rec2_ind]]
 
-                # When target recptors are the same, they should be modeled as a single
+                # When target receptors are the same, they should be modeled as a single
                 #   entity with shared valency.
                 model_valencies = valencies.copy()
                 if rec1_ind == rec2_ind:
@@ -274,7 +274,7 @@ def scan_selectivity(
                         init_vals=init_method,
                     )
                     selec_vals_scan[rec1_ind, rec2_ind, i] = 1 / opt_selec
-                # Optimization occassionally fails for certain ill-conditioned
+                # Optimization occasionally fails for certain ill-conditioned
                 #   receptor combinations.
                 except Exception as e:
                     print(

@@ -20,7 +20,7 @@ def run_selectivity_scan():
     scan_name = "20260511_example_scan"
 
     # General parameters (match distribution metric scans)
-    cell_categorization = "CellType2" # Cell types column to user
+    cell_categorization = "CellType2" # Cell types column to use
     sample_size = 1000
     min_avg_count = 5 # Expression threshold
     receptors = None # Receptors to analyze; list or None for all
@@ -66,9 +66,10 @@ def run_selectivity_scan():
 
     # Define signal receptor for binding model selectivity ratio
     if signal == "prototype":
-        # Insert prototype signal receptor with normally distributedd expression values
+        # Insert prototype signal receptor with normally distributed expression values
         rng = np.random.default_rng()
         prototype_signal_receptor = rng.normal(loc=50, scale=5, size=(epitopes_df.shape[0],))
+        prototype_signal_receptor = np.clip(prototype_signal_receptor, a_min=0, a_max=None)
         epitopes_df.insert(0, "Prototype_Signal_Receptor", prototype_signal_receptor)
         receptors = ["Prototype_Signal_Receptor"] + receptors
         signal_ind = 0
@@ -137,7 +138,7 @@ def run_KL_EMD_scan():
     scan_name = "20260511_example_scan"
     
     # General parameters (match selectivity scans)
-    cell_categorization = "CellType2" # Cell types column to user
+    cell_categorization = "CellType2" # Cell types column to use
     sample_size = 1000
     min_avg_count = 5 # Expression threshold
     receptors = None # Receptors to analyze; list or None for all
@@ -250,11 +251,12 @@ def load_selec_scan_results(results_path):
     receptor_to_idx = {rec: idx for idx, rec in enumerate(all_receptors)}
     
     # Reconstruct opt_selec matrix
+    n_affinities = len([col for col in scan_data.columns if col.startswith("Affinity_Receptor_")])
     opt_selec = np.full(
         (len(all_receptors), len(all_receptors), len(cell_types_loaded)), np.nan
     )
     opt_affs = np.full(
-        (len(all_receptors), len(all_receptors), len(cell_types_loaded), 3), np.nan
+        (len(all_receptors), len(all_receptors), len(cell_types_loaded), n_affinities), np.nan
     )
     opt_Kx_star = np.full(
         (len(all_receptors), len(all_receptors), len(cell_types_loaded)), np.nan

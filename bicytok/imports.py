@@ -87,6 +87,7 @@ def sample_receptor_abundances(
     if insert_mock_signal_rec:
         rng = np.random.default_rng(rand_state)
         mock_signal_rec = rng.normal(loc=50, scale=5, size=(sampleDF.shape[0],))
+        mock_signal_rec = np.clip(mock_signal_rec, a_min=0, a_max=None)
         sampleDF.insert(0, column="sim_signal", value=mock_signal_rec)
 
     return sampleDF

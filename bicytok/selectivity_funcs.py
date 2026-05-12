@@ -103,11 +103,13 @@ def min_off_targ_selec(
         targ_bound = jnp.sum(targRbound[:, 0]) / n_targets
         off_targ_bound = jnp.sum(offTargRbound[:, 0]) / n_off_targets
     elif selec_def == "geometric_mean":
-        targ_bound = jnp.exp(jnp.sum(jnp.log(targRbound[:, 0]) / n_targets))
-        off_targ_bound = jnp.exp(jnp.sum(jnp.log(offTargRbound[:, 0]) / n_off_targets))
+        targ_bound = jnp.exp(jnp.sum(jnp.log(targRbound[:, 0] + 1e-6) / n_targets))
+        off_targ_bound = jnp.exp(jnp.sum(jnp.log(offTargRbound[:, 0] + 1e-6) / n_off_targets))
     elif selec_def == "median":
         targ_bound = jnp.median(targRbound[:, 0])
         off_targ_bound = jnp.median(offTargRbound[:, 0])
+    else:
+        raise ValueError(f"Invalid selec_def: {selec_def}")
 
     # Return selectivity ratio
     return (targ_bound + off_targ_bound) / targ_bound
