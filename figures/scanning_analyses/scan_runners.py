@@ -110,9 +110,8 @@ def run_selectivity_scan():
 
     # Save flattened results
     flattened_data = []
-    row_indices, col_indices = np.tril_indices(len(receptors), k=0)
     for i, cell_type in enumerate(cell_types):
-        for rec1_idx, rec2_idx in zip(row_indices, col_indices, strict=False):
+        for rec1_idx, rec2_idx in np.ndindex(len(receptors), len(receptors)):
             rec1_name = receptors[rec1_idx]
             rec2_name = receptors[rec2_idx]
             selectivity_val = opt_selec[rec1_idx, rec2_idx, i]
@@ -216,9 +215,8 @@ def run_KL_EMD_scan():
 
     # Save flattened results
     flattened_data = []
-    row_indices, col_indices = np.tril_indices(len(receptors), k=0)
     for i, cell_type in enumerate(cell_types):
-        for rec1_idx, rec2_idx in zip(row_indices, col_indices, strict=False):
+        for rec1_idx, rec2_idx in np.ndindex(len(receptors), len(receptors)):
             rec1_name = receptors[rec1_idx]
             rec2_name = receptors[rec2_idx]
             KL_val = KL_results[rec1_idx, rec2_idx, i]
