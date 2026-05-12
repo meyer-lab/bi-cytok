@@ -61,10 +61,10 @@ for target_prop in TARGET_PROPORTIONS:
     num_off_target_cells = TOTAL_SAMPLE_SIZE - num_target_cells
     for i in range(RANDOMIZATIONS):
         sampled_target_cells = all_target_cells.sample(
-            min(num_target_cells, all_target_cells.shape[0]), replace=False
+            min(num_target_cells, all_target_cells.shape[0]), replace=True
         )
         sampled_off_target_cells = all_off_target_cells.sample(
-            min(num_off_target_cells, all_off_target_cells.shape[0]), replace=False
+            min(num_off_target_cells, all_off_target_cells.shape[0]), replace=True
         )
         rand_samples = pd.concat([sampled_target_cells, sampled_off_target_cells])
         target_mask = (rand_samples["Cell Type"] == TARG_CELL).to_numpy()

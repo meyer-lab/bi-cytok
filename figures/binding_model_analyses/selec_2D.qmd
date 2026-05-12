@@ -83,7 +83,7 @@ sample_df = sample_receptor_abundances(
 
 print(f"Cell types in off-target sample: {sample_df['Cell Type'].unique()}")
 print(
-    f"Number of diffrerent cell types in sample: {len(sample_df['Cell Type'].unique())}"
+    f"Number of different cell types in sample: {len(sample_df['Cell Type'].unique())}"
 )
 print(f"Composition of off-target sample:\n{sample_df['Cell Type'].value_counts()}")
 

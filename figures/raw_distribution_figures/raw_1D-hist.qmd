@@ -38,6 +38,7 @@ from bicytok.imports import importCITE, sample_receptor_abundances
 plt.rcParams["svg.fonttype"] = "none"
 
 receptor = "CD27"
+sample_size = 5000
 targ_cell = "Treg"
 off_targ_cell_types = None
 cell_categorization = "CellType2"
@@ -109,7 +110,7 @@ for cell_type in plot_cell_types:
 ```
 
 ```{python}
-#| fig-cap: "1D distribution of receptor with histogram and KDE overlay"
+s#| fig-cap: "1D distribution of receptor with histogram and KDE overlay"
 import seaborn as sns
 
 fig_size = (5, 3)
@@ -134,7 +135,7 @@ plt.title(f"{receptor} Distribution\nKL: {kl_val:.2f}, EMD: {emd_val:.2f}", font
 if normalize:
     plt.xlabel("Normalized receptor count", fontsize=18)
 else:
-    plt.xlabel(f"Number of {receptor} Receptor", fontsize=18)
+    plt.xlabel(f"Number of {receptor} Antibodies", fontsize=18)
 
 if stat == "density":
     plt.ylabel("Density", fontsize=18)
