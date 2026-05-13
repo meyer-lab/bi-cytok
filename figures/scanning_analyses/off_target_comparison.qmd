@@ -1,0 +1,259 @@
+---
+title: "Off-Target Population Selectivity Comparison"
+---
+
+# Summary
+Compares selectivity scan results computed against two distinct off-target cell populations.
+For a chosen target cell type, each receptor pair is plotted as a point with x = selectivity
+against population 1 and y = selectivity against population 2. Points are categorized and
+labeled to reveal: pairs uniquely effective against one population, and pairs that simultaneously
+discriminate from both off-target populations.
+
+# Inputs
+- Two CSV files produced by `run_selectivity_scan`, one per off-target population definition
+- `SCAN_PATH_1`, `SCAN_PATH_2`: paths to those CSVs
+- `TARG_CELL_TYPE`: target cell type to extract from both scans
+- `POP_1_LABEL`, `POP_2_LABEL`: human-readable names for each off-target population
+
+# Outputs
+- Scatter plot: x = selectivity vs. pop 1, y = selectivity vs. pop 2
+  - Gray: neither population is well-discriminated
+  - Blue: specific to population 1 (high x, low y)
+  - Orange: specific to population 2 (high y, low x)
+  - Red: effective against both populations simultaneously; point size scales with
+    Euclidean distance from the origin (computed on z-score-normalized axes), and
+    a reference arc marks the labeling cutoff
+  - Gold stars (★): global top-N pairs by individual-axis selectivity
+  - Purple diamonds (◆): user-specified pairs of interest, always labeled
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import matplotlib.pyplot as plt
+import matplotlib.patheffects as pe
+import numpy as np
+import pandas as pd
+
+from figures.scanning_analyses.scan_runners import load_selec_scan_results
+
+# ── Parameters ────────────────────────────────────────────────────────────────
+SCAN_PATH_1 = "/home/sama/receptor_sweep_data/20260212_full_geom_sweep.csv"
+SCAN_PATH_2 = "/home/sama/receptor_sweep_data/20260319_CD4-geom-sweep+Treg__flattened.csv"
+# SCAN_PATH_2 = "/home/sama/receptor_sweep_data/20260212_CD4TEM-against-all-CD4_geom.csv"
+
+POP_1_LABEL = "All immune cells"
+POP_2_LABEL = "CD4+ immune cells"
+
+TARG_CELL_TYPE = "CD4 TEM"
+
+# Percentile threshold (0–100) above which a receptor pair is considered "high"
+# on a given axis. E.g. 95 means the top 5 % of non-NaN pairs.
+HIGH_PERCENTILE = 80
+
+# Number of auto-labeled points per category (pop1_specific, pop2_specific, both)
+N_LABEL = 5
+
+# Number of globally top-ranked pairs to highlight with a star per axis
+N_TOP_OVERALL = 1
+
+# User-specified receptor pairs to always label (names must match scan data exactly).
+# Each entry is a (rec1, rec2) tuple; order does not matter.
+HIGHLIGHT_PAIRS: list[tuple[str, str]] = [
+    ("CD26-2", "CD26-2"),
+    ("Integrin-7", "CD4-1"),
+    ("CD4-1", "CD45RO"),
+]
+
+# ── Load scans ────────────────────────────────────────────────────────────────
+opt_selec_1, _, _, receptors_1, cell_types_1 = load_selec_scan_results(SCAN_PATH_1)
+opt_selec_2, _, _, receptors_2, cell_types_2 = load_selec_scan_results(SCAN_PATH_2)
+
+assert TARG_CELL_TYPE in cell_types_1, f"{TARG_CELL_TYPE} not in scan 1 cell types"
+assert TARG_CELL_TYPE in cell_types_2, f"{TARG_CELL_TYPE} not in scan 2 cell types"
+
+# ── Align receptor sets ───────────────────────────────────────────────────────
+# Use the intersection of receptors present in both scans.
+common_receptors = sorted(set(receptors_1) & set(receptors_2))
+assert len(common_receptors) > 0, "No common receptors between the two scans"
+
+idx1 = {r: i for i, r in enumerate(receptors_1)}
+idx2 = {r: i for i, r in enumerate(receptors_2)}
+ct_idx1 = cell_types_1.index(TARG_CELL_TYPE)
+ct_idx2 = cell_types_2.index(TARG_CELL_TYPE)
+
+# ── Extract aligned selectivity vectors ───────────────────────────────────────
+# Only lower-triangle pairs (including diagonal) are populated by scan_selectivity.
+records = []
+for ri, rec1 in enumerate(common_receptors):
+    for rj, rec2 in enumerate(common_receptors):
+        if ri < rj:          # upper triangle — not computed
+            continue
+        s1 = opt_selec_1[idx1[rec1], idx1[rec2], ct_idx1]
+        s2 = opt_selec_2[idx2[rec1], idx2[rec2], ct_idx2]
+        if np.isnan(s1) or np.isnan(s2):
+            continue
+        records.append({"rec1": rec1, "rec2": rec2, "s1": s1, "s2": s2})
+
+df = pd.DataFrame(records)
+assert len(df) > 0, "No valid (non-NaN) receptor pairs found in both scans"
+
+# ── Categorise points ─────────────────────────────────────────────────────────
+thresh1 = np.nanpercentile(df["s1"], HIGH_PERCENTILE)
+thresh2 = np.nanpercentile(df["s2"], HIGH_PERCENTILE)
+
+high1 = df["s1"] >= thresh1
+high2 = df["s2"] >= thresh2
+
+df["category"] = "neither"
+df.loc[high1 & ~high2, "category"] = "pop1_specific"
+df.loc[~high1 & high2, "category"] = "pop2_specific"
+df.loc[high1 & high2,  "category"] = "both"
+
+# Euclidean distance on z-score-normalized axes so both scans contribute equally
+# regardless of their absolute selectivity ranges.
+s1_z = (df["s1"] - df["s1"].mean()) / (df["s1"].std() + 1e-9)
+s2_z = (df["s2"] - df["s2"].mean()) / (df["s2"].std() + 1e-9)
+df["r"] = np.sqrt(s1_z**2 + s2_z**2)
+
+# ── Select auto-labeled points ────────────────────────────────────────────────
+def top_n_by(sub_df, sort_col, n):
+    return sub_df.nlargest(n, sort_col)
+
+auto_label_rows = pd.concat([
+    top_n_by(df[df["category"] == "pop1_specific"], "s1", N_LABEL),
+    top_n_by(df[df["category"] == "pop2_specific"], "s2", N_LABEL),
+    top_n_by(df[df["category"] == "both"], "r", N_LABEL),  # rank by Euclidean distance
+]).drop_duplicates(subset=["rec1", "rec2"])
+
+# ── Global top-N pairs per axis (starred) ─────────────────────────────────────
+top_s1_rows = df.nlargest(N_TOP_OVERALL, "s1")
+top_s2_rows = df.nlargest(N_TOP_OVERALL, "s2")
+top_overall_rows = pd.concat([top_s1_rows, top_s2_rows]).drop_duplicates(
+    subset=["rec1", "rec2"]
+)
+
+# ── User-specified pairs ──────────────────────────────────────────────────────
+# Look up each requested pair in df, checking both (A, B) and (B, A) orderings.
+user_rows_list = []
+for req_rec1, req_rec2 in HIGHLIGHT_PAIRS:
+    match = df[
+        ((df["rec1"] == req_rec1) & (df["rec2"] == req_rec2))
+        | ((df["rec1"] == req_rec2) & (df["rec2"] == req_rec1))
+    ]
+    if match.empty:
+        print(f"Warning: requested pair ({req_rec1}, {req_rec2}) not found in data.")
+    else:
+        user_rows_list.append(match.iloc[[0]])
+user_rows = (
+    pd.concat(user_rows_list).drop_duplicates(subset=["rec1", "rec2"])
+    if user_rows_list
+    else pd.DataFrame(columns=df.columns)
+)
+
+# ── Plot ──────────────────────────────────────────────────────────────────────
+fig, ax = plt.subplots(figsize=(7, 7))
+
+# Base scatter for "neither", pop1, pop2
+for cat, style in {
+    "neither":       dict(color="lightgray", zorder=1, alpha=0.6, s=18, label="Neither"),
+    "pop1_specific": dict(color="#3A86FF",   zorder=3, alpha=0.85, s=40,
+                          label=f"Selective for {POP_1_LABEL}"),
+    "pop2_specific": dict(color="#FF9F1C",   zorder=3, alpha=0.85, s=40,
+                          label=f"Selective for {POP_2_LABEL}"),
+}.items():
+    sub = df[df["category"] == cat]
+    ax.scatter(sub["s1"], sub["s2"], **style)
+
+# "both" category: size proportional to Euclidean distance
+both_sub = df[df["category"] == "both"].copy()
+if not both_sub.empty:
+    r_min, r_max = both_sub["r"].min(), both_sub["r"].max()
+    if r_max > r_min:
+        sizes_both = 40 + 200 * (both_sub["r"] - r_min) / (r_max - r_min)
+    else:
+        sizes_both = np.full(len(both_sub), 80)
+    ax.scatter(
+        both_sub["s1"], both_sub["s2"],
+        s=sizes_both, color="#E63946", zorder=4, alpha=0.95,
+        label="Effective against both (size ∝ Euclidean dist.)",
+    )
+    # Reference arc at the Euclidean distance of the N_LABEL-th labeled "both" point
+    labeled_both = both_sub.nlargest(N_LABEL, "r")
+    if len(labeled_both) == N_LABEL:
+        r_ref_z = labeled_both["r"].min()  # distance cutoff (z-score space)
+        # Convert back: arc in data space using the normalized axis scales
+        s1_std = df["s1"].std() + 1e-9
+        s2_std = df["s2"].std() + 1e-9
+        s1_mean = df["s1"].mean()
+        s2_mean = df["s2"].mean()
+        theta_arc = np.linspace(0, np.pi / 2, 200)
+        arc_x = s1_mean + r_ref_z * s1_std * np.cos(theta_arc)
+        arc_y = s2_mean + r_ref_z * s2_std * np.sin(theta_arc)
+        # Clip arc to data bounds
+        x_mask = (arc_x >= ax.get_xlim()[0]) & (arc_y >= ax.get_ylim()[0])
+        ax.plot(
+            arc_x[x_mask], arc_y[x_mask],
+            color="#E63946", linewidth=1.2, linestyle=":", alpha=0.55,
+            zorder=3, label=f"Both: top-{N_LABEL} Euclidean cutoff",
+        )
+
+# User-specified pairs (purple diamonds)
+if not user_rows.empty:
+    ax.scatter(
+        user_rows["s1"], user_rows["s2"],
+        marker="D", s=80, color="#9B5DE5", zorder=6, alpha=1.0,
+        label="User-specified pairs",
+    )
+
+# Global top-N stars (gold)
+ax.scatter(
+    top_overall_rows["s1"], top_overall_rows["s2"],
+    marker="*", s=220, color="#FFD700", edgecolors="#888", linewidths=0.5,
+    zorder=7, alpha=1.0, label=f"Top-{N_TOP_OVERALL} per axis",
+)
+
+# Threshold lines
+ax.axvline(thresh1, color="steelblue", linewidth=1.0, linestyle="--", alpha=0.5)
+ax.axhline(thresh2, color="darkorange", linewidth=1.0, linestyle="--", alpha=0.5)
+
+# ── Annotations ───────────────────────────────────────────────────────────────
+all_label_rows = pd.concat([
+    auto_label_rows,
+    top_overall_rows,
+    user_rows,
+]).drop_duplicates(subset=["rec1", "rec2"])
+
+for _, row in all_label_rows.iterrows():
+    label = f"({row['rec1']}, {row['rec2']})"
+    txt = ax.text(
+        row["s1"], row["s2"], label,
+        fontsize=7, ha="left", va="bottom",
+    )
+    txt.set_path_effects([pe.withStroke(linewidth=2, foreground="white")])
+
+ax.set_xlabel(f"Selectivity vs. {POP_1_LABEL}", fontsize=13)
+ax.set_ylabel(f"Selectivity vs. {POP_2_LABEL}", fontsize=13)
+ax.set_title(
+    f"Off-target Population Selectivity Comparison\nTarget: {TARG_CELL_TYPE}  "
+    f"(threshold = {HIGH_PERCENTILE}th percentile)",
+    fontsize=12, pad=12,
+)
+ax.tick_params(labelsize=11)
+# ax.legend(fontsize=10, framealpha=0.9)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+# Tabular summary of all annotated receptor pairs
+display_cols = ["rec1", "rec2", "s1", "s2", "r", "category"]
+summary = all_label_rows[display_cols].copy()
+summary.columns = [
+    "Receptor 1", "Receptor 2", POP_1_LABEL, POP_2_LABEL,
+    "Euclidean dist. (norm.)", "Category",
+]
+summary = summary.sort_values("Category").reset_index(drop=True)
+summary[[POP_1_LABEL, POP_2_LABEL, "Euclidean dist. (norm.)"]] = summary[
+    [POP_1_LABEL, POP_2_LABEL, "Euclidean dist. (norm.)"]
+].round(4)
+print(summary.to_string(index=False))
+```
