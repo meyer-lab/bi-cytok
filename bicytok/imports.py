@@ -30,6 +30,8 @@ def sample_receptor_abundances(
     rand_state: int = 42,
     balance: bool = False,
     insert_mock_signal_rec: bool = False,
+    silent: bool = True,
+    off_targ_proportions: list[float] = None,
 ) -> pd.DataFrame:
     """
     Samples a subset of cells and converts unprocessed CITE-seq receptor values
@@ -57,6 +59,9 @@ def sample_receptor_abundances(
 
     assert numCells <= CITE_DF.shape[0]
     assert "Cell Type" in CITE_DF.columns
+    if off_targ_proportions is not None:
+        assert offTargCellTypes is not None
+        assert len(offTargCellTypes) == len(off_targ_proportions)
 
     # Sample an equal number of target and off-target cells
     target_cells = CITE_DF[CITE_DF["Cell Type"] == targCellType]
@@ -78,9 +83,34 @@ def sample_receptor_abundances(
     sampled_target_cells = target_cells.sample(
         num_target_cells, random_state=rand_state
     )
-    sampled_off_target_cells = off_target_cells.sample(
-        num_off_target_cells, random_state=rand_state
-    )
+    if off_targ_proportions is None:
+        sampled_off_target_cells = off_target_cells.sample(
+            num_off_target_cells, random_state=rand_state
+        )
+    else:
+        for otct in off_target_cells["Cell Type"].unique():
+            otct_cells = off_target_cells[off_target_cells["Cell Type"] == otct]
+            sampled_otcs = otct_cells.sample(
+                min(otct_cells.shape[0], int(num_off_target_cells * off_targ_proportions[offTargCellTypes.index(otct)])),
+                random_state=rand_state,
+            )
+            sampled_off_target_cells = (
+                pd.concat([sampled_off_target_cells, sampled_otcs])
+                if "sampled_off_target_cells" in locals()
+                else sampled_otcs
+            )
+
+    if not silent:
+        print(
+            f"Sampled {num_target_cells} target cells and {num_off_target_cells} off-target cells "
+            f"(balance={balance})"
+        )
+        print(
+            f"Target cell types: {sampled_target_cells['Cell Type'].value_counts().to_dict()}"
+        )
+        print(
+            f"Off-target cell types: {sampled_off_target_cells['Cell Type'].value_counts().to_dict()}"
+        )
 
     sampleDF = pd.concat([sampled_target_cells, sampled_off_target_cells])
 
