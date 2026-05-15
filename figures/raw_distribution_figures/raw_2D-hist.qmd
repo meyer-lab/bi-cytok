@@ -280,29 +280,20 @@ ax_main.legend(fontsize=12)
 # Top marginal plot (x-axis projection)
 ax_top = fig.add_subplot(gs[0, 1], sharex=ax_main)
 
-# Plot all points projected onto x-axis (receptor1)
-all_x_data = plot_df[f"{receptor1}_norm"].values
 for i, cell_type in enumerate(
     [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
 ):
     cell_df = plot_df[plot_df["Cell Type"] == cell_type]
-    x_data = cell_df[f"{receptor1}_norm"].values
-
-    ax_top.hist(
-        x_data, bins=30, alpha=0.6, color=colors[i], label=f"{cell_type_labels[i]} only"
+    sns.histplot(
+        cell_df[f"{receptor1}_norm"].values,
+        color=colors[i],
+        alpha=0.5,
+        kde=True,
+        kde_kws={"bw_method": "scott"},
+        edgecolor="black",
+        ax=ax_top,
+        label=cell_type_labels[i],
     )
-
-# Also show the overall projection (all points combined)
-ax_top.hist(
-    all_x_data,
-    bins=30,
-    alpha=0.3,
-    color="gray",
-    linestyle="--",
-    histtype="step",
-    linewidth=2,
-    label="All points projection",
-)
 
 ax_top.set_xlim(x_min, x_max)
 ax_top.set_ylabel("Number of Cells", fontsize=14)
@@ -322,27 +313,19 @@ plt.setp(ax_top.get_xticklabels(), visible=False)
 # Right marginal plot (y-axis projection)
 ax_right = fig.add_subplot(gs[1, 2], sharey=ax_main)
 
-# Plot all points projected onto y-axis (receptor2)
-all_y_data = plot_df[f"{receptor2}_norm"].values
 for i, cell_type in enumerate(
     [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
 ):
     cell_df = plot_df[plot_df["Cell Type"] == cell_type]
-    y_data = cell_df[f"{receptor2}_norm"].values
-
-    ax_right.hist(y_data, bins=30, alpha=0.6, color=colors[i], orientation="horizontal")
-
-# Also show the overall projection (all points combined)
-ax_right.hist(
-    all_y_data,
-    bins=30,
-    alpha=0.3,
-    color="gray",
-    orientation="horizontal",
-    linestyle="--",
-    histtype="step",
-    linewidth=2,
-)
+    sns.histplot(
+        y=cell_df[f"{receptor2}_norm"].values,
+        color=colors[i],
+        alpha=0.5,
+        kde=True,
+        kde_kws={"bw_method": "scott"},
+        edgecolor="black",
+        ax=ax_right,
+    )
 
 ax_right.set_ylim(y_min, y_max)
 ax_right.set_xlabel("Number of Cells", fontsize=14)
