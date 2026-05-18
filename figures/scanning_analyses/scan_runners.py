@@ -4,6 +4,8 @@ results.
 """
 
 import argparse
+import os
+import yaml
 import numpy as np
 import pandas as pd
 
@@ -45,12 +47,14 @@ def run_selectivity_scan():
         "ILC",
         "CD4 TEM",
         "B naive",
+        "NK",
     ]
+    targ_cell_types = ["Treg"] # Target cell types for selectivity calculation; list or None for all
     exclude_cell_types = True # Boolean to exclude cell types not in cell_types list
 
     # Binding model parameters
     dose = 1e-10
-    valency = np.array([[2, 1, 1]])
+    valency = np.array([[1, 2, 2]])
     init = [6.0, 7.0, 7.0, -9.0] # Initial optimization values
     signal = "prototype" # Define signal receptor; "prototype" or receptor name
     asym_targs = False # Calculates both symmetric cases (rec1, rec2) and (rec2, rec1)
@@ -90,15 +94,19 @@ def run_selectivity_scan():
     cell_type_labels = epitopes_df["Cell Type"].tolist()
     if cell_types is None:
         cell_types = list(set(cell_type_labels))
+
+    if targ_cell_types is None:
+        targ_cell_types = cell_types
     
     print(f"Using receptors: {receptors}, total {len(receptors)} receptors.")
     print(f"Total possible receptor pairs: {len(receptors) * (len(receptors) + 1) // 2}.")
-    print(f"Cell types considered: {cell_types}, total {len(cell_types)} cell types.")
+    print(f"Off-target cell types considered: {cell_types}, total {len(cell_types)} cell types.")
+    print(f"Target cell types for selectivity: {targ_cell_types}, total {len(targ_cell_types)} cell types.")
     
     opt_selec, opt_affs, opt_Kx_star = scan_selectivity(
         rec_abundances,
         cell_type_labels,
-        cell_types,
+        targ_cell_types,
         dim=2,
         dose=dose,
         valencies=valency,
@@ -110,7 +118,7 @@ def run_selectivity_scan():
 
     # Save flattened results
     flattened_data = []
-    for i, cell_type in enumerate(cell_types):
+    for i, cell_type in enumerate(targ_cell_types):
         for rec1_idx, rec2_idx in np.ndindex(len(receptors), len(receptors)):
             rec1_name = receptors[rec1_idx]
             rec2_name = receptors[rec2_idx]
@@ -131,6 +139,33 @@ def run_selectivity_scan():
             flattened_data.append(row_data)
     flattened_df = pd.DataFrame(flattened_data)
     flattened_df.to_csv(output_path, index=False)
+
+    yaml_path = os.path.splitext(output_path)[0] + ".yaml"
+    scan_params = {
+        "scan_type": "selectivity",
+        "output_csv": output_path,
+        "general": {
+            "cell_categorization": cell_categorization,
+            "sample_size": sample_size,
+            "min_expression_threshold": min_avg_count,
+            "exclude_unused_cell_types": exclude_cell_types,
+            "dim": 2,
+        },
+        "binding_model": {
+            "dose": float(dose),
+            "complex_valency_signal-target1-target2": valency.tolist(),
+            "initial_affinities": init,
+            "signal_receptor": signal,
+            "asym_targs": asym_targs,
+        },
+        "receptors_used_before_filtering": receptors,
+        "n_receptors": len(receptors),
+        "n_receptor_pairs": len(receptors) * (len(receptors) + 1) // 2,
+        "off_target_cell_types": cell_types,
+        "target_cell_types": targ_cell_types,
+    }
+    with open(yaml_path, "w") as f:
+        yaml.dump(scan_params, f, default_flow_style=False, sort_keys=False)
 
     return opt_selec, opt_affs, opt_Kx_star, receptors, cell_types
 
@@ -170,7 +205,9 @@ def run_KL_EMD_scan():
         "ILC",
         "CD4 TEM",
         "B naive",
+        "NK",
     ]
+    targ_cell_types = ["Treg"] # Target cell types for selectivity calculation; list or None for all
     exclude_cell_types = True # Boolean to exclude cell types not in cell_types list
 
     # Distance metric scan parameters
@@ -199,15 +236,19 @@ def run_KL_EMD_scan():
     cell_type_labels = epitopes_df["Cell Type"].tolist()
     if cell_types is None:
         cell_types = list(set(cell_type_labels))
+
+    if targ_cell_types is None:
+        targ_cell_types = cell_types
     
     print(f"Using receptors: {receptors}, total {len(receptors)} receptors.")
     print(f"Total possible receptor pairs: {len(receptors) * (len(receptors) + 1) // 2}.")
-    print(f"Cell types considered: {cell_types}, total {len(cell_types)} cell types.")
+    print(f"Off-target cell types considered: {cell_types}, total {len(cell_types)} cell types.")
+    print(f"Target cell types for selectivity: {targ_cell_types}, total {len(targ_cell_types)} cell types.")
 
     KL_results, EMD_results = scan_KL_EMD(
         rec_abundances,
         cell_type_labels,
-        cell_types,
+        targ_cell_types,
         dim=2,
         sample_size=sample_size,
         filter_by_target_expr=filter_by_target_expr,
@@ -215,7 +256,7 @@ def run_KL_EMD_scan():
 
     # Save flattened results
     flattened_data = []
-    for i, cell_type in enumerate(cell_types):
+    for i, cell_type in enumerate(targ_cell_types):
         for rec1_idx, rec2_idx in np.ndindex(len(receptors), len(receptors)):
             rec1_name = receptors[rec1_idx]
             rec2_name = receptors[rec2_idx]
@@ -230,6 +271,29 @@ def run_KL_EMD_scan():
             })
     flattened_df = pd.DataFrame(flattened_data)
     flattened_df.to_csv(output_path, index=False)
+
+    yaml_path = os.path.splitext(output_path)[0] + ".yaml"
+    scan_params = {
+        "scan_type": "KL_EMD",
+        "output_csv": output_path,
+        "general": {
+            "cell_categorization": cell_categorization,
+            "sample_size": sample_size,
+            "min_expression_threshold": min_avg_count,
+            "exclude_unused_cell_types": exclude_cell_types,
+            "dim": 2,
+        },
+        "distance_metric": {
+            "filter_by_target_expr": filter_by_target_expr,
+        },
+        "receptors_used_before_filtering": receptors,
+        "n_receptors": len(receptors),
+        "n_receptor_pairs": len(receptors) * (len(receptors) + 1) // 2,
+        "off_target_cell_types": cell_types,
+        "target_cell_types": targ_cell_types,
+    }
+    with open(yaml_path, "w") as f:
+        yaml.dump(scan_params, f, default_flow_style=False, sort_keys=False)
 
     return KL_results, EMD_results, receptors, cell_types
 
