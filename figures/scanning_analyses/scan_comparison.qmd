@@ -21,9 +21,9 @@ two binding model scans with different valencies, or any other pair of scan outp
 # Outputs
 - Scatter plot: x = metric 1, y = metric 2
   - Gray: neither metric is high
-  - Blue: high on metric 1 only
-  - Orange: high on metric 2 only
-  - Red: high on both; point size scales with Euclidean distance from the origin
+  - Blue: residual below lower threshold (metric 1 higher than expected given metric 2)
+  - Orange: residual above upper threshold (metric 2 higher than expected given metric 1)
+  - Red: high on both axes independently; point size scales with Euclidean distance from the origin
     (computed on z-score-normalized axes), and a reference arc marks the labeling cutoff
   - Gold stars (★): global top-N pairs by individual-axis metric
   - Purple diamonds (◆): user-specified pairs of interest, always labeled
@@ -48,10 +48,15 @@ METRIC_2 = "KL_Divergence"
 AXIS_1_LABEL = "Binding model selectivity (valency [2, 1, 1])"
 AXIS_2_LABEL = "KL Divergence"
 
-TARG_CELL_TYPE = "Treg"
+TARG_CELL_TYPE = "B naive"
 
-# Percentile threshold (0–100) above which a metric value is considered "high"
+# Percentile threshold (0–100) used for the "both" category (both axes independently high)
 HIGH_PERCENTILE = 90
+
+# Percentile threshold (0–100) for the residual-based high_1 / high_2 categories.
+# Points with residual >= RESID_PERCENTILE → high_2 (metric 2 above trend).
+# Points with residual <= (100 - RESID_PERCENTILE) → high_1 (metric 1 above trend).
+RESID_PERCENTILE = 90
 
 # Number of auto-labeled points per category (high_1, high_2, both)
 N_LABEL = 5
@@ -88,6 +93,13 @@ df = (
 )
 assert len(df) > 0, "No valid (non-NaN) receptor pairs found in both scans"
 
+# ── Fit regression line & compute residuals ───────────────────────────────────
+_slope, _intercept = np.polyfit(df["s1"], df["s2"], 1)
+df["resid"] = df["s2"] - (_slope * df["s1"] + _intercept)
+
+resid_hi = np.nanpercentile(df["resid"],       RESID_PERCENTILE)
+resid_lo = np.nanpercentile(df["resid"], 100 - RESID_PERCENTILE)
+
 # ── Categorise points ─────────────────────────────────────────────────────────
 thresh1 = np.nanpercentile(df["s1"], HIGH_PERCENTILE)
 thresh2 = np.nanpercentile(df["s2"], HIGH_PERCENTILE)
@@ -96,9 +108,9 @@ high1 = df["s1"] >= thresh1
 high2 = df["s2"] >= thresh2
 
 df["category"] = "neither"
-df.loc[high1 & ~high2, "category"] = "high_1"
-df.loc[~high1 & high2, "category"] = "high_2"
-df.loc[high1 & high2,  "category"] = "both"
+df.loc[df["resid"] <= resid_lo, "category"] = "high_1"   # metric 1 above trend
+df.loc[df["resid"] >= resid_hi, "category"] = "high_2"   # metric 2 above trend
+df.loc[high1 & high2,           "category"] = "both"     # independently high on both
 
 # Euclidean distance on z-score-normalized axes so both metrics contribute equally
 s1_z = (df["s1"] - df["s1"].mean()) / (df["s1"].std() + 1e-9)
@@ -110,9 +122,9 @@ def top_n_by(sub_df, sort_col, n):
     return sub_df.nlargest(n, sort_col)
 
 auto_label_rows = pd.concat([
-    top_n_by(df[df["category"] == "high_1"], "s1", N_LABEL),
-    top_n_by(df[df["category"] == "high_2"], "s2", N_LABEL),
-    top_n_by(df[df["category"] == "both"],   "r",  N_LABEL),
+    df[df["category"] == "high_1"].nsmallest(N_LABEL, "resid"),
+    df[df["category"] == "high_2"].nlargest(N_LABEL, "resid"),
+    top_n_by(df[df["category"] == "both"], "r", N_LABEL),
 ]).drop_duplicates(subset=["rec1", "rec2"])
 
 # ── Global top-N pairs per axis (starred) ─────────────────────────────────────
@@ -191,8 +203,13 @@ ax.scatter(
     zorder=7, alpha=1.0, label=f"Top-{N_TOP_OVERALL} per axis",
 )
 
-ax.axvline(thresh1, color="steelblue", linewidth=1.0, linestyle="--", alpha=0.5)
-ax.axhline(thresh2, color="darkorange", linewidth=1.0, linestyle="--", alpha=0.5)
+_x_line = np.array([df["s1"].min(), df["s1"].max()])
+ax.plot(_x_line, _slope * _x_line + _intercept,
+        color="dimgray", linewidth=1.0, linestyle="-", alpha=0.45, zorder=2, label="OLS fit")
+ax.plot(_x_line, _slope * _x_line + _intercept + resid_hi,
+        color="darkorange", linewidth=1.0, linestyle="--", alpha=0.5)
+ax.plot(_x_line, _slope * _x_line + _intercept + resid_lo,
+        color="steelblue",  linewidth=1.0, linestyle="--", alpha=0.5)
 
 all_label_rows = pd.concat([auto_label_rows, top_overall_rows, user_rows]).drop_duplicates(subset=["rec1", "rec2"])
 for _, row in all_label_rows.iterrows():
