@@ -1,0 +1,346 @@
+---
+title: "Receptor Synergy Analysis"
+---
+
+# Summary
+Identifies receptors involved in synergistic bispecific targeting from a 2D selectivity
+scan. A receptor pair (A, B) is synergistic when the bispecific selectivity exceeds the
+monospecific (bivalent, single-target) selectivity of either constituent receptor alone:
+
+> selec(A, B) > max(selec(A, A), selec(B, B))
+
+Every target receptor is classified as **synergistic** (involved in ≥ 1 synergistic pair)
+or **non-synergistic** for each target cell type. Distribution plots compare the two groups
+per cell type, and the globally highest-gain synergistic pairs are shown as 2D joint
+distributions.
+
+# Inputs
+- `SCAN_PATH`: path to a selectivity scan CSV produced by `run_selectivity_scan`
+- `TARG_CELL_TYPES`: list of target cell types to analyze, or `None` for all in the scan
+- `N_TOP_HIST`: receptors per category per cell type shown in 1D histogram plots
+- `N_TOP_JOINT`: top synergistic pairs by gain shown in 2D joint distribution plots
+- `EXCLUDE_SIGNAL_REC`: whether to exclude the synthetic `Prototype_Signal_Receptor`
+
+# Outputs
+- Per-cell-type summary of synergistic / non-synergistic receptor counts and pair tables
+- 1D abundance histograms (one figure per cell type, top receptors in each category)
+- 2D joint distributions for globally top-gain synergistic pairs across all cell types
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import sys
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import seaborn as sns
+
+sys.path.insert(0, ".")
+from scan_runners import load_selec_scan_results, load_KL_EMD_scan_results
+from bicytok.imports import importCITE, sample_receptor_abundances
+
+# ── Parameters ────────────────────────────────────────────────────────────────
+SCAN_PATH = "/home/sama/receptor_sweep_data/20260212_full_geom_sweep.csv"
+# SCAN_PATH = "/home/sama/receptor_sweep_data/20260514_selec_scan_high-val-Treg.csv"
+# SCAN_PATH = "/home/sama/receptor_sweep_data/20260319_dist_scan.csv"
+TARG_CELL_TYPES = None    # list of cell types, or None for all in the scan
+EXCLUDE_CELL_TYPES = ["CD4 Proliferating", "CD8 Proliferating"]  # cell types to exclude from analysis (if present in scan)
+N_TOP_HIST  = 3           # top receptors per category per cell type (histograms)
+N_TOP_JOINT = 10          # top pairs by gain across all cell types (2D joints)
+SAMPLE_SIZE = 1000
+CELL_CATEGORIZATION = "CellType2"
+EXCLUDE_SIGNAL_REC = True
+SIGNAL_REC_NAME = "Prototype_Signal_Receptor"
+
+# ── Load scan ──────────────────────────────────────────────────────────────────
+opt_selec, opt_affs, opt_Kx_star, receptors, cell_types = load_selec_scan_results(SCAN_PATH)
+# KL, opt_selec, receptors, cell_types = load_KL_EMD_scan_results(SCAN_PATH)
+n_recs = len(receptors)
+
+# Resolve target cell types
+if TARG_CELL_TYPES is None:
+    targ_cell_types = list(cell_types)
+else:
+    missing = [ct for ct in TARG_CELL_TYPES if ct not in cell_types]
+    if missing:
+        print(f"Warning: cell types not found in scan (skipped): {missing}")
+    targ_cell_types = [ct for ct in TARG_CELL_TYPES if ct in cell_types]
+assert targ_cell_types, "No valid target cell types found in scan."
+
+# Exclude specified cell types
+targ_cell_types = [ct for ct in targ_cell_types if ct not in EXCLUDE_CELL_TYPES]
+
+exclude_set = {SIGNAL_REC_NAME} if EXCLUDE_SIGNAL_REC else set()
+
+# ── Per-cell-type synergy classification ──────────────────────────────────────
+ct_results = {}        # cell_type → classification dict
+all_synergy_records = []
+
+for ct in targ_cell_types:
+    ct_idx = cell_types.index(ct)
+    selec_2d = opt_selec[:, :, ct_idx]
+    mono_selec = np.array([selec_2d[i, i] for i in range(n_recs)])
+
+    # Valid receptors: non-NaN monospecific selectivity, not excluded
+    valid_recs = {
+        receptors[i]
+        for i in range(n_recs)
+        if not np.isnan(mono_selec[i]) and receptors[i] not in exclude_set
+    }
+    rec_mono_map = {receptors[i]: mono_selec[i] for i in range(n_recs)}
+
+    # Collect synergistic pairs. The scan populates only one triangle, but
+    # alphabetical re-indexing in load_selec_scan_results may place the value
+    # in either [i, j] or [j, i], so both positions are checked.
+    synergy_records = []
+    for i in range(n_recs):
+        for j in range(i):  # unique unordered pairs only
+            if EXCLUDE_SIGNAL_REC and (
+                receptors[i] == SIGNAL_REC_NAME or receptors[j] == SIGNAL_REC_NAME
+            ):
+                continue
+            pair_selec = (
+                selec_2d[i, j] if not np.isnan(selec_2d[i, j]) else selec_2d[j, i]
+            )
+            if np.isnan(pair_selec):
+                continue
+            mono_i, mono_j = mono_selec[i], mono_selec[j]
+            if np.isnan(mono_i) or np.isnan(mono_j):
+                continue
+            if pair_selec > max(mono_i, mono_j):
+                rec = {
+                    "cell_type": ct,
+                    "rec1": receptors[i],
+                    "rec2": receptors[j],
+                    "pair_selec": pair_selec,
+                    "mono_rec1": mono_i,
+                    "mono_rec2": mono_j,
+                    "synergy_gain": pair_selec - max(mono_i, mono_j),
+                }
+                synergy_records.append(rec)
+                all_synergy_records.append(rec)
+
+    synergy_df = (
+        pd.DataFrame(synergy_records)
+        .sort_values("pair_selec", ascending=False)
+        .reset_index(drop=True)
+    )
+
+    synergistic_recs = (
+        (set(synergy_df["rec1"]) | set(synergy_df["rec2"])) & valid_recs
+        if len(synergy_df) > 0
+        else set()
+    )
+    non_synergistic_recs = valid_recs - synergistic_recs
+
+    # Best pair selectivity per synergistic receptor
+    syn_best = {}
+    for _, row in synergy_df.iterrows():
+        for rec in [row["rec1"], row["rec2"]]:
+            if rec not in syn_best or row["pair_selec"] > syn_best[rec]:
+                syn_best[rec] = row["pair_selec"]
+
+    ct_results[ct] = {
+        "synergy_df": synergy_df,
+        "synergistic_recs": synergistic_recs,
+        "non_synergistic_recs": non_synergistic_recs,
+        "valid_recs": valid_recs,
+        "rec_mono_map": rec_mono_map,
+        "syn_best": syn_best,
+    }
+
+    print(
+        f"{ct:25s}  valid: {len(valid_recs):3d}  "
+        f"synergistic: {len(synergistic_recs):3d}  "
+        f"non-synergistic: {len(non_synergistic_recs):3d}  "
+        f"pairs: {len(synergy_df)}"
+    )
+
+# Pool across all cell types, sorted by gain for joint plots
+all_synergy_df = (
+    pd.DataFrame(all_synergy_records)
+    .sort_values("synergy_gain", ascending=False)
+    .reset_index(drop=True)
+    if all_synergy_records
+    else pd.DataFrame(columns=["cell_type","rec1","rec2","pair_selec","mono_rec1","mono_rec2","synergy_gain"])
+)
+print(f"\nTotal synergistic pairs across all cell types: {len(all_synergy_df)}")
+print(f"\nTop {min(15, len(all_synergy_df))} pairs by synergy gain:")
+print(all_synergy_df.head(15).to_string(index=False))
+```
+
+```{python}
+# ── Load CITE-seq data and sample per cell type ───────────────────────────────
+CITE_DF = importCITE()
+non_rec_cols = {"Cell", "CellType1", "CellType2", "CellType3"}
+rec_cols_cite = [c for c in CITE_DF.columns if c not in non_rec_cols]
+epitopes_df = CITE_DF[rec_cols_cite + [CELL_CATEGORIZATION]].rename(
+    columns={CELL_CATEGORIZATION: "Cell Type"}
+)
+
+# Sample once per target cell type; reused for histograms and joint plots
+samples = {}
+for ct in targ_cell_types:
+    samples[ct] = sample_receptor_abundances(
+        CITE_DF=epitopes_df,
+        numCells=min(SAMPLE_SIZE, epitopes_df.shape[0]),
+        targCellType=ct,
+        balance=True,
+    )
+
+available_recs = set(epitopes_df.columns) - {"Cell Type"}
+
+TARG_COLOR    = "#CF4D6F"
+OFFTARG_COLOR = "#2774AE"
+
+# ── Figure per cell type: 1D histograms, top receptors in each category ───────
+for ct in targ_cell_types:
+    sample_df = samples[ct]
+    on_targ_mask = (sample_df["Cell Type"] == ct).to_numpy()
+    res = ct_results[ct]
+
+    top_non_syn = sorted(
+        res["non_synergistic_recs"] & available_recs,
+        key=lambda r: res["rec_mono_map"].get(r, np.nan),
+        reverse=True,
+    )[:N_TOP_HIST]
+
+    top_syn = sorted(
+        res["synergistic_recs"] & available_recs,
+        key=lambda r: res["syn_best"].get(r, np.nan),
+        reverse=True,
+    )[:N_TOP_HIST]
+
+    n_cols = max(len(top_non_syn), len(top_syn), 1)
+    fig, axes = plt.subplots(2, n_cols, figsize=(3.5 * n_cols, 7), squeeze=False)
+
+    row_labels    = ["Non-synergistic", "Synergistic"]
+    top_recs_rows = [top_non_syn, top_syn]
+
+    for row_idx, (row_label, top_recs) in enumerate(zip(row_labels, top_recs_rows)):
+        for col_idx in range(n_cols):
+            ax = axes[row_idx, col_idx]
+            if col_idx >= len(top_recs):
+                ax.set_visible(False)
+                continue
+            rec = top_recs[col_idx]
+            targ_abun = sample_df.loc[on_targ_mask,  rec].to_numpy(float)
+            off_abun  = sample_df.loc[~on_targ_mask, rec].to_numpy(float)
+            x_max = np.percentile(np.concatenate([targ_abun, off_abun]), 99.5) * 1.1
+            bins = np.linspace(0, x_max, 40)
+            ax.hist(
+                targ_abun, bins=bins, alpha=0.6, color=TARG_COLOR,
+                label=f"{ct} (target)", density=True,
+            )
+            ax.hist(
+                off_abun, bins=bins, alpha=0.6, color=OFFTARG_COLOR,
+                label="Off-target", density=True,
+            )
+            selec_str = (
+                f"Best pair: {res['syn_best'].get(rec, np.nan):.2f}"
+                if row_idx == 1
+                else f"Monospecific: {res['rec_mono_map'].get(rec, np.nan):.2f}"
+            )
+            ax.set_title(f"{rec}\n{selec_str}", fontsize=8)
+            ax.set_xlabel("Abundance", fontsize=7)
+            ax.tick_params(labelsize=6)
+            if col_idx == 0:
+                ax.set_ylabel(f"{row_label}\nDensity", fontsize=7)
+                ax.legend(fontsize=6)
+
+    fig.suptitle(
+        f"Top {N_TOP_HIST} receptors per category — target: {ct}",
+        fontsize=10, fontweight="bold",
+    )
+    plt.tight_layout()
+    plt.show()
+
+# ── 2D joint distributions: top N_TOP_JOINT pairs by gain across all types ────
+# Filter low selectivity, high gain pairs
+filt_synergy_df = all_synergy_df[
+    (all_synergy_df["pair_selec"] >= 0.75)
+]
+
+top_joint_pairs = filt_synergy_df[
+    filt_synergy_df["rec1"].isin(available_recs)
+    & filt_synergy_df["rec2"].isin(available_recs)
+].head(N_TOP_JOINT)
+
+n_pairs = len(top_joint_pairs)
+if n_pairs == 0:
+    print("No synergistic pairs with CITE data available for joint plots.")
+else:
+    n_cols_j = min(5, n_pairs)
+    n_rows_j = (n_pairs + n_cols_j - 1) // n_cols_j
+    fig2 = plt.figure(figsize=(4.5 * n_cols_j, 5.5 * n_rows_j))
+    outer_gs = gridspec.GridSpec(n_rows_j, n_cols_j, figure=fig2, hspace=0.6, wspace=0.45)
+
+    for idx, (_, pair_row) in enumerate(top_joint_pairs.iterrows()):
+        ct   = pair_row["cell_type"]
+        rec1 = pair_row["rec1"]
+        rec2 = pair_row["rec2"]
+        sample_df    = samples[ct]
+        on_targ_mask = (sample_df["Cell Type"] == ct).to_numpy()
+
+        row_idx = idx // n_cols_j
+        col_idx = idx %  n_cols_j
+
+        inner_gs = gridspec.GridSpecFromSubplotSpec(
+            2, 2,
+            subplot_spec=outer_gs[row_idx, col_idx],
+            width_ratios=[4, 1],
+            height_ratios=[1, 4],
+            hspace=0.05, wspace=0.05,
+        )
+        ax_main  = fig2.add_subplot(inner_gs[1, 0])
+        ax_top   = fig2.add_subplot(inner_gs[0, 0], sharex=ax_main)
+        ax_right = fig2.add_subplot(inner_gs[1, 1], sharey=ax_main)
+
+        targ_x = sample_df.loc[on_targ_mask,  rec1].to_numpy(float)
+        targ_y = sample_df.loc[on_targ_mask,  rec2].to_numpy(float)
+        off_x  = sample_df.loc[~on_targ_mask, rec1].to_numpy(float)
+        off_y  = sample_df.loc[~on_targ_mask, rec2].to_numpy(float)
+
+        x_max = np.percentile(np.concatenate([targ_x, off_x]), 99.9) * 1.15
+        y_max = np.percentile(np.concatenate([targ_y, off_y]), 99.9) * 1.15
+
+        for xs, ys, color, lbl in [
+            (targ_x, targ_y, TARG_COLOR,    f"{ct} (target)"),
+            (off_x,  off_y,  OFFTARG_COLOR, "Off-target"),
+        ]:
+            ax_main.scatter(xs, ys, s=5, alpha=0.3, color=color, linewidths=0)
+            if len(xs) > 10:
+                try:
+                    sns.kdeplot(x=xs, y=ys, color=color, levels=4, linewidths=1.0, ax=ax_main)
+                except Exception:
+                    pass
+            ax_top.hist(xs, bins=35, alpha=0.55, color=color, label=lbl)
+            ax_right.hist(ys, bins=35, alpha=0.55, color=color, orientation="horizontal")
+
+        ax_main.set_xlim(0, x_max)
+        ax_main.set_ylim(0, y_max)
+        ax_main.set_xlabel(rec1, fontsize=8)
+        ax_main.set_ylabel(rec2, fontsize=8)
+        ax_main.tick_params(labelsize=7)
+        ax_main.grid(alpha=0.25, linestyle="--")
+
+        plt.setp(ax_top.get_xticklabels(), visible=False)
+        plt.setp(ax_right.get_yticklabels(), visible=False)
+        ax_top.tick_params(labelsize=6)
+        ax_right.tick_params(labelsize=6)
+        ax_top.legend(fontsize=5.5, loc="upper right")
+
+        pair_s = pair_row["pair_selec"]
+        gain_s = pair_row["synergy_gain"]
+        ax_top.set_title(
+            f"[{ct}]  {rec1} × {rec2}\nPair: {pair_s:.2f}  Gain: {gain_s:.2f}",
+            fontsize=7, pad=2,
+        )
+
+    fig2.suptitle(
+        f"Top {n_pairs} synergistic pairs by gain — all target cell types",
+        fontsize=10, fontweight="bold", y=1.02,
+    )
+    plt.tight_layout()
+    plt.show()
+```
