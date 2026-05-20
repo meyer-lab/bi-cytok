@@ -75,10 +75,11 @@ from bicytok.selectivity_funcs import optimize_affs
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 SIGNAL_RECEPTOR = "CD122"
-SAMPLE_SIZE = 2500
+SAMPLE_SIZE = 1000
 # List of target cell types to analyze, or None to analyze all cell types in the data.
 TARG_CELL_TYPES: list[str] | None = ["Treg"]
-VALENCY = 2
+TARG_CELL_TYPES = ["NK", "Treg", "CD8 TEM", "CD8 TCM", "CD4 TEM", "CD4 TCM", "CD4 CTL"]
+VALENCY = 1
 DOSE = 1e-10
 CELL_CATEGORIZATION = "CellType2"
 
@@ -118,6 +119,7 @@ METRIC_NAMES = ["KL Divergence", "EMD", "Selectivity"]
 all_records = {}  # cell_type → records DataFrame
 
 for targ_cell in TARG_CELL_TYPES:
+    print(f"Processing {targ_cell}...")
     assert targ_cell in CITE_DF[CELL_CATEGORIZATION].unique(), \
         f"{targ_cell!r} not found in {CELL_CATEGORIZATION}"
 
@@ -128,11 +130,18 @@ for targ_cell in TARG_CELL_TYPES:
         CITE_DF=epitopes_df,
         numCells=min(SAMPLE_SIZE, epitopes_df.shape[0]),
         targCellType=targ_cell,
+        balance=True,
     )
     filtered_sample_df = filter_receptor_abundances(
         sample_df, targ_cell, whitelist=[SIGNAL_RECEPTOR]
     )
     epitopes = list(filtered_sample_df.columns[:-1])
+
+    # Filter bad receptors
+    epitopes = [
+        ep for ep in epitopes
+        if (filtered_sample_df[ep].mean() > 5) and (filtered_sample_df[ep].mean() > filtered_sample_df[ep][filtered_sample_df["Cell Type"] != targ_cell].mean())
+    ]
 
     on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
     off_target_mask = ~on_target_mask
@@ -271,87 +280,98 @@ for targ_cell in TARG_CELL_TYPES:
 # Backward-compatibility alias (first cell type)
 records_df = all_records[TARG_CELL_TYPES[0]]
 TARG_CELL = TARG_CELL_TYPES[0]
+
+# Pool all cell types into one DataFrame for combined analysis
+combined_df = pd.concat(
+    [df.assign(**{"Cell_Type": ct}) for ct, df in all_records.items()],
+    ignore_index=True,
+)
 ```
 
 ```{python}
-#| fig-cap: "Spearman ρ between distribution features and selectivity metrics across cell types"
+#| fig-cap: "Spearman correlation between distribution features and selectivity metrics (all cell types pooled)"
 import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
+import matplotlib.lines as mlines
 
+SIG_COLOR = "#CF4D6F"
+NSIG_COLOR = "gray"
 SIG_THRESHOLD = 0.05
-# Row indices where a new feature group begins (draws a separator line above that row)
 GROUP_BOUNDARIES = {6, 9, 12, 16}
 
 n_ct = len(TARG_CELL_TYPES)
+_cmap = plt.colormaps["tab20"]
+ct_colors = {ct: _cmap(i / max(n_ct - 1, 1)) for i, ct in enumerate(TARG_CELL_TYPES)}
 
-# ── Compute ρ matrices ────────────────────────────────────────────────────────
-# rho_mats[metric] → (n_features × n_cell_types) array of Spearman ρ
-# sig_mats[metric] → boolean array, True where p < SIG_THRESHOLD
-rho_mats = {}
-sig_mats = {}
-for metric in METRIC_NAMES:
-    rho_mat = np.full((len(FEATURE_NAMES), n_ct), np.nan)
-    sig_mat = np.zeros((len(FEATURE_NAMES), n_ct), dtype=bool)
-    for j, ct in enumerate(TARG_CELL_TYPES):
-        df = all_records[ct]
-        for i, feat in enumerate(FEATURE_NAMES):
-            x = df[feat].to_numpy(dtype=float)
-            y = df[metric].to_numpy(dtype=float)
-            valid = ~(np.isnan(x) | np.isnan(y) | np.isinf(x) | np.isinf(y))
-            if valid.sum() > 2:
-                rho, p = stats.spearmanr(x[valid], y[valid])
-                rho_mat[i, j] = rho
-                sig_mat[i, j] = p < SIG_THRESHOLD
-    rho_mats[metric] = rho_mat
-    sig_mats[metric] = sig_mat
-
-# ── Figure layout ─────────────────────────────────────────────────────────────
-col_width = max(0.55, min(2.0, 12.0 / n_ct))
-fig_width  = len(METRIC_NAMES) * (col_width * n_ct) + 3.5   # +3.5 for feature labels + colorbar
-fig_height = 0.42 * len(FEATURE_NAMES) + 2.0
-ct_fontsize = max(5, min(9, int(80 / n_ct)))
-
-fig, axes = plt.subplots(1, len(METRIC_NAMES), figsize=(fig_width, fig_height))
-axes = np.atleast_1d(axes)
-
-for col, metric in enumerate(METRIC_NAMES):
-    ax = axes[col]
-    rho_mat = rho_mats[metric]
-    sig_mat = sig_mats[metric]
-
-    im = ax.imshow(rho_mat, cmap="RdBu_r", vmin=-1, vmax=1, aspect="auto")
-
-    ax.set_xticks(range(n_ct))
-    ax.set_xticklabels(TARG_CELL_TYPES, rotation=45, ha="right", fontsize=ct_fontsize)
-    ax.set_title(metric, fontsize=12, fontweight="bold", pad=6)
-
-    if col == 0:
-        ax.set_yticks(range(len(FEATURE_NAMES)))
-        ax.set_yticklabels(FEATURE_NAMES, fontsize=8)
-    else:
-        ax.set_yticks([])
-
-    # Significance markers (★ for p < SIG_THRESHOLD)
-    for i in range(len(FEATURE_NAMES)):
-        for j in range(n_ct):
-            if sig_mat[i, j]:
-                text_color = "white" if abs(rho_mat[i, j]) > 0.55 else "black"
-                ax.text(j, i, "★", ha="center", va="center",
-                        fontsize=max(5, ct_fontsize - 1), color=text_color)
-
-    # Horizontal lines separating feature groups
-    for boundary in sorted(GROUP_BOUNDARIES):
-        ax.axhline(boundary - 0.5, color="white", linewidth=1.8)
-
-fig.colorbar(im, ax=axes.tolist(), label="Spearman ρ", shrink=0.55, pad=0.02)
-
-n_ct_str = f"{n_ct} cell type" + ("s" if n_ct != 1 else "")
-plt.suptitle(
-    f"Distribution Features vs Selectivity Metrics — {n_ct_str}  "
-    f"(★ = p < {SIG_THRESHOLD})",
-    fontsize=12, fontweight="bold", y=1.01,
+fig, axes = plt.subplots(
+    len(FEATURE_NAMES),
+    len(METRIC_NAMES),
+    figsize=(15, 3.5 * len(FEATURE_NAMES)),
 )
-plt.tight_layout()
+
+for row, feature in enumerate(FEATURE_NAMES):
+    for col, metric in enumerate(METRIC_NAMES):
+        ax = axes[row, col]
+
+        x = combined_df[feature].to_numpy(dtype=float)
+        y = combined_df[metric].to_numpy(dtype=float)
+        ct_col = combined_df["Cell_Type"].to_numpy()
+        valid = ~(np.isnan(x) | np.isnan(y) | np.isinf(x) | np.isinf(y))
+        x_v, y_v, ct_v = x[valid], y[valid], ct_col[valid]
+
+        for ct in TARG_CELL_TYPES:
+            mask = ct_v == ct
+            ax.scatter(x_v[mask], y_v[mask], s=20, alpha=0.45,
+                       color=ct_colors[ct], linewidths=0)
+
+        annot_color = NSIG_COLOR
+        if len(x_v) > 2:
+            m, b = np.polyfit(x_v, y_v, 1)
+            x_line = np.linspace(x_v.min(), x_v.max(), 100)
+            ax.plot(x_line, m * x_line + b, color="black", linestyle="--",
+                    alpha=0.45, linewidth=1.2)
+
+            rho, p_val = stats.spearmanr(x_v, y_v)
+            annot_color = SIG_COLOR if p_val < SIG_THRESHOLD else NSIG_COLOR
+            ax.annotate(
+                f"ρ = {rho:.2f}\np = {p_val:.2e}",
+                xy=(0.05, 0.95), xycoords="axes fraction",
+                va="top", fontsize=8, color=annot_color,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                          alpha=0.85, edgecolor=annot_color, linewidth=1.0),
+            )
+
+        ax.grid(True, linestyle="--", alpha=0.35)
+        ax.tick_params(labelsize=7)
+
+        if row == 0:
+            ax.set_title(metric, fontsize=12, fontweight="bold", pad=6)
+
+        if col == 0:
+            ax.set_ylabel(metric, fontsize=9)
+            ax.set_xlabel(feature, fontsize=9)
+        else:
+            ax.set_xlabel("")
+
+        if row in GROUP_BOUNDARIES:
+            for spine in ax.spines.values():
+                spine.set_linewidth(1.8)
+                spine.set_edgecolor("#888888")
+
+handles = [
+    mlines.Line2D([0], [0], marker="o", color="w",
+                  markerfacecolor=ct_colors[ct], markersize=6, label=ct)
+    for ct in TARG_CELL_TYPES
+]
+fig.legend(handles=handles, title="Cell type",
+           bbox_to_anchor=(1.01, 0.5), loc="center left",
+           fontsize=7, title_fontsize=8, framealpha=0.8)
+
+plt.suptitle(
+    f"Distribution Features vs Selectivity Metrics — {len(TARG_CELL_TYPES)} cell types pooled, "
+    f"{len(combined_df)} receptor×cell-type pairs",
+    fontsize=13, fontweight="bold", y=1.005,
+)
+plt.tight_layout(h_pad=0.6, rect=[0, 0, 0.88, 1.0])
 plt.show()
 ```
 
