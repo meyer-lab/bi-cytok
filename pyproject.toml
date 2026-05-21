@@ -25,6 +25,7 @@ fbuild = "bicytok.figures.common:genFigure"
 distanceCSV = "bicytok.distance_metric_funcs:make_2D_distance_metrics"
 selectivity_scan = "figures.scanning_analyses.scan_runners:run_selectivity_scan"
 KL_EMD_scan = "figures.scanning_analyses.scan_runners:run_KL_EMD_scan"
+filt_scan = "figures.scanning_analyses.scan_runners:filter_scan_by_target_expr"
 
 [build-system]
 requires = ["hatchling"]
