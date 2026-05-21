@@ -3,23 +3,25 @@ title: "Receptor Synergy Analysis"
 ---
 
 # Summary
-Identifies receptors involved in synergistic bispecific targeting from a 2D selectivity
-scan. A receptor pair (A, B) is synergistic when the bispecific selectivity exceeds the
-monospecific (bivalent, single-target) selectivity of either constituent receptor alone:
+Identifies receptors involved in synergistic bispecific targeting from a 2D receptor scan.
+A receptor pair (A, B) is synergistic when the bispecific metric exceeds the monospecific
+(single-target) metric of either constituent receptor alone:
 
-> selec(A, B) > max(selec(A, A), selec(B, B))
+> metric(A, B) > max(metric(A, A), metric(B, B))
 
 Every target receptor is classified as **synergistic** (involved in ≥ 1 synergistic pair)
 or **non-synergistic** for each target cell type. Distribution plots compare the two groups
 per cell type, and the globally highest-gain synergistic pairs are shown as 2D joint
-distributions.
+distributions. Supports both selectivity and KL/EMD scan results; scan type is detected
+automatically from the accompanying YAML file.
 
 # Inputs
-- `SCAN_PATH`: path to a selectivity scan CSV produced by `run_selectivity_scan`
+- `SCAN_PATH`: path to a scan CSV; a matching `.yaml` must exist in the same directory
+- `KL_METRIC`: for KL/EMD scans, selects which method to use — `"KL_Divergence"` or `"EMD"`; sampling parameters and cell categorization are read from the YAML automatically
 - `TARG_CELL_TYPES`: list of target cell types to analyze, or `None` for all in the scan
 - `N_TOP_HIST`: receptors per category per cell type shown in 1D histogram plots
 - `N_TOP_JOINT`: top synergistic pairs by gain shown in 2D joint distribution plots
-- `EXCLUDE_SIGNAL_REC`: whether to exclude the synthetic `Prototype_Signal_Receptor`
+- `MIN_PAIR_METRIC`: minimum metric value for inclusion in joint plots; `None` for no filter
 
 # Outputs
 - Per-cell-type summary of synergistic / non-synergistic receptor counts and pair tables
@@ -28,19 +30,22 @@ distributions.
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
+import os
 import sys
 
 import numpy as np
 import pandas as pd
+import yaml
 
 sys.path.insert(0, ".")
-from scan_runners import load_KL_EMD_scan_results
+from scan_runners import load_KL_EMD_scan_results, load_selec_scan_results
 
 # ── Parameters ────────────────────────────────────────────────────────────────
 # SCAN_PATH = "/home/sama/receptor_sweep_data/20260212_full_geom_sweep.csv"
 # SCAN_PATH = "/home/sama/receptor_sweep_data/20260514_selec_scan_high-val-Treg.csv"
-SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
-# SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+
+KL_METRIC = "KL_Divergence"  # For KL_EMD scans: "KL_Divergence" or "EMD"
 
 TARG_CELL_TYPES = None  # list of cell types, or None for all in the scan
 EXCLUDE_CELL_TYPES = [
@@ -49,14 +54,32 @@ EXCLUDE_CELL_TYPES = [
 ]  # cell types to exclude from analysis (if present in scan)
 N_TOP_HIST = 3  # top receptors per category per cell type (histograms)
 N_TOP_JOINT = 10  # top pairs by gain across all cell types (2D joints)
-SAMPLE_SIZE = 1000
-CELL_CATEGORIZATION = "CellType2"
-EXCLUDE_SIGNAL_REC = True
-SIGNAL_REC_NAME = "Prototype_Signal_Receptor"
+MIN_PAIR_METRIC = None  # minimum metric value for joint plots; None for no filter
 
-# ── Load scan ──────────────────────────────────────────────────────────────────
-# opt_selec, opt_affs, opt_Kx_star, receptors, cell_types = load_selec_scan_results(SCAN_PATH)
-opt_selec, EMD, receptors, cell_types = load_KL_EMD_scan_results(SCAN_PATH)
+# ── Detect scan type and load data from YAML ──────────────────────────────────
+yaml_path = os.path.splitext(SCAN_PATH)[0] + ".yaml"
+with open(yaml_path) as f:
+    scan_params = yaml.safe_load(f)
+
+scan_type = scan_params["scan_type"]
+SAMPLE_SIZE = scan_params["general"]["sample_size"]
+CELL_CATEGORIZATION = scan_params["general"]["cell_categorization"]
+
+if scan_type == "selectivity":
+    opt_selec, _, _, receptors, cell_types = load_selec_scan_results(SCAN_PATH)
+    metric_2d_all = opt_selec
+    metric_label = "Selectivity"
+    EXCLUDE_SIGNAL_REC = True
+    SIGNAL_REC_NAME = "Prototype_Signal_Receptor"
+elif scan_type == "KL_EMD":
+    KL_results, EMD_results, receptors, cell_types = load_KL_EMD_scan_results(SCAN_PATH)
+    metric_2d_all = KL_results if KL_METRIC == "KL_Divergence" else EMD_results
+    metric_label = KL_METRIC.replace("_", " ")
+    EXCLUDE_SIGNAL_REC = False
+    SIGNAL_REC_NAME = None
+else:
+    raise ValueError(f"Unknown scan_type: {scan_type}")
+
 n_recs = len(receptors)
 
 # Resolve target cell types
@@ -72,7 +95,7 @@ assert targ_cell_types, "No valid target cell types found in scan."
 # Exclude specified cell types
 targ_cell_types = [ct for ct in targ_cell_types if ct not in EXCLUDE_CELL_TYPES]
 
-exclude_set = {SIGNAL_REC_NAME} if EXCLUDE_SIGNAL_REC else set()
+exclude_set = {SIGNAL_REC_NAME} if EXCLUDE_SIGNAL_REC and SIGNAL_REC_NAME else set()
 
 # ── Per-cell-type synergy classification ──────────────────────────────────────
 ct_results = {}  # cell_type → classification dict
@@ -80,16 +103,16 @@ all_synergy_records = []
 
 for ct in targ_cell_types:
     ct_idx = cell_types.index(ct)
-    selec_2d = opt_selec[:, :, ct_idx]
-    mono_selec = np.array([selec_2d[i, i] for i in range(n_recs)])
+    metric_2d = metric_2d_all[:, :, ct_idx]
+    mono_metric = np.array([metric_2d[i, i] for i in range(n_recs)])
 
-    # Valid receptors: non-NaN monospecific selectivity, not excluded
+    # Valid receptors: non-NaN monospecific metric, not excluded
     valid_recs = {
         receptors[i]
         for i in range(n_recs)
-        if not np.isnan(mono_selec[i]) and receptors[i] not in exclude_set
+        if not np.isnan(mono_metric[i]) and receptors[i] not in exclude_set
     }
-    rec_mono_map = {receptors[i]: mono_selec[i] for i in range(n_recs)}
+    rec_mono_map = {receptors[i]: mono_metric[i] for i in range(n_recs)}
 
     # Collect synergistic pairs. The scan populates only one triangle, but
     # alphabetical re-indexing in load_selec_scan_results may place the value
@@ -101,30 +124,30 @@ for ct in targ_cell_types:
                 receptors[i] == SIGNAL_REC_NAME or receptors[j] == SIGNAL_REC_NAME
             ):
                 continue
-            pair_selec = (
-                selec_2d[i, j] if not np.isnan(selec_2d[i, j]) else selec_2d[j, i]
+            pair_metric = (
+                metric_2d[i, j] if not np.isnan(metric_2d[i, j]) else metric_2d[j, i]
             )
-            if np.isnan(pair_selec):
+            if np.isnan(pair_metric):
                 continue
-            mono_i, mono_j = mono_selec[i], mono_selec[j]
+            mono_i, mono_j = mono_metric[i], mono_metric[j]
             if np.isnan(mono_i) or np.isnan(mono_j):
                 continue
-            if pair_selec > max(mono_i, mono_j):
+            if pair_metric > max(mono_i, mono_j):
                 rec = {
                     "cell_type": ct,
                     "rec1": receptors[i],
                     "rec2": receptors[j],
-                    "pair_selec": pair_selec,
+                    "pair_metric": pair_metric,
                     "mono_rec1": mono_i,
                     "mono_rec2": mono_j,
-                    "synergy_gain": pair_selec - max(mono_i, mono_j),
+                    "synergy_gain": pair_metric - max(mono_i, mono_j),
                 }
                 synergy_records.append(rec)
                 all_synergy_records.append(rec)
 
     synergy_df = (
         pd.DataFrame(synergy_records)
-        .sort_values("pair_selec", ascending=False)
+        .sort_values("pair_metric", ascending=False)
         .reset_index(drop=True)
     )
 
@@ -135,12 +158,12 @@ for ct in targ_cell_types:
     )
     non_synergistic_recs = valid_recs - synergistic_recs
 
-    # Best pair selectivity per synergistic receptor
+    # Best pair metric per synergistic receptor
     syn_best = {}
     for _, row in synergy_df.iterrows():
         for rec in [row["rec1"], row["rec2"]]:
-            if rec not in syn_best or row["pair_selec"] > syn_best[rec]:
-                syn_best[rec] = row["pair_selec"]
+            if rec not in syn_best or row["pair_metric"] > syn_best[rec]:
+                syn_best[rec] = row["pair_metric"]
 
     ct_results[ct] = {
         "synergy_df": synergy_df,
@@ -169,7 +192,7 @@ all_synergy_df = (
             "cell_type",
             "rec1",
             "rec2",
-            "pair_selec",
+            "pair_metric",
             "mono_rec1",
             "mono_rec2",
             "synergy_gain",
@@ -264,12 +287,12 @@ for ct in targ_cell_types:
                 label="Off-target",
                 density=True,
             )
-            selec_str = (
-                f"Best pair: {res['syn_best'].get(rec, np.nan):.2f}"
+            metric_str = (
+                f"Best pair {metric_label}: {res['syn_best'].get(rec, np.nan):.2f}"
                 if row_idx == 1
-                else f"Monospecific: {res['rec_mono_map'].get(rec, np.nan):.2f}"
+                else f"Monospecific {metric_label}: {res['rec_mono_map'].get(rec, np.nan):.2f}"
             )
-            ax.set_title(f"{rec}\n{selec_str}", fontsize=8)
+            ax.set_title(f"{rec}\n{metric_str}", fontsize=8)
             ax.set_xlabel("Abundance", fontsize=7)
             ax.tick_params(labelsize=6)
             if col_idx == 0:
@@ -285,8 +308,11 @@ for ct in targ_cell_types:
     plt.show()
 
 # ── 2D joint distributions: top N_TOP_JOINT pairs by gain across all types ────
-# Filter low selectivity, high gain pairs
-filt_synergy_df = all_synergy_df[(all_synergy_df["pair_selec"] >= 0.75)]
+filt_synergy_df = (
+    all_synergy_df[all_synergy_df["pair_metric"] >= MIN_PAIR_METRIC]
+    if MIN_PAIR_METRIC is not None
+    else all_synergy_df
+)
 
 top_joint_pairs = filt_synergy_df[
     filt_synergy_df["rec1"].isin(available_recs)
@@ -365,10 +391,10 @@ else:
         ax_right.tick_params(labelsize=6)
         ax_top.legend(fontsize=5.5, loc="upper right")
 
-        pair_s = pair_row["pair_selec"]
+        pair_s = pair_row["pair_metric"]
         gain_s = pair_row["synergy_gain"]
         ax_top.set_title(
-            f"[{ct}]  {rec1} × {rec2}\nPair: {pair_s:.2f}  Gain: {gain_s:.2f}",
+            f"[{ct}]  {rec1} × {rec2}\n{metric_label}: {pair_s:.2f}  Gain: {gain_s:.2f}",
             fontsize=7,
             pad=2,
         )

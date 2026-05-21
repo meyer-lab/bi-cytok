@@ -3,43 +3,57 @@ title: "Receptor Scan Heatmaps"
 ---
 
 # Summary
-Generates heatmaps of optimal selectivity, KL Divergence, and EMD across receptor pairs and cell types from receptor scan results. Displays the top-performing receptor pairs by each metric for each target cell type, masking the upper triangle to reflect the symmetric pairwise structure.
+Generates heatmaps of the top receptor pairs per cell type for a chosen metric. Displays the top-performing receptor pairs for each target cell type, masking the upper triangle to reflect the symmetric pairwise structure. Supports both selectivity and KL/EMD scan results; scan type is detected automatically from the accompanying YAML file.
 
 # Imports
 - Receptor scan result loading functions (`load_selec_scan_results`, `load_KL_EMD_scan_results`)
 - Visualization libraries (matplotlib, seaborn)
 
 # Parameters
-- `scan_data_path`: String path to directory containing receptor scan result files
-- `TOP_N_PAIRS`: Integer number of top receptor pairs to display per cell type heatmap
+- `pathname`: Path to the scan CSV file; a matching `.yaml` must exist in the same directory
+- `KL_METRIC`: For KL/EMD scans, selects the metric to display — `"KL_Divergence"` or `"EMD"`
+- `TOP_N_PAIRS`: Number of top receptor pairs to derive the displayed receptor set from per cell type
 - `CELL_TYPES_TO_DISPLAY`: List of cell type strings to include in plots, or `None` for all cell types
 - `receptors_to_include`: List of receptor name strings to restrict display to, or `None` to derive from top pairs
 
 # Outputs
-- **Heatmap Set 1**: Optimal selectivity across receptor pairs per cell type showing:
-  - One subplot per cell type
-  - Heatmap colored by selectivity value (Reds colormap)
-  - Upper triangle masked with gray to reflect lower-triangular scan structure
-  - Colorbar aligned with each heatmap panel
-- **Heatmap Set 2**: KL Divergence across receptor pairs per cell type with identical formatting
-- **Heatmap Set 3**: EMD across receptor pairs per cell type with identical formatting
+- **Heatmap**: One subplot per cell type, colored by the selected metric value; upper triangle masked gray
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-# Plotting heatmaps of optimal selectivity across cell types
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+import yaml
 
-from figures.scanning_analyses.scan_runners import load_selec_scan_results
+from figures.scanning_analyses.scan_runners import (
+    load_KL_EMD_scan_results,
+    load_selec_scan_results,
+)
 
 # Parameters
 TOP_N_PAIRS = 20
 CELL_TYPES_TO_DISPLAY = None
 receptors_to_include = None
+KL_METRIC = "KL_Divergence"  # For KL_EMD scans: "KL_Divergence" or "EMD"
 pathname = "/home/sama/receptor_sweep_data/20260212_full_geom_sweep.csv"
 
-opt_selec, _, _, receptors, cell_types = load_selec_scan_results(pathname)
+yaml_path = os.path.splitext(pathname)[0] + ".yaml"
+with open(yaml_path) as f:
+    scan_type = yaml.safe_load(f)["scan_type"]
+
+if scan_type == "selectivity":
+    opt_selec, _, _, receptors, cell_types = load_selec_scan_results(pathname)
+    metric_array = opt_selec
+    metric_label = "Selectivity"
+elif scan_type == "KL_EMD":
+    KL_results, EMD_results, receptors, cell_types = load_KL_EMD_scan_results(pathname)
+    metric_array = KL_results if KL_METRIC == "KL_Divergence" else EMD_results
+    metric_label = KL_METRIC.replace("_", " ")
+else:
+    raise ValueError(f"Unknown scan_type: {scan_type}")
 
 if CELL_TYPES_TO_DISPLAY is not None:
     display_cell_types = [ct for ct in cell_types if ct in CELL_TYPES_TO_DISPLAY]
@@ -54,17 +68,13 @@ if len(display_cell_types) == 1:
 
 for plot_idx, cell_type in enumerate(display_cell_types):
     cell_type_idx = cell_types.index(cell_type)
-    selectivity_matrix = opt_selec[:, :, cell_type_idx]
+    metric_matrix = metric_array[:, :, cell_type_idx]
     row_indices, col_indices = np.tril_indices(len(receptors), k=0)
-    pair_selectivities = []
+    pair_vals = []
     for rec1_idx, rec2_idx in zip(row_indices, col_indices, strict=False):
-        pair_selectivities.append(
-            (rec1_idx, rec2_idx, selectivity_matrix[rec1_idx, rec2_idx])
-        )
-    pair_selectivities.sort(
-        key=lambda x: x[2] if not np.isnan(x[2]) else -np.inf, reverse=True
-    )
-    top_pairs = pair_selectivities[:TOP_N_PAIRS]
+        pair_vals.append((rec1_idx, rec2_idx, metric_matrix[rec1_idx, rec2_idx]))
+    pair_vals.sort(key=lambda x: x[2] if not np.isnan(x[2]) else -np.inf, reverse=True)
+    top_pairs = pair_vals[:TOP_N_PAIRS]
 
     if receptors_to_include is None:
         unique_receptors = sorted(set([idx for pair in top_pairs for idx in pair[:2]]))
@@ -75,9 +85,9 @@ for plot_idx, cell_type in enumerate(display_cell_types):
         ]
         receptor_labels = [receptors[idx] for idx in unique_receptors]
 
-    subset_matrix = selectivity_matrix[np.ix_(unique_receptors, unique_receptors)]
+    subset_matrix = metric_matrix[np.ix_(unique_receptors, unique_receptors)]
     ax = axes[plot_idx]
-    heatmap = sns.heatmap(
+    sns.heatmap(
         subset_matrix,
         ax=ax,
         cmap="Reds",
@@ -95,85 +105,11 @@ for plot_idx, cell_type in enumerate(display_cell_types):
             ax.add_patch(
                 plt.Rectangle((j, i), 1, 1, fill=True, color="lightgray", zorder=3)
             )
+    ax.set_title(cell_type, fontsize=14)
     ax.tick_params(axis="x", rotation=90, labelsize=20, width=2, length=6)
     ax.tick_params(axis="y", rotation=0, labelsize=20, width=2, length=6)
 
+plt.suptitle(metric_label, fontsize=16)
 plt.tight_layout()
 plt.show()
-```
-
-```{python}
-# Plotting heatmaps of top receptor pairs per cell type for KL divergence and EMD
-
-import matplotlib.pyplot as plt
-import numpy as np
-import seaborn as sns
-
-from figures.scanning_analyses.scan_runners import load_KL_EMD_scan_results
-
-# Parameters
-TOP_N_PAIRS = 20
-CELL_TYPES_TO_DISPLAY = None
-receptors_to_include = None
-pathname = "/home/sama/receptor_sweep_data/20260319_dist_scan.csv"
-
-KL_results, EMD_results, receptors, cell_types = load_KL_EMD_scan_results(pathname)
-
-if CELL_TYPES_TO_DISPLAY is not None:
-    display_cell_types = [ct for ct in cell_types if ct in CELL_TYPES_TO_DISPLAY]
-else:
-    display_cell_types = cell_types
-
-for metric_results in [KL_results, EMD_results]:
-    fig, axes = plt.subplots(
-        1, len(display_cell_types), figsize=(8 * len(display_cell_types), 7)
-    )
-    if len(display_cell_types) == 1:
-        axes = [axes]
-    for plot_idx, cell_type in enumerate(display_cell_types):
-        cell_type_idx = cell_types.index(cell_type)
-        metric_matrix = metric_results[:, :, cell_type_idx]
-        row_indices, col_indices = np.tril_indices(len(receptors), k=0)
-        pair_vals = []
-        for rec1_idx, rec2_idx in zip(row_indices, col_indices, strict=False):
-            pair_vals.append((rec1_idx, rec2_idx, metric_matrix[rec1_idx, rec2_idx]))
-        pair_vals.sort(
-            key=lambda x: x[2] if not np.isnan(x[2]) else -np.inf, reverse=True
-        )
-        top_pairs = pair_vals[:TOP_N_PAIRS]
-        if receptors_to_include is None:
-            unique_receptors = sorted(
-                set([idx for pair in top_pairs for idx in pair[:2]])
-            )
-            receptor_labels = [receptors[idx] for idx in unique_receptors]
-        else:
-            unique_receptors = [
-                idx for idx, rec in enumerate(receptors) if rec in receptors_to_include
-            ]
-            receptor_labels = [receptors[idx] for idx in unique_receptors]
-        subset_matrix = metric_matrix[np.ix_(unique_receptors, unique_receptors)]
-        ax = axes[plot_idx]
-        sns.heatmap(
-            subset_matrix,
-            ax=ax,
-            cmap="Reds",
-            xticklabels=receptor_labels,
-            yticklabels=receptor_labels,
-            square=True,
-            annot=False,
-            cbar=True,
-            linewidths=0.1,
-            linecolor="lightgray",
-        )
-        n_recs = len(unique_receptors)
-        for i in range(n_recs):
-            for j in range(i + 1, n_recs):
-                ax.add_patch(
-                    plt.Rectangle((j, i), 1, 1, fill=True, color="lightgray", zorder=3)
-                )
-        ax.tick_params(axis="x", rotation=90, labelsize=20, width=2, length=6)
-        ax.tick_params(axis="y", rotation=0, labelsize=20, width=2, length=6)
-
-    plt.tight_layout()
-    plt.show()
 ```

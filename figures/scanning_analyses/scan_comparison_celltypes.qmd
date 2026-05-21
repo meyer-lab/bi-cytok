@@ -11,12 +11,10 @@ high or are cell-type-specific.
 
 # Inputs
 - Two CSV files produced by `run_selectivity_scan` or `run_KL_EMD_scan`
-  (may be the same file to compare two metrics within it)
+  (may be the same file to compare two metrics within it); matching `.yaml` files must exist
 - `SCAN_PATH_1`, `SCAN_PATH_2`: paths to those CSVs
-- `METRIC_1`, `METRIC_2`: column names to extract from each scan
-  - Selectivity scans: `"Selectivity"`, `"Kx_star"`, `"Affinity_Receptor_N"`
-  - Distribution scans: `"EMD"`, `"KL_Divergence"`
-- `AXIS_1_LABEL`, `AXIS_2_LABEL`: human-readable names for each axis
+- `KL_METRIC_1`, `KL_METRIC_2`: for KL/EMD scans, selects which method to use per path — `"KL_Divergence"` or `"EMD"`; metrics for selectivity scans are derived automatically
+- `AXIS_1_LABEL`, `AXIS_2_LABEL`: human-readable axis labels; set to `None` to auto-derive from the metric name
 - `TARG_CELL_TYPES`: list of target cell types to extract and overlay
 
 # Outputs
@@ -25,23 +23,38 @@ high or are cell-type-specific.
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
+import os
+
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import pandas as pd
+import yaml
 
 # ── Parameters ────────────────────────────────────────────────────────────────
-# SCAN_PATH_1 = "/home/sama/receptor_sweep_data/20260212_full_geom_sweep.csv"
-SCAN_PATH_2 = "/home/sama/receptor_sweep_data/20260319_dist_scan.csv"
-SCAN_PATH_1 = "/home/sama/receptor_sweep_data/20260319_dist_scan.csv"
+SCAN_PATH_1 = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+SCAN_PATH_2 = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
 
-# Column to extract from each scan CSV.
-# Selectivity scans: "Selectivity", "Kx_star", "Affinity_Receptor_0", etc.
-# Distribution scans: "EMD", "KL_Divergence"
-METRIC_1 = "KL_Divergence"
-METRIC_2 = "EMD"
+# For KL_EMD scans, selects which method to use as the axis metric.
+KL_METRIC_1 = "KL_Divergence"  # "KL_Divergence" or "EMD"
+KL_METRIC_2 = "EMD"
 
-AXIS_1_LABEL = "KL Divergence"
-AXIS_2_LABEL = "EMD"
+# Human-readable axis labels; set to None to auto-derive from the metric name.
+AXIS_1_LABEL = None
+AXIS_2_LABEL = None
+
+
+# ── Derive metrics from YAML ───────────────────────────────────────────────────
+def _scan_metric(scan_path, kl_metric):
+    yaml_path = os.path.splitext(scan_path)[0] + ".yaml"
+    with open(yaml_path) as f:
+        scan_type = yaml.safe_load(f)["scan_type"]
+    return "Selectivity" if scan_type == "selectivity" else kl_metric
+
+
+METRIC_1 = _scan_metric(SCAN_PATH_1, KL_METRIC_1)
+METRIC_2 = _scan_metric(SCAN_PATH_2, KL_METRIC_2)
+AXIS_1_LABEL = AXIS_1_LABEL or METRIC_1.replace("_", " ")
+AXIS_2_LABEL = AXIS_2_LABEL or METRIC_2.replace("_", " ")
 
 # List of target cell types to overlay; each is plotted in a distinct color.
 TARG_CELL_TYPES: list[str] = [
