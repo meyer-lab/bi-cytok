@@ -29,32 +29,34 @@ distributions.
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
 import sys
+
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-import seaborn as sns
 
 sys.path.insert(0, ".")
-from scan_runners import load_selec_scan_results, load_KL_EMD_scan_results
-from bicytok.imports import importCITE, sample_receptor_abundances
+from scan_runners import load_KL_EMD_scan_results
 
 # ── Parameters ────────────────────────────────────────────────────────────────
-SCAN_PATH = "/home/sama/receptor_sweep_data/20260212_full_geom_sweep.csv"
+# SCAN_PATH = "/home/sama/receptor_sweep_data/20260212_full_geom_sweep.csv"
 # SCAN_PATH = "/home/sama/receptor_sweep_data/20260514_selec_scan_high-val-Treg.csv"
-# SCAN_PATH = "/home/sama/receptor_sweep_data/20260319_dist_scan.csv"
-TARG_CELL_TYPES = None    # list of cell types, or None for all in the scan
-EXCLUDE_CELL_TYPES = ["CD4 Proliferating", "CD8 Proliferating"]  # cell types to exclude from analysis (if present in scan)
-N_TOP_HIST  = 3           # top receptors per category per cell type (histograms)
-N_TOP_JOINT = 10          # top pairs by gain across all cell types (2D joints)
+SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
+# SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+
+TARG_CELL_TYPES = None  # list of cell types, or None for all in the scan
+EXCLUDE_CELL_TYPES = [
+    "CD4 Proliferating",
+    "CD8 Proliferating",
+]  # cell types to exclude from analysis (if present in scan)
+N_TOP_HIST = 3  # top receptors per category per cell type (histograms)
+N_TOP_JOINT = 10  # top pairs by gain across all cell types (2D joints)
 SAMPLE_SIZE = 1000
 CELL_CATEGORIZATION = "CellType2"
 EXCLUDE_SIGNAL_REC = True
 SIGNAL_REC_NAME = "Prototype_Signal_Receptor"
 
 # ── Load scan ──────────────────────────────────────────────────────────────────
-opt_selec, opt_affs, opt_Kx_star, receptors, cell_types = load_selec_scan_results(SCAN_PATH)
-# KL, opt_selec, receptors, cell_types = load_KL_EMD_scan_results(SCAN_PATH)
+# opt_selec, opt_affs, opt_Kx_star, receptors, cell_types = load_selec_scan_results(SCAN_PATH)
+opt_selec, EMD, receptors, cell_types = load_KL_EMD_scan_results(SCAN_PATH)
 n_recs = len(receptors)
 
 # Resolve target cell types
@@ -73,7 +75,7 @@ targ_cell_types = [ct for ct in targ_cell_types if ct not in EXCLUDE_CELL_TYPES]
 exclude_set = {SIGNAL_REC_NAME} if EXCLUDE_SIGNAL_REC else set()
 
 # ── Per-cell-type synergy classification ──────────────────────────────────────
-ct_results = {}        # cell_type → classification dict
+ct_results = {}  # cell_type → classification dict
 all_synergy_records = []
 
 for ct in targ_cell_types:
@@ -162,7 +164,17 @@ all_synergy_df = (
     .sort_values("synergy_gain", ascending=False)
     .reset_index(drop=True)
     if all_synergy_records
-    else pd.DataFrame(columns=["cell_type","rec1","rec2","pair_selec","mono_rec1","mono_rec2","synergy_gain"])
+    else pd.DataFrame(
+        columns=[
+            "cell_type",
+            "rec1",
+            "rec2",
+            "pair_selec",
+            "mono_rec1",
+            "mono_rec2",
+            "synergy_gain",
+        ]
+    )
 )
 print(f"\nTotal synergistic pairs across all cell types: {len(all_synergy_df)}")
 print(f"\nTop {min(15, len(all_synergy_df))} pairs by synergy gain:")
@@ -170,6 +182,12 @@ print(all_synergy_df.head(15).to_string(index=False))
 ```
 
 ```{python}
+import matplotlib.pyplot as plt
+import seaborn as sns
+from matplotlib import gridspec
+
+from bicytok.imports import importCITE, sample_receptor_abundances
+
 # ── Load CITE-seq data and sample per cell type ───────────────────────────────
 CITE_DF = importCITE()
 non_rec_cols = {"Cell", "CellType1", "CellType2", "CellType3"}
@@ -190,7 +208,7 @@ for ct in targ_cell_types:
 
 available_recs = set(epitopes_df.columns) - {"Cell Type"}
 
-TARG_COLOR    = "#CF4D6F"
+TARG_COLOR = "#CF4D6F"
 OFFTARG_COLOR = "#2774AE"
 
 # ── Figure per cell type: 1D histograms, top receptors in each category ───────
@@ -214,27 +232,37 @@ for ct in targ_cell_types:
     n_cols = max(len(top_non_syn), len(top_syn), 1)
     fig, axes = plt.subplots(2, n_cols, figsize=(3.5 * n_cols, 7), squeeze=False)
 
-    row_labels    = ["Non-synergistic", "Synergistic"]
+    row_labels = ["Non-synergistic", "Synergistic"]
     top_recs_rows = [top_non_syn, top_syn]
 
-    for row_idx, (row_label, top_recs) in enumerate(zip(row_labels, top_recs_rows)):
+    for row_idx, (row_label, top_recs) in enumerate(
+        zip(row_labels, top_recs_rows, strict=False)
+    ):
         for col_idx in range(n_cols):
             ax = axes[row_idx, col_idx]
             if col_idx >= len(top_recs):
                 ax.set_visible(False)
                 continue
             rec = top_recs[col_idx]
-            targ_abun = sample_df.loc[on_targ_mask,  rec].to_numpy(float)
-            off_abun  = sample_df.loc[~on_targ_mask, rec].to_numpy(float)
+            targ_abun = sample_df.loc[on_targ_mask, rec].to_numpy(float)
+            off_abun = sample_df.loc[~on_targ_mask, rec].to_numpy(float)
             x_max = np.percentile(np.concatenate([targ_abun, off_abun]), 99.5) * 1.1
             bins = np.linspace(0, x_max, 40)
             ax.hist(
-                targ_abun, bins=bins, alpha=0.6, color=TARG_COLOR,
-                label=f"{ct} (target)", density=True,
+                targ_abun,
+                bins=bins,
+                alpha=0.6,
+                color=TARG_COLOR,
+                label=f"{ct} (target)",
+                density=True,
             )
             ax.hist(
-                off_abun, bins=bins, alpha=0.6, color=OFFTARG_COLOR,
-                label="Off-target", density=True,
+                off_abun,
+                bins=bins,
+                alpha=0.6,
+                color=OFFTARG_COLOR,
+                label="Off-target",
+                density=True,
             )
             selec_str = (
                 f"Best pair: {res['syn_best'].get(rec, np.nan):.2f}"
@@ -250,16 +278,15 @@ for ct in targ_cell_types:
 
     fig.suptitle(
         f"Top {N_TOP_HIST} receptors per category — target: {ct}",
-        fontsize=10, fontweight="bold",
+        fontsize=10,
+        fontweight="bold",
     )
     plt.tight_layout()
     plt.show()
 
 # ── 2D joint distributions: top N_TOP_JOINT pairs by gain across all types ────
 # Filter low selectivity, high gain pairs
-filt_synergy_df = all_synergy_df[
-    (all_synergy_df["pair_selec"] >= 0.75)
-]
+filt_synergy_df = all_synergy_df[(all_synergy_df["pair_selec"] >= 0.75)]
 
 top_joint_pairs = filt_synergy_df[
     filt_synergy_df["rec1"].isin(available_recs)
@@ -273,49 +300,57 @@ else:
     n_cols_j = min(5, n_pairs)
     n_rows_j = (n_pairs + n_cols_j - 1) // n_cols_j
     fig2 = plt.figure(figsize=(4.5 * n_cols_j, 5.5 * n_rows_j))
-    outer_gs = gridspec.GridSpec(n_rows_j, n_cols_j, figure=fig2, hspace=0.6, wspace=0.45)
+    outer_gs = gridspec.GridSpec(
+        n_rows_j, n_cols_j, figure=fig2, hspace=0.6, wspace=0.45
+    )
 
     for idx, (_, pair_row) in enumerate(top_joint_pairs.iterrows()):
-        ct   = pair_row["cell_type"]
+        ct = pair_row["cell_type"]
         rec1 = pair_row["rec1"]
         rec2 = pair_row["rec2"]
-        sample_df    = samples[ct]
+        sample_df = samples[ct]
         on_targ_mask = (sample_df["Cell Type"] == ct).to_numpy()
 
         row_idx = idx // n_cols_j
-        col_idx = idx %  n_cols_j
+        col_idx = idx % n_cols_j
 
         inner_gs = gridspec.GridSpecFromSubplotSpec(
-            2, 2,
+            2,
+            2,
             subplot_spec=outer_gs[row_idx, col_idx],
             width_ratios=[4, 1],
             height_ratios=[1, 4],
-            hspace=0.05, wspace=0.05,
+            hspace=0.05,
+            wspace=0.05,
         )
-        ax_main  = fig2.add_subplot(inner_gs[1, 0])
-        ax_top   = fig2.add_subplot(inner_gs[0, 0], sharex=ax_main)
+        ax_main = fig2.add_subplot(inner_gs[1, 0])
+        ax_top = fig2.add_subplot(inner_gs[0, 0], sharex=ax_main)
         ax_right = fig2.add_subplot(inner_gs[1, 1], sharey=ax_main)
 
-        targ_x = sample_df.loc[on_targ_mask,  rec1].to_numpy(float)
-        targ_y = sample_df.loc[on_targ_mask,  rec2].to_numpy(float)
-        off_x  = sample_df.loc[~on_targ_mask, rec1].to_numpy(float)
-        off_y  = sample_df.loc[~on_targ_mask, rec2].to_numpy(float)
+        targ_x = sample_df.loc[on_targ_mask, rec1].to_numpy(float)
+        targ_y = sample_df.loc[on_targ_mask, rec2].to_numpy(float)
+        off_x = sample_df.loc[~on_targ_mask, rec1].to_numpy(float)
+        off_y = sample_df.loc[~on_targ_mask, rec2].to_numpy(float)
 
         x_max = np.percentile(np.concatenate([targ_x, off_x]), 99.9) * 1.15
         y_max = np.percentile(np.concatenate([targ_y, off_y]), 99.9) * 1.15
 
         for xs, ys, color, lbl in [
-            (targ_x, targ_y, TARG_COLOR,    f"{ct} (target)"),
-            (off_x,  off_y,  OFFTARG_COLOR, "Off-target"),
+            (targ_x, targ_y, TARG_COLOR, f"{ct} (target)"),
+            (off_x, off_y, OFFTARG_COLOR, "Off-target"),
         ]:
             ax_main.scatter(xs, ys, s=5, alpha=0.3, color=color, linewidths=0)
             if len(xs) > 10:
                 try:
-                    sns.kdeplot(x=xs, y=ys, color=color, levels=4, linewidths=1.0, ax=ax_main)
+                    sns.kdeplot(
+                        x=xs, y=ys, color=color, levels=4, linewidths=1.0, ax=ax_main
+                    )
                 except Exception:
                     pass
             ax_top.hist(xs, bins=35, alpha=0.55, color=color, label=lbl)
-            ax_right.hist(ys, bins=35, alpha=0.55, color=color, orientation="horizontal")
+            ax_right.hist(
+                ys, bins=35, alpha=0.55, color=color, orientation="horizontal"
+            )
 
         ax_main.set_xlim(0, x_max)
         ax_main.set_ylim(0, y_max)
@@ -334,12 +369,15 @@ else:
         gain_s = pair_row["synergy_gain"]
         ax_top.set_title(
             f"[{ct}]  {rec1} × {rec2}\nPair: {pair_s:.2f}  Gain: {gain_s:.2f}",
-            fontsize=7, pad=2,
+            fontsize=7,
+            pad=2,
         )
 
     fig2.suptitle(
         f"Top {n_pairs} synergistic pairs by gain — all target cell types",
-        fontsize=10, fontweight="bold", y=1.02,
+        fontsize=10,
+        fontweight="bold",
+        y=1.02,
     )
     plt.tight_layout()
     plt.show()

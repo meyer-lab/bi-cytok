@@ -30,8 +30,8 @@ two binding model scans with different valencies, or any other pair of scan outp
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -72,14 +72,20 @@ HIGHLIGHT_PAIRS: list[tuple[str, str]] = [
     # ("CD4-1", "CD45RO"),
 ]
 
+
 # ── Load scans ────────────────────────────────────────────────────────────────
 def load_scan_flat(path, metric_col, cell_type):
     """Return DataFrame with columns rec1, rec2, metric for the given cell type."""
     raw = pd.read_csv(path)
     assert cell_type in raw["Cell_Type"].values, f"{cell_type!r} not found in {path}"
     assert metric_col in raw.columns, f"{metric_col!r} not a column in {path}"
-    sub = raw[raw["Cell_Type"] == cell_type][["Receptor_1", "Receptor_2", metric_col]].copy()
-    return sub.rename(columns={"Receptor_1": "rec1", "Receptor_2": "rec2", metric_col: "metric"}).reset_index(drop=True)
+    sub = raw[raw["Cell_Type"] == cell_type][
+        ["Receptor_1", "Receptor_2", metric_col]
+    ].copy()
+    return sub.rename(
+        columns={"Receptor_1": "rec1", "Receptor_2": "rec2", metric_col: "metric"}
+    ).reset_index(drop=True)
+
 
 scan1 = load_scan_flat(SCAN_PATH_1, METRIC_1, TARG_CELL_TYPE)
 scan2 = load_scan_flat(SCAN_PATH_2, METRIC_2, TARG_CELL_TYPE)
@@ -97,7 +103,7 @@ assert len(df) > 0, "No valid (non-NaN) receptor pairs found in both scans"
 _slope, _intercept = np.polyfit(df["s1"], df["s2"], 1)
 df["resid"] = df["s2"] - (_slope * df["s1"] + _intercept)
 
-resid_hi = np.nanpercentile(df["resid"],       RESID_PERCENTILE)
+resid_hi = np.nanpercentile(df["resid"], RESID_PERCENTILE)
 resid_lo = np.nanpercentile(df["resid"], 100 - RESID_PERCENTILE)
 
 # ── Categorise points ─────────────────────────────────────────────────────────
@@ -108,30 +114,36 @@ high1 = df["s1"] >= thresh1
 high2 = df["s2"] >= thresh2
 
 df["category"] = "neither"
-df.loc[df["resid"] <= resid_lo, "category"] = "high_1"   # metric 1 above trend
-df.loc[df["resid"] >= resid_hi, "category"] = "high_2"   # metric 2 above trend
-df.loc[high1 & high2,           "category"] = "both"     # independently high on both
+df.loc[df["resid"] <= resid_lo, "category"] = "high_1"  # metric 1 above trend
+df.loc[df["resid"] >= resid_hi, "category"] = "high_2"  # metric 2 above trend
+df.loc[high1 & high2, "category"] = "both"  # independently high on both
 
 # Euclidean distance on z-score-normalized axes so both metrics contribute equally
 s1_z = (df["s1"] - df["s1"].mean()) / (df["s1"].std() + 1e-9)
 s2_z = (df["s2"] - df["s2"].mean()) / (df["s2"].std() + 1e-9)
 df["r"] = np.sqrt(s1_z**2 + s2_z**2)
 
+
 # ── Select auto-labeled points ────────────────────────────────────────────────
 def top_n_by(sub_df, sort_col, n):
     return sub_df.nlargest(n, sort_col)
 
-auto_label_rows = pd.concat([
-    df[df["category"] == "high_1"].nsmallest(N_LABEL, "resid"),
-    df[df["category"] == "high_2"].nlargest(N_LABEL, "resid"),
-    top_n_by(df[df["category"] == "both"], "r", N_LABEL),
-]).drop_duplicates(subset=["rec1", "rec2"])
+
+auto_label_rows = pd.concat(
+    [
+        df[df["category"] == "high_1"].nsmallest(N_LABEL, "resid"),
+        df[df["category"] == "high_2"].nlargest(N_LABEL, "resid"),
+        top_n_by(df[df["category"] == "both"], "r", N_LABEL),
+    ]
+).drop_duplicates(subset=["rec1", "rec2"])
 
 # ── Global top-N pairs per axis (starred) ─────────────────────────────────────
-top_overall_rows = pd.concat([
-    df.nlargest(N_TOP_OVERALL, "s1"),
-    df.nlargest(N_TOP_OVERALL, "s2"),
-]).drop_duplicates(subset=["rec1", "rec2"])
+top_overall_rows = pd.concat(
+    [
+        df.nlargest(N_TOP_OVERALL, "s1"),
+        df.nlargest(N_TOP_OVERALL, "s2"),
+    ]
+).drop_duplicates(subset=["rec1", "rec2"])
 
 # ── User-specified pairs ──────────────────────────────────────────────────────
 user_rows_list = []
@@ -155,10 +167,12 @@ fig, ax = plt.subplots(figsize=(7, 7))
 
 for cat, style in {
     "neither": dict(color="lightgray", zorder=1, alpha=0.6, s=18, label="Neither"),
-    "high_1":  dict(color="#3A86FF",   zorder=3, alpha=0.85, s=40,
-                    label=f"High {AXIS_1_LABEL} only"),
-    "high_2":  dict(color="#FF9F1C",   zorder=3, alpha=0.85, s=40,
-                    label=f"High {AXIS_2_LABEL} only"),
+    "high_1": dict(
+        color="#3A86FF", zorder=3, alpha=0.85, s=40, label=f"High {AXIS_1_LABEL} only"
+    ),
+    "high_2": dict(
+        color="#FF9F1C", zorder=3, alpha=0.85, s=40, label=f"High {AXIS_2_LABEL} only"
+    ),
 }.items():
     sub = df[df["category"] == cat]
     ax.scatter(sub["s1"], sub["s2"], **style)
@@ -172,8 +186,12 @@ if not both_sub.empty:
         else np.full(len(both_sub), 80)
     )
     ax.scatter(
-        both_sub["s1"], both_sub["s2"],
-        s=sizes_both, color="#E63946", zorder=4, alpha=0.95,
+        both_sub["s1"],
+        both_sub["s2"],
+        s=sizes_both,
+        color="#E63946",
+        zorder=4,
+        alpha=0.95,
         label="High on both (size ∝ Euclidean dist.)",
     )
     labeled_both = both_sub.nlargest(N_LABEL, "r")
@@ -185,33 +203,72 @@ if not both_sub.empty:
         arc_y = df["s2"].mean() + r_ref_z * s2_std * np.sin(theta_arc)
         x_mask = (arc_x >= ax.get_xlim()[0]) & (arc_y >= ax.get_ylim()[0])
         ax.plot(
-            arc_x[x_mask], arc_y[x_mask],
-            color="#E63946", linewidth=1.2, linestyle=":", alpha=0.55,
-            zorder=3, label=f"Both: top-{N_LABEL} Euclidean cutoff",
+            arc_x[x_mask],
+            arc_y[x_mask],
+            color="#E63946",
+            linewidth=1.2,
+            linestyle=":",
+            alpha=0.55,
+            zorder=3,
+            label=f"Both: top-{N_LABEL} Euclidean cutoff",
         )
 
 if not user_rows.empty:
     ax.scatter(
-        user_rows["s1"], user_rows["s2"],
-        marker="D", s=80, color="#9B5DE5", zorder=6, alpha=1.0,
+        user_rows["s1"],
+        user_rows["s2"],
+        marker="D",
+        s=80,
+        color="#9B5DE5",
+        zorder=6,
+        alpha=1.0,
         label="User-specified pairs",
     )
 
 ax.scatter(
-    top_overall_rows["s1"], top_overall_rows["s2"],
-    marker="*", s=220, color="#FFD700", edgecolors="#888", linewidths=0.5,
-    zorder=7, alpha=1.0, label=f"Top-{N_TOP_OVERALL} per axis",
+    top_overall_rows["s1"],
+    top_overall_rows["s2"],
+    marker="*",
+    s=220,
+    color="#FFD700",
+    edgecolors="#888",
+    linewidths=0.5,
+    zorder=7,
+    alpha=1.0,
+    label=f"Top-{N_TOP_OVERALL} per axis",
 )
 
 _x_line = np.array([df["s1"].min(), df["s1"].max()])
-ax.plot(_x_line, _slope * _x_line + _intercept,
-        color="dimgray", linewidth=1.0, linestyle="-", alpha=0.45, zorder=2, label="OLS fit")
-ax.plot(_x_line, _slope * _x_line + _intercept + resid_hi,
-        color="darkorange", linewidth=1.0, linestyle="--", alpha=0.5)
-ax.plot(_x_line, _slope * _x_line + _intercept + resid_lo,
-        color="steelblue",  linewidth=1.0, linestyle="--", alpha=0.5)
+ax.plot(
+    _x_line,
+    _slope * _x_line + _intercept,
+    color="dimgray",
+    linewidth=1.0,
+    linestyle="-",
+    alpha=0.45,
+    zorder=2,
+    label="OLS fit",
+)
+ax.plot(
+    _x_line,
+    _slope * _x_line + _intercept + resid_hi,
+    color="darkorange",
+    linewidth=1.0,
+    linestyle="--",
+    alpha=0.5,
+)
+ax.plot(
+    _x_line,
+    _slope * _x_line + _intercept + resid_lo,
+    color="steelblue",
+    linewidth=1.0,
+    linestyle="--",
+    alpha=0.5,
+)
 
-all_label_rows = pd.concat([auto_label_rows, top_overall_rows, user_rows]).drop_duplicates(subset=["rec1", "rec2"])
+all_label_rows = pd.concat(
+    [auto_label_rows, top_overall_rows, user_rows]
+).drop_duplicates(subset=["rec1", "rec2"])
 for _, row in all_label_rows.iterrows():
     label = f"({row['rec1']}, {row['rec2']})"
     txt = ax.text(row["s1"], row["s2"], label, fontsize=7, ha="left", va="bottom")
@@ -222,7 +279,8 @@ ax.set_ylabel(AXIS_2_LABEL, fontsize=13)
 ax.set_title(
     f"{AXIS_1_LABEL} vs. {AXIS_2_LABEL}\nTarget: {TARG_CELL_TYPE}  "
     f"(threshold = {HIGH_PERCENTILE}th percentile)",
-    fontsize=12, pad=12,
+    fontsize=12,
+    pad=12,
 )
 ax.tick_params(labelsize=11)
 plt.tight_layout()
@@ -232,7 +290,14 @@ plt.show()
 ```{python}
 # Tabular summary of all annotated receptor pairs
 summary = all_label_rows[["rec1", "rec2", "s1", "s2", "r", "category"]].copy()
-summary.columns = ["Receptor 1", "Receptor 2", AXIS_1_LABEL, AXIS_2_LABEL, "Euclidean dist. (norm.)", "Category"]
+summary.columns = [
+    "Receptor 1",
+    "Receptor 2",
+    AXIS_1_LABEL,
+    AXIS_2_LABEL,
+    "Euclidean dist. (norm.)",
+    "Category",
+]
 summary = summary.sort_values("Category").reset_index(drop=True)
 summary[[AXIS_1_LABEL, AXIS_2_LABEL, "Euclidean dist. (norm.)"]] = summary[
     [AXIS_1_LABEL, AXIS_2_LABEL, "Euclidean dist. (norm.)"]
@@ -305,7 +370,9 @@ for rec in unique_recs:
     offtarg_std = np.std(offtarg_abun)
 
     log2_mean_fc = (
-        np.log2(targ_mean / offtarg_mean) if targ_mean > 0 and offtarg_mean > 0 else np.nan
+        np.log2(targ_mean / offtarg_mean)
+        if targ_mean > 0 and offtarg_mean > 0
+        else np.nan
     )
     log10_sd_ratio = (
         np.log10(targ_std / offtarg_std) if targ_std > 0 and offtarg_std > 0 else np.nan
@@ -319,8 +386,10 @@ for rec in unique_recs:
     targ_trim = targ_abun[targ_abun <= np.percentile(targ_abun, 95)]
     offtarg_trim = offtarg_abun[offtarg_abun <= np.percentile(offtarg_abun, 95)]
     if (
-        len(targ_trim) > 0 and np.mean(targ_trim) > 0
-        and len(offtarg_trim) > 0 and np.mean(offtarg_trim) > 0
+        len(targ_trim) > 0
+        and np.mean(targ_trim) > 0
+        and len(offtarg_trim) > 0
+        and np.mean(offtarg_trim) > 0
     ):
         outlier_inf = np.log2(targ_mean / np.mean(targ_trim)) - np.log2(
             offtarg_mean / np.mean(offtarg_trim)
@@ -334,7 +403,9 @@ for rec in unique_recs:
 
     # Excess kurtosis: weights outliers by (deviation)^4 — far more sensitive than
     # variance-based metrics to the rare, extreme off-target cells that inflate KL.
-    offtarg_kurtosis = float(scipy_stats.kurtosis(offtarg_abun))  # Fisher (excess) kurtosis
+    offtarg_kurtosis = float(
+        scipy_stats.kurtosis(offtarg_abun)
+    )  # Fisher (excess) kurtosis
 
     # Conditional tail mean: mean of top-5% off-target cells relative to overall mean.
     # Separates outlier magnitude from bulk expression independently of sample count.
@@ -374,9 +445,9 @@ pair_feat_df = pd.DataFrame(pair_rows)
 CAT_ORDER = ["neither", "high_1", "high_2", "both"]
 CAT_COLORS = {
     "neither": "lightgray",
-    "high_1":  "#3A86FF",
-    "high_2":  "#FF9F1C",
-    "both":    "#E63946",
+    "high_1": "#3A86FF",
+    "high_2": "#FF9F1C",
+    "both": "#E63946",
 }
 
 
@@ -386,15 +457,17 @@ def _abbrev(label, maxlen=14):
 
 CAT_LABELS = {
     "neither": "Neither",
-    "high_1":  f"High\n{_abbrev(AXIS_1_LABEL)}",
-    "high_2":  f"High\n{_abbrev(AXIS_2_LABEL)}",
-    "both":    "Both",
+    "high_1": f"High\n{_abbrev(AXIS_1_LABEL)}",
+    "high_2": f"High\n{_abbrev(AXIS_2_LABEL)}",
+    "both": "Both",
 }
 
-fig, axes = plt.subplots(1, len(FOCUSED_FEATURES), figsize=(3.5 * len(FOCUSED_FEATURES), 5))
+fig, axes = plt.subplots(
+    1, len(FOCUSED_FEATURES), figsize=(3.5 * len(FOCUSED_FEATURES), 5)
+)
 rng = np.random.default_rng(0)
 
-for ax, feat in zip(axes, FOCUSED_FEATURES):
+for ax, feat in zip(axes, FOCUSED_FEATURES, strict=False):
     groups_data = [
         pair_feat_df.loc[pair_feat_df["category"] == cat, feat].dropna().to_numpy()
         for cat in CAT_ORDER
@@ -404,21 +477,28 @@ for ax, feat in zip(axes, FOCUSED_FEATURES):
     valid_pos = [i for i, d in enumerate(groups_data) if len(d) > 1]
     valid_data = [groups_data[i] for i in valid_pos]
     if valid_data:
-        parts = ax.violinplot(valid_data, positions=valid_pos, showmedians=True, showextrema=False)
-        for body, pos in zip(parts["bodies"], valid_pos):
+        parts = ax.violinplot(
+            valid_data, positions=valid_pos, showmedians=True, showextrema=False
+        )
+        for body, pos in zip(parts["bodies"], valid_pos, strict=False):
             body.set_facecolor(CAT_COLORS[CAT_ORDER[pos]])
             body.set_alpha(0.65)
         parts["cmedians"].set_color("black")
         parts["cmedians"].set_linewidth(1.5)
 
     # Strip overlay
-    for i, (data, cat) in enumerate(zip(groups_data, CAT_ORDER)):
+    for i, (data, cat) in enumerate(zip(groups_data, CAT_ORDER, strict=False)):
         if len(data) == 0:
             continue
         jitter = rng.uniform(-0.12, 0.12, size=len(data))
         ax.scatter(
-            np.full(len(data), i) + jitter, data,
-            s=6, alpha=0.25, color=CAT_COLORS[cat], zorder=3, linewidths=0,
+            np.full(len(data), i) + jitter,
+            data,
+            s=6,
+            alpha=0.25,
+            color=CAT_COLORS[cat],
+            zorder=3,
+            linewidths=0,
         )
 
     # Kruskal-Wallis across all non-empty groups
@@ -465,8 +545,9 @@ import seaborn as sns
 
 N_REPR = 5  # pairs to show per group
 
-TARG_COLOR    = "#CF4D6F"
+TARG_COLOR = "#CF4D6F"
 OFFTARG_COLOR = "#2774AE"
+
 
 # ── Select representative pairs ───────────────────────────────────────────────
 def _select_repr(group_df, cat, n):
@@ -479,8 +560,11 @@ def _select_repr(group_df, cat, n):
     sort_col = {"high_1": "s1", "high_2": "s2", "both": "r"}[cat]
     return group_df.nlargest(n, sort_col)
 
+
 available_recs = set(sample_df.columns) - {"Cell Type"}
-df_plottable = df[df["rec1"].isin(available_recs) & df["rec2"].isin(available_recs)].copy()
+df_plottable = df[
+    df["rec1"].isin(available_recs) & df["rec2"].isin(available_recs)
+].copy()
 
 repr_pairs = {
     cat: _select_repr(df_plottable[df_plottable["category"] == cat], cat, N_REPR)
@@ -490,9 +574,11 @@ repr_pairs = {
 # ── Figure ────────────────────────────────────────────────────────────────────
 fig = plt.figure(figsize=(4.5 * N_REPR, 5.0 * len(CAT_ORDER)))
 outer_gs = gridspec.GridSpec(
-    len(CAT_ORDER), N_REPR,
+    len(CAT_ORDER),
+    N_REPR,
     figure=fig,
-    hspace=0.65, wspace=0.45,
+    hspace=0.65,
+    wspace=0.45,
 )
 
 for group_idx, cat in enumerate(CAT_ORDER):
@@ -504,36 +590,42 @@ for group_idx, cat in enumerate(CAT_ORDER):
         rec1, rec2 = row["rec1"], row["rec2"]
 
         inner_gs = gridspec.GridSpecFromSubplotSpec(
-            2, 2,
+            2,
+            2,
             subplot_spec=outer_gs[group_idx, pair_idx],
             width_ratios=[4, 1],
             height_ratios=[1, 4],
-            hspace=0.05, wspace=0.05,
+            hspace=0.05,
+            wspace=0.05,
         )
-        ax_main  = fig.add_subplot(inner_gs[1, 0])
-        ax_top   = fig.add_subplot(inner_gs[0, 0], sharex=ax_main)
+        ax_main = fig.add_subplot(inner_gs[1, 0])
+        ax_top = fig.add_subplot(inner_gs[0, 0], sharex=ax_main)
         ax_right = fig.add_subplot(inner_gs[1, 1], sharey=ax_main)
 
-        targ_x = sample_df.loc[on_targ_mask,  rec1].to_numpy(float)
-        targ_y = sample_df.loc[on_targ_mask,  rec2].to_numpy(float)
-        off_x  = sample_df.loc[~on_targ_mask, rec1].to_numpy(float)
-        off_y  = sample_df.loc[~on_targ_mask, rec2].to_numpy(float)
+        targ_x = sample_df.loc[on_targ_mask, rec1].to_numpy(float)
+        targ_y = sample_df.loc[on_targ_mask, rec2].to_numpy(float)
+        off_x = sample_df.loc[~on_targ_mask, rec1].to_numpy(float)
+        off_y = sample_df.loc[~on_targ_mask, rec2].to_numpy(float)
 
         x_max = np.percentile(np.concatenate([targ_x, off_x]), 99.9) * 1.15
         y_max = np.percentile(np.concatenate([targ_y, off_y]), 99.9) * 1.15
 
         for xs, ys, color in [
             (targ_x, targ_y, TARG_COLOR),
-            (off_x,  off_y,  OFFTARG_COLOR),
+            (off_x, off_y, OFFTARG_COLOR),
         ]:
             ax_main.scatter(xs, ys, s=5, alpha=0.3, color=color, linewidths=0)
             if len(xs) > 10:
                 try:
-                    sns.kdeplot(x=xs, y=ys, color=color, levels=4, linewidths=1.0, ax=ax_main)
+                    sns.kdeplot(
+                        x=xs, y=ys, color=color, levels=4, linewidths=1.0, ax=ax_main
+                    )
                 except Exception:
                     pass
             ax_top.hist(xs, bins=40, alpha=0.55, color=color)
-            ax_right.hist(ys, bins=40, alpha=0.55, color=color, orientation="horizontal")
+            ax_right.hist(
+                ys, bins=40, alpha=0.55, color=color, orientation="horizontal"
+            )
 
         ax_main.set_xlim(0, x_max)
         ax_main.set_ylim(0, y_max)
@@ -551,7 +643,8 @@ for group_idx, cat in enumerate(CAT_ORDER):
         ax_top.set_title(
             f"{rec1} × {rec2}\n"
             f"{_abbrev(AXIS_1_LABEL)}: {s1_str}   {_abbrev(AXIS_2_LABEL)}: {s2_str}",
-            fontsize=7, pad=2,
+            fontsize=7,
+            pad=2,
         )
 
         group_label = CAT_LABELS[cat].replace("\n", " ")
@@ -563,7 +656,9 @@ for group_idx, cat in enumerate(CAT_ORDER):
 plt.suptitle(
     f"Representative pair distributions — target: {TARG_CELL_TYPE}  "
     f"(pink = target,  blue = off-target)",
-    fontsize=11, fontweight="bold", y=1.01,
+    fontsize=11,
+    fontweight="bold",
+    y=1.01,
 )
 plt.tight_layout()
 plt.show()

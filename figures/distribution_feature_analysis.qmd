@@ -69,7 +69,11 @@ import pandas as pd
 from scipy import stats
 
 from bicytok.distance_metric_funcs import KL_EMD_1D
-from bicytok.imports import filter_receptor_abundances, importCITE, sample_receptor_abundances
+from bicytok.imports import (
+    filter_receptor_abundances,
+    importCITE,
+    sample_receptor_abundances,
+)
 from bicytok.selectivity_funcs import optimize_affs
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -89,7 +93,8 @@ if TARG_CELL_TYPES is None:
     TARG_CELL_TYPES = sorted(CITE_DF[CELL_CATEGORIZATION].unique().tolist())
 
 all_epitopes = [
-    col for col in CITE_DF.columns
+    col
+    for col in CITE_DF.columns
     if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
 ]
 
@@ -120,8 +125,9 @@ all_records = {}  # cell_type → records DataFrame
 
 for targ_cell in TARG_CELL_TYPES:
     print(f"Processing {targ_cell}...")
-    assert targ_cell in CITE_DF[CELL_CATEGORIZATION].unique(), \
+    assert targ_cell in CITE_DF[CELL_CATEGORIZATION].unique(), (
         f"{targ_cell!r} not found in {CELL_CATEGORIZATION}"
+    )
 
     epitopes_df = CITE_DF[all_epitopes + [CELL_CATEGORIZATION]].rename(
         columns={CELL_CATEGORIZATION: "Cell Type"}
@@ -139,8 +145,15 @@ for targ_cell in TARG_CELL_TYPES:
 
     # Filter bad receptors
     epitopes = [
-        ep for ep in epitopes
-        if (filtered_sample_df[ep].mean() > 5) and (filtered_sample_df[ep].mean() > filtered_sample_df[ep][filtered_sample_df["Cell Type"] != targ_cell].mean())
+        ep
+        for ep in epitopes
+        if (filtered_sample_df[ep].mean() > 5)
+        and (
+            filtered_sample_df[ep].mean()
+            > filtered_sample_df[ep][
+                filtered_sample_df["Cell Type"] != targ_cell
+            ].mean()
+        )
     ]
 
     on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
@@ -167,14 +180,34 @@ for targ_cell in TARG_CELL_TYPES:
         offtarg_iqr = np.percentile(offtarg_abun, 75) - np.percentile(offtarg_abun, 25)
 
         # --- Location ---
-        log2_mean_fc = np.log2(targ_mean / offtarg_mean) if (targ_mean > 0 and offtarg_mean > 0) else np.nan
-        log2_median_fc = np.log2(targ_median / offtarg_median) if (targ_median > 0 and offtarg_median > 0) else np.nan
-        log2_p90_fc = np.log2(targ_p90 / offtarg_p90) if (targ_p90 > 0 and offtarg_p90 > 0) else np.nan
+        log2_mean_fc = (
+            np.log2(targ_mean / offtarg_mean)
+            if (targ_mean > 0 and offtarg_mean > 0)
+            else np.nan
+        )
+        log2_median_fc = (
+            np.log2(targ_median / offtarg_median)
+            if (targ_median > 0 and offtarg_median > 0)
+            else np.nan
+        )
+        log2_p90_fc = (
+            np.log2(targ_p90 / offtarg_p90)
+            if (targ_p90 > 0 and offtarg_p90 > 0)
+            else np.nan
+        )
         cohens_d = (targ_mean - offtarg_mean) / pooled_std if pooled_std > 0 else np.nan
 
         # --- Spread ---
-        log_sd_ratio = np.log10(targ_std / offtarg_std) if (targ_std > 0 and offtarg_std > 0) else np.nan
-        log_iqr_ratio = np.log10(targ_iqr / offtarg_iqr) if (targ_iqr > 0 and offtarg_iqr > 0) else np.nan
+        log_sd_ratio = (
+            np.log10(targ_std / offtarg_std)
+            if (targ_std > 0 and offtarg_std > 0)
+            else np.nan
+        )
+        log_iqr_ratio = (
+            np.log10(targ_iqr / offtarg_iqr)
+            if (targ_iqr > 0 and offtarg_iqr > 0)
+            else np.nan
+        )
         cv_diff = (
             (targ_std / targ_mean) - (offtarg_std / offtarg_mean)
             if (targ_mean > 0 and offtarg_mean > 0)
@@ -197,9 +230,13 @@ for targ_cell in TARG_CELL_TYPES:
 
         # --- Separability ---
         threshold_2sd = offtarg_mean + 2 * offtarg_std
-        tail_enrichment = float(np.mean(targ_abun > threshold_2sd) - np.mean(offtarg_abun > threshold_2sd))
+        tail_enrichment = float(
+            np.mean(targ_abun > threshold_2sd) - np.mean(offtarg_abun > threshold_2sd)
+        )
         low_threshold = np.percentile(all_abun, 10)
-        non_expressing_diff = float(np.mean(targ_abun < low_threshold) - np.mean(offtarg_abun < low_threshold))
+        non_expressing_diff = float(
+            np.mean(targ_abun < low_threshold) - np.mean(offtarg_abun < low_threshold)
+        )
         bins = np.linspace(all_abun.min(), all_abun.max(), 50)
         hist_t, _ = np.histogram(targ_abun, bins=bins, density=True)
         hist_o, _ = np.histogram(offtarg_abun, bins=bins, density=True)
@@ -217,8 +254,16 @@ for targ_cell in TARG_CELL_TYPES:
         if len(targ_trimmed) > 0 and len(offtarg_trimmed) > 0:
             targ_trimmed_mean = np.mean(targ_trimmed)
             offtarg_trimmed_mean = np.mean(offtarg_trimmed)
-            targ_inflation = np.log2(targ_mean / targ_trimmed_mean) if targ_trimmed_mean > 0 else np.nan
-            offtarg_inflation = np.log2(offtarg_mean / offtarg_trimmed_mean) if offtarg_trimmed_mean > 0 else np.nan
+            targ_inflation = (
+                np.log2(targ_mean / targ_trimmed_mean)
+                if targ_trimmed_mean > 0
+                else np.nan
+            )
+            offtarg_inflation = (
+                np.log2(offtarg_mean / offtarg_trimmed_mean)
+                if offtarg_trimmed_mean > 0
+                else np.nan
+            )
             outlier_mean_inflation = (
                 targ_inflation - offtarg_inflation
                 if not (np.isnan(targ_inflation) or np.isnan(offtarg_inflation))
@@ -290,8 +335,8 @@ combined_df = pd.concat(
 
 ```{python}
 #| fig-cap: "Spearman correlation between distribution features and selectivity metrics (all cell types pooled)"
-import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
 
 SIG_COLOR = "#CF4D6F"
 NSIG_COLOR = "gray"
@@ -320,24 +365,44 @@ for row, feature in enumerate(FEATURE_NAMES):
 
         for ct in TARG_CELL_TYPES:
             mask = ct_v == ct
-            ax.scatter(x_v[mask], y_v[mask], s=20, alpha=0.45,
-                       color=ct_colors[ct], linewidths=0)
+            ax.scatter(
+                x_v[mask],
+                y_v[mask],
+                s=20,
+                alpha=0.45,
+                color=ct_colors[ct],
+                linewidths=0,
+            )
 
         annot_color = NSIG_COLOR
         if len(x_v) > 2:
             m, b = np.polyfit(x_v, y_v, 1)
             x_line = np.linspace(x_v.min(), x_v.max(), 100)
-            ax.plot(x_line, m * x_line + b, color="black", linestyle="--",
-                    alpha=0.45, linewidth=1.2)
+            ax.plot(
+                x_line,
+                m * x_line + b,
+                color="black",
+                linestyle="--",
+                alpha=0.45,
+                linewidth=1.2,
+            )
 
             rho, p_val = stats.spearmanr(x_v, y_v)
             annot_color = SIG_COLOR if p_val < SIG_THRESHOLD else NSIG_COLOR
             ax.annotate(
                 f"ρ = {rho:.2f}\np = {p_val:.2e}",
-                xy=(0.05, 0.95), xycoords="axes fraction",
-                va="top", fontsize=8, color=annot_color,
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                          alpha=0.85, edgecolor=annot_color, linewidth=1.0),
+                xy=(0.05, 0.95),
+                xycoords="axes fraction",
+                va="top",
+                fontsize=8,
+                color=annot_color,
+                bbox=dict(
+                    boxstyle="round,pad=0.3",
+                    facecolor="white",
+                    alpha=0.85,
+                    edgecolor=annot_color,
+                    linewidth=1.0,
+                ),
             )
 
         ax.grid(True, linestyle="--", alpha=0.35)
@@ -358,18 +423,33 @@ for row, feature in enumerate(FEATURE_NAMES):
                 spine.set_edgecolor("#888888")
 
 handles = [
-    mlines.Line2D([0], [0], marker="o", color="w",
-                  markerfacecolor=ct_colors[ct], markersize=6, label=ct)
+    mlines.Line2D(
+        [0],
+        [0],
+        marker="o",
+        color="w",
+        markerfacecolor=ct_colors[ct],
+        markersize=6,
+        label=ct,
+    )
     for ct in TARG_CELL_TYPES
 ]
-fig.legend(handles=handles, title="Cell type",
-           bbox_to_anchor=(1.01, 0.5), loc="center left",
-           fontsize=7, title_fontsize=8, framealpha=0.8)
+fig.legend(
+    handles=handles,
+    title="Cell type",
+    bbox_to_anchor=(1.01, 0.5),
+    loc="center left",
+    fontsize=7,
+    title_fontsize=8,
+    framealpha=0.8,
+)
 
 plt.suptitle(
     f"Distribution Features vs Selectivity Metrics — {len(TARG_CELL_TYPES)} cell types pooled, "
     f"{len(combined_df)} receptor×cell-type pairs",
-    fontsize=13, fontweight="bold", y=1.005,
+    fontsize=13,
+    fontweight="bold",
+    y=1.005,
 )
 plt.tight_layout(h_pad=0.6, rect=[0, 0, 0.88, 1.0])
 plt.show()

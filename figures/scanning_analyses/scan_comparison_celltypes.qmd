@@ -25,9 +25,8 @@ high or are cell-type-specific.
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
-import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
 
 # ── Parameters ────────────────────────────────────────────────────────────────
@@ -45,11 +44,21 @@ AXIS_1_LABEL = "KL Divergence"
 AXIS_2_LABEL = "EMD"
 
 # List of target cell types to overlay; each is plotted in a distinct color.
-TARG_CELL_TYPES: list[str] = ["Treg", "CD4 TEM", "CD4 CTL", "CD4 Naive", "CD8 TEM", "dnT", "ILC", "NK_CD56bright"]
+TARG_CELL_TYPES: list[str] = [
+    "Treg",
+    "CD4 TEM",
+    "CD4 CTL",
+    "CD4 Naive",
+    "CD8 TEM",
+    "dnT",
+    "ILC",
+    "NK_CD56bright",
+]
 TARG_CELL_TYPES = None
 
-POINT_SIZE  = 12
+POINT_SIZE = 12
 POINT_ALPHA = 0.35
+
 
 # ── Load scans ────────────────────────────────────────────────────────────────
 def load_scan_flat(path, metric_col, cell_type):
@@ -57,8 +66,13 @@ def load_scan_flat(path, metric_col, cell_type):
     raw = pd.read_csv(path)
     assert cell_type in raw["Cell_Type"].values, f"{cell_type!r} not found in {path}"
     assert metric_col in raw.columns, f"{metric_col!r} not a column in {path}"
-    sub = raw[raw["Cell_Type"] == cell_type][["Receptor_1", "Receptor_2", metric_col]].copy()
-    return sub.rename(columns={"Receptor_1": "rec1", "Receptor_2": "rec2", metric_col: "metric"}).reset_index(drop=True)
+    sub = raw[raw["Cell_Type"] == cell_type][
+        ["Receptor_1", "Receptor_2", metric_col]
+    ].copy()
+    return sub.rename(
+        columns={"Receptor_1": "rec1", "Receptor_2": "rec2", metric_col: "metric"}
+    ).reset_index(drop=True)
+
 
 # ── Resolve cell types ────────────────────────────────────────────────────────
 if TARG_CELL_TYPES is None:
@@ -85,28 +99,42 @@ for cell_type in TARG_CELL_TYPES:
     )
     assert len(df) > 0, f"No valid receptor pairs found for {cell_type!r}"
     ax.scatter(
-        df["s1"], df["s2"],
-        s=POINT_SIZE, alpha=POINT_ALPHA, color=cell_type_colors[cell_type],
-        linewidths=0, zorder=2,
+        df["s1"],
+        df["s2"],
+        s=POINT_SIZE,
+        alpha=POINT_ALPHA,
+        color=cell_type_colors[cell_type],
+        linewidths=0,
+        zorder=2,
     )
 
 handles = [
-    mlines.Line2D([0], [0], marker="o", color="w",
-                  markerfacecolor=cell_type_colors[ct], markersize=8, label=ct)
+    mlines.Line2D(
+        [0],
+        [0],
+        marker="o",
+        color="w",
+        markerfacecolor=cell_type_colors[ct],
+        markersize=8,
+        label=ct,
+    )
     for ct in TARG_CELL_TYPES
 ]
-ax.legend(handles=handles, title="Cell type", fontsize=9, title_fontsize=10,
-          framealpha=0.8)
+ax.legend(
+    handles=handles, title="Cell type", fontsize=9, title_fontsize=10, framealpha=0.8
+)
 
 ax.set_xlabel(AXIS_1_LABEL, fontsize=13)
 ax.set_ylabel(AXIS_2_LABEL, fontsize=13)
 types_str = (
-    ", ".join(TARG_CELL_TYPES) if len(TARG_CELL_TYPES) <= 3
+    ", ".join(TARG_CELL_TYPES)
+    if len(TARG_CELL_TYPES) <= 3
     else f"{len(TARG_CELL_TYPES)} cell types"
 )
 ax.set_title(
     f"{AXIS_1_LABEL} vs. {AXIS_2_LABEL}\nTargets: {types_str}",
-    fontsize=12, pad=12,
+    fontsize=12,
+    pad=12,
 )
 ax.tick_params(labelsize=11)
 plt.tight_layout()
