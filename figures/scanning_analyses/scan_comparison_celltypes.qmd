@@ -178,3 +178,19 @@ plt.tight_layout()
 plt.show()
 ```
 
+```{python}
+from scipy.stats import spearmanr
+
+rows = []
+for ct in TARG_CELL_TYPES:
+    sub = _all[_all["cell_type"] == ct]
+    r, p = spearmanr(sub["s1"], sub["s2"])
+    rows.append({"Cell Type": ct, "Spearman r": round(r, 4), "p-value": f"{p:.2e}"})
+
+overall_r, overall_p = spearmanr(_all["s1"], _all["s2"])
+rows.append({"Cell Type": "Overall", "Spearman r": round(overall_r, 4), "p-value": f"{overall_p:.2e}"})
+
+corr_df = pd.DataFrame(rows)
+print(f"Spearman correlation: {AXIS_1_LABEL} vs. {AXIS_2_LABEL}\n")
+print(corr_df.to_string(index=False))
+```
