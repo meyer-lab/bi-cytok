@@ -45,10 +45,11 @@ KL_METRIC_1 = "KL_Divergence"  # "KL_Divergence" or "EMD"
 KL_METRIC_2 = "KL_Divergence"
 
 # Human-readable axis labels; set to None to auto-derive from the metric name.
-AXIS_1_LABEL = "Binding model selectivity (valency [2, 1, 1])"
+AXIS_1_LABEL = "Binding model selectivity (valency [1, 1, 1])"
 AXIS_2_LABEL = None
 
-TARG_CELL_TYPE = "B naive"
+TARG_CELL_TYPE = "Treg"
+AXIS_NORM = "rank"  # "none", "z-score", "rank"
 
 
 # ── Derive metrics and cell categorization from YAML ──────────────────────────
@@ -114,6 +115,20 @@ df = (
     .reset_index(drop=True)
 )
 assert len(df) > 0, "No valid (non-NaN) receptor pairs found in both scans"
+
+# ── Apply axis normalization ───────────────────────────────────────────────────
+if AXIS_NORM == "z-score":
+    _s1_mean, _s1_std = df["s1"].mean(), df["s1"].std() + 1e-9
+    _s2_mean, _s2_std = df["s2"].mean(), df["s2"].std() + 1e-9
+    df["s1"] = (df["s1"] - _s1_mean) / _s1_std
+    df["s2"] = (df["s2"] - _s2_mean) / _s2_std
+elif AXIS_NORM == "rank":
+    df["s1"] = df["s1"].rank(method="average")
+    df["s2"] = df["s2"].rank(method="average")
+
+_norm_suffix = {"none": "", "z-score": " (z-score)", "rank": " (rank)"}[AXIS_NORM]
+AXIS_1_LABEL = AXIS_1_LABEL + _norm_suffix
+AXIS_2_LABEL = AXIS_2_LABEL + _norm_suffix
 
 # ── Fit regression line & compute residuals ───────────────────────────────────
 _slope, _intercept = np.polyfit(df["s1"], df["s2"], 1)
@@ -339,7 +354,7 @@ from scipy import stats as scipy_stats
 from bicytok.imports import importCITE, sample_receptor_abundances
 
 FEATURE_SAMPLE_SIZE = 2000
-FEATURE_PAIR_AGGR = "max"
+FEATURE_PAIR_AGGR = "mean"
 
 # ── Load and sample CITE-seq data ─────────────────────────────────────────────
 CITE_DF = importCITE()
