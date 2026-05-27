@@ -16,6 +16,8 @@ threshold combinations where N exceeds the number of valid pairs are excluded.
 - `SCAN_PATH_SELEC`: binding model selectivity scan CSV
 - `SCAN_PATH_DIST`: KL/EMD distribution metric scan CSV (may be filtered)
 - `TOP_N_VALUES`: absolute top-N thresholds to evaluate
+- `MIN_VALID_PAIRS_PCT`: cell types with fewer than this percentage of the largest valid
+  pair count are excluded (0 = keep all, 100 = keep only the largest)
 
 # Outputs
 - Box plot: Jaccard index at each top-N threshold, grouped by method pair. Dot size
@@ -33,7 +35,12 @@ import pandas as pd
 SCAN_PATH_SELEC = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
 SCAN_PATH_DIST = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
 
-TOP_N_VALUES = [1, 10, 100, 1000]
+TOP_N_VALUES = [5, 10, 50, 100]
+scale = None
+
+# Cell types with fewer than MIN_VALID_PAIRS_PCT % of the largest valid pair count
+# are excluded. Raises as N approaches n_total, so this keeps comparisons consistent.
+MIN_VALID_PAIRS_PCT = 10  # 0–100
 
 # ── Load data ─────────────────────────────────────────────────────────────────
 selec_df = pd.read_csv(SCAN_PATH_SELEC)
@@ -55,12 +62,12 @@ def jaccard(set_a, set_b):
     return len(set_a & set_b) / len(union) if union else 0.0
 
 
-# ── Compute Jaccard index per cell type ───────────────────────────────────────
+# ── First pass: collect valid pair sets and counts per cell type ───────────────
 cell_types = sorted(
     set(selec_df["Cell_Type"].unique()) & set(dist_df["Cell_Type"].unique())
 )
 
-records = []
+ct_data = {}
 for cell_type in cell_types:
     s = (
         selec_df[selec_df["Cell_Type"] == cell_type][
@@ -85,10 +92,25 @@ for cell_type in cell_types:
     if len(common) < 10:
         continue
 
-    s_c = s[s["pair"].isin(common)].set_index("pair")
-    d_c = d[d["pair"].isin(common)].set_index("pair")
-    n_total = len(common)
+    ct_data[cell_type] = (
+        s[s["pair"].isin(common)].set_index("pair"),
+        d[d["pair"].isin(common)].set_index("pair"),
+        len(common),
+    )
 
+# ── Filter by minimum valid pair count ────────────────────────────────────────
+n_max = max(v[2] for v in ct_data.values())
+min_pairs = n_max * MIN_VALID_PAIRS_PCT / 100
+ct_data = {ct: v for ct, v in ct_data.items() if v[2] >= min_pairs}
+print(
+    f"MIN_VALID_PAIRS_PCT={MIN_VALID_PAIRS_PCT}%  →  threshold: {min_pairs:.0f} pairs "
+    f"(max across cell types: {n_max})"
+)
+print(f"Cell types retained: {sorted(ct_data)}")
+
+# ── Second pass: compute Jaccard ───────────────────────────────────────────────
+records = []
+for cell_type, (s_c, d_c, n_total) in ct_data.items():
     for top_n in TOP_N_VALUES:
         # Skip when N exceeds the valid pair count — Jaccard would be trivially inflated.
         if top_n > n_total:
@@ -108,8 +130,7 @@ for cell_type in cell_types:
         })
 
 results = pd.DataFrame(records)
-print(f"Cell types included: {sorted(results['cell_type'].unique())}")
-print(f"Valid pairs range: {results['n_pairs'].min()}–{results['n_pairs'].max()}")
+print(f"Valid pairs range (retained): {results['n_pairs'].min()}–{results['n_pairs'].max()}")
 ```
 
 ```{python}
@@ -243,7 +264,8 @@ for ax, (col, color) in zip(axes, PAIR_STYLES.items()):
         zorder=5, label="Mean",
     )
 
-    ax.set_xscale("log")
+    if scale == "log":
+        ax.set_xscale("log")
     ax.set_xlabel("Top N receptor pairs", fontsize=11)
     ax.set_title(col, fontsize=11, color=color)
     ax.set_xticks(TOP_N_VALUES)
