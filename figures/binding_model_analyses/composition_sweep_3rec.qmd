@@ -49,6 +49,7 @@ signal_valency = 1
 max_valency = 6
 init_mod = [6.0, 7.0, 7.0, 7.0, -9.0]
 fixed_valencies = range(signal_valency, max_valency + 1)
+expr_matching = True
 
 CITE_DF = importCITE()
 assert targ_cell in CITE_DF[cell_categorization].unique()
@@ -79,10 +80,17 @@ filtered_sample_df = filter_receptor_abundances(
 )
 on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
 off_target_mask = ~on_target_mask
-df_targ_cell = filtered_sample_df.loc[on_target_mask]
-df_off_targ_cell = filtered_sample_df.loc[off_target_mask]
-targ_recs = df_targ_cell[receptors].to_numpy()
-off_targ_recs = df_off_targ_cell[receptors].to_numpy()
+if expr_matching:
+    rec_abundances = filtered_sample_df[receptors].to_numpy()
+    for i, rec in enumerate(receptors):
+        rec_abundances[:, i] = rec_abundances[:, i] * np.mean(rec_abundances[:, 3]) / np.mean(rec_abundances[:, i])
+    targ_recs = rec_abundances[on_target_mask]
+    off_targ_recs = rec_abundances[off_target_mask]
+else:
+    df_targ_cell = filtered_sample_df.loc[on_target_mask]
+    df_off_targ_cell = filtered_sample_df.loc[off_target_mask]
+    targ_recs = df_targ_cell[receptors].to_numpy()
+    off_targ_recs = df_off_targ_cell[receptors].to_numpy()
 
 results = []
 time_start = time.time()
