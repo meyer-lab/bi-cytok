@@ -38,7 +38,7 @@ def run_selectivity_scan():
 
     # Binding model parameters
     dose = 1e-10
-    valency = np.array([[1, 2, 2]])
+    valency = np.array([[1, 1, 1]])
     init = [6.0, 7.0, 7.0, -9.0] # Initial optimization values
     signal = "prototype" # Define signal receptor; "prototype" or receptor name
     asym_targs = False # Calculates both symmetric cases (rec1, rec2) and (rec2, rec1)
@@ -78,7 +78,8 @@ def run_selectivity_scan():
     rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
     if expr_matching is not None:
         for i, rec in enumerate(receptors):
-            rec_abundances[:, i] = rec_abundances[:, i] * expr_matching / np.mean(rec_abundances[:, i])
+            if i != signal_ind and signal != "prototype":  # Don't scale the signal receptor if it's the prototype
+                rec_abundances[:, i] = rec_abundances[:, i] * expr_matching / np.mean(rec_abundances[:, i])
 
     # Define cell type labels if not pre-specified
     cell_type_labels = epitopes_df["Cell Type"].tolist()
