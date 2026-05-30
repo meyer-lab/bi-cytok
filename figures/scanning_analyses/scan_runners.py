@@ -31,26 +31,9 @@ def run_selectivity_scan():
     sample_size = 1000
     min_avg_count = 5 # Expression threshold
     receptors = None # Receptors to analyze; list or None for all
-    cell_types = [ # Cell types to analyze; list or None for all
-        "Treg",
-        "dnT",
-        "CD4 CTL",
-        "CD8 Proliferating",
-        "CD4 TCM",
-        "B memory",
-        "CD8 TCM",
-        "CD8 Naive",
-        "CD4 Proliferating",
-        "NK_CD56bright",
-        "CD4 Naive",
-        "CD8 TEM",
-        "ILC",
-        "CD4 TEM",
-        "B naive",
-        "NK",
-    ]
-    targ_cell_types = ["Treg"] # Target cell types for selectivity calculation; list or None for all
-    exclude_cell_types = True # Boolean to exclude cell types not in cell_types list
+    cell_types = None # Cell types to analyze; list or None for all
+    targ_cell_types = None # Target cell types for selectivity calculation; list or None for all
+    exclude_cell_types = False # Boolean to exclude cell types not in cell_types list
     expr_matching = 100 # If not None, scales receptor expression values to match this average across all cell types
 
     # Binding model parameters
@@ -196,31 +179,13 @@ def run_KL_EMD_scan():
     sample_size = 1000
     min_avg_count = 5 # Expression threshold
     receptors = None # Receptors to analyze; list or None for all
-    cell_types = [ # Cell types to analyze; list or None for all
-        "Treg",
-        "dnT",
-        "CD4 CTL",
-        "CD8 Proliferating",
-        "CD4 TCM",
-        "B memory",
-        "CD8 TCM",
-        "CD8 Naive",
-        "CD4 Proliferating",
-        "NK_CD56bright",
-        "CD4 Naive",
-        "CD8 TEM",
-        "ILC",
-        "CD4 TEM",
-        "B naive",
-        "NK",
-    ]
-    targ_cell_types = ["Treg"] # Target cell types for selectivity calculation; list or None for all
-    exclude_cell_types = True # Boolean to exclude cell types not in cell_types list
+    cell_types = None # Cell types to analyze; list or None for all
+    targ_cell_types = None # Target cell types for selectivity calculation; list or None for all
+    exclude_cell_types = False # Boolean to exclude cell types not in cell_types list
     expr_matching = 100 # If not None, scales receptor expression values to match this average across all cell types
 
-
     # Distance metric scan parameters
-    filter_by_target_expr = True # Boolean to filter out receptors with higher off-target expression
+    filter_by_target_expr = False # Boolean to filter out receptors with higher off-target expression
 
     # Load and define receptor set
     CITE_DF = importCITE()
