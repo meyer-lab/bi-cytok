@@ -1,0 +1,267 @@
+---
+title: "2D receptor scaling analysis: Selectivity, EMD, and KL Divergence"
+---
+
+# Summary
+Extends the 1D binding model scaling analysis to examine how independently scaling two target receptor distributions affects three metrics: selectivity (binding model), EMD, and KL divergence. A 2D grid of scale factors is swept, applying `scale1` to receptor 1 and `scale2` to receptor 2 for each cell. Results are shown as marginal line plots and 2D heatmaps.
+
+**Key properties of the metrics under scaling:**
+- **Selectivity**: depends on absolute receptor counts — varies with both `scale1` and `scale2`.
+- **EMD (raw)**: measures Euclidean transport cost between target and off-target distributions. Scales linearly when `scale1 = scale2`. Changes non-trivially with differential scaling (`scale1 ≠ scale2`) because it stretches the cost matrix differently per dimension.
+- **KL divergence**: mathematically scale-invariant by reparameterization invariance — `D_KL(P || Q)` is unchanged when both distributions are rescaled by the same factor(s). Expect a flat surface across the full 2D grid.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`, `sample_receptor_abundances`)
+- Distance metric computation (`calculate_KL_EMD`)
+- Selectivity optimization (`optimize_affs`)
+
+# Parameters
+- `targ_cell`: Target cell type for selectivity maximization
+- `sample_size`: Number of cells sampled from CITE-seq data
+- `cell_categorization`: Column name for cell type classification
+- `dose`: Ligand concentration for the binding model
+- `signal_receptor`: Signal delivery receptor (included in binding model only; not scaled)
+- `signal_valency`: Valency of the signal receptor arm
+- `receptor_pairs`: List of `(receptor1, receptor2, shared_valency)` tuples to analyze
+- `affinity_bounds`: Optimization bounds for affinities (log10 Ka)
+- `kx_star_bounds`: Optimization bounds for Kx_star (log10 M)
+- `num_scale_factors`: Grid resolution per dimension (total grid = `num_scale_factors²` points)
+- `scale_range`: Log10 bounds for the scaling factors
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import time
+
+import numpy as np
+import pandas as pd
+
+from bicytok.distance_metric_funcs import calculate_KL_EMD
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import optimize_affs
+
+# Parameters
+targ_cell = "Treg"
+sample_size = 1000
+cell_categorization = "CellType2"
+dose = 1e-10
+signal_receptor = "CD122"
+signal_valency = 1
+# Each tuple: (receptor1, receptor2, shared_valency)
+receptor_pairs = [("CD25", "CD4-1", 1), ("CD25", "CD27", 1)]
+affinity_bounds = (6, 12)
+kx_star_bounds = (-15, -3)
+init_affs = [6.0, 7.0, 7.0, -9.0]
+num_scale_factors = 5
+scale_range = (-2, 3)  # log10 range: 0.01 to 1,000
+
+scale_factors = np.logspace(scale_range[0], scale_range[1], num=num_scale_factors)
+
+CITE_DF = importCITE()
+
+epitopes_all = [
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes_all + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=sample_size,
+    targCellType=targ_cell,
+)
+
+on_target_mask = (sample_df["Cell Type"] == targ_cell).to_numpy()
+off_target_mask = ~on_target_mask
+
+all_results = {}
+
+for rec1, rec2, valency in receptor_pairs:
+    pair_label = f"{rec1} + {rec2}"
+    # Binding model valencies: [signal_receptor, receptor1, receptor2]
+    model_valencies = np.array([[signal_valency, valency, valency]])
+
+    n = num_scale_factors
+    selectivities = np.full((n, n), np.nan)
+    emd_vals = np.full((n, n), np.nan)
+    kl_vals = np.full((n, n), np.nan)
+
+    base_sig = sample_df[signal_receptor].to_numpy()
+    base_rec1 = sample_df[rec1].to_numpy()
+    base_rec2 = sample_df[rec2].to_numpy()
+
+    for i, s1 in enumerate(scale_factors):
+        for j, s2 in enumerate(scale_factors):
+            time_start = time.time()
+
+            scaled_rec1 = base_rec1 * s1
+            scaled_rec2 = base_rec2 * s2
+
+            # Binding model: columns are [signal, rec1, rec2]; signal is not scaled
+            rec_mat = np.column_stack([base_sig, scaled_rec1, scaled_rec2])
+
+            opt_selec, _, _ = optimize_affs(
+                targRecs=rec_mat[on_target_mask],
+                offTargRecs=rec_mat[off_target_mask],
+                dose=dose,
+                valencies=model_valencies,
+                affinity_bounds=affinity_bounds,
+                Kx_star_bounds=kx_star_bounds,
+                init_vals=init_affs,
+            )
+            selectivities[i, j] = 1 / opt_selec
+
+            # Distance metrics: 2D joint distribution of [rec1, rec2] (raw, no normalization)
+            # KL is scale-invariant; raw EMD varies with differential scaling
+            rec_mat_2d = np.column_stack([scaled_rec1, scaled_rec2])
+            targ_dist = rec_mat_2d[on_target_mask]
+            off_targ_dist = rec_mat_2d[off_target_mask]
+
+            kl_val, emd_val = calculate_KL_EMD(
+                targ_dist, off_targ_dist, reg_strength=None
+            )
+            kl_vals[i, j] = kl_val
+            emd_vals[i, j] = emd_val
+
+            time_stop = time.time()
+            print(
+                f"Pair: {pair_label}, s1={s1:.1e}, s2={s2:.1e}, "
+                f"selec={selectivities[i, j]:.2f}, emd={emd_val:.2f}, kl={kl_val:.2f}, "
+                f"Time: {time_stop - time_start:.2f}s"
+            )
+
+    all_results[pair_label] = {
+        "selectivities": selectivities,
+        "emd_vals": emd_vals,
+        "kl_vals": kl_vals,
+        "rec1": rec1,
+        "rec2": rec2,
+    }
+```
+
+## Marginal Line Plots
+
+```{python}
+#| fig-cap: "Marginal line plots — two panels per metric per pair: one sweeping scale1 with scale2 as separate colored lines, one sweeping scale2 with scale1 as colored lines. EMD is on a log scale."
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+metrics = [
+    ("selectivities", "Optimal Selectivity"),
+    ("emd_vals", "EMD (raw, log scale)"),
+    ("kl_vals", "KL Divergence"),
+]
+
+n_pairs = len(receptor_pairs)
+n_metrics = len(metrics)
+
+palette_lines = sns.color_palette("colorblind", n_colors=num_scale_factors)
+scale_labels = [f"{s:.0e}" for s in scale_factors]
+
+fig, axes = plt.subplots(
+    n_metrics * 2, n_pairs, figsize=(6 * n_pairs, 4 * n_metrics * 2), squeeze=False
+)
+
+for pair_idx, (pair_label, res) in enumerate(all_results.items()):
+    rec1, rec2 = res["rec1"], res["rec2"]
+    for met_idx, (met_key, met_label) in enumerate(metrics):
+        use_log_y = met_key == "emd_vals"
+
+        # Top row: vary rec1 scale; each line = fixed rec2 scale
+        ax_top = axes[met_idx * 2][pair_idx]
+        for j, s2 in enumerate(scale_factors):
+            ax_top.plot(
+                scale_factors,
+                res[met_key][:, j],
+                marker="o",
+                ls="-",
+                label=f"{rec2}={scale_labels[j]}",
+                color=palette_lines[j],
+            )
+        ax_top.set_xscale("log")
+        if use_log_y:
+            ax_top.set_yscale("log")
+        ax_top.axvline(x=1.0, linestyle="--", color="black", alpha=0.4)
+        ax_top.set_xlabel(f"{rec1} scale factor")
+        ax_top.set_ylabel(met_label)
+        ax_top.set_title(f"{pair_label}: vary {rec1} scale")
+        ax_top.legend(title=f"{rec2} scale", fontsize=7, title_fontsize=7)
+
+        # Bottom row: vary rec2 scale; each line = fixed rec1 scale
+        ax_bot = axes[met_idx * 2 + 1][pair_idx]
+        for i, s1 in enumerate(scale_factors):
+            ax_bot.plot(
+                scale_factors,
+                res[met_key][i, :],
+                marker="o",
+                ls="-",
+                label=f"{rec1}={scale_labels[i]}",
+                color=palette_lines[i],
+            )
+        ax_bot.set_xscale("log")
+        if use_log_y:
+            ax_bot.set_yscale("log")
+        ax_bot.axvline(x=1.0, linestyle="--", color="black", alpha=0.4)
+        ax_bot.set_xlabel(f"{rec2} scale factor")
+        ax_bot.set_ylabel(met_label)
+        ax_bot.set_title(f"{pair_label}: vary {rec2} scale")
+        ax_bot.legend(title=f"{rec1} scale", fontsize=7, title_fontsize=7)
+
+plt.tight_layout()
+plt.show()
+```
+
+## 2D Heatmaps
+
+```{python}
+#| fig-cap: "2D heatmaps with scale1 on the y-axis and scale2 on the x-axis. Color encodes the metric value; EMD uses a log color scale. Dashed white lines mark the unscaled reference (scale = 1)."
+import matplotlib.colors as mcolors
+
+scale_tick_labels = [
+    f"$10^{{{int(np.log10(s))}}}$" if np.log10(s) == int(np.log10(s)) else f"{s:.1e}"
+    for s in scale_factors
+]
+
+fig, axes = plt.subplots(
+    n_metrics, n_pairs, figsize=(6 * n_pairs, 5 * n_metrics), squeeze=False
+)
+
+for pair_idx, (pair_label, res) in enumerate(all_results.items()):
+    rec1, rec2 = res["rec1"], res["rec2"]
+    for met_idx, (met_key, met_label) in enumerate(metrics):
+        ax = axes[met_idx][pair_idx]
+        data = res[met_key]
+
+        norm = mcolors.LogNorm() if met_key == "emd_vals" else None
+        im = ax.imshow(data, origin="lower", aspect="auto", cmap="viridis", norm=norm)
+        plt.colorbar(im, ax=ax, label=met_label)
+
+        ax.set_xticks(range(num_scale_factors))
+        ax.set_xticklabels(scale_tick_labels, rotation=45, ha="right")
+        ax.set_yticks(range(num_scale_factors))
+        ax.set_yticklabels(scale_tick_labels)
+        ax.set_xlabel(f"{rec2} scale factor")
+        ax.set_ylabel(f"{rec1} scale factor")
+        ax.set_title(f"{pair_label}: {met_label}")
+
+        ref_idx = np.argmin(np.abs(scale_factors - 1.0))
+        ax.axhline(y=ref_idx, linestyle="--", color="white", alpha=0.6, linewidth=1.5)
+        ax.axvline(x=ref_idx, linestyle="--", color="white", alpha=0.6, linewidth=1.5)
+
+plt.tight_layout()
+plt.show()
+```
+
+## Parameter Summary
+
+```{python}
+#| output: asis
+pairs_str = ", ".join(f"{r[0]} + {r[1]} (valency {r[2] * 2})" for r in receptor_pairs)
+text = f"""
+Analyzed the 2D scaling landscape for **{targ_cell}** cell targeting across a **{num_scale_factors}×{num_scale_factors}** grid of scale factors (log-spaced from 10^{scale_range[0]} to 10^{scale_range[1]}) on **{sample_size}** cells sampled from the CITE-seq dataset.
+
+The signal receptor **{signal_receptor}** (valency {signal_valency}) was included in the binding model but not scaled. Receptor pairs: **{pairs_str}**. Selectivity optimization used affinity bounds **{affinity_bounds}** and Kx_star bounds **{kx_star_bounds}**.
+
+EMD and KL divergence were computed on raw (un-normalized) 2D receptor count distributions. KL divergence is expected to be scale-invariant by reparameterization invariance; raw EMD varies with differential scaling.
+"""
+print(text)
+```
