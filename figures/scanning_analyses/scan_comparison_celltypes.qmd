@@ -33,7 +33,9 @@ import yaml
 # ── Parameters ────────────────────────────────────────────────────────────────
 # SCAN_PATH_1 = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
 SCAN_PATH_2 = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
-SCAN_PATH_1 = SCAN_PATH_2  # For comparing two metrics within the same scan, set paths equal.
+SCAN_PATH_1 = (
+    SCAN_PATH_2  # For comparing two metrics within the same scan, set paths equal.
+)
 
 # For KL_EMD scans, selects which method to use as the axis metric.
 KL_METRIC_1 = "EMD"  # "KL_Divergence" or "EMD"
@@ -188,7 +190,13 @@ for ct in TARG_CELL_TYPES:
     rows.append({"Cell Type": ct, "Spearman r": round(r, 4), "p-value": f"{p:.2e}"})
 
 overall_r, overall_p = spearmanr(_all["s1"], _all["s2"])
-rows.append({"Cell Type": "Overall", "Spearman r": round(overall_r, 4), "p-value": f"{overall_p:.2e}"})
+rows.append(
+    {
+        "Cell Type": "Overall",
+        "Spearman r": round(overall_r, 4),
+        "p-value": f"{overall_p:.2e}",
+    }
+)
 
 corr_df = pd.DataFrame(rows)
 print(f"Spearman correlation: {AXIS_1_LABEL} vs. {AXIS_2_LABEL}\n")

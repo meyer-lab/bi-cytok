@@ -27,8 +27,6 @@ threshold combinations where N exceeds the number of valid pairs are excluded.
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 # ── Parameters ────────────────────────────────────────────────────────────────
@@ -46,13 +44,14 @@ MIN_VALID_PAIRS_PCT = 10  # 0–100
 selec_df = pd.read_csv(SCAN_PATH_SELEC)
 dist_df = pd.read_csv(SCAN_PATH_DIST)
 
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def add_norm_pair(df):
     """Add a 'pair' column with (min, max) sorted receptor names."""
     df = df.copy()
     df["pair"] = [
         tuple(sorted([r1, r2]))
-        for r1, r2 in zip(df["Receptor_1"], df["Receptor_2"])
+        for r1, r2 in zip(df["Receptor_1"], df["Receptor_2"], strict=False)
     ]
     return df
 
@@ -120,28 +119,34 @@ for cell_type, (s_c, d_c, n_total) in ct_data.items():
         top_kl = set(d_c["KL_Divergence"].nlargest(top_n).index)
         top_emd = set(d_c["EMD"].nlargest(top_n).index)
 
-        records.append({
-            "cell_type": cell_type,
-            "top_n": top_n,
-            "n_pairs": n_total,
-            "Selectivity vs. KL": jaccard(top_selec, top_kl),
-            "Selectivity vs. EMD": jaccard(top_selec, top_emd),
-            "KL vs. EMD": jaccard(top_kl, top_emd),
-        })
+        records.append(
+            {
+                "cell_type": cell_type,
+                "top_n": top_n,
+                "n_pairs": n_total,
+                "Selectivity vs. KL": jaccard(top_selec, top_kl),
+                "Selectivity vs. EMD": jaccard(top_selec, top_emd),
+                "KL vs. EMD": jaccard(top_kl, top_emd),
+            }
+        )
 
 results = pd.DataFrame(records)
-print(f"Valid pairs range (retained): {results['n_pairs'].min()}–{results['n_pairs'].max()}")
+print(
+    f"Valid pairs range (retained): {results['n_pairs'].min()}–{results['n_pairs'].max()}"
+)
 ```
 
 ```{python}
 # ── Box plot: one box per (top_n, method pair), dot size ∝ n_pairs ─────────────
-from matplotlib.patches import Patch
 import matplotlib.lines as mlines
+from matplotlib.patches import Patch
+import matplotlib.pyplot as plt
+import numpy as np
 
 PAIR_STYLES = {
-    "Selectivity vs. KL":  "#3A86FF",
+    "Selectivity vs. KL": "#3A86FF",
     "Selectivity vs. EMD": "#FF9F1C",
-    "KL vs. EMD":          "#E63946",
+    "KL vs. EMD": "#E63946",
 }
 pairs = list(PAIR_STYLES)
 n_pairs_col = len(pairs)
@@ -151,7 +156,7 @@ group_width = 0.75
 box_width = group_width / n_pairs_col * 0.85
 offsets = np.linspace(
     -group_width / 2 + box_width / 2,
-     group_width / 2 - box_width / 2,
+    group_width / 2 - box_width / 2,
     n_pairs_col,
 )
 
@@ -160,10 +165,14 @@ N_SIZE_MIN, N_SIZE_MAX = 20, 220
 n_global_min = results["n_pairs"].min()
 n_global_max = results["n_pairs"].max()
 
+
 def pair_count_to_size(n):
     if n_global_max == n_global_min:
         return (N_SIZE_MIN + N_SIZE_MAX) / 2
-    return N_SIZE_MIN + (N_SIZE_MAX - N_SIZE_MIN) * (n - n_global_min) / (n_global_max - n_global_min)
+    return N_SIZE_MIN + (N_SIZE_MAX - N_SIZE_MIN) * (n - n_global_min) / (
+        n_global_max - n_global_min
+    )
+
 
 rng = np.random.default_rng(0)
 fig, ax = plt.subplots(figsize=(11, 5))
@@ -171,7 +180,9 @@ fig, ax = plt.subplots(figsize=(11, 5))
 for pair_idx, (col, color) in enumerate(PAIR_STYLES.items()):
     for thresh_idx, top_n in enumerate(TOP_N_VALUES):
         x_pos = thresh_idx + offsets[pair_idx]
-        subset = results[results["top_n"] == top_n][["cell_type", col, "n_pairs"]].dropna(subset=[col])
+        subset = results[results["top_n"] == top_n][
+            ["cell_type", col, "n_pairs"]
+        ].dropna(subset=[col])
         data = subset[col].values
         sizes = pair_count_to_size(subset["n_pairs"].values)
 
@@ -192,9 +203,14 @@ for pair_idx, (col, color) in enumerate(PAIR_STYLES.items()):
 
         jitter = rng.uniform(-box_width * 0.28, box_width * 0.28, size=len(data))
         ax.scatter(
-            np.full(len(data), x_pos) + jitter, data,
-            s=sizes, color=color, alpha=0.75, zorder=3,
-            linewidths=0.6, edgecolors="white",
+            np.full(len(data), x_pos) + jitter,
+            data,
+            s=sizes,
+            color=color,
+            alpha=0.75,
+            zorder=3,
+            linewidths=0.6,
+            edgecolors="white",
         )
 
 # Method pair legend
@@ -205,16 +221,32 @@ method_handles = [
 # Dot-size legend (representative n_pairs values)
 size_legend_vals = [n_global_min, (n_global_min + n_global_max) // 2, n_global_max]
 size_handles = [
-    mlines.Line2D([], [], marker="o", color="gray", linestyle="None",
-                  markersize=np.sqrt(pair_count_to_size(n)),
-                  label=f"n = {n:,}")
+    mlines.Line2D(
+        [],
+        [],
+        marker="o",
+        color="gray",
+        linestyle="None",
+        markersize=np.sqrt(pair_count_to_size(n)),
+        label=f"n = {n:,}",
+    )
     for n in size_legend_vals
 ]
-leg1 = ax.legend(handles=method_handles, fontsize=10, framealpha=0.9,
-                 loc="upper left", title="Method pair")
+leg1 = ax.legend(
+    handles=method_handles,
+    fontsize=10,
+    framealpha=0.9,
+    loc="upper left",
+    title="Method pair",
+)
 ax.add_artist(leg1)
-ax.legend(handles=size_handles, fontsize=9, framealpha=0.9,
-          loc="upper right", title="Valid pairs (n)")
+ax.legend(
+    handles=size_handles,
+    fontsize=9,
+    framealpha=0.9,
+    loc="upper right",
+    title="Valid pairs (n)",
+)
 
 ax.set_xticks(range(n_thresh))
 ax.set_xticklabels([f"Top {n}" for n in TOP_N_VALUES])
@@ -235,11 +267,11 @@ plt.show()
 # ── Line plot: per-cell-type traces + mean, one panel per method pair ─────────
 ct_list = sorted(results["cell_type"].unique())
 ct_colors = plt.cm.tab20(np.linspace(0, 1, len(ct_list)))
-ct_color_map = dict(zip(ct_list, ct_colors))
+ct_color_map = dict(zip(ct_list, ct_colors, strict=False))
 
 fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharey=True)
 
-for ax, (col, color) in zip(axes, PAIR_STYLES.items()):
+for ax, (col, color) in zip(axes, PAIR_STYLES.items(), strict=False):
     # Per-cell-type traces
     for ct in ct_list:
         ct_data = (
@@ -251,17 +283,27 @@ for ax, (col, color) in zip(axes, PAIR_STYLES.items()):
         if ct_data.empty:
             continue
         ax.plot(
-            ct_data.index, ct_data.values,
-            color=ct_color_map[ct], linewidth=1.3, alpha=0.65,
-            marker="o", markersize=4, label=ct,
+            ct_data.index,
+            ct_data.values,
+            color=ct_color_map[ct],
+            linewidth=1.3,
+            alpha=0.65,
+            marker="o",
+            markersize=4,
+            label=ct,
         )
 
     # Mean across cell types
     means = results.groupby("top_n")[col].mean().sort_index()
     ax.plot(
-        means.index, means.values,
-        color="black", linewidth=2.5, marker="o", markersize=7,
-        zorder=5, label="Mean",
+        means.index,
+        means.values,
+        color="black",
+        linewidth=2.5,
+        marker="o",
+        markersize=7,
+        zorder=5,
+        label="Mean",
     )
 
     if scale == "log":
@@ -277,14 +319,18 @@ axes[0].set_ylabel("Jaccard Index", fontsize=11)
 # Shared legend below figure
 handles, labels = axes[0].get_legend_handles_labels()
 fig.legend(
-    handles, labels,
-    loc="lower center", ncol=min(len(ct_list) + 1, 8),
-    fontsize=8.5, framealpha=0.9,
+    handles,
+    labels,
+    loc="lower center",
+    ncol=min(len(ct_list) + 1, 8),
+    fontsize=8.5,
+    framealpha=0.9,
     bbox_to_anchor=(0.5, -0.15),
 )
 plt.suptitle(
     "Jaccard Index by target cell type across top N receptor pairs",
-    fontsize=12, fontweight="bold",
+    fontsize=12,
+    fontweight="bold",
 )
 plt.tight_layout()
 plt.show()
@@ -292,11 +338,7 @@ plt.show()
 
 ```{python}
 # ── Summary table: mean Jaccard per method pair × threshold ───────────────────
-summary = (
-    results.groupby("top_n")[list(PAIR_STYLES)]
-    .mean()
-    .round(3)
-)
+summary = results.groupby("top_n")[list(PAIR_STYLES)].mean().round(3)
 summary.index = [f"Top {n}" for n in summary.index]
 summary.index.name = "Threshold"
 print(summary.to_string())

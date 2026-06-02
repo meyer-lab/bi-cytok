@@ -105,7 +105,7 @@ def filter_receptor_abundances(
 ) -> pd.DataFrame:
     """
     Filters receptor abundances by removing biologically irrelevant receptors.
-        Biologically irrelevant receptors are defined as those with large enough mean
+        Biologically relevant receptors are defined as those with large mean
         abundance (can't target a receptor with low overall expression) and those that
         have higher expression in target cells compared to other cell types.
         Whitelisted receptors are always included and blacklisted receptors excluded.
