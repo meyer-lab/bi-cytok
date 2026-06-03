@@ -1,0 +1,273 @@
+---
+title: "Scan-to-Defining-Marker Overlap"
+---
+
+# Summary
+For each target cell type, compares the top-N receptors predicted by each scanning
+algorithm against the surface markers experimentally used to define that cell type.
+Recall is computed as the fraction of a cell type's defining markers (that were
+present in the scanned receptor set) that appear in the top-N predictions. Higher
+recall at lower N indicates the algorithm rediscovers biologically meaningful targets.
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from pathlib import Path
+
+from bicytok.imports import importCITE
+
+from figures.scanning_analyses.scan_runners import load_selec_scan_results, load_KL_EMD_scan_results
+
+path_here = Path(__file__).parent.parent.parent
+
+
+# --- Parameters ---
+SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv"
+KL_EMD_SCAN_PATH = "/home/sama/receptor_sweep_data/20260529_KL-EMD_scan_full_expr-match.csv"
+MARKERS_CSV_FILE = "CITE-seq_defining_surface_markers.csv"
+TOP_N_VALUES = [5, 10, 20, 50, 100]
+SIGNAL_RECEPTOR = "Prototype_Signal_Receptor"  # Artificial; excluded from selectivity rankings
+CHECK_MARKER_PRESENCE = False  # Warn if defining markers are missing from CITE-seq dataset
+
+# Build cell type → defining marker set from CSV.
+# A marker may define multiple cell types; both cell_type_main columns are used.
+markers_df = pd.read_csv(path_here / "data" / MARKERS_CSV_FILE)
+cell_type_markers: dict[str, set[str]] = {}
+for _, row in markers_df.iterrows():
+    for col in ["cell_type_main_1", "cell_type_main_2"]:
+        ct = str(row[col]).strip()
+        if ct and ct != "nan":
+            cell_type_markers.setdefault(ct, set()).add(row["surface_marker"])
+
+# Load scan results
+opt_selec, _, _, selec_receptors, selec_cell_types = load_selec_scan_results(SELEC_SCAN_PATH)
+KL_results, EMD_results, kl_receptors, kl_cell_types = load_KL_EMD_scan_results(KL_EMD_SCAN_PATH)
+
+# Check marker presence in dataset
+if CHECK_MARKER_PRESENCE:
+    CITE_DF = importCITE()
+    available_markers = set(CITE_DF.columns) - {"Cell", "CellType1", "CellType2", "CellType3"}
+    for ct, markers in cell_type_markers.items():
+        missing = markers - available_markers
+        if missing:
+            print(f"Warning: For cell type '{ct}', the following defining markers are not in the CITE-seq dataset: {', '.join(missing)}")
+```
+
+```{python}
+def _rank_receptors(
+    metric_3d: np.ndarray,
+    receptors: list[str],
+    cell_type_idx: int,
+    exclude: set[str] | None = None,
+) -> list[tuple[str, float]]:
+    """
+    Rank individual receptors by their best score in a 2D receptor-pair matrix.
+
+    For lower-triangular matrices each receptor can appear as either the row or
+    the column index; the row-max and column-max are combined so a receptor's
+    rank reflects the best pair it participates in regardless of position.
+    """
+    matrix = metric_3d[:, :, cell_type_idx]
+    best = np.fmax(np.nanmax(matrix, axis=1), np.nanmax(matrix, axis=0))
+    exclude = exclude or set()
+    pairs = [
+        (receptors[j], float(best[j]))
+        for j in range(len(receptors))
+        if not np.isnan(best[j]) and receptors[j] not in exclude
+    ]
+    return sorted(pairs, key=lambda x: x[1], reverse=True)
+
+
+def compute_overlap_table(
+    metric_3d: np.ndarray,
+    receptors: list[str],
+    cell_types: list[str],
+    cell_type_markers: dict[str, set[str]],
+    top_n_values: list[int],
+    exclude: set[str] | None = None,
+) -> pd.DataFrame:
+    """
+    Compute defining-marker recall at each top-N cutoff for every cell type that
+    has annotated defining markers.
+
+    Recall is conditioned on markers that were present in the scanned receptor
+    set (markers filtered out before the scan cannot be predicted). The total
+    number of defining markers is also recorded for reference.
+    """
+    scan_receptors = set(receptors) - (exclude or set())
+    rows = []
+    for i, ct in enumerate(cell_types):
+        if ct not in cell_type_markers:
+            continue
+        defining = cell_type_markers[ct]
+        defining_in_scan = defining & scan_receptors
+        if not defining_in_scan:
+            continue
+        ranked_names = [r[0] for r in _rank_receptors(metric_3d, receptors, i, exclude)]
+        for n in top_n_values:
+            top_n = set(ranked_names[:n])
+            n_overlap = len(top_n & defining_in_scan)
+            rows.append({
+                "cell_type": ct,
+                "n": n,
+                "recall": n_overlap / len(defining_in_scan),
+                "n_overlap": n_overlap,
+                "n_defining_in_scan": len(defining_in_scan),
+                "n_defining_total": len(defining),
+            })
+    return pd.DataFrame(rows)
+
+
+selec_overlap = compute_overlap_table(
+    opt_selec, selec_receptors, selec_cell_types,
+    cell_type_markers, TOP_N_VALUES, exclude={SIGNAL_RECEPTOR},
+)
+kl_overlap = compute_overlap_table(
+    KL_results, kl_receptors, kl_cell_types,
+    cell_type_markers, TOP_N_VALUES,
+)
+emd_overlap = compute_overlap_table(
+    EMD_results, kl_receptors, kl_cell_types,
+    cell_type_markers, TOP_N_VALUES,
+)
+```
+
+```{python}
+# --- Heatmap: recall across cell types and top-N values, one panel per metric ---
+
+all_cell_types = sorted(
+    set(selec_overlap["cell_type"]) | set(kl_overlap["cell_type"]) | set(emd_overlap["cell_type"])
+)
+
+
+def _make_pivot(df, cell_types_ordered, top_n_values):
+    pivot = df.pivot(index="cell_type", columns="n", values="recall")
+    return pivot.reindex(index=cell_types_ordered, columns=top_n_values)
+
+
+def _make_annot(df, cell_types_ordered, top_n_values):
+    """'k/m' strings where k = overlap count, m = defining markers in scan."""
+    n_over = df.pivot(index="cell_type", columns="n", values="n_overlap").reindex(
+        index=cell_types_ordered, columns=top_n_values
+    )
+    n_def = df.pivot(index="cell_type", columns="n", values="n_defining_in_scan").reindex(
+        index=cell_types_ordered, columns=top_n_values
+    )
+    annot = pd.DataFrame("", index=cell_types_ordered, columns=top_n_values, dtype=object)
+    for ct in cell_types_ordered:
+        for n in top_n_values:
+            v, d = n_over.loc[ct, n], n_def.loc[ct, n]
+            if pd.notna(v) and pd.notna(d):
+                annot.loc[ct, n] = f"{int(v)}/{int(d)}"
+    return annot
+
+
+fig, axes = plt.subplots(1, 3, figsize=(20, 10), sharey=True)
+
+metric_specs = [
+    ("Selectivity", selec_overlap),
+    ("KL Divergence", kl_overlap),
+    ("EMD", emd_overlap),
+]
+
+for ax, (title, df) in zip(axes, metric_specs):
+    pivot = _make_pivot(df, all_cell_types, TOP_N_VALUES)
+    annot = _make_annot(df, all_cell_types, TOP_N_VALUES)
+    mask = pivot.isna()
+
+    sns.heatmap(
+        pivot,
+        mask=mask,
+        cmap="Blues",
+        vmin=0,
+        vmax=1,
+        annot=annot,
+        fmt="",
+        ax=ax,
+        cbar=False,
+        linewidths=0.5,
+        linecolor="lightgray",
+        annot_kws={"fontsize": 9},
+    )
+
+    # Gray fill for cell types not covered by this metric
+    for i, ct in enumerate(all_cell_types):
+        for j in range(len(TOP_N_VALUES)):
+            if mask.iloc[i, j]:
+                ax.add_patch(
+                    plt.Rectangle((j, i), 1, 1, fill=True, color="#d0d0d0", zorder=3)
+                )
+
+    ax.set_title(title, fontsize=14, fontweight="bold", pad=10)
+    ax.set_xlabel("Top-N Predicted Receptors", fontsize=12)
+    ax.tick_params(axis="x", labelsize=11)
+    ax.tick_params(axis="y", labelsize=10, rotation=0)
+
+axes[0].set_ylabel("Cell Type", fontsize=12)
+
+# Shared colorbar
+pos0 = axes[0].get_position()
+pos2 = axes[2].get_position()
+cbar_ax = fig.add_axes([pos2.x1 + 0.01, pos0.y0, 0.015, pos0.height])
+norm = plt.Normalize(vmin=0, vmax=1)
+sm = plt.cm.ScalarMappable(cmap="Blues", norm=norm)
+sm.set_array([])
+cbar = fig.colorbar(sm, cax=cbar_ax)
+cbar.set_label("Recall (overlap / markers in scan)", fontsize=11)
+cbar.ax.tick_params(labelsize=10)
+
+fig.suptitle(
+    "Top-N Predicted Receptors vs. Cell-Type Defining Markers\n"
+    "(Annotation: predicted overlap / defining markers present in scan)",
+    fontsize=13,
+    y=1.01,
+)
+# plt.tight_layout()
+plt.show()
+```
+
+```{python}
+# --- Summary table: per-cell-type marker coverage at top-50 ---
+# Shows which markers are reachable by each algorithm and which are missed.
+
+N_SUMMARY = 50
+
+def _top_n_set(metric_3d, receptors, cell_types, ct, n, exclude=None):
+    try:
+        i = cell_types.index(ct)
+    except ValueError:
+        return set()
+    ranked = _rank_receptors(metric_3d, receptors, i, exclude or set())
+    return {r[0] for r in ranked[:n]}
+
+
+print(f"{'Cell Type':<22} {'N def (scan)':<14} {'Selec':<8} {'KL':<8} {'EMD':<8}  Defining markers in scan")
+print("-" * 110)
+
+for ct in all_cell_types:
+    defining = cell_type_markers.get(ct, set())
+    selec_scan_recs = set(selec_receptors) - {SIGNAL_RECEPTOR}
+    kl_scan_recs = set(kl_receptors)
+    defining_in_selec = defining & selec_scan_recs
+    defining_in_kl = defining & kl_scan_recs
+
+    if not defining_in_selec and not defining_in_kl:
+        continue
+
+    top_selec = _top_n_set(opt_selec, selec_receptors, selec_cell_types, ct, N_SUMMARY, exclude={SIGNAL_RECEPTOR})
+    top_kl = _top_n_set(KL_results, kl_receptors, kl_cell_types, ct, N_SUMMARY)
+    top_emd = _top_n_set(EMD_results, kl_receptors, kl_cell_types, ct, N_SUMMARY)
+
+    n_def_scan = len(defining_in_selec) if defining_in_selec else len(defining_in_kl)
+    def_in_scan = defining_in_selec if defining_in_selec else defining_in_kl
+
+    r_selec = f"{len(top_selec & defining_in_selec)}/{len(defining_in_selec)}" if defining_in_selec else "—"
+    r_kl = f"{len(top_kl & defining_in_kl)}/{len(defining_in_kl)}" if defining_in_kl else "—"
+    r_emd = f"{len(top_emd & defining_in_kl)}/{len(defining_in_kl)}" if defining_in_kl else "—"
+
+    markers_str = ", ".join(sorted(def_in_scan))
+    print(f"{ct:<22} {n_def_scan:<14} {r_selec:<8} {r_kl:<8} {r_emd:<8}  {markers_str}")
+```
