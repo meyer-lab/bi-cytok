@@ -147,6 +147,20 @@ for cell_type in TARG_CELL_TYPES:
         zorder=2,
     )
 
+# Highlight the top-selectivity receptor pair for each cell type
+_top_pairs = _all.loc[_all.groupby("cell_type")["s1"].idxmax()]
+for _, row in _top_pairs.iterrows():
+    ax.scatter(
+        row["s1"],
+        row["s2"],
+        s=POINT_SIZE * 10,
+        marker="*",
+        color=cell_type_colors[row["cell_type"]],
+        edgecolors="black",
+        linewidths=0.5,
+        zorder=5,
+    )
+
 handles = [
     mlines.Line2D(
         [0],
@@ -159,6 +173,19 @@ handles = [
     )
     for ct in TARG_CELL_TYPES
 ]
+handles.append(
+    mlines.Line2D(
+        [0],
+        [0],
+        marker="*",
+        color="w",
+        markerfacecolor="gray",
+        markeredgecolor="black",
+        markeredgewidth=0.5,
+        markersize=12,
+        label="Top selectivity pair",
+    )
+)
 # ax.legend(
 #     handles=handles, title="Cell type", fontsize=9, title_fontsize=10, framealpha=0.8
 # )
