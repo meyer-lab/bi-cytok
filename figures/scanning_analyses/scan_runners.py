@@ -51,7 +51,7 @@ def run_selectivity_scan():
 
     # Binding model parameters
     dose = 1e-10
-    valency = np.array([[1, 2, 2]])
+    valency = np.array([[1, 1, 1]])
     init = [6.0, 7.0, 7.0, -9.0] # Initial optimization values
     signal = "prototype" # Define signal receptor; "prototype" or receptor name
     asym_targs = False # Calculates both symmetric cases (rec1, rec2) and (rec2, rec1)
@@ -62,11 +62,13 @@ def run_selectivity_scan():
     exclude_cols = ["Cell", "CellType1", "CellType2", "CellType3"]
     if receptors is None:
         receptors = [ep for ep in epitopes if ep not in exclude_cols]
+    assert signal == "prototype" or signal in receptors, f"Signal receptor '{signal}' not found in receptors list"
     
     # Filter lowly expressed receptors
     mean_expr = CITE_DF[receptors].mean(axis=0)
     selected_receptors = mean_expr[mean_expr >= min_avg_count].index.tolist()
     assert len(selected_receptors) > 0, "No receptors pass the expression threshold"
+    assert signal == "prototype" or signal in selected_receptors, f"Signal receptor '{signal}' not found in selected receptors after filtering"
     epitopes_df = CITE_DF[selected_receptors + [cell_categorization]]
     epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
     receptors = selected_receptors
