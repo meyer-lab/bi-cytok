@@ -19,7 +19,6 @@ Inline 1D scan comparing single-receptor predictions against cell-type defining 
 - `DOSE`: Ligand concentration for the binding model in molar units
 - `VALENCY`: Valency array for the binding complex `[[signal, target]]`
 - `TOP_N_VALUES`: List of top-N cutoffs at which receptor–marker overlap is evaluated
-- `RNG_SEED`: Random seed for prototype signal receptor generation
 
 # Outputs
 - **Recall Heatmap**: Three-panel figure (Selectivity | KL Divergence | EMD) showing the fraction of each cell type's defining markers recovered in the top-N predicted receptors, annotated with raw overlap counts
@@ -50,11 +49,10 @@ path_here = Path(__file__).parent.parent.parent
 CELL_CATEGORIZATION = "CellType2"
 SAMPLE_SIZE = 500
 DOSE = 1e-10
-VALENCY = np.array([[1, 1]])        # Prototype signal (×1) + single target receptor (×1)
+VALENCY = np.array([[1, 1]])        # sim_signal (×1) + single target receptor (×1)
 INIT = np.array([6.0, 7.0, -9.0])  # aff_signal, aff_target, log10_Kx_star
-TOP_N_VALUES = [5, 10, 20, 50, 100]
+TOP_N_VALUES = [1, 5, 10, 20, 30]
 MARKERS_CSV_FILE = "CITE-seq_defining_surface_markers.csv"
-RNG_SEED = 42
 
 # Build cell type → defining marker set from CSV
 markers_df = pd.read_csv(path_here / "data" / MARKERS_CSV_FILE)
@@ -82,26 +80,25 @@ print(f"Cell types to analyze ({len(targ_cell_types)}): {targ_cell_types}")
 
 ```{python}
 # --- 1D inline scan ---
-# For each cell type: sample → filter receptors → compute selectivity and KL/EMD.
-# Prototype signal receptor is generated fresh per sample to match per-cell-type
-# sampling; it is not passed through filter_receptor_abundances since it is synthetic.
+# For each cell type: sample (with mock signal receptor) → filter receptors →
+# compute selectivity and KL/EMD. "sim_signal" is whitelisted so it always
+# survives filtering, then separated out before metric computation.
 
 scan_results: dict[str, dict] = {}
-rng = np.random.default_rng(RNG_SEED)
 
 for ct in targ_cell_types:
     t0 = time.time()
 
     sample_df = sample_receptor_abundances(
-        epitopes_df, numCells=SAMPLE_SIZE, targCellType=ct
+        epitopes_df, numCells=SAMPLE_SIZE, targCellType=ct, insert_mock_signal_rec=True
     )
-    sample_receptor_cols = set(sample_df.columns) - {"Cell Type"}
-    ct_whitelist = sorted(cell_type_markers.get(ct, set()) & sample_receptor_cols)
+    sample_receptor_cols = set(sample_df.columns) - {"Cell Type", "sim_signal"}
+    ct_whitelist = sorted((cell_type_markers.get(ct, set()) & sample_receptor_cols) | {"sim_signal"})
     filtered_df = filter_receptor_abundances(
         sample_df, targ_cell_type=ct, whitelist=ct_whitelist
     )
 
-    target_receptors = [c for c in filtered_df.columns if c != "Cell Type"]
+    target_receptors = [c for c in filtered_df.columns if c not in {"Cell Type", "sim_signal"}]
     if not target_receptors:
         print(f"  {ct}: no receptors passed filtering — skipped.")
         continue
@@ -113,9 +110,8 @@ for ct in targ_cell_types:
     # KL divergence and EMD (1D, single receptor)
     kl_vals, emd_vals = KL_EMD_1D(rec_abuns, targ_mask, off_targ_mask)
 
-    # Binding model selectivity: prototype signal arm + each target receptor arm
-    n_cells = len(filtered_df)
-    signal_abun = np.clip(rng.normal(50, 5, size=(n_cells, 1)), 0, None)
+    # Binding model selectivity: sim_signal arm + each target receptor arm
+    signal_abun = filtered_df[["sim_signal"]].to_numpy(dtype=float)
     selec_vals = np.full(len(target_receptors), np.nan)
 
     for j in range(len(target_receptors)):
