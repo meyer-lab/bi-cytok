@@ -23,15 +23,15 @@ For each target cell type, compares the top-N receptors predicted by each scanni
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import seaborn as sns
 from pathlib import Path
 
-from bicytok.imports import importCITE
+import pandas as pd
 
-from figures.scanning_analyses.scan_runners import load_selec_scan_results, load_KL_EMD_scan_results
+from bicytok.imports import importCITE
+from figures.scanning_analyses.scan_runners import (
+    load_KL_EMD_scan_results,
+    load_selec_scan_results,
+)
 
 path_here = Path(__file__).parent.parent.parent
 
@@ -41,8 +41,12 @@ SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
 KL_EMD_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
 MARKERS_CSV_FILE = "CITE-seq_defining_surface_markers.csv"
 TOP_N_VALUES = [5, 10, 20, 50, 100]
-SIGNAL_RECEPTOR = "Prototype_Signal_Receptor"  # Artificial; excluded from selectivity rankings
-CHECK_MARKER_PRESENCE = False  # Warn if defining markers are missing from CITE-seq dataset
+SIGNAL_RECEPTOR = (
+    "Prototype_Signal_Receptor"  # Artificial; excluded from selectivity rankings
+)
+CHECK_MARKER_PRESENCE = (
+    False  # Warn if defining markers are missing from CITE-seq dataset
+)
 
 # Build cell type → defining marker set from CSV.
 # A marker may define multiple cell types; both cell_type_main columns are used.
@@ -55,20 +59,35 @@ for _, row in markers_df.iterrows():
             cell_type_markers.setdefault(ct, set()).add(row["surface_marker"])
 
 # Load scan results
-opt_selec, _, _, selec_receptors, selec_cell_types = load_selec_scan_results(SELEC_SCAN_PATH)
-KL_results, EMD_results, kl_receptors, kl_cell_types = load_KL_EMD_scan_results(KL_EMD_SCAN_PATH)
+opt_selec, _, _, selec_receptors, selec_cell_types = load_selec_scan_results(
+    SELEC_SCAN_PATH
+)
+KL_results, EMD_results, kl_receptors, kl_cell_types = load_KL_EMD_scan_results(
+    KL_EMD_SCAN_PATH
+)
 
 # Check marker presence in dataset
 if CHECK_MARKER_PRESENCE:
     CITE_DF = importCITE()
-    available_markers = set(CITE_DF.columns) - {"Cell", "CellType1", "CellType2", "CellType3"}
+    available_markers = set(CITE_DF.columns) - {
+        "Cell",
+        "CellType1",
+        "CellType2",
+        "CellType3",
+    }
     for ct, markers in cell_type_markers.items():
         missing = markers - available_markers
         if missing:
-            print(f"Warning: For cell type '{ct}', the following defining markers are not in the CITE-seq dataset: {', '.join(missing)}")
+            print(
+                f"Warning: For cell type '{ct}', the following defining markers are not in the CITE-seq dataset: {', '.join(missing)}"
+            )
 ```
 
 ```{python}
+import numpy as np
+import pandas as pd
+
+
 def _rank_receptors(
     metric_3d: np.ndarray,
     receptors: list[str],
@@ -122,36 +141,55 @@ def compute_overlap_table(
         for n in top_n_values:
             top_n = set(ranked_names[:n])
             n_overlap = len(top_n & defining_in_scan)
-            rows.append({
-                "cell_type": ct,
-                "n": n,
-                "recall": n_overlap / len(defining_in_scan),
-                "n_overlap": n_overlap,
-                "n_defining_in_scan": len(defining_in_scan),
-                "n_defining_total": len(defining),
-            })
+            rows.append(
+                {
+                    "cell_type": ct,
+                    "n": n,
+                    "recall": n_overlap / len(defining_in_scan),
+                    "n_overlap": n_overlap,
+                    "n_defining_in_scan": len(defining_in_scan),
+                    "n_defining_total": len(defining),
+                }
+            )
     return pd.DataFrame(rows)
 
 
 selec_overlap = compute_overlap_table(
-    opt_selec, selec_receptors, selec_cell_types,
-    cell_type_markers, TOP_N_VALUES, exclude={SIGNAL_RECEPTOR},
+    opt_selec,
+    selec_receptors,
+    selec_cell_types,
+    cell_type_markers,
+    TOP_N_VALUES,
+    exclude={SIGNAL_RECEPTOR},
 )
 kl_overlap = compute_overlap_table(
-    KL_results, kl_receptors, kl_cell_types,
-    cell_type_markers, TOP_N_VALUES,
+    KL_results,
+    kl_receptors,
+    kl_cell_types,
+    cell_type_markers,
+    TOP_N_VALUES,
 )
 emd_overlap = compute_overlap_table(
-    EMD_results, kl_receptors, kl_cell_types,
-    cell_type_markers, TOP_N_VALUES,
+    EMD_results,
+    kl_receptors,
+    kl_cell_types,
+    cell_type_markers,
+    TOP_N_VALUES,
 )
 ```
 
 ```{python}
 # --- Heatmap: recall across cell types and top-N values, one panel per metric ---
 
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+
 all_cell_types = sorted(
-    set(selec_overlap["cell_type"]) | set(kl_overlap["cell_type"]) | set(emd_overlap["cell_type"])
+    set(selec_overlap["cell_type"])
+    | set(kl_overlap["cell_type"])
+    | set(emd_overlap["cell_type"])
 )
 
 
@@ -165,10 +203,12 @@ def _make_annot(df, cell_types_ordered, top_n_values):
     n_over = df.pivot(index="cell_type", columns="n", values="n_overlap").reindex(
         index=cell_types_ordered, columns=top_n_values
     )
-    n_def = df.pivot(index="cell_type", columns="n", values="n_defining_in_scan").reindex(
-        index=cell_types_ordered, columns=top_n_values
+    n_def = df.pivot(
+        index="cell_type", columns="n", values="n_defining_in_scan"
+    ).reindex(index=cell_types_ordered, columns=top_n_values)
+    annot = pd.DataFrame(
+        "", index=cell_types_ordered, columns=top_n_values, dtype=object
     )
-    annot = pd.DataFrame("", index=cell_types_ordered, columns=top_n_values, dtype=object)
     for ct in cell_types_ordered:
         for n in top_n_values:
             v, d = n_over.loc[ct, n], n_def.loc[ct, n]
@@ -185,7 +225,7 @@ metric_specs = [
     ("EMD", emd_overlap),
 ]
 
-for ax, (title, df) in zip(axes, metric_specs):
+for ax, (title, df) in zip(axes, metric_specs, strict=False):
     pivot = _make_pivot(df, all_cell_types, TOP_N_VALUES)
     annot = _make_annot(df, all_cell_types, TOP_N_VALUES)
     mask = pivot.isna()
@@ -206,7 +246,7 @@ for ax, (title, df) in zip(axes, metric_specs):
     )
 
     # Gray fill for cell types not covered by this metric
-    for i, ct in enumerate(all_cell_types):
+    for i in range(len(all_cell_types)):
         for j in range(len(TOP_N_VALUES)):
             if mask.iloc[i, j]:
                 ax.add_patch(
@@ -247,6 +287,7 @@ plt.show()
 
 N_SUMMARY = 50
 
+
 def _top_n_set(metric_3d, receptors, cell_types, ct, n, exclude=None):
     try:
         i = cell_types.index(ct)
@@ -256,7 +297,9 @@ def _top_n_set(metric_3d, receptors, cell_types, ct, n, exclude=None):
     return {r[0] for r in ranked[:n]}
 
 
-print(f"{'Cell Type':<22} {'N def (scan)':<14} {'Selec':<8} {'KL':<8} {'EMD':<8}  Defining markers in scan")
+print(
+    f"{'Cell Type':<22} {'N def (scan)':<14} {'Selec':<8} {'KL':<8} {'EMD':<8}  Defining markers in scan"
+)
 print("-" * 110)
 
 for ct in all_cell_types:
@@ -269,16 +312,35 @@ for ct in all_cell_types:
     if not defining_in_selec and not defining_in_kl:
         continue
 
-    top_selec = _top_n_set(opt_selec, selec_receptors, selec_cell_types, ct, N_SUMMARY, exclude={SIGNAL_RECEPTOR})
+    top_selec = _top_n_set(
+        opt_selec,
+        selec_receptors,
+        selec_cell_types,
+        ct,
+        N_SUMMARY,
+        exclude={SIGNAL_RECEPTOR},
+    )
     top_kl = _top_n_set(KL_results, kl_receptors, kl_cell_types, ct, N_SUMMARY)
     top_emd = _top_n_set(EMD_results, kl_receptors, kl_cell_types, ct, N_SUMMARY)
 
     n_def_scan = len(defining_in_selec) if defining_in_selec else len(defining_in_kl)
     def_in_scan = defining_in_selec if defining_in_selec else defining_in_kl
 
-    r_selec = f"{len(top_selec & defining_in_selec)}/{len(defining_in_selec)}" if defining_in_selec else "—"
-    r_kl = f"{len(top_kl & defining_in_kl)}/{len(defining_in_kl)}" if defining_in_kl else "—"
-    r_emd = f"{len(top_emd & defining_in_kl)}/{len(defining_in_kl)}" if defining_in_kl else "—"
+    r_selec = (
+        f"{len(top_selec & defining_in_selec)}/{len(defining_in_selec)}"
+        if defining_in_selec
+        else "—"
+    )
+    r_kl = (
+        f"{len(top_kl & defining_in_kl)}/{len(defining_in_kl)}"
+        if defining_in_kl
+        else "—"
+    )
+    r_emd = (
+        f"{len(top_emd & defining_in_kl)}/{len(defining_in_kl)}"
+        if defining_in_kl
+        else "—"
+    )
 
     markers_str = ", ".join(sorted(def_in_scan))
     print(f"{ct:<22} {n_def_scan:<14} {r_selec:<8} {r_kl:<8} {r_emd:<8}  {markers_str}")
