@@ -1,9 +1,9 @@
 ---
-title: "Scan-to-Defining-Marker Overlap"
+title: "Defining Marker Overlap With Dual-Receptor Target Scans"
 ---
 
 # Summary
-For each target cell type, compares the top-N receptors predicted by each scanning algorithm against the surface markers experimentally used to define that cell type. Recall is computed as the fraction of a cell type's defining markers (that were present in the scanned receptor set) that appear in the top-N predictions. Higher recall at lower N indicates the algorithm rediscovers biologically meaningful targets.
+For each target cell type, compares the top-N receptors predicted by each scanning algorithm against the surface markers experimentally used to define that cell type in Hao et al. Recall is computed as the fraction of a cell type's defining markers (that were present in the scanned receptor set) that appear in the top-N predictions. Higher recall at lower N indicates the algorithm rediscovers biologically meaningful targets.
 
 # Imports
 - Pre-computed receptor scan results (`load_selec_scan_results`, `load_KL_EMD_scan_results`)
@@ -15,6 +15,7 @@ For each target cell type, compares the top-N receptors predicted by each scanni
 - `KL_EMD_SCAN_PATH`: Path to the saved KL divergence and EMD scan CSV file
 - `TOP_N_VALUES`: List of top-N cutoffs at which receptor–marker overlap is evaluated
 - `SIGNAL_RECEPTOR`: Name of the artificial prototype signal receptor excluded from selectivity rankings
+- `CHECK_MARKER_PRESENCE`: If True, prints warnings for defining markers that are not present in the scanned receptor set
 
 # Outputs
 - **Recall Heatmap**: Three-panel figure (Selectivity | KL Divergence | EMD) showing the fraction of each cell type's defining markers recovered in the top-N predicted receptors, annotated with raw overlap counts
