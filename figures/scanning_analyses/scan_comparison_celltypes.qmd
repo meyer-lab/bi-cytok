@@ -161,6 +161,19 @@ for _, row in _top_pairs.iterrows():
         zorder=5,
     )
 
+_top_pairs = _all.loc[_all.groupby("cell_type")["s2"].idxmax()]
+for _, row in _top_pairs.iterrows():
+    ax.scatter(
+        row["s1"],
+        row["s2"],
+        s=POINT_SIZE * 10,
+        marker="*",
+        color=cell_type_colors[row["cell_type"]],
+        edgecolors="black",
+        linewidths=0.5,
+        zorder=5,
+    )
+
 handles = [
     mlines.Line2D(
         [0],
