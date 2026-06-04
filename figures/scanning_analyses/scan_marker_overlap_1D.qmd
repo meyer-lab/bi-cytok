@@ -3,14 +3,27 @@ title: "1D Scan-to-Defining-Marker Overlap"
 ---
 
 # Summary
-Inline 1D scan comparing single-receptor predictions against cell-type defining markers.
-For each cell type, receptors are filtered to those with sufficient expression and higher
-mean abundance in target than off-target cells. Three metrics are computed per receptor:
-binding model selectivity (prototype signal + 1 target receptor), KL divergence, and EMD.
-Recall is the fraction of a cell type's defining markers (present after filtering) that
-appear in the top-N predictions. The binding model and KL/EMD 1D are directly comparable
-because both operate on single target receptors — the binding model simply adds a fixed
-prototype signal arm.
+Inline 1D scan comparing single-receptor predictions against cell-type defining markers. For each cell type, receptors are filtered to those with sufficient expression and higher mean abundance in target than off-target cells; defining markers for each cell type are whitelisted so they are always included. Three metrics are computed per receptor: binding model selectivity (prototype signal + 1 target receptor), KL divergence, and EMD. Recall is the fraction of a cell type's defining markers (present after filtering) that appear in the top-N predictions. The binding model and KL/EMD 1D are directly comparable because both operate on single target receptors — the binding model simply adds a fixed prototype signal arm.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- Receptor sampling and filtering functions (`sample_receptor_abundances`, `filter_receptor_abundances`)
+- 1D distance metric calculation functions (`KL_EMD_1D`)
+- Selectivity optimization function (`optimize_affs`)
+- Cell-type defining surface marker annotations (`CITE-seq_defining_surface_markers.csv`)
+- Visualization libraries (matplotlib, seaborn, numpy)
+
+# Parameters
+- `CELL_CATEGORIZATION`: CITE-seq column used for cell type labels
+- `SAMPLE_SIZE`: Number of cells sampled per cell type for metric calculation
+- `DOSE`: Ligand concentration for the binding model in molar units
+- `VALENCY`: Valency array for the binding complex `[[signal, target]]`
+- `TOP_N_VALUES`: List of top-N cutoffs at which receptor–marker overlap is evaluated
+- `RNG_SEED`: Random seed for prototype signal receptor generation
+
+# Outputs
+- **Recall Heatmap**: Three-panel figure (Selectivity | KL Divergence | EMD) showing the fraction of each cell type's defining markers recovered in the top-N predicted receptors, annotated with raw overlap counts
+- **Summary Table**: Per-cell-type overlap counts at top-20 for all three metrics, with the defining markers present after filtering listed
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']

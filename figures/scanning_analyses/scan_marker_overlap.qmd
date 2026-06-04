@@ -3,11 +3,22 @@ title: "Scan-to-Defining-Marker Overlap"
 ---
 
 # Summary
-For each target cell type, compares the top-N receptors predicted by each scanning
-algorithm against the surface markers experimentally used to define that cell type.
-Recall is computed as the fraction of a cell type's defining markers (that were
-present in the scanned receptor set) that appear in the top-N predictions. Higher
-recall at lower N indicates the algorithm rediscovers biologically meaningful targets.
+For each target cell type, compares the top-N receptors predicted by each scanning algorithm against the surface markers experimentally used to define that cell type. Recall is computed as the fraction of a cell type's defining markers (that were present in the scanned receptor set) that appear in the top-N predictions. Higher recall at lower N indicates the algorithm rediscovers biologically meaningful targets.
+
+# Imports
+- Pre-computed receptor scan results (`load_selec_scan_results`, `load_KL_EMD_scan_results`)
+- Cell-type defining surface marker annotations (`CITE-seq_defining_surface_markers.csv`)
+- Visualization libraries (matplotlib, seaborn, numpy)
+
+# Parameters
+- `SELEC_SCAN_PATH`: Path to the saved selectivity scan CSV file
+- `KL_EMD_SCAN_PATH`: Path to the saved KL divergence and EMD scan CSV file
+- `TOP_N_VALUES`: List of top-N cutoffs at which receptor–marker overlap is evaluated
+- `SIGNAL_RECEPTOR`: Name of the artificial prototype signal receptor excluded from selectivity rankings
+
+# Outputs
+- **Recall Heatmap**: Three-panel figure (Selectivity | KL Divergence | EMD) showing the fraction of each cell type's defining markers recovered in the top-N predicted receptors, annotated with raw overlap counts
+- **Summary Table**: Per-cell-type overlap counts at top-50 for all three metrics, with the defining markers present in each scan listed
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
