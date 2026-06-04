@@ -25,8 +25,8 @@ path_here = Path(__file__).parent.parent.parent
 
 
 # --- Parameters ---
-SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv"
-KL_EMD_SCAN_PATH = "/home/sama/receptor_sweep_data/20260529_KL-EMD_scan_full_expr-match.csv"
+SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+KL_EMD_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
 MARKERS_CSV_FILE = "CITE-seq_defining_surface_markers.csv"
 TOP_N_VALUES = [5, 10, 20, 50, 100]
 SIGNAL_RECEPTOR = "Prototype_Signal_Receptor"  # Artificial; excluded from selectivity rankings
