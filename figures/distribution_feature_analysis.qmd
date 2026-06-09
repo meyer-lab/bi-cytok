@@ -78,11 +78,11 @@ from bicytok.selectivity_funcs import optimize_affs
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-SIGNAL_RECEPTOR = "CD122"
+SIGNAL_RECEPTOR = "sim_signal"
 SAMPLE_SIZE = 1000
 # List of target cell types to analyze, or None to analyze all cell types in the data.
 TARG_CELL_TYPES: list[str] | None = ["Treg"]
-TARG_CELL_TYPES = ["NK", "Treg", "CD8 TEM", "CD8 TCM", "CD4 TEM", "CD4 TCM", "CD4 CTL"]
+TARG_CELL_TYPES = None
 VALENCY = 1
 DOSE = 1e-10
 CELL_CATEGORIZATION = "CellType2"
@@ -117,6 +117,9 @@ FEATURE_NAMES = [
     "Bhattacharyya Coeff",
     "KS Statistic",
     "Outlier Mean Inflation",
+    "Target Max",
+    "Off-target Max",
+    "Max Log2 FC",
 ]
 METRIC_NAMES = ["KL Divergence", "EMD", "Selectivity"]
 
@@ -272,6 +275,13 @@ for targ_cell in TARG_CELL_TYPES:
             )
         else:
             outlier_mean_inflation = np.nan
+        targ_max = targ_abun.max()
+        offtarg_max = offtarg_abun.max()
+        log2_max_fc = (
+            np.log2(targ_max / offtarg_max)
+            if (targ_max > 0 and offtarg_max > 0)
+            else np.nan
+        )
 
         # --- Distance metrics ---
         rec_abun_2d = filtered_sample_df[receptor].to_numpy().reshape(-1, 1)
@@ -318,6 +328,9 @@ for targ_cell in TARG_CELL_TYPES:
                 "KL Divergence": kl_div,
                 "EMD": emd,
                 "Selectivity": selectivity,
+                "Target Max": targ_max,
+                "Off-target Max": offtarg_max,
+                "Max Log2 FC": log2_max_fc,
             }
         )
 
