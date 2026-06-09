@@ -1,0 +1,279 @@
+---
+title: "Cross-Selectivity Scan Agreement with Distribution Metrics (Jaccard Index)"
+---
+
+# Summary
+Compares any number of binding model selectivity scan datasets against the same KL
+divergence and EMD distribution metrics using the Jaccard index. For each cell type,
+valid receptor pairs must have non-NaN values in **all** selectivity scans and the dist
+scan so that every Jaccard value is computed over an identical pair pool — making each
+selectivity dataset's agreement with EMD (and KL) directly comparable.
+
+Receptor pairs are normalized so (A, B) and (B, A) are treated as identical. Cell type ×
+threshold combinations where N exceeds the common valid pair count are excluded.
+
+# Inputs
+- `SELEC_SCANS`: dict mapping display label → path for each selectivity scan CSV
+- `SCAN_PATH_DIST`: KL/EMD distribution metric scan CSV
+- `TOP_N_VALUES`: absolute top-N thresholds to evaluate
+- `MIN_VALID_PAIRS_PCT`: exclude cell types with fewer than this % of the max common
+  valid pair count (0 = keep all)
+
+# Outputs
+- Box plot (2 panels): Jaccard index at each top-N threshold, one panel per dist metric.
+  Each selectivity dataset gets its own color; dot size scales with valid pair count.
+- Summary table: mean Jaccard per dataset × dist metric × threshold.
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import pandas as pd
+
+# ── Parameters ────────────────────────────────────────────────────────────────
+SELEC_SCANS = {
+    "Fixed bivalent": "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv",
+    "Fixed tetravalent": "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv",
+    "Mixed tetravalent": "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv",
+}
+SCAN_PATH_DIST = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
+
+TOP_N_VALUES = [5, 10, 50, 100]
+
+# Cell types with fewer than MIN_VALID_PAIRS_PCT % of the max common valid pair
+# count are excluded.
+MIN_VALID_PAIRS_PCT = 0  # 0–100
+
+# ── Load data ─────────────────────────────────────────────────────────────────
+selec_dfs = {label: pd.read_csv(path) for label, path in SELEC_SCANS.items()}
+dist_df = pd.read_csv(SCAN_PATH_DIST)
+
+selec_labels = list(SELEC_SCANS)
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+def add_norm_pair(df):
+    """Add a 'pair' column with (min, max) sorted receptor names."""
+    df = df.copy()
+    df["pair"] = [
+        tuple(sorted([r1, r2]))
+        for r1, r2 in zip(df["Receptor_1"], df["Receptor_2"], strict=False)
+    ]
+    return df
+
+
+def jaccard(set_a, set_b):
+    union = set_a | set_b
+    return len(set_a & set_b) / len(union) if union else 0.0
+
+
+def load_selec_pairs(df, cell_type):
+    return (
+        df[df["Cell_Type"] == cell_type][["Receptor_1", "Receptor_2", "Selectivity"]]
+        .dropna()
+        .pipe(add_norm_pair)
+        .groupby("pair", as_index=False)["Selectivity"]
+        .max()
+    )
+
+
+# ── First pass: collect common valid pair sets per cell type ──────────────────
+cell_types = sorted(
+    set.intersection(*(set(df["Cell_Type"].unique()) for df in selec_dfs.values()))
+    & set(dist_df["Cell_Type"].unique())
+)
+
+ct_data = {}
+for cell_type in cell_types:
+    selec_by_label = {lbl: load_selec_pairs(df, cell_type) for lbl, df in selec_dfs.items()}
+
+    d = (
+        dist_df[dist_df["Cell_Type"] == cell_type][
+            ["Receptor_1", "Receptor_2", "KL_Divergence", "EMD"]
+        ]
+        .dropna(subset=["KL_Divergence", "EMD"])
+        .pipe(add_norm_pair)
+        .groupby("pair", as_index=False)[["KL_Divergence", "EMD"]]
+        .max()
+    )
+
+    # Intersection across all selectivity scans and the dist scan
+    common = set.intersection(*(set(s["pair"]) for s in selec_by_label.values())) & set(
+        d["pair"]
+    )
+    if len(common) < 10:
+        continue
+
+    ct_data[cell_type] = (
+        {lbl: s[s["pair"].isin(common)].set_index("pair") for lbl, s in selec_by_label.items()},
+        d[d["pair"].isin(common)].set_index("pair"),
+        len(common),
+    )
+
+# ── Filter by minimum common valid pair count ─────────────────────────────────
+n_max = max(v[2] for v in ct_data.values())
+min_pairs = n_max * MIN_VALID_PAIRS_PCT / 100
+ct_data = {ct: v for ct, v in ct_data.items() if v[2] >= min_pairs}
+print(
+    f"MIN_VALID_PAIRS_PCT={MIN_VALID_PAIRS_PCT}%  →  threshold: {min_pairs:.0f} pairs "
+    f"(max across cell types: {n_max})"
+)
+print(f"Cell types retained: {sorted(ct_data)}")
+
+# ── Second pass: compute Jaccard ───────────────────────────────────────────────
+records = []
+for cell_type, (selec_by_label, d_c, n_total) in ct_data.items():
+    for top_n in TOP_N_VALUES:
+        if top_n > n_total:
+            continue
+
+        top_kl  = set(d_c["KL_Divergence"].nlargest(top_n).index)
+        top_emd = set(d_c["EMD"].nlargest(top_n).index)
+
+        row = {"cell_type": cell_type, "top_n": top_n, "n_pairs": n_total}
+        for lbl, s_c in selec_by_label.items():
+            top_s = set(s_c["Selectivity"].nlargest(top_n).index)
+            row[f"{lbl} vs. EMD"] = jaccard(top_s, top_emd)
+            row[f"{lbl} vs. KL"]  = jaccard(top_s, top_kl)
+        records.append(row)
+
+results = pd.DataFrame(records)
+print(
+    f"Valid pairs range (retained): {results['n_pairs'].min()}–{results['n_pairs'].max()}"
+)
+```
+
+```{python}
+# ── Box plot: 2 panels (vs. EMD | vs. KL), one box per scan per threshold ─────
+import matplotlib.lines as mlines
+from matplotlib.patches import Patch
+import matplotlib.pyplot as plt
+import numpy as np
+
+n_selec = len(selec_labels)
+_palette = plt.cm.tab10(np.linspace(0, 0.9, max(n_selec, 1)))
+SELEC_COLORS = {lbl: _palette[i] for i, lbl in enumerate(selec_labels)}
+
+DIST_METRICS = ["EMD", "KL"]
+n_thresh = len(TOP_N_VALUES)
+
+group_width = 0.70
+box_width = group_width / n_selec * 0.85
+offsets = np.linspace(
+    -group_width / 2 + box_width / 2,
+    group_width / 2 - box_width / 2,
+    n_selec,
+)
+
+N_SIZE_MIN, N_SIZE_MAX = 20, 220
+n_global_min = results["n_pairs"].min()
+n_global_max = results["n_pairs"].max()
+
+
+def pair_count_to_size(n):
+    if n_global_max == n_global_min:
+        return (N_SIZE_MIN + N_SIZE_MAX) / 2
+    return N_SIZE_MIN + (N_SIZE_MAX - N_SIZE_MIN) * (n - n_global_min) / (
+        n_global_max - n_global_min
+    )
+
+
+rng = np.random.default_rng(0)
+fig, axes = plt.subplots(1, 2, figsize=(13, 5), sharey=True)
+
+for ax, dist_metric in zip(axes, DIST_METRICS, strict=False):
+    for selec_idx, selec_label in enumerate(selec_labels):
+        col = f"{selec_label} vs. {dist_metric}"
+        color = SELEC_COLORS[selec_label]
+
+        for thresh_idx, top_n in enumerate(TOP_N_VALUES):
+            x_pos = thresh_idx + offsets[selec_idx]
+            subset = results[results["top_n"] == top_n][
+                ["cell_type", col, "n_pairs"]
+            ].dropna(subset=[col])
+            data = subset[col].values
+            sizes = pair_count_to_size(subset["n_pairs"].values)
+
+            if len(data) == 0:
+                continue
+
+            ax.boxplot(
+                data,
+                positions=[x_pos],
+                widths=box_width,
+                patch_artist=True,
+                medianprops=dict(color="black", linewidth=1.8),
+                whiskerprops=dict(color=color, linewidth=1.0),
+                capprops=dict(color=color, linewidth=1.0),
+                flierprops=dict(marker=""),
+                boxprops=dict(facecolor=color, alpha=0.4, edgecolor=color, linewidth=1.0),
+            )
+            jitter = rng.uniform(-box_width * 0.28, box_width * 0.28, size=len(data))
+            ax.scatter(
+                np.full(len(data), x_pos) + jitter,
+                data,
+                s=sizes,
+                color=color,
+                alpha=0.75,
+                zorder=3,
+                linewidths=0.6,
+                edgecolors="white",
+            )
+
+    ax.set_xticks(range(n_thresh))
+    ax.set_xticklabels([f"Top {n}" for n in TOP_N_VALUES])
+    ax.set_xlabel("Top N receptor pairs", fontsize=12)
+    ax.set_title(f"Selectivity vs. {dist_metric}", fontsize=12)
+    ax.set_ylim(0, 1)
+    ax.grid(True, axis="y", linestyle="--", alpha=0.35)
+
+axes[0].set_ylabel("Jaccard Index", fontsize=12)
+
+selec_handles = [
+    Patch(facecolor=SELEC_COLORS[lbl], alpha=0.55, edgecolor=SELEC_COLORS[lbl], label=lbl)
+    for lbl in selec_labels
+]
+size_legend_vals = [n_global_min, (n_global_min + n_global_max) // 2, n_global_max]
+size_handles = [
+    mlines.Line2D(
+        [],
+        [],
+        marker="o",
+        color="gray",
+        linestyle="None",
+        markersize=np.sqrt(pair_count_to_size(n)),
+        label=f"n = {n:,}",
+    )
+    for n in size_legend_vals
+]
+leg1 = axes[0].legend(
+    handles=selec_handles,
+    fontsize=10,
+    framealpha=0.9,
+    loc="upper left",
+    title="Selectivity scan",
+)
+axes[0].add_artist(leg1)
+axes[1].legend(
+    handles=size_handles,
+    fontsize=9,
+    framealpha=0.9,
+    loc="upper right",
+    title="Valid pairs (n)",
+)
+
+plt.suptitle(
+    "Agreement between selectivity scans and distribution metrics\n"
+    "(each point = one target cell type; size ∝ valid pair count)",
+    fontsize=11,
+)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+# ── Summary table: mean Jaccard per dataset × dist metric × threshold ──────────
+cols = [f"{lbl} vs. {m}" for m in DIST_METRICS for lbl in selec_labels]
+summary = results.groupby("top_n")[cols].mean().round(3)
+summary.index = [f"Top {n}" for n in summary.index]
+summary.index.name = "Threshold"
+print(summary.to_string())
+```
