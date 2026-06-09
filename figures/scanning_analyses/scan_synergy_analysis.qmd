@@ -43,7 +43,7 @@ from scan_runners import load_KL_EMD_scan_results, load_selec_scan_results
 # ── Parameters ────────────────────────────────────────────────────────────────
 # SCAN_PATH = "/home/sama/receptor_sweep_data/20260212_full_geom_sweep.csv"
 # SCAN_PATH = "/home/sama/receptor_sweep_data/20260514_selec_scan_high-val-Treg.csv"
-SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+SCAN_PATH = "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv"
 
 KL_METRIC = "KL_Divergence"  # For KL_EMD scans: "KL_Divergence" or "EMD"
 
@@ -64,6 +64,7 @@ with open(yaml_path) as f:
 scan_type = scan_params["scan_type"]
 SAMPLE_SIZE = scan_params["general"]["sample_size"]
 CELL_CATEGORIZATION = scan_params["general"]["cell_categorization"]
+asym_scan = scan_params["binding_model"]["asym_targs"] if scan_type == "selectivity" else False
 
 if scan_type == "selectivity":
     opt_selec, _, _, receptors, cell_types = load_selec_scan_results(SCAN_PATH)
@@ -114,36 +115,43 @@ for ct in targ_cell_types:
     }
     rec_mono_map = {receptors[i]: mono_metric[i] for i in range(n_recs)}
 
-    # Collect synergistic pairs. The scan populates only one triangle, but
-    # alphabetical re-indexing in load_selec_scan_results may place the value
-    # in either [i, j] or [j, i], so both positions are checked.
+    # Collect synergistic pairs. For symmetric scans the lower triangle is
+    # checked (with a fallback to [j,i] due to alphabetical re-indexing).
+    # For asymmetric scans, (i,j) and (j,i) are independent ordered pairs and
+    # are evaluated separately without a fallback.
     synergy_records = []
-    for i in range(n_recs):
-        for j in range(i):  # unique unordered pairs only
-            if EXCLUDE_SIGNAL_REC and (
-                receptors[i] == SIGNAL_REC_NAME or receptors[j] == SIGNAL_REC_NAME
-            ):
-                continue
-            pair_metric = (
-                metric_2d[i, j] if not np.isnan(metric_2d[i, j]) else metric_2d[j, i]
-            )
-            if np.isnan(pair_metric):
-                continue
-            mono_i, mono_j = mono_metric[i], mono_metric[j]
-            if np.isnan(mono_i) or np.isnan(mono_j):
-                continue
-            if pair_metric > max(mono_i, mono_j):
-                rec = {
-                    "cell_type": ct,
-                    "rec1": receptors[i],
-                    "rec2": receptors[j],
-                    "pair_metric": pair_metric,
-                    "mono_rec1": mono_i,
-                    "mono_rec2": mono_j,
-                    "synergy_gain": pair_metric - max(mono_i, mono_j),
-                }
-                synergy_records.append(rec)
-                all_synergy_records.append(rec)
+    pair_indices = (
+        [(i, j) for i in range(n_recs) for j in range(n_recs) if i != j]
+        if asym_scan
+        else [(i, j) for i in range(n_recs) for j in range(i)]
+    )
+    for i, j in pair_indices:
+        if EXCLUDE_SIGNAL_REC and (
+            receptors[i] == SIGNAL_REC_NAME or receptors[j] == SIGNAL_REC_NAME
+        ):
+            continue
+        pair_metric = (
+            metric_2d[i, j]
+            if asym_scan
+            else (metric_2d[i, j] if not np.isnan(metric_2d[i, j]) else metric_2d[j, i])
+        )
+        if np.isnan(pair_metric):
+            continue
+        mono_i, mono_j = mono_metric[i], mono_metric[j]
+        if np.isnan(mono_i) or np.isnan(mono_j):
+            continue
+        if pair_metric > max(mono_i, mono_j):
+            rec = {
+                "cell_type": ct,
+                "rec1": receptors[i],
+                "rec2": receptors[j],
+                "pair_metric": pair_metric,
+                "mono_rec1": mono_i,
+                "mono_rec2": mono_j,
+                "synergy_gain": pair_metric - max(mono_i, mono_j),
+            }
+            synergy_records.append(rec)
+            all_synergy_records.append(rec)
 
     synergy_df = (
         pd.DataFrame(synergy_records)

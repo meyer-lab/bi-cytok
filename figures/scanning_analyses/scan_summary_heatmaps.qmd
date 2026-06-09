@@ -30,13 +30,17 @@ from figures.scanning_analyses.scan_runners import (
     load_selec_scan_results,
 )
 
-scan_data_path = "/home/sama/receptor_sweep_data/20260520_selec_scan_full_filt.csv"
+scan_data_path = "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv"
 # For KL_EMD scans: "KL_Divergence" or "EMD". Does nothing for selectivity scans.
 KL_METRIC = "KL_Divergence"
 
 yaml_path = os.path.splitext(scan_data_path)[0] + ".yaml"
 with open(yaml_path) as f:
-    scan_type = yaml.safe_load(f)["scan_type"]
+    scan_params = yaml.safe_load(f)
+    scan_type = scan_params["scan_type"]
+    asym_scan = scan_params["binding_model"]["asym_targs"] if scan_type == "selectivity" else False
+    if asym_scan:
+        scan_valencies = scan_params["binding_model"]["complex_valency_signal-target1-target2"]
 
 if scan_type == "selectivity":
     opt_selec, _, _, receptors, cell_types = load_selec_scan_results(scan_data_path)
@@ -71,14 +75,15 @@ position_to_cell_types = {}
 for cell_type, (rec1, rec2, max_val) in optimal_pairs.items():
     i = receptor_to_idx[rec1]
     j = receptor_to_idx[rec2]
-    i_lower, j_lower = (i, j) if i >= j else (j, i)
-    if (i_lower, j_lower) not in position_to_cell_types:
-        position_to_cell_types[(i_lower, j_lower)] = []
-        summary_matrix[i_lower, j_lower] = max_val
-    position_to_cell_types[(i_lower, j_lower)].append(cell_type)
+    pos = (i, j) if asym_scan else ((i, j) if i >= j else (j, i))
+    if pos not in position_to_cell_types:
+        position_to_cell_types[pos] = []
+        summary_matrix[pos[0], pos[1]] = max_val
+    position_to_cell_types[pos].append(cell_type)
 
-mask = np.triu(np.ones_like(summary_matrix, dtype=bool), k=1)
-summary_matrix[mask] = np.nan
+if not asym_scan:
+    mask = np.triu(np.ones_like(summary_matrix, dtype=bool), k=1)
+    summary_matrix[mask] = np.nan
 
 vmin_val = np.nanmin(summary_matrix)
 vmax_val = np.nanmax(summary_matrix)
@@ -99,11 +104,12 @@ sns.heatmap(
     linecolor="lightgray",
     mask=False,
 )
-for i in range(N_RECEPTORS):
-    for j in range(i + 1, N_RECEPTORS):
-        ax.add_patch(
-            plt.Rectangle((j, i), 1, 1, fill=True, color="lightgray", zorder=3)
-        )
+if not asym_scan:
+    for i in range(N_RECEPTORS):
+        for j in range(i + 1, N_RECEPTORS):
+            ax.add_patch(
+                plt.Rectangle((j, i), 1, 1, fill=True, color="lightgray", zorder=3)
+            )
 for (i, j), cts in position_to_cell_types.items():
     label = "\n".join(cts)
     ax.text(
@@ -114,8 +120,12 @@ ax.set_title(
     fontsize=14,
     pad=20,
 )
-ax.set_xlabel("Receptor 2", fontsize=18)
-ax.set_ylabel("Receptor 1", fontsize=18)
+if asym_scan:
+    ax.set_xlabel(f"Receptor 2, Valency {scan_valencies[0][2]}", fontsize=18)
+    ax.set_ylabel(f"Receptor 1, Valency {scan_valencies[0][1]}", fontsize=18)
+else:
+    ax.set_xlabel("Receptor 2", fontsize=18)
+    ax.set_ylabel("Receptor 1", fontsize=18)
 ax.tick_params(axis="x", rotation=90, labelsize=20, width=2, length=6)
 ax.tick_params(axis="y", rotation=0, labelsize=20, width=2, length=6)
 plt.tight_layout()

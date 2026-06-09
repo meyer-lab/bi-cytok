@@ -31,13 +31,15 @@ from figures.scanning_analyses.scan_runners import (
     load_selec_scan_results,
 )
 
-scan_data_path = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
+scan_data_path = "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv"
 TOP_N = 5
 KL_METRIC = "KL_Divergence"  # For KL_EMD scans: "KL_Divergence" or "EMD"
 
 yaml_path = os.path.splitext(scan_data_path)[0] + ".yaml"
 with open(yaml_path) as f:
-    scan_type = yaml.safe_load(f)["scan_type"]
+    scan_params = yaml.safe_load(f)
+    scan_type = scan_params["scan_type"]
+    asym_scan = scan_params["binding_model"]["asym_targs"] if scan_type == "selectivity" else False
 
 if scan_type == "selectivity":
     opt_selec, _, _, receptors, cell_types = load_selec_scan_results(scan_data_path)
@@ -52,7 +54,8 @@ elif scan_type == "KL_EMD":
 else:
     raise ValueError(f"Unknown scan_type: {scan_type}")
 
-row_indices, col_indices = np.tril_indices(len(receptors), k=0)
+k = len(receptors) - 1 if asym_scan else 0
+row_indices, col_indices = np.tril_indices(len(receptors), k=k)
 top_per_cell = {}
 for i, cell_type in enumerate(cell_types):
     metric_matrix = metric_array[:, :, i]
