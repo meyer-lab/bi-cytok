@@ -29,10 +29,15 @@ threshold combinations where N exceeds the common valid pair count are excluded.
 import pandas as pd
 
 # ── Parameters ────────────────────────────────────────────────────────────────
+# SELEC_SCANS = {
+#     "Fixed bivalent": "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv",
+#     "Fixed tetravalent": "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv",
+#     "Mixed tetravalent": "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv",
+# }
 SELEC_SCANS = {
-    "Fixed bivalent": "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv",
-    "Fixed tetravalent": "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv",
-    "Mixed tetravalent": "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv",
+    "Generic signal": "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv",
+    "CD122 signal": "/home/sama/receptor_sweep_data/20260604_selec_scan_full_sigCD122.csv",
+    "CD28 signal": "/home/sama/receptor_sweep_data/20260609_selec_scan_full_sigCD28.csv",
 }
 SCAN_PATH_DIST = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
 
@@ -40,7 +45,7 @@ TOP_N_VALUES = [5, 10, 50, 100]
 
 # Cell types with fewer than MIN_VALID_PAIRS_PCT % of the max common valid pair
 # count are excluded.
-MIN_VALID_PAIRS_PCT = 0  # 0–100
+MIN_VALID_PAIRS_PCT = 0 # 0–100
 
 # ── Load data ─────────────────────────────────────────────────────────────────
 selec_dfs = {label: pd.read_csv(path) for label, path in SELEC_SCANS.items()}

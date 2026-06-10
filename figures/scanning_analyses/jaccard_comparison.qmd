@@ -30,7 +30,7 @@ threshold combinations where N exceeds the number of valid pairs are excluded.
 import pandas as pd
 
 # ── Parameters ────────────────────────────────────────────────────────────────
-SCAN_PATH_SELEC = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+SCAN_PATH_SELEC = "/home/sama/receptor_sweep_data/20260609_selec_scan_full_sigCD28.csv"
 SCAN_PATH_DIST = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
 
 TOP_N_VALUES = [5, 10, 50, 100]

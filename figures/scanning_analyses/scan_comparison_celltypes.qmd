@@ -31,15 +31,15 @@ import pandas as pd
 import yaml
 
 # ── Parameters ────────────────────────────────────────────────────────────────
-# SCAN_PATH_1 = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+SCAN_PATH_1 = "/home/sama/receptor_sweep_data/20260609_selec_scan_full_sigCD28.csv"
 SCAN_PATH_2 = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
-SCAN_PATH_1 = (
-    SCAN_PATH_2  # For comparing two metrics within the same scan, set paths equal.
-)
+# SCAN_PATH_1 = (
+#     SCAN_PATH_2  # For comparing two metrics within the same scan, set paths equal.
+# )
 
 # For KL_EMD scans, selects which method to use as the axis metric.
 KL_METRIC_1 = "EMD"  # "KL_Divergence" or "EMD"
-KL_METRIC_2 = "KL_Divergence"
+KL_METRIC_2 = "EMD"
 
 # Human-readable axis labels; set to None to auto-derive from the metric name.
 AXIS_1_LABEL = None

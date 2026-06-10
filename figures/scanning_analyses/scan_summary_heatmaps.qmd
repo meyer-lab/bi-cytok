@@ -30,7 +30,7 @@ from figures.scanning_analyses.scan_runners import (
     load_selec_scan_results,
 )
 
-scan_data_path = "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv"
+scan_data_path = "/home/sama/receptor_sweep_data/20260604_selec_scan_full_sigCD122.csv"
 # For KL_EMD scans: "KL_Divergence" or "EMD". Does nothing for selectivity scans.
 KL_METRIC = "KL_Divergence"
 
