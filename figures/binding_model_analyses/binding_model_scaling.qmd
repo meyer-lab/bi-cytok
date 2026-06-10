@@ -21,13 +21,15 @@ Generates a comprehensive analysis of how scaling factors applied to raw recepto
 - `num_conv_factors`: Integer number of conversion factors to test (logspace from 0.1 to 1e8)
 
 # Outputs
-- **6-Panel Figure**: Comprehensive analysis showing:
+- **8-Panel Figure**: Comprehensive analysis showing:
   1. Target receptor binding vs conversion factor (on-target vs off-target)
   2. Signal receptor binding vs conversion factor (on-target vs off-target)
   3. Optimal selectivity vs conversion factor
   4. Optimal target receptor affinity vs conversion factor
   5. Optimal signal receptor affinity vs conversion factor
   6. Optimal Kx_star vs conversion factor
+  7. EMD vs conversion factor (log scale)
+  8. KL Divergence vs conversion factor
 - Black dashed vertical line at conversion factor = 1 (no scaling reference)
 
 ```{python}
@@ -37,16 +39,17 @@ import time
 import numpy as np
 import pandas as pd
 
+from bicytok.distance_metric_funcs import calculate_KL_EMD
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import get_cell_bindings, optimize_affs
 
 # Parameters
 targ_cell = "Treg"
-sample_size = 100
+sample_size = 1000
 cell_categorization = "CellType2"
 dose = 1e-10
 signal_receptor = "CD122"
-receptors_of_interest = [("CD25", 2), ("CD4-1", 2)]
+receptors_of_interest = [("CD25", 1), ("CD4-1", 1), ("CD27", 1)]
 affinity_bounds = (6, 12)
 kx_star_bounds = (-15, -3)
 num_conv_factors = 10
@@ -89,6 +92,8 @@ results = {
     "target_affinities": [],
     "signal_affinities": [],
     "optimal_kx_stars": [],
+    "emd_vals": [],
+    "kl_vals": [],
 }
 
 for receptor_valency in receptors_of_interest:
@@ -112,6 +117,7 @@ for receptor_valency in receptors_of_interest:
             valencies=model_valencies,
             affinity_bounds=affinity_bounds,
             Kx_star_bounds=kx_star_bounds,
+            init_vals=[6.0, 7.0, -9.0],
         )
 
         per_rec_results["selectivities"].append(1 / opt_selec)
@@ -138,6 +144,14 @@ for receptor_valency in receptors_of_interest:
         per_rec_results["targ_bound_tar_r"].append(targ_bound[1])
         per_rec_results["off_targ_bound_tar_r"].append(off_targ_bound[1])
 
+        # EMD and KL divergence on the 1D scaled target receptor distribution
+        rec_1d = test_df[[receptor]].to_numpy()
+        kl_val, emd_val = calculate_KL_EMD(
+            rec_1d[on_target_mask], rec_1d[off_target_mask], reg_strength=None
+        )
+        per_rec_results["emd_vals"].append(emd_val)
+        per_rec_results["kl_vals"].append(kl_val)
+
         time_stop = time.time()
         print(
             f"Receptor: {receptor}, Conversion Factor: {conv_fact:.2e}, Time: {time_stop - time_start:.2f}s"
@@ -153,7 +167,7 @@ for receptor_valency in receptors_of_interest:
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+fig, axes = plt.subplots(2, 4, figsize=(24, 10))
 ax = axes.flatten()
 
 palette = sns.color_palette("colorblind", n_colors=len(receptors_of_interest))
@@ -192,6 +206,16 @@ plot_configs = [
         "ylabel": "Optimal Kx_star (log10 M)",
         "title": "Optimal Kx_star vs Conversion Factor",
     },
+    {
+        "data_key": "emd_vals",
+        "ylabel": "EMD (log scale)",
+        "title": "EMD vs Conversion Factor",
+    },
+    {
+        "data_key": "kl_vals",
+        "ylabel": "KL Divergence",
+        "title": "KL Divergence vs Conversion Factor",
+    },
 ]
 
 for plot_idx, config in enumerate(plot_configs):
@@ -224,18 +248,14 @@ for plot_idx, config in enumerate(plot_configs):
     # Configure axes
     ax[plot_idx].axvline(x=10**0, linestyle="--", color="black", alpha=0.5)
     ax[plot_idx].set_xscale("log")
-    if plot_idx in [
-        0,
-        1,
-        2,
-    ]:  # Log scale for specific plots (not Kx_star which is already in log10)
+    if plot_idx in [0, 1, 2, 6]:  # log y: binding, selectivity, EMD (not log10 params)
         ax[plot_idx].set_yscale("log")
-    ax[plot_idx].set_xlabel("Conversion Factor")
-    ax[plot_idx].set_ylabel(config["ylabel"])
-    ax[plot_idx].set_title(config["title"])
+    ax[plot_idx].set_xlabel("Conversion Factor", fontsize=15)
+    ax[plot_idx].set_ylabel(config["ylabel"], fontsize=15)
+    ax[plot_idx].set_title(config["title"], fontsize=15)
 
     # Add legend for specific plots
-    if plot_idx in [1, 2, 3, 4, 5]:
+    if plot_idx in [1, 2, 3, 4, 5, 6, 7]:
         legend_title = (
             "Cell Type: Target Receptor"
             if "off_data_key" in config
