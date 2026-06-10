@@ -1,0 +1,375 @@
+---
+title: "1D vs 2D receptor target comparison"
+---
+
+# Summary
+Compares single-receptor (1D) vs paired-receptor (2D) targeting strategies across three metrics:
+binding model selectivity, EMD, and KL divergence. For each metric, derives per-receptor 1D scores
+and 2D marginal scores (best score across all pairs involving each receptor), then evaluates:
+
+1. **Rank scatter**: 1D rank vs 2D marginal rank, revealing receptors where pairing adds value
+   (good 2D rank, poor 1D rank) and receptors that are strong independently.
+2. **Jaccard + novelty curves**: Overlap in top-N receptor sets as N varies, plus the fraction of
+   top-N 2D receptors absent from top-N 1D (novelty fraction).
+3. **Emergent pairs**: Pairs that rank highly in 2D despite both component receptors ranking
+   poorly in 1D — the purely synergistic cases.
+
+For KL/EMD: 1D scores are extracted from the diagonal of the 2D scan array (mathematically
+identical to running KL_EMD_1D). For selectivity: a fresh 1D scan is run using the same receptor
+set and parameters as the 2D scan, with valencies [[1, 2]].
+
+# Parameters
+- `SELEC_2D_PATH`: Path to selectivity scan CSV from `run_selectivity_scan`
+- `KL_EMD_2D_PATH`: Path to KL/EMD scan CSV from `run_KL_EMD_scan`
+- `CELL_TYPE`: Target cell type to analyze
+- `SIGNAL_REC_NAME`: Name of prototype signal receptor used in selectivity scans
+- `MAX_N`: Maximum top-N to evaluate in Jaccard/novelty analysis
+- `TOP_LABEL_N`: Number of receptors to label in rank scatter plots
+
+# Outputs
+- **Rank scatter** (3 panels): 1D rank vs 2D marginal rank for each metric
+- **Jaccard + novelty curves**: Overlap between top-N 1D and 2D receptor sets vs N
+- **Emergent pairs bar chart**: Top pairs ranked by synergy (good 2D, poor individual 1D ranks)
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import sys
+sys.path.insert(0, '/home/sama/bi-cytok-2')
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import pandas as pd
+
+from bicytok.imports import importCITE
+from bicytok.scanning_funcs import scan_selectivity
+from figures.scanning_analyses.scan_runners import (
+    load_selec_scan_results,
+    load_KL_EMD_scan_results,
+)
+
+# --- Scan result paths ---
+SELEC_2D_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+KL_EMD_2D_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
+
+# --- Analysis parameters ---
+CELL_TYPE = "ILC"
+SIGNAL_REC_NAME = "Prototype_Signal_Receptor"
+MAX_N = 50       # max top-N for Jaccard/novelty curves
+TOP_LABEL_N = 10  # number of receptors to label in rank scatter
+
+# --- 1D selectivity scan parameters (must match the 2D scan setup) ---
+DOSE = 1e-10
+VALENCY_1D = np.array([[1, 1]])
+SAMPLE_SIZE = 1000
+CELL_CATEGORIZATION = "CellType2"
+MIN_AVG_COUNT = 5
+CELL_TYPES_FILTER = [
+    "Treg", "dnT", "CD4 CTL", "CD8 Proliferating", "CD4 TCM",
+    "B memory", "CD8 TCM", "CD8 Naive", "CD4 Proliferating",
+    "NK_CD56bright", "CD4 Naive", "CD8 TEM", "ILC", "CD4 TEM", "B naive", "NK",
+]
+INIT_1D = np.array([6.0, 7.0, -9.0])  # [signal_aff, target_aff, Kx_star]
+SIGNAL_SEED = 42  # fixed seed for reproducible prototype signal receptor
+```
+
+```{python}
+# Load 2D scan results and extract per-cell-type matrices
+
+opt_selec_2d, _, _, selec_receptors, selec_cell_types = load_selec_scan_results(SELEC_2D_PATH)
+KL_2d, EMD_2d, kl_emd_receptors, kl_emd_cell_types = load_KL_EMD_scan_results(KL_EMD_2D_PATH)
+
+assert CELL_TYPE in selec_cell_types, f"{CELL_TYPE} not in selectivity scan: {selec_cell_types}"
+assert CELL_TYPE in kl_emd_cell_types, f"{CELL_TYPE} not in KL/EMD scan: {kl_emd_cell_types}"
+
+ct_idx_selec = selec_cell_types.index(CELL_TYPE)
+ct_idx_kl = kl_emd_cell_types.index(CELL_TYPE)
+
+# Selectivity scan includes the prototype signal receptor — exclude it from target analysis
+sig_idx = selec_receptors.index(SIGNAL_REC_NAME)
+targ_rec_indices = [i for i in range(len(selec_receptors)) if i != sig_idx]
+targ_recs_selec = [selec_receptors[i] for i in targ_rec_indices]
+
+selec_2d_ct = opt_selec_2d[np.ix_(targ_rec_indices, targ_rec_indices, [ct_idx_selec])][:, :, 0]
+
+# KL/EMD 1D: extract from diagonal of 2D scan (mathematically identical to KL_EMD_1D)
+kl_2d_ct = KL_2d[:, :, ct_idx_kl]
+emd_2d_ct = EMD_2d[:, :, ct_idx_kl]
+kl_1d_diag = np.diag(kl_2d_ct)    # shape: (n_kl_recs,)
+emd_1d_diag = np.diag(emd_2d_ct)  # shape: (n_kl_recs,)
+
+print(f"Selectivity scan: {len(targ_recs_selec)} target receptors, cell types: {selec_cell_types}")
+print(f"KL/EMD scan: {len(kl_emd_receptors)} receptors, cell types: {kl_emd_cell_types}")
+```
+
+```{python}
+# Run 1D selectivity scan using same receptor set and parameters as 2D scan
+
+CITE_DF = importCITE()
+
+# Use the same receptor set as the KL/EMD scan (no signal receptor)
+kl_emd_rec_set = set(kl_emd_receptors)
+all_cols = [c for c in CITE_DF.columns if c not in ["Cell", "CellType1", "CellType2", "CellType3"]]
+mean_expr = CITE_DF[all_cols].mean(axis=0)
+receptors_above_thresh = mean_expr[mean_expr >= MIN_AVG_COUNT].index.tolist()
+common_recs = [r for r in receptors_above_thresh if r in kl_emd_rec_set]
+
+epitopes_df = CITE_DF[common_recs + [CELL_CATEGORIZATION]].rename(
+    columns={CELL_CATEGORIZATION: "Cell Type"}
+)
+if CELL_TYPES_FILTER:
+    epitopes_df = epitopes_df[epitopes_df["Cell Type"].isin(CELL_TYPES_FILTER)]
+
+# Add prototype signal receptor with fixed seed for reproducibility
+rng = np.random.default_rng(seed=SIGNAL_SEED)
+proto_signal = np.clip(rng.normal(loc=50, scale=5, size=epitopes_df.shape[0]), 0, None)
+epitopes_df.insert(0, SIGNAL_REC_NAME, proto_signal)
+all_recs_with_signal = [SIGNAL_REC_NAME] + common_recs
+
+rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
+cell_type_labels = epitopes_df["Cell Type"].tolist()
+
+print(f"Running 1D selectivity scan: {len(common_recs)} target receptors...")
+selec_1d_scan, _, _ = scan_selectivity(
+    rec_abundances,
+    cell_type_labels,
+    targ_cell_types=[CELL_TYPE],
+    dim=1,
+    dose=DOSE,
+    valencies=VALENCY_1D,
+    sample_size=SAMPLE_SIZE,
+    signal_col=0,
+    init_method=INIT_1D,
+)
+
+# selec_1d_scan[j, 0] = selectivity for signal + receptor j; skip j=0 (signal itself)
+selec_1d_vals = selec_1d_scan[1:, 0]  # shape: (n_common_recs,), indexed by common_recs
+print(f"1D selectivity scan complete. Shape: {selec_1d_vals.shape}")
+```
+
+```{python}
+# Align receptor sets across all three metrics for unified comparison.
+# Common set = receptors present in all three scans.
+
+common_set = set(targ_recs_selec) & set(kl_emd_receptors) & set(common_recs)
+aligned_recs = sorted(common_set)
+n_aligned = len(aligned_recs)
+
+rec_to_idx_selec = {r: i for i, r in enumerate(targ_recs_selec)}
+rec_to_idx_kl = {r: i for i, r in enumerate(kl_emd_receptors)}
+rec_to_idx_1d = {r: i for i, r in enumerate(common_recs)}
+
+print(f"Aligned receptor set: {n_aligned} receptors")
+
+# Aligned 1D score arrays
+selec_1d_aligned = np.array([selec_1d_vals[rec_to_idx_1d[r]] for r in aligned_recs])
+kl_1d_aligned = np.array([kl_1d_diag[rec_to_idx_kl[r]] for r in aligned_recs])
+emd_1d_aligned = np.array([emd_1d_diag[rec_to_idx_kl[r]] for r in aligned_recs])
+
+# Aligned 2D matrices
+idx_selec = np.array([rec_to_idx_selec[r] for r in aligned_recs])
+idx_kl = np.array([rec_to_idx_kl[r] for r in aligned_recs])
+
+selec_2d_aligned = selec_2d_ct[np.ix_(idx_selec, idx_selec)]
+kl_2d_aligned = kl_2d_ct[np.ix_(idx_kl, idx_kl)]
+emd_2d_aligned = emd_2d_ct[np.ix_(idx_kl, idx_kl)]
+
+
+def marginal_max_excl_diag(matrix_2d, r):
+    """Max score across all off-diagonal lower-triangle pairs involving receptor r."""
+    row_vals = matrix_2d[r, :r]
+    col_vals = matrix_2d[r + 1:, r]
+    combined = np.concatenate([row_vals, col_vals])
+    valid = combined[~np.isnan(combined)]
+    return float(np.nanmax(valid)) if len(valid) > 0 else np.nan
+
+
+# Compute 2D marginal scores (best score across all pairs, excluding self-pair)
+selec_2d_marginal = np.array([marginal_max_excl_diag(selec_2d_aligned, r) for r in range(n_aligned)])
+kl_2d_marginal = np.array([marginal_max_excl_diag(kl_2d_aligned, r) for r in range(n_aligned)])
+emd_2d_marginal = np.array([marginal_max_excl_diag(emd_2d_aligned, r) for r in range(n_aligned)])
+```
+
+```{python}
+# Helper functions for ranking and Jaccard analysis
+
+def dense_rank(scores, higher_is_better=True):
+    """Rank scores (1=best), handling NaN (NaN-ranked last)."""
+    if higher_is_better:
+        order = np.argsort(-np.nan_to_num(scores, nan=-np.inf))
+    else:
+        order = np.argsort(np.nan_to_num(scores, nan=np.inf))
+    ranks = np.empty_like(order)
+    ranks[order] = np.arange(1, len(scores) + 1)
+    return ranks
+
+
+def jaccard_novelty_curve(scores_1d, scores_2d_marginal, max_n, higher_is_better=True):
+    """
+    For each N in 1..max_n, compute Jaccard similarity and novelty fraction
+    between the top-N set from 1D scores and the top-N set from 2D marginal scores.
+
+    Novelty fraction = fraction of top-N 2D receptors not in top-N 1D set.
+    Also returns a random-baseline Jaccard = N / (2*M - N) where M = population size.
+    """
+    M = len(scores_1d)
+    max_n = min(max_n, M)
+
+    if higher_is_better:
+        order_1d = np.argsort(-np.nan_to_num(scores_1d, nan=-np.inf))
+        order_2d = np.argsort(-np.nan_to_num(scores_2d_marginal, nan=-np.inf))
+    else:
+        order_1d = np.argsort(np.nan_to_num(scores_1d, nan=np.inf))
+        order_2d = np.argsort(np.nan_to_num(scores_2d_marginal, nan=np.inf))
+
+    ns = np.arange(1, max_n + 1)
+    jaccards, novelty_fracs, random_baseline = [], [], []
+
+    for n in ns:
+        top_1d = set(order_1d[:n])
+        top_2d = set(order_2d[:n])
+        inter = top_1d & top_2d
+        union = top_1d | top_2d
+        jaccards.append(len(inter) / len(union))
+        novelty_fracs.append(1.0 - len(inter) / n)
+        random_baseline.append(n / (2 * M - n))
+
+    return ns, np.array(jaccards), np.array(novelty_fracs), np.array(random_baseline)
+```
+
+```{python}
+#| fig-cap: "Rank scatter: 1D rank vs 2D marginal rank for each metric"
+# Each point is a receptor. Points near the diagonal rank similarly in 1D and 2D.
+# Points below the diagonal (lower 2D rank = better 2D) are "emergent" receptors —
+# their pairing performance exceeds their standalone performance.
+
+rank_selec_1d = dense_rank(selec_1d_aligned, higher_is_better=True)
+rank_selec_2d = dense_rank(selec_2d_marginal, higher_is_better=True)
+rank_kl_1d = dense_rank(kl_1d_aligned, higher_is_better=True)
+rank_kl_2d = dense_rank(kl_2d_marginal, higher_is_better=True)
+rank_emd_1d = dense_rank(emd_1d_aligned, higher_is_better=True)
+rank_emd_2d = dense_rank(emd_2d_marginal, higher_is_better=True)
+
+metrics = [
+    ("Selectivity", rank_selec_1d, rank_selec_2d, "#2274A5"),
+    ("KL Divergence", rank_kl_1d, rank_kl_2d, "#E83F6F"),
+    ("EMD", rank_emd_1d, rank_emd_2d, "#32936F"),
+]
+
+fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+for ax, (metric_name, r1d, r2d, color) in zip(axes, metrics):
+    n = len(r1d)
+    threshold = TOP_LABEL_N
+
+    # Color points by quadrant relative to top-N threshold
+    both_top = (r1d <= threshold) & (r2d <= threshold)
+    only_1d = (r1d <= threshold) & (r2d > threshold)
+    only_2d = (r1d > threshold) & (r2d <= threshold)
+    neither = (r1d > threshold) & (r2d > threshold)
+
+    ax.scatter(r1d[neither], r2d[neither], c="lightgray", s=18, alpha=0.5, zorder=1)
+    ax.scatter(r1d[only_1d], r2d[only_1d], c="#4E9AF1", s=30, alpha=0.8, zorder=2,
+               label=f"1D top-{threshold} only")
+    ax.scatter(r1d[only_2d], r2d[only_2d], c="#E05C5C", s=30, alpha=0.8, zorder=2,
+               label=f"2D top-{threshold} only (emergent)")
+    ax.scatter(r1d[both_top], r2d[both_top], c=color, s=40, alpha=0.9, zorder=3,
+               label=f"Both top-{threshold}")
+
+    # Diagonal reference line
+    ax.plot([1, n], [1, n], "k--", alpha=0.3, linewidth=1, zorder=0)
+
+    # Threshold lines
+    ax.axvline(threshold, color="gray", linestyle=":", linewidth=0.8, alpha=0.5)
+    ax.axhline(threshold, color="gray", linestyle=":", linewidth=0.8, alpha=0.5)
+
+    # Label top receptors in either dimension
+    label_mask = both_top | only_1d | only_2d
+    for i in np.where(label_mask)[0]:
+        ax.annotate(
+            aligned_recs[i],
+            (r1d[i], r2d[i]),
+            fontsize=6,
+            xytext=(3, 3),
+            textcoords="offset points",
+            alpha=0.85,
+        )
+
+    ax.set_xlabel("1D rank", fontsize=12)
+    ax.set_ylabel("2D marginal rank", fontsize=12)
+    ax.set_title(f"{metric_name}\n({CELL_TYPE})", fontsize=12)
+    ax.legend(fontsize=7, loc="lower right")
+    ax.set_xlim(0, n + 1)
+    ax.set_ylim(0, n + 1)
+
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Jaccard similarity and novelty fraction: top-N 1D vs 2D marginal receptor sets"
+# Jaccard: fraction of the union covered by the intersection of top-N sets.
+# Novelty fraction: fraction of top-N 2D receptors absent from top-N 1D.
+# Dashed gray line: expected Jaccard for random rankings (N / (2M - N)).
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+metric_curves = [
+    ("Selectivity", selec_1d_aligned, selec_2d_marginal, True, "#2274A5"),
+    ("KL Divergence", kl_1d_aligned, kl_2d_marginal, True, "#E83F6F"),
+    ("EMD", emd_1d_aligned, emd_2d_marginal, True, "#32936F"),
+]
+
+for metric_name, s1d, s2d, hib, color in metric_curves:
+    ns, jac, nov, rand_base = jaccard_novelty_curve(s1d, s2d, MAX_N, higher_is_better=hib)
+    ax1.plot(ns, jac, color=color, linewidth=2, label=metric_name)
+    ax2.plot(ns, nov, color=color, linewidth=2, label=metric_name)
+
+# Random baseline (same for all metrics since M is the same)
+_, _, _, rand_base = jaccard_novelty_curve(
+    selec_1d_aligned, selec_2d_marginal, MAX_N, higher_is_better=True
+)
+ax1.plot(ns, rand_base, "k--", linewidth=1, alpha=0.5, label="Random baseline")
+
+ax1.set_xlabel("Top N receptors", fontsize=12)
+ax1.set_ylabel("Jaccard similarity", fontsize=12)
+ax1.set_title(f"Overlap: top-N 1D vs 2D marginal\n({CELL_TYPE})", fontsize=12)
+ax1.legend(fontsize=10)
+ax1.set_ylim(0, 1)
+ax1.grid(True, alpha=0.3)
+
+ax2.set_xlabel("Top N receptors", fontsize=12)
+ax2.set_ylabel("Novelty fraction", fontsize=12)
+ax2.set_title(f"Fraction of top-N 2D receptors absent from top-N 1D\n({CELL_TYPE})", fontsize=12)
+ax2.legend(fontsize=10)
+ax2.set_ylim(0, 1)
+ax2.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+n_total_pairs = len(pair_records)
+n_emergent = len(emergent_df)
+
+text = f"""
+**Cell type analyzed:** {CELL_TYPE}
+**Aligned receptor set:** {n_aligned} receptors present in all three scans
+**Selectivity 2D scan:** {SELEC_2D_PATH}
+**KL/EMD 2D scan:** {KL_EMD_2D_PATH}
+
+**1D selectivity:** computed fresh using `scan_selectivity(dim=1)` with dose={DOSE},
+valencies=[[1, 1]], sample_size={SAMPLE_SIZE}. Signal receptor seed={SIGNAL_SEED}.
+
+**2D marginal score:** max selectivity/KL/EMD across all off-diagonal pairs involving
+each receptor (lower-triangle scan, self-pairs excluded).
+
+**Rank scatter threshold:** top-{TOP_LABEL_N} receptors labeled.
+**Emergent pairs:** {n_emergent} of {n_total_pairs} total pairs have bottleneck 1D rank ≥ {EMERGENT_1D_RANK_MIN}
+(worse-ranked receptor in the pair ranks below the median individually).
+"""
+print(text)
+```
