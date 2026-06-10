@@ -290,11 +290,13 @@ for ax, (title, df) in zip(axes, metric_specs, strict=False):
                 )
 
     ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
-    ax.set_xlabel("Top-N Predicted Receptors", fontsize=12)
-    ax.tick_params(axis="x", labelsize=11)
-    ax.tick_params(axis="y", labelsize=10, rotation=0)
+    ax.set_xlabel("Top-N Predicted Receptors", fontsize=20)
+    ax.tick_params(axis="x", labelsize=15)
+    ax.tick_params(axis="y", labelsize=15, rotation=0)
 
-axes[0].set_ylabel("Cell Type", fontsize=12)
+axes[0].set_ylabel("Cell Type", fontsize=20)
+axes[1].set_ylabel("Cell Type", fontsize=20)
+axes[2].set_ylabel("Cell Type", fontsize=20)
 
 pos0 = axes[0].get_position()
 pos2 = axes[2].get_position()
@@ -303,8 +305,8 @@ norm = plt.Normalize(vmin=0, vmax=1)
 sm = plt.cm.ScalarMappable(cmap="Blues", norm=norm)
 sm.set_array([])
 cbar = fig.colorbar(sm, cax=cbar_ax)
-cbar.set_label("Recall (overlap / markers after filtering)", fontsize=11)
-cbar.ax.tick_params(labelsize=10)
+cbar.set_label("Recall (overlap / markers after filtering)", fontsize=15)
+cbar.ax.tick_params(labelsize=15)
 
 fig.suptitle(
     "Top-N 1D-Predicted Receptors vs. Cell-Type Defining Markers\n"
