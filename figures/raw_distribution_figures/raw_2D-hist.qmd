@@ -45,22 +45,23 @@ from bicytok.selectivity_funcs import optimize_affs
 plt.rcParams["svg.fonttype"] = "none"
 
 # Parameters
-receptor1 = "CD27"
-receptor2 = "CD28"
-targ_cell = "dnT"
-sample_size = 356 * 2
+receptor1 = "CD71"
+receptor2 = "CD271"
+targ_cell = "pDC"
+sample_size = 1000
 cell_categorization = "CellType2"
 plot_cell_types = [targ_cell, "other"]
 normalize = False
+calc_selec = False
 
 # Selectivity parameters
 dose = 1e-10  # ligand concentration in M
-signal = ["TCR-1"]  # signal receptor for selectivity calculations
+signal = ["CD122"]  # signal receptor for selectivity calculations
 valencies_1d = np.array(
-    [[2, 2]]
+    [[1, 2]]
 )  # valencies for 1D case (signal + one target receptor)
 valencies_2d = np.array(
-    [[2, 1, 1]]
+    [[1, 1, 1]]
 )  # valencies for 2D case (signal + two target receptors)
 
 # Color scheme
@@ -164,9 +165,12 @@ rec1_abun_off = off_targ_recs[[receptor1]].to_numpy()
 receptor_abuns_1d_rec1_targ = np.hstack((signal_abun_targ, rec1_abun_targ))
 receptor_abuns_1d_rec1_off = np.hstack((signal_abun_off, rec1_abun_off))
 
-selectivity_1d_rec1 = calculate_selectivity(
-    receptor_abuns_1d_rec1_targ, receptor_abuns_1d_rec1_off, dose, valencies_1d
-)
+if calc_selec:
+    selectivity_1d_rec1 = calculate_selectivity(
+        receptor_abuns_1d_rec1_targ, receptor_abuns_1d_rec1_off, dose, valencies_1d
+    )
+else:
+    selectivity_1d_rec1 = 0.0
 
 # For signal receptor with receptor2
 rec2_abun_targ = targ_recs[[receptor2]].to_numpy()
@@ -174,17 +178,23 @@ rec2_abun_off = off_targ_recs[[receptor2]].to_numpy()
 receptor_abuns_1d_rec2_targ = np.hstack((signal_abun_targ, rec2_abun_targ))
 receptor_abuns_1d_rec2_off = np.hstack((signal_abun_off, rec2_abun_off))
 
-selectivity_1d_rec2 = calculate_selectivity(
-    receptor_abuns_1d_rec2_targ, receptor_abuns_1d_rec2_off, dose, valencies_1d
-)
+if calc_selec:
+    selectivity_1d_rec2 = calculate_selectivity(
+        receptor_abuns_1d_rec2_targ, receptor_abuns_1d_rec2_off, dose, valencies_1d
+    )
+else:
+    selectivity_1d_rec2 = 0.0
 
 # 2D selectivity calculation
 receptor_abuns_2d_targ = np.hstack((signal_abun_targ, rec1_abun_targ, rec2_abun_targ))
 receptor_abuns_2d_off = np.hstack((signal_abun_off, rec1_abun_off, rec2_abun_off))
 
-selectivity_2d = calculate_selectivity(
-    receptor_abuns_2d_targ, receptor_abuns_2d_off, dose, valencies_2d
-)
+if calc_selec:
+    selectivity_2d = calculate_selectivity(
+        receptor_abuns_2d_targ, receptor_abuns_2d_off, dose, valencies_2d
+    )
+else:
+    selectivity_2d = 0.0
 
 print(
     f"Selectivity calculations took {time.time() - time_start_selectivity:.2f} seconds"
@@ -268,14 +278,14 @@ ax_main.set_ylim(y_min, y_max)
 ax_main.grid(alpha=0.3, linestyle="--")
 
 if normalize:
-    ax_main.set_xlabel(f"{receptor1} Normalized Count", fontsize=16)
-    ax_main.set_ylabel(f"{receptor2} Normalized Count", fontsize=16)
+    ax_main.set_xlabel(f"{receptor1} Normalized Count", fontsize=20)
+    ax_main.set_ylabel(f"{receptor2} Normalized Count", fontsize=20)
 else:
-    ax_main.set_xlabel(f"{receptor1} Count", fontsize=16)
-    ax_main.set_ylabel(f"{receptor2} Count", fontsize=16)
+    ax_main.set_xlabel(f"{receptor1} Count", fontsize=20)
+    ax_main.set_ylabel(f"{receptor2} Count", fontsize=20)
 
-ax_main.tick_params(axis="both", labelsize=14)
-ax_main.legend(fontsize=12)
+ax_main.tick_params(axis="both", labelsize=18)
+ax_main.legend(fontsize=20)
 
 # Top marginal plot (x-axis projection)
 ax_top = fig.add_subplot(gs[0, 1], sharex=ax_main)
@@ -296,14 +306,14 @@ for i, cell_type in enumerate(
     )
 
 ax_top.set_xlim(x_min, x_max)
-ax_top.set_ylabel("Number of Cells", fontsize=14)
-ax_top.tick_params(axis="both", labelsize=12)
+ax_top.set_ylabel("Number of Cells", fontsize=16)
+ax_top.tick_params(axis="both", labelsize=18)
 ax_top.text(
     0.02,
     0.95,
     f"X-axis: KL={kl_val_1:.2f}, EMD={emd_val_1:.2f}\nSelectivity ({signal[0]}+{receptor1}): {selectivity_1d_rec1:.2f}",
     transform=ax_top.transAxes,
-    fontsize=11,
+    fontsize=15,
     verticalalignment="top",
     horizontalalignment="left",
     bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
@@ -328,8 +338,8 @@ for i, cell_type in enumerate(
     )
 
 ax_right.set_ylim(y_min, y_max)
-ax_right.set_xlabel("Number of Cells", fontsize=14)
-ax_right.tick_params(axis="both", labelsize=12)
+ax_right.set_xlabel("Number of Cells", fontsize=16)
+ax_right.tick_params(axis="both", labelsize=18)
 plt.setp(ax_right.get_yticklabels(), visible=False)
 
 # Add text annotation for y-axis metrics
@@ -338,7 +348,7 @@ ax_right.text(
     0.95,
     f"Y-axis:\nKL={kl_val_2:.2f}\nEMD={emd_val_2:.2f}\nSelectivity ({signal[0]}+{receptor2}): {selectivity_1d_rec2:.2f}",
     transform=ax_right.transAxes,
-    fontsize=11,
+    fontsize=15,
     verticalalignment="top",
     horizontalalignment="right",
     bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),

@@ -75,6 +75,7 @@ TARG_CELL_TYPES = None
 POINT_SIZE = 12
 POINT_ALPHA = 0.35
 AXIS_NORM = "z-score"  # "none", "z-score", "rank"
+DISP_LEGEND = False
 
 
 # ── Load scans ────────────────────────────────────────────────────────────────
@@ -199,9 +200,11 @@ handles.append(
         label="Top selectivity pair",
     )
 )
-# ax.legend(
-#     handles=handles, title="Cell type", fontsize=9, title_fontsize=10, framealpha=0.8
-# )
+
+if DISP_LEGEND:
+    ax.legend(
+        handles=handles, title="Cell type", fontsize=9, title_fontsize=10, framealpha=0.8
+    )
 
 ax.set_xlabel(AXIS_1_LABEL, fontsize=13)
 ax.set_ylabel(AXIS_2_LABEL, fontsize=13)
