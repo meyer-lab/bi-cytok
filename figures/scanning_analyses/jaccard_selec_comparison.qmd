@@ -1,0 +1,287 @@
+---
+title: "Selectivity Scan Agreement (Jaccard Index)"
+---
+
+# Summary
+Compares top-ranked receptor pairs across any number of binding model selectivity scans.
+For every pair of scans, the Jaccard index is computed at varying absolute top-N
+thresholds. Useful for comparing scans run with different valencies, signal receptors,
+doses, or other binding model parameters.
+
+Receptor pairs are normalized so (A, B) and (B, A) are treated as identical. Only pairs
+with valid (non-NaN) selectivity in every provided scan are included in the comparison.
+Cell type × threshold combinations where N exceeds the valid pair count are excluded.
+
+# Inputs
+- `SCAN_PATHS`: list of paths to selectivity scan CSVs produced by `run_selectivity_scan`
+- `SCAN_LABELS`: human-readable label for each scan (must be the same length as `SCAN_PATHS`)
+- `TOP_N_VALUES`: absolute top-N thresholds to evaluate
+# Outputs
+- Box plot: Jaccard index at each top-N threshold, one box per scan pair per group.
+- Line plot: one panel per scan pair, Jaccard vs. top N with per-cell-type traces and
+  mean overlay.
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import itertools
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from matplotlib.patches import Patch
+
+# ── Parameters ────────────────────────────────────────────────────────────────
+# SCAN_PATHS = [
+#     "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv",
+#     "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv",
+#     "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv",
+# ]
+# SCAN_LABELS = [
+#     "Fixed bivalent",
+#     "Fixed tetravalent",
+#     "Mixed tetravalent",
+# ]
+# SCAN_PATHS = [
+#     "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv",
+#     "/home/sama/receptor_sweep_data/20260604_selec_scan_full_sigCD122.csv",
+#     "/home/sama/receptor_sweep_data/20260609_selec_scan_full_sigCD28.csv",
+# ]
+# SCAN_LABELS = [
+#     "Generic signal",
+#     "CD122 signal",
+#     "CD28 signal",
+# ]
+SCAN_PATHS = [
+    "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv",
+    "/home/sama/receptor_sweep_data/20260529_selec_scan_full_expr-matched.csv",
+]
+SCAN_LABELS = [
+    "Raw counts",
+    "Normalized counts",
+]
+
+TOP_N_VALUES = [5, 10, 50, 100, 500, 1000]
+scale = "log"  # None or "log" for x-axis scale in line plot
+
+assert len(SCAN_PATHS) >= 2, "Provide at least two scan paths."
+assert len(SCAN_LABELS) == len(SCAN_PATHS), "SCAN_LABELS must match SCAN_PATHS length."
+
+# ── Load data ─────────────────────────────────────────────────────────────────
+scan_dfs = [pd.read_csv(p) for p in SCAN_PATHS]
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+def add_norm_pair(df):
+    """Add a 'pair' column with (min, max) sorted receptor names."""
+    df = df.copy()
+    df["pair"] = [
+        tuple(sorted([r1, r2]))
+        for r1, r2 in zip(df["Receptor_1"], df["Receptor_2"], strict=False)
+    ]
+    return df
+
+
+def jaccard(set_a, set_b):
+    union = set_a | set_b
+    return len(set_a & set_b) / len(union) if union else 0.0
+
+
+# All ordered scan pairs and their display labels
+scan_pair_indices = list(itertools.combinations(range(len(SCAN_PATHS)), 2))
+pair_labels = [f"{SCAN_LABELS[i]} vs. {SCAN_LABELS[j]}" for i, j in scan_pair_indices]
+
+# ── First pass: collect valid pair sets and counts per cell type ───────────────
+# Only keep cell types present in every scan.
+cell_types = sorted(
+    set.intersection(*[set(df["Cell_Type"].unique()) for df in scan_dfs])
+)
+
+ct_data = {}
+for cell_type in cell_types:
+    scan_series = []
+    for df in scan_dfs:
+        s = (
+            df[df["Cell_Type"] == cell_type][["Receptor_1", "Receptor_2", "Selectivity"]]
+            .dropna()
+            .pipe(add_norm_pair)
+            .groupby("pair", as_index=False)["Selectivity"]
+            .max()
+            .set_index("pair")["Selectivity"]
+        )
+        scan_series.append(s)
+
+    # Intersection: only pairs valid in every scan
+    common = set.intersection(*[set(s.index) for s in scan_series])
+    if len(common) < 10:
+        continue
+
+    ct_data[cell_type] = [s[s.index.isin(common)] for s in scan_series]
+
+print(f"Cell types included: {sorted(ct_data)}")
+
+# ── Compute Jaccard ────────────────────────────────────────────────────────────
+n_pairs_per_ct = {ct: len(series_list[0]) for ct, series_list in ct_data.items()}
+records = []
+for cell_type, scan_series_list in ct_data.items():
+    n_total = n_pairs_per_ct[cell_type]
+    for top_n in TOP_N_VALUES:
+        # Skip when N exceeds the valid pair count — Jaccard would be trivially inflated.
+        if top_n > n_total:
+            continue
+
+        top_sets = [set(s.nlargest(top_n).index) for s in scan_series_list]
+
+        row = {"cell_type": cell_type, "top_n": top_n}
+        for (i, j), label in zip(scan_pair_indices, pair_labels, strict=False):
+            row[label] = jaccard(top_sets[i], top_sets[j])
+        records.append(row)
+
+results = pd.DataFrame(records)
+print(f"Valid pairs per cell type: { {ct: n for ct, n in n_pairs_per_ct.items()} }")
+```
+
+```{python}
+# ── Box plot: one box per (top_n, scan pair) ──────────────────────────────────
+n_scan_pairs = len(pair_labels)
+n_thresh = len(TOP_N_VALUES)
+
+# Assign colors: one per scan pair from tab10
+pair_colors = [plt.cm.tab10(i / max(n_scan_pairs, 1)) for i in range(n_scan_pairs)]
+pair_color_map = dict(zip(pair_labels, pair_colors))
+
+group_width = 0.8
+box_width = group_width / n_scan_pairs * 0.85
+offsets = np.linspace(
+    -group_width / 2 + box_width / 2,
+     group_width / 2 - box_width / 2,
+    n_scan_pairs,
+)
+
+rng = np.random.default_rng(0)
+fig, ax = plt.subplots(figsize=(max(8, 2.5 * n_thresh), 5))
+
+for pair_idx, (label, color) in enumerate(pair_color_map.items()):
+    for thresh_idx, top_n in enumerate(TOP_N_VALUES):
+        x_pos = thresh_idx + offsets[pair_idx]
+        data = results[results["top_n"] == top_n][label].dropna().values
+
+        if len(data) == 0:
+            continue
+
+        ax.boxplot(
+            data,
+            positions=[x_pos],
+            widths=box_width,
+            patch_artist=True,
+            medianprops=dict(color="black", linewidth=1.8),
+            whiskerprops=dict(color=color, linewidth=1.0),
+            capprops=dict(color=color, linewidth=1.0),
+            flierprops=dict(marker=""),
+            boxprops=dict(facecolor=color, alpha=0.4, edgecolor=color, linewidth=1.0),
+        )
+
+        jitter = rng.uniform(-box_width * 0.28, box_width * 0.28, size=len(data))
+        ax.scatter(
+            np.full(len(data), x_pos) + jitter, data,
+            s=30, color=color, alpha=0.75, zorder=3,
+            linewidths=0.6, edgecolors="white",
+        )
+
+ax.legend(
+    handles=[
+        Patch(facecolor=color, alpha=0.55, edgecolor=color, label=label)
+        for label, color in pair_color_map.items()
+    ],
+    fontsize=10, framealpha=0.9, loc="lower left", title="Scan pair",
+)
+ax.set_xticks(range(n_thresh))
+ax.set_xticklabels([f"Top {n}" for n in TOP_N_VALUES])
+ax.set_xlabel("Top N receptor pairs", fontsize=13)
+ax.set_ylabel("Jaccard Index", fontsize=13)
+ax.set_title(
+    "Agreement between top-ranked receptor pairs across selectivity scans\n"
+    "(each point = one target cell type)",
+    fontsize=11,
+)
+ax.set_ylim(0, 1)
+ax.grid(True, axis="y", linestyle="--", alpha=0.35)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+# ── Line plot: per-cell-type traces + mean, one panel per scan pair ────────────
+ct_list = sorted(results["cell_type"].unique())
+ct_colors = plt.cm.tab20(np.linspace(0, 1, len(ct_list)))
+ct_color_map = dict(zip(ct_list, ct_colors, strict=False))
+
+n_cols = min(n_scan_pairs, 3)
+n_rows = int(np.ceil(n_scan_pairs / n_cols))
+fig, axes = plt.subplots(
+    n_rows, n_cols,
+    figsize=(5.5 * n_cols, 4.5 * n_rows),
+    sharey=True,
+    squeeze=False,
+)
+
+for panel_idx, (label, color) in enumerate(pair_color_map.items()):
+    ax = axes[panel_idx // n_cols][panel_idx % n_cols]
+
+    for ct in ct_list:
+        ct_data = (
+            results[results["cell_type"] == ct]
+            .set_index("top_n")[label]
+            .dropna()
+            .sort_index()
+        )
+        if ct_data.empty:
+            continue
+        ax.plot(
+            ct_data.index, ct_data.values,
+            color=ct_color_map[ct], linewidth=1.3, alpha=0.65,
+            marker="o", markersize=4, label=ct,
+        )
+
+    means = results.groupby("top_n")[label].mean().sort_index()
+    ax.plot(
+        means.index, means.values,
+        color="black", linewidth=2.5, marker="o", markersize=7,
+        zorder=5, label="Mean",
+    )
+
+    if scale == "log":
+        ax.set_xscale("log")
+    ax.set_xlabel("Top N receptor pairs", fontsize=11)
+    ax.set_title(label, fontsize=11, color=color)
+    ax.set_xticks(TOP_N_VALUES)
+    ax.set_ylim(0, 1)
+    ax.grid(True, linestyle="--", alpha=0.35)
+    if panel_idx % n_cols == 0:
+        ax.set_ylabel("Jaccard Index", fontsize=11)
+
+# Hide any unused panels
+for panel_idx in range(n_scan_pairs, n_rows * n_cols):
+    axes[panel_idx // n_cols][panel_idx % n_cols].set_visible(False)
+
+# Shared legend below figure
+handles, labels_leg = axes[0][0].get_legend_handles_labels()
+fig.legend(
+    handles, labels_leg,
+    loc="lower center", ncol=min(len(ct_list) + 1, 8),
+    fontsize=8.5, framealpha=0.9,
+    bbox_to_anchor=(0.5, -0.12),
+)
+plt.suptitle(
+    "Selectivity scan agreement by target cell type across top N receptor pairs",
+    fontsize=12, fontweight="bold",
+)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+# ── Summary table: mean Jaccard per scan pair × threshold ─────────────────────
+summary = results.groupby("top_n")[pair_labels].mean().round(3)
+summary.index = [f"Top {n}" for n in summary.index]
+summary.index.name = "Threshold"
+print(summary.to_string())
+```
