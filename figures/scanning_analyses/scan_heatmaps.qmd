@@ -44,9 +44,15 @@ yaml_path = os.path.splitext(pathname)[0] + ".yaml"
 with open(yaml_path) as f:
     scan_params = yaml.safe_load(f)
     scan_type = scan_params["scan_type"]
-    asym_scan = scan_params["binding_model"]["asym_targs"] if scan_type == "selectivity" else False
+    asym_scan = (
+        scan_params["binding_model"]["asym_targs"]
+        if scan_type == "selectivity"
+        else False
+    )
     if asym_scan:
-        scan_valencies = scan_params["binding_model"]["complex_valency_signal-target1-target2"]
+        scan_valencies = scan_params["binding_model"][
+            "complex_valency_signal-target1-target2"
+        ]
 
 if scan_type == "selectivity":
     opt_selec, _, _, receptors, cell_types = load_selec_scan_results(pathname)

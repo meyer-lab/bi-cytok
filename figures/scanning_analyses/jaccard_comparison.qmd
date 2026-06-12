@@ -139,9 +139,9 @@ print(
 ```{python}
 # ── Box plot: one box per (top_n, method pair), dot size ∝ n_pairs ─────────────
 import matplotlib.lines as mlines
-from matplotlib.patches import Patch
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.patches import Patch
 
 PAIR_STYLES = {
     "Selectivity vs. KL": "#3A86FF",

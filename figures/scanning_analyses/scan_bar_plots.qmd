@@ -39,7 +39,11 @@ yaml_path = os.path.splitext(scan_data_path)[0] + ".yaml"
 with open(yaml_path) as f:
     scan_params = yaml.safe_load(f)
     scan_type = scan_params["scan_type"]
-    asym_scan = scan_params["binding_model"]["asym_targs"] if scan_type == "selectivity" else False
+    asym_scan = (
+        scan_params["binding_model"]["asym_targs"]
+        if scan_type == "selectivity"
+        else False
+    )
 
 if scan_type == "selectivity":
     opt_selec, _, _, receptors, cell_types = load_selec_scan_results(scan_data_path)

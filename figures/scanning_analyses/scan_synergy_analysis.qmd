@@ -64,7 +64,9 @@ with open(yaml_path) as f:
 scan_type = scan_params["scan_type"]
 SAMPLE_SIZE = scan_params["general"]["sample_size"]
 CELL_CATEGORIZATION = scan_params["general"]["cell_categorization"]
-asym_scan = scan_params["binding_model"]["asym_targs"] if scan_type == "selectivity" else False
+asym_scan = (
+    scan_params["binding_model"]["asym_targs"] if scan_type == "selectivity" else False
+)
 
 if scan_type == "selectivity":
     opt_selec, _, _, receptors, cell_types = load_selec_scan_results(SCAN_PATH)

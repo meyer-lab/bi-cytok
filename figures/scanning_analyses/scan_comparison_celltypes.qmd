@@ -203,7 +203,11 @@ handles.append(
 
 if DISP_LEGEND:
     ax.legend(
-        handles=handles, title="Cell type", fontsize=9, title_fontsize=10, framealpha=0.8
+        handles=handles,
+        title="Cell type",
+        fontsize=9,
+        title_fontsize=10,
+        framealpha=0.8,
     )
 
 ax.set_xlabel(AXIS_1_LABEL, fontsize=13)

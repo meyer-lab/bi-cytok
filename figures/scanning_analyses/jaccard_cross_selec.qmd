@@ -45,7 +45,7 @@ TOP_N_VALUES = [5, 10, 50, 100]
 
 # Cell types with fewer than MIN_VALID_PAIRS_PCT % of the max common valid pair
 # count are excluded.
-MIN_VALID_PAIRS_PCT = 0 # 0–100
+MIN_VALID_PAIRS_PCT = 0  # 0–100
 
 # ── Load data ─────────────────────────────────────────────────────────────────
 selec_dfs = {label: pd.read_csv(path) for label, path in SELEC_SCANS.items()}
@@ -88,7 +88,9 @@ cell_types = sorted(
 
 ct_data = {}
 for cell_type in cell_types:
-    selec_by_label = {lbl: load_selec_pairs(df, cell_type) for lbl, df in selec_dfs.items()}
+    selec_by_label = {
+        lbl: load_selec_pairs(df, cell_type) for lbl, df in selec_dfs.items()
+    }
 
     d = (
         dist_df[dist_df["Cell_Type"] == cell_type][
@@ -108,7 +110,10 @@ for cell_type in cell_types:
         continue
 
     ct_data[cell_type] = (
-        {lbl: s[s["pair"].isin(common)].set_index("pair") for lbl, s in selec_by_label.items()},
+        {
+            lbl: s[s["pair"].isin(common)].set_index("pair")
+            for lbl, s in selec_by_label.items()
+        },
         d[d["pair"].isin(common)].set_index("pair"),
         len(common),
     )
@@ -130,14 +135,14 @@ for cell_type, (selec_by_label, d_c, n_total) in ct_data.items():
         if top_n > n_total:
             continue
 
-        top_kl  = set(d_c["KL_Divergence"].nlargest(top_n).index)
+        top_kl = set(d_c["KL_Divergence"].nlargest(top_n).index)
         top_emd = set(d_c["EMD"].nlargest(top_n).index)
 
         row = {"cell_type": cell_type, "top_n": top_n, "n_pairs": n_total}
         for lbl, s_c in selec_by_label.items():
             top_s = set(s_c["Selectivity"].nlargest(top_n).index)
             row[f"{lbl} vs. EMD"] = jaccard(top_s, top_emd)
-            row[f"{lbl} vs. KL"]  = jaccard(top_s, top_kl)
+            row[f"{lbl} vs. KL"] = jaccard(top_s, top_kl)
         records.append(row)
 
 results = pd.DataFrame(records)
@@ -149,9 +154,9 @@ print(
 ```{python}
 # ── Box plot: 2 panels (vs. EMD | vs. KL), one box per scan per threshold ─────
 import matplotlib.lines as mlines
-from matplotlib.patches import Patch
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.patches import Patch
 
 n_selec = len(selec_labels)
 _palette = plt.cm.tab10(np.linspace(0, 0.9, max(n_selec, 1)))
@@ -209,7 +214,9 @@ for ax, dist_metric in zip(axes, DIST_METRICS, strict=False):
                 whiskerprops=dict(color=color, linewidth=1.0),
                 capprops=dict(color=color, linewidth=1.0),
                 flierprops=dict(marker=""),
-                boxprops=dict(facecolor=color, alpha=0.4, edgecolor=color, linewidth=1.0),
+                boxprops=dict(
+                    facecolor=color, alpha=0.4, edgecolor=color, linewidth=1.0
+                ),
             )
             jitter = rng.uniform(-box_width * 0.28, box_width * 0.28, size=len(data))
             ax.scatter(
@@ -233,7 +240,9 @@ for ax, dist_metric in zip(axes, DIST_METRICS, strict=False):
 axes[0].set_ylabel("Jaccard Index", fontsize=12)
 
 selec_handles = [
-    Patch(facecolor=SELEC_COLORS[lbl], alpha=0.55, edgecolor=SELEC_COLORS[lbl], label=lbl)
+    Patch(
+        facecolor=SELEC_COLORS[lbl], alpha=0.55, edgecolor=SELEC_COLORS[lbl], label=lbl
+    )
     for lbl in selec_labels
 ]
 size_legend_vals = [n_global_min, (n_global_min + n_global_max) // 2, n_global_max]
