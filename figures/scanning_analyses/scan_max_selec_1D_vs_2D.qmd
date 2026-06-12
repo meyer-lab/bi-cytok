@@ -41,6 +41,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import yaml
+from adjustText import adjust_text
 
 from figures.scanning_analyses.scan_runners import (
     load_selec_scan_results,
@@ -199,26 +200,24 @@ ax.plot([lim_low, lim_high], [lim_low, lim_high], "k--", linewidth=1, alpha=0.4,
 colors = ["#2274A5" if r >= 1.0 else "#C0392B" for r in df["2D/1D"]]
 ax.scatter(s1d, s2d, c=colors, s=70, zorder=3, edgecolors="white", linewidths=0.5)
 
+texts = []
 for _, row in df.iterrows():
     improved = row["2D/1D"] >= 1.0
     declined = row["2D/1D"] < SCATTER_LABEL_DECLINE_THRESHOLD
     if improved or declined:
         label_color = "#2274A5" if row["2D/1D"] >= 1.0 else "#C0392B"
-        ax.annotate(
-            row["Cell Type"],
-            xy=(row["Max 1D"], row["Max 2D"]),
-            xytext=(12, 8),
-            textcoords="offset points",
-            fontsize=10,
-            alpha=0.9,
-            color=label_color,
-            arrowprops=dict(
-                arrowstyle="-",
-                color=label_color,
-                lw=0.6,
-                alpha=0.35,
-            ),
-        )
+        texts.append(ax.text(
+            row["Max 1D"], row["Max 2D"], row["Cell Type"],
+            fontsize=10, color=label_color, alpha=0.9,
+        ))
+
+adjust_text(
+    texts,
+    x=s1d, y=s2d,
+    arrowprops=dict(arrowstyle="-", lw=1.0, color="#555555", alpha=0.8),
+    ax=ax,
+    # only_move={"static": "x-y?"}
+)
 
 ax.set_xlabel(metric_label_1d, fontsize=14)
 ax.set_ylabel(metric_label_2d, fontsize=14)
