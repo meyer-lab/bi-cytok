@@ -23,7 +23,6 @@ Three visualizations:
 # Parameters
 - `SCAN_PATH`: Path to selectivity or KL/EMD scan CSV (YAML must exist at same path with `.yaml` extension)
 - `KL_EMD_METRIC`: Which metric to plot when scan type is `KL_EMD`; `"EMD"` or `"KL_Divergence"`
-- `SIGNAL_REC_NAME_FALLBACK`: Signal receptor name when YAML records `"prototype"` (selectivity scans only)
 - `SCATTER_LABEL_DECLINE_THRESHOLD`: Label red points only if 2D/1D ratio is below this value
 
 # Outputs
@@ -49,17 +48,21 @@ from figures.scanning_analyses.scan_runners import (
 )
 
 # --- Path to scan results ---
-SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+# Default selectivity scan
+# SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+
+# Varying valency selectivity scans
 # SCAN_PATH = "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv"
 # SCAN_PATH = "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv"
+
+# Varying signal receptor selectivity scans
+SCAN_PATH = "/home/sama/receptor_sweep_data/20260604_selec_scan_full_sigCD122.csv"
+# SCAN_PATH = "/home/sama/receptor_sweep_data/20260609_selec_scan_full_sigCD28.csv"
 
 # SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
 
 # --- KL/EMD metric (only used when scan_type is "KL_EMD") ---
 KL_EMD_METRIC = "KL_Divergence"  # "EMD" or "KL_Divergence"
-
-# --- Fallback signal receptor name (selectivity scans, used if YAML absent) ---
-SIGNAL_REC_NAME_FALLBACK = "Prototype_Signal_Receptor"
 
 # --- Scatter plot: label red points only if 2D/1D ratio drops below this threshold ---
 SCATTER_LABEL_DECLINE_THRESHOLD = 0.99
@@ -83,12 +86,12 @@ if scan_type == "selectivity":
     opt_selec, _, _, all_receptors, cell_types = load_selec_scan_results(SCAN_PATH)
     metric_matrix = opt_selec  # shape: (n_recs, n_recs, n_cell_types)
 
-    signal_rec_raw = scan_params["binding_model"]["signal_receptor"]
-    signal_rec_name = (
-        SIGNAL_REC_NAME_FALLBACK if signal_rec_raw == "prototype" else signal_rec_raw
-    )
+    signal_rec_name = scan_params["binding_model"]["signal_receptor"]
+    if signal_rec_name == "prototype":
+        signal_rec_name = "Prototype_Signal_Receptor"
+
     assert signal_rec_name in all_receptors, (
-        f"Signal receptor '{signal_rec_name}' not found in scan receptor list."
+        f"Signal receptor '{signal_rec_name}' not found in receptor list {all_receptors}."
     )
     signal_idx = all_receptors.index(signal_rec_name)
 
