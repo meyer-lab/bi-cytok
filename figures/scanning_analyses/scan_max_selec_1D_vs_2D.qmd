@@ -1,0 +1,336 @@
+---
+title: "Max Selectivity: Single Receptor vs Receptor Pair"
+---
+
+# Summary
+Compares the maximum achievable metric when targeting a single receptor (1D) versus a
+receptor pair (2D), per target cell type. Compatible with both selectivity scans
+(`run_selectivity_scan`) and KL/EMD scans (`run_KL_EMD_scan`); scan type is inferred
+from the YAML file saved alongside the CSV.
+
+The 1D scores are extracted from the diagonal of the 2D scan matrix — entries where both
+target receptor slots point to the same receptor. The 2D scores are the best off-diagonal
+lower-triangle entries — pairs of two distinct target receptors. For selectivity scans,
+the signal receptor is excluded from both.
+
+Three visualizations:
+1. **Scatter**: max 1D on x-axis, max 2D on y-axis; labeled for cell types where pairing
+   helps (blue) and where 2D is notably worse than 1D (red).
+2. **Slope chart**: connected strip plot showing direction and magnitude of change.
+3. **log₂ gain bar chart**: log₂(2D/1D), centered at 0. More sensitive than the linear
+   ratio when changes are small (e.g. all values 0.95–1.05); positive = pairing helps.
+
+# Parameters
+- `SCAN_PATH`: Path to selectivity or KL/EMD scan CSV (YAML must exist at same path with `.yaml` extension)
+- `KL_EMD_METRIC`: Which metric to plot when scan type is `KL_EMD`; `"EMD"` or `"KL_Divergence"`
+- `SIGNAL_REC_NAME_FALLBACK`: Signal receptor name when YAML records `"prototype"` (selectivity scans only)
+- `SCATTER_LABEL_DECLINE_THRESHOLD`: Label red points only if 2D/1D ratio is below this value
+
+# Outputs
+- **Scatter**: max 1D vs max 2D, labeled for notable cell types
+- **Slope chart**: connected strip plot per cell type
+- **log₂ gain bars**: log₂(2D/1D) per cell type, reference line at 0
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import os
+import sys
+sys.path.insert(0, '/home/sama/bi-cytok-2')
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
+import yaml
+
+from figures.scanning_analyses.scan_runners import (
+    load_selec_scan_results,
+    load_KL_EMD_scan_results,
+)
+
+# --- Path to scan results ---
+SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+# SCAN_PATH = "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv"
+# SCAN_PATH = "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv"
+
+# SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
+
+# --- KL/EMD metric (only used when scan_type is "KL_EMD") ---
+KL_EMD_METRIC = "KL_Divergence"  # "EMD" or "KL_Divergence"
+
+# --- Fallback signal receptor name (selectivity scans, used if YAML absent) ---
+SIGNAL_REC_NAME_FALLBACK = "Prototype_Signal_Receptor"
+
+# --- Scatter plot: label red points only if 2D/1D ratio drops below this threshold ---
+SCATTER_LABEL_DECLINE_THRESHOLD = 0.99
+
+
+# Load YAML and scan CSV. YAML must exist alongside the CSV.
+yaml_path = os.path.splitext(SCAN_PATH)[0] + ".yaml"
+assert os.path.exists(yaml_path), (
+    f"YAML not found at {yaml_path}. Every scan must have an accompanying YAML file."
+)
+with open(yaml_path) as f:
+    scan_params = yaml.safe_load(f)
+
+scan_type = scan_params.get("scan_type")
+assert scan_type in ("selectivity", "KL_EMD"), (
+    f"Unrecognised scan_type '{scan_type}' in YAML. Expected 'selectivity' or 'KL_EMD'."
+)
+print(f"Loaded YAML: {yaml_path}\nScan type: {scan_type}")
+
+if scan_type == "selectivity":
+    opt_selec, _, _, all_receptors, cell_types = load_selec_scan_results(SCAN_PATH)
+    metric_matrix = opt_selec  # shape: (n_recs, n_recs, n_cell_types)
+
+    signal_rec_raw = scan_params["binding_model"]["signal_receptor"]
+    signal_rec_name = (
+        SIGNAL_REC_NAME_FALLBACK if signal_rec_raw == "prototype" else signal_rec_raw
+    )
+    assert signal_rec_name in all_receptors, (
+        f"Signal receptor '{signal_rec_name}' not found in scan receptor list."
+    )
+    signal_idx = all_receptors.index(signal_rec_name)
+
+    metric_name = "Selectivity"
+    metric_label_1d = "Max 1D Selectivity (single receptor)"
+    metric_label_2d = "Max 2D Selectivity (receptor pair)"
+    log2_gain_label = "log₂(2D / 1D Selectivity)"
+    title_suffix = ""
+    print(f"Signal receptor: {signal_rec_name} (index {signal_idx})")
+
+elif scan_type == "KL_EMD":
+    assert KL_EMD_METRIC in ("EMD", "KL_Divergence"), (
+        f"KL_EMD_METRIC must be 'EMD' or 'KL_Divergence', got '{KL_EMD_METRIC}'."
+    )
+    KL_results, EMD_results, all_receptors, cell_types = load_KL_EMD_scan_results(SCAN_PATH)
+    metric_matrix = EMD_results if KL_EMD_METRIC == "EMD" else KL_results
+    signal_idx = None  # No signal receptor in KL/EMD scans
+
+    metric_name = KL_EMD_METRIC
+    metric_label_1d = f"Max 1D {KL_EMD_METRIC} (single receptor)"
+    metric_label_2d = f"Max 2D {KL_EMD_METRIC} (receptor pair)"
+    log2_gain_label = f"log₂(2D / 1D {KL_EMD_METRIC})"
+    title_suffix = f" — {KL_EMD_METRIC}"
+
+print(f"\nLoaded {len(all_receptors)} receptors, {len(cell_types)} cell types: {cell_types}")
+
+
+# Read asym_targs from YAML (selectivity scans only; KL/EMD always uses lower triangle).
+asym_targs = (
+    scan_params["binding_model"].get("asym_targs", False)
+    if scan_type == "selectivity" else False
+)
+if asym_targs:
+    print("Asymmetric scan detected: searching full matrix (both orderings) for max 2D.")
+
+# Extract max 1D and 2D metric per cell type.
+#
+# 1D (diagonal): metric_matrix[j, j, i]
+#   Best metric achievable with a single target receptor type.
+# 2D (off-diagonal):
+#   Symmetric scan (asym_targs=False): lower triangle only — (i,j) and (j,i) are equal.
+#   Asymmetric scan (asym_targs=True): full matrix — (i,j) and (j,i) differ because the
+#     binding model receives [signal, rec_i, rec_j] vs [signal, rec_j, rec_i], and target
+#     receptor valencies may differ between the two arm positions.
+# Signal receptor excluded from both (selectivity scans only).
+n_recs = len(all_receptors)
+if asym_targs:
+    rows_off, cols_off = np.where(~np.eye(n_recs, dtype=bool))
+else:
+    rows_off, cols_off = np.tril_indices(n_recs, k=-1)
+
+if signal_idx is not None:
+    pair_mask = (rows_off != signal_idx) & (cols_off != signal_idx)
+else:
+    pair_mask = np.ones(len(rows_off), dtype=bool)
+rows_targ = rows_off[pair_mask]
+cols_targ = cols_off[pair_mask]
+
+records = []
+for i, cell_type in enumerate(cell_types):
+    mat = metric_matrix[:, :, i]
+
+    diag = np.diag(mat).copy()
+    if signal_idx is not None:
+        diag[signal_idx] = np.nan
+    max_1d = float(np.nanmax(diag))
+    best_1d_idx = int(np.nanargmax(diag))
+
+    off_diag_vals = mat[rows_targ, cols_targ]
+    max_2d = float(np.nanmax(off_diag_vals))
+    best_pair_local = int(np.nanargmax(off_diag_vals))
+
+    fold_change = max_2d / max_1d if max_1d > 0 else np.nan
+    records.append({
+        "Cell Type": cell_type,
+        "Max 1D": max_1d,
+        "Best 1D Receptor": all_receptors[best_1d_idx],
+        "Max 2D": max_2d,
+        "Best 2D Receptor 1": all_receptors[rows_targ[best_pair_local]],
+        "Best 2D Receptor 2": all_receptors[cols_targ[best_pair_local]],
+        "2D/1D": fold_change,
+        "log2(2D/1D)": np.log2(fold_change) if fold_change and fold_change > 0 else np.nan,
+    })
+
+df = pd.DataFrame(records).sort_values("Max 2D", ascending=False).reset_index(drop=True)
+print(df[["Cell Type", "Max 1D", "Best 1D Receptor",
+          "Max 2D", "Best 2D Receptor 1", "Best 2D Receptor 2",
+          "2D/1D", "log2(2D/1D)"]].to_string(index=False))
+```
+
+```{python}
+#| fig-cap: "Scatter: max 1D vs max 2D metric per cell type"
+# Blue points (2D ≥ 1D) are always labeled. Red points are labeled only when
+# 2D/1D ratio falls below SCATTER_LABEL_DECLINE_THRESHOLD.
+
+fig, ax = plt.subplots(figsize=(6, 6))
+
+s1d = df["Max 1D"].values
+s2d = df["Max 2D"].values
+
+lim_low = min(s1d.min(), s2d.min()) * 0.995
+lim_high = max(s1d.max(), s2d.max()) * 1.005
+ax.plot([lim_low, lim_high], [lim_low, lim_high], "k--", linewidth=1, alpha=0.4, zorder=0)
+
+colors = ["#2274A5" if r >= 1.0 else "#C0392B" for r in df["2D/1D"]]
+ax.scatter(s1d, s2d, c=colors, s=70, zorder=3, edgecolors="white", linewidths=0.5)
+
+for _, row in df.iterrows():
+    improved = row["2D/1D"] >= 1.0
+    declined = row["2D/1D"] < SCATTER_LABEL_DECLINE_THRESHOLD
+    if improved or declined:
+        label_color = "#2274A5" if row["2D/1D"] >= 1.0 else "#C0392B"
+        ax.annotate(
+            row["Cell Type"],
+            xy=(row["Max 1D"], row["Max 2D"]),
+            xytext=(12, 8),
+            textcoords="offset points",
+            fontsize=10,
+            alpha=0.9,
+            color=label_color,
+            arrowprops=dict(
+                arrowstyle="-",
+                color=label_color,
+                lw=0.6,
+                alpha=0.35,
+            ),
+        )
+
+ax.set_xlabel(metric_label_1d, fontsize=14)
+ax.set_ylabel(metric_label_2d, fontsize=14)
+ax.set_title(
+    f"Single Receptor vs Receptor Pair:\nMax Achievable {metric_name} per Cell Type{title_suffix}",
+    fontsize=16,
+)
+improved_handle = mlines.Line2D([], [], color="#2274A5", marker="o", linestyle="None",
+                                 markersize=7, label=f"2D ≥ 1D (pairing helps)")
+declined_handle = mlines.Line2D([], [], color="#C0392B", marker="o", linestyle="None",
+                                 markersize=7, label="2D < 1D")
+ax.legend(handles=[improved_handle, declined_handle], fontsize=12, loc="upper left")
+ax.set_xlim(lim_low, lim_high)
+ax.set_ylim(lim_low, lim_high)
+ax.set_aspect("equal")
+ax.grid(True, alpha=0.25)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| fig-cap: "Slope chart: 1D vs 2D max metric per cell type, sorted by 2D value"
+# Blue lines: pairing improves. Red lines: pairing does not improve.
+
+df_slope = df.sort_values("Max 2D", ascending=False).reset_index(drop=True)
+
+def spread_labels(values, min_gap=0.015):
+    """Nudge label y-positions to avoid overlaps, preserving relative order."""
+    order = np.argsort(-np.array(values))
+    pos = np.array(values, dtype=float)
+    val_range = pos.max() - pos.min()
+    min_gap_abs = min_gap * val_range if val_range > 0 else min_gap
+    sorted_pos = pos[order].copy()
+    for k in range(1, len(sorted_pos)):
+        if sorted_pos[k - 1] - sorted_pos[k] < min_gap_abs:
+            sorted_pos[k] = sorted_pos[k - 1] - min_gap_abs
+    result = np.empty_like(pos)
+    result[order] = sorted_pos
+    return result
+
+left_label_y = spread_labels(df_slope["Max 1D"].values)
+right_label_y = spread_labels(df_slope["Max 2D"].values)
+
+fig, ax = plt.subplots(figsize=(5.5, max(5, len(df_slope) * 0.45)))
+
+for idx, (_, row) in enumerate(df_slope.iterrows()):
+    color = "#2274A5" if row["Max 2D"] >= row["Max 1D"] else "#C0392B"
+    ax.plot([0, 1], [row["Max 1D"], row["Max 2D"]],
+            color=color, linewidth=1.5, alpha=0.75, zorder=2)
+    ax.scatter([0, 1], [row["Max 1D"], row["Max 2D"]], color=color, s=40, zorder=3)
+    ax.text(-0.06, left_label_y[idx], row["Cell Type"],
+            ha="right", va="center", fontsize=10, color=color)
+    ax.text(1.06, right_label_y[idx], row["Cell Type"],
+            ha="left", va="center", fontsize=10, color=color)
+
+ax.set_xticks([0, 1])
+ax.set_xticklabels(["1D\n(single receptor)", "2D\n(receptor pair)"], fontsize=14)
+ax.set_xlim(-0.45, 1.45)
+ax.set_ylabel(f"Max {metric_name}", fontsize=16)
+ax.set_title(
+    f"Direction of Change:\nSingle Receptor → Receptor Pair{title_suffix}", fontsize=16
+)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.spines["bottom"].set_visible(False)
+ax.grid(axis="y", alpha=0.25)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+#| fig-cap: "log₂ gain: log₂(2D/1D) per cell type, sorted by value"
+# Positive = pairing improves; negative = pairing hurts. Reference line at 0 (= 1× change).
+# log₂ scale resolves small differences that appear flat on a linear ratio plot:
+# log₂(0.95) ≈ -0.074 and log₂(1.05) ≈ +0.070 spread visibly around zero.
+
+df_log = df.sort_values("log2(2D/1D)", ascending=True).reset_index(drop=True)
+
+fig, ax = plt.subplots(figsize=(max(5, len(df_log) * 0.65), 4.5))
+
+bar_colors = ["#2274A5" if v >= 0 else "#C0392B" for v in df_log["log2(2D/1D)"]]
+bars = ax.bar(df_log["Cell Type"], df_log["log2(2D/1D)"],
+              color=bar_colors, edgecolor="white", linewidth=0.5)
+ax.axhline(0, color="black", linewidth=1, linestyle="--", alpha=0.5)
+
+for bar, log2_val, raw_val in zip(bars, df_log["log2(2D/1D)"], df_log["2D/1D"]):
+    offset = 0.003 * (ax.get_ylim()[1] - ax.get_ylim()[0]) if ax.get_ylim()[1] != ax.get_ylim()[0] else 0.002
+    va = "bottom" if log2_val >= 0 else "top"
+    y_pos = log2_val + (offset if log2_val >= 0 else -offset)
+    ax.text(
+        bar.get_x() + bar.get_width() / 2,
+        y_pos,
+        f"{raw_val:.3f}×",
+        ha="center", va=va, fontsize=10,
+    )
+
+# Floor the y-axis to at least log₂(0.9) ≈ -0.152 to keep the scale meaningful
+y_min_data = df_log["log2(2D/1D)"].min()
+y_max_data = df_log["log2(2D/1D)"].max()
+y_pad = max(abs(y_min_data), abs(y_max_data)) * 0.25
+ax.set_ylim(
+    min(y_min_data - y_pad, np.log2(0.98)),
+    max(y_max_data + y_pad, 0.02),
+)
+
+ax.set_ylabel(log2_gain_label, fontsize=16)
+ax.set_title(
+    f"Selectivity Gain from Receptor Pairing{title_suffix}\n"
+    f"(positive = pairing improves {metric_name})",
+    fontsize=16,
+)
+ax.set_xticklabels(df_log["Cell Type"], rotation=35, ha="right", fontsize=12)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.grid(axis="y", alpha=0.25)
+plt.tight_layout()
+plt.show()
+```
