@@ -34,19 +34,10 @@ set and parameters as the 2D scan, with valencies [[1, 2]].
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
 import sys
-sys.path.insert(0, '/home/sama/bi-cytok-2')
+
+sys.path.insert(0, "/home/sama/bi-cytok-2")
 
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import pandas as pd
-
-from bicytok.imports import importCITE
-from bicytok.scanning_funcs import scan_selectivity
-from figures.scanning_analyses.scan_runners import (
-    load_selec_scan_results,
-    load_KL_EMD_scan_results,
-)
 
 # --- Scan result paths ---
 SELEC_2D_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
@@ -55,7 +46,7 @@ KL_EMD_2D_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.cs
 # --- Analysis parameters ---
 CELL_TYPE = "ILC"
 SIGNAL_REC_NAME = "Prototype_Signal_Receptor"
-MAX_N = 50       # max top-N for Jaccard/novelty curves
+MAX_N = 50  # max top-N for Jaccard/novelty curves
 TOP_LABEL_N = 10  # number of receptors to label in rank scatter
 
 # --- 1D selectivity scan parameters (must match the 2D scan setup) ---
@@ -65,9 +56,22 @@ SAMPLE_SIZE = 1000
 CELL_CATEGORIZATION = "CellType2"
 MIN_AVG_COUNT = 5
 CELL_TYPES_FILTER = [
-    "Treg", "dnT", "CD4 CTL", "CD8 Proliferating", "CD4 TCM",
-    "B memory", "CD8 TCM", "CD8 Naive", "CD4 Proliferating",
-    "NK_CD56bright", "CD4 Naive", "CD8 TEM", "ILC", "CD4 TEM", "B naive", "NK",
+    "Treg",
+    "dnT",
+    "CD4 CTL",
+    "CD8 Proliferating",
+    "CD4 TCM",
+    "B memory",
+    "CD8 TCM",
+    "CD8 Naive",
+    "CD4 Proliferating",
+    "NK_CD56bright",
+    "CD4 Naive",
+    "CD8 TEM",
+    "ILC",
+    "CD4 TEM",
+    "B naive",
+    "NK",
 ]
 INIT_1D = np.array([6.0, 7.0, -9.0])  # [signal_aff, target_aff, Kx_star]
 SIGNAL_SEED = 42  # fixed seed for reproducible prototype signal receptor
@@ -76,11 +80,19 @@ SIGNAL_SEED = 42  # fixed seed for reproducible prototype signal receptor
 ```{python}
 # Load 2D scan results and extract per-cell-type matrices
 
-opt_selec_2d, _, _, selec_receptors, selec_cell_types = load_selec_scan_results(SELEC_2D_PATH)
-KL_2d, EMD_2d, kl_emd_receptors, kl_emd_cell_types = load_KL_EMD_scan_results(KL_EMD_2D_PATH)
+opt_selec_2d, _, _, selec_receptors, selec_cell_types = load_selec_scan_results(
+    SELEC_2D_PATH
+)
+KL_2d, EMD_2d, kl_emd_receptors, kl_emd_cell_types = load_KL_EMD_scan_results(
+    KL_EMD_2D_PATH
+)
 
-assert CELL_TYPE in selec_cell_types, f"{CELL_TYPE} not in selectivity scan: {selec_cell_types}"
-assert CELL_TYPE in kl_emd_cell_types, f"{CELL_TYPE} not in KL/EMD scan: {kl_emd_cell_types}"
+assert CELL_TYPE in selec_cell_types, (
+    f"{CELL_TYPE} not in selectivity scan: {selec_cell_types}"
+)
+assert CELL_TYPE in kl_emd_cell_types, (
+    f"{CELL_TYPE} not in KL/EMD scan: {kl_emd_cell_types}"
+)
 
 ct_idx_selec = selec_cell_types.index(CELL_TYPE)
 ct_idx_kl = kl_emd_cell_types.index(CELL_TYPE)
@@ -90,16 +102,22 @@ sig_idx = selec_receptors.index(SIGNAL_REC_NAME)
 targ_rec_indices = [i for i in range(len(selec_receptors)) if i != sig_idx]
 targ_recs_selec = [selec_receptors[i] for i in targ_rec_indices]
 
-selec_2d_ct = opt_selec_2d[np.ix_(targ_rec_indices, targ_rec_indices, [ct_idx_selec])][:, :, 0]
+selec_2d_ct = opt_selec_2d[np.ix_(targ_rec_indices, targ_rec_indices, [ct_idx_selec])][
+    :, :, 0
+]
 
 # KL/EMD 1D: extract from diagonal of 2D scan (mathematically identical to KL_EMD_1D)
 kl_2d_ct = KL_2d[:, :, ct_idx_kl]
 emd_2d_ct = EMD_2d[:, :, ct_idx_kl]
-kl_1d_diag = np.diag(kl_2d_ct)    # shape: (n_kl_recs,)
+kl_1d_diag = np.diag(kl_2d_ct)  # shape: (n_kl_recs,)
 emd_1d_diag = np.diag(emd_2d_ct)  # shape: (n_kl_recs,)
 
-print(f"Selectivity scan: {len(targ_recs_selec)} target receptors, cell types: {selec_cell_types}")
-print(f"KL/EMD scan: {len(kl_emd_receptors)} receptors, cell types: {kl_emd_cell_types}")
+print(
+    f"Selectivity scan: {len(targ_recs_selec)} target receptors, cell types: {selec_cell_types}"
+)
+print(
+    f"KL/EMD scan: {len(kl_emd_receptors)} receptors, cell types: {kl_emd_cell_types}"
+)
 ```
 
 ```{python}
@@ -109,7 +127,11 @@ CITE_DF = importCITE()
 
 # Use the same receptor set as the KL/EMD scan (no signal receptor)
 kl_emd_rec_set = set(kl_emd_receptors)
-all_cols = [c for c in CITE_DF.columns if c not in ["Cell", "CellType1", "CellType2", "CellType3"]]
+all_cols = [
+    c
+    for c in CITE_DF.columns
+    if c not in ["Cell", "CellType1", "CellType2", "CellType3"]
+]
 mean_expr = CITE_DF[all_cols].mean(axis=0)
 receptors_above_thresh = mean_expr[mean_expr >= MIN_AVG_COUNT].index.tolist()
 common_recs = [r for r in receptors_above_thresh if r in kl_emd_rec_set]
@@ -178,20 +200,27 @@ emd_2d_aligned = emd_2d_ct[np.ix_(idx_kl, idx_kl)]
 def marginal_max_excl_diag(matrix_2d, r):
     """Max score across all off-diagonal lower-triangle pairs involving receptor r."""
     row_vals = matrix_2d[r, :r]
-    col_vals = matrix_2d[r + 1:, r]
+    col_vals = matrix_2d[r + 1 :, r]
     combined = np.concatenate([row_vals, col_vals])
     valid = combined[~np.isnan(combined)]
     return float(np.nanmax(valid)) if len(valid) > 0 else np.nan
 
 
 # Compute 2D marginal scores (best score across all pairs, excluding self-pair)
-selec_2d_marginal = np.array([marginal_max_excl_diag(selec_2d_aligned, r) for r in range(n_aligned)])
-kl_2d_marginal = np.array([marginal_max_excl_diag(kl_2d_aligned, r) for r in range(n_aligned)])
-emd_2d_marginal = np.array([marginal_max_excl_diag(emd_2d_aligned, r) for r in range(n_aligned)])
+selec_2d_marginal = np.array(
+    [marginal_max_excl_diag(selec_2d_aligned, r) for r in range(n_aligned)]
+)
+kl_2d_marginal = np.array(
+    [marginal_max_excl_diag(kl_2d_aligned, r) for r in range(n_aligned)]
+)
+emd_2d_marginal = np.array(
+    [marginal_max_excl_diag(emd_2d_aligned, r) for r in range(n_aligned)]
+)
 ```
 
 ```{python}
 # Helper functions for ranking and Jaccard analysis
+
 
 def dense_rank(scores, higher_is_better=True):
     """Rank scores (1=best), handling NaN (NaN-ranked last)."""
@@ -258,7 +287,7 @@ metrics = [
 
 fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
-for ax, (metric_name, r1d, r2d, color) in zip(axes, metrics):
+for ax, (metric_name, r1d, r2d, color) in zip(axes, metrics, strict=False):
     n = len(r1d)
     threshold = TOP_LABEL_N
 
@@ -269,12 +298,33 @@ for ax, (metric_name, r1d, r2d, color) in zip(axes, metrics):
     neither = (r1d > threshold) & (r2d > threshold)
 
     ax.scatter(r1d[neither], r2d[neither], c="lightgray", s=18, alpha=0.5, zorder=1)
-    ax.scatter(r1d[only_1d], r2d[only_1d], c="#4E9AF1", s=30, alpha=0.8, zorder=2,
-               label=f"1D top-{threshold} only")
-    ax.scatter(r1d[only_2d], r2d[only_2d], c="#E05C5C", s=30, alpha=0.8, zorder=2,
-               label=f"2D top-{threshold} only (emergent)")
-    ax.scatter(r1d[both_top], r2d[both_top], c=color, s=40, alpha=0.9, zorder=3,
-               label=f"Both top-{threshold}")
+    ax.scatter(
+        r1d[only_1d],
+        r2d[only_1d],
+        c="#4E9AF1",
+        s=30,
+        alpha=0.8,
+        zorder=2,
+        label=f"1D top-{threshold} only",
+    )
+    ax.scatter(
+        r1d[only_2d],
+        r2d[only_2d],
+        c="#E05C5C",
+        s=30,
+        alpha=0.8,
+        zorder=2,
+        label=f"2D top-{threshold} only (emergent)",
+    )
+    ax.scatter(
+        r1d[both_top],
+        r2d[both_top],
+        c=color,
+        s=40,
+        alpha=0.9,
+        zorder=3,
+        label=f"Both top-{threshold}",
+    )
 
     # Diagonal reference line
     ax.plot([1, n], [1, n], "k--", alpha=0.3, linewidth=1, zorder=0)
@@ -321,7 +371,9 @@ metric_curves = [
 ]
 
 for metric_name, s1d, s2d, hib, color in metric_curves:
-    ns, jac, nov, rand_base = jaccard_novelty_curve(s1d, s2d, MAX_N, higher_is_better=hib)
+    ns, jac, nov, rand_base = jaccard_novelty_curve(
+        s1d, s2d, MAX_N, higher_is_better=hib
+    )
     ax1.plot(ns, jac, color=color, linewidth=2, label=metric_name)
     ax2.plot(ns, nov, color=color, linewidth=2, label=metric_name)
 
@@ -340,7 +392,9 @@ ax1.grid(True, alpha=0.3)
 
 ax2.set_xlabel("Top N receptors", fontsize=12)
 ax2.set_ylabel("Novelty fraction", fontsize=12)
-ax2.set_title(f"Fraction of top-N 2D receptors absent from top-N 1D\n({CELL_TYPE})", fontsize=12)
+ax2.set_title(
+    f"Fraction of top-N 2D receptors absent from top-N 1D\n({CELL_TYPE})", fontsize=12
+)
 ax2.legend(fontsize=10)
 ax2.set_ylim(0, 1)
 ax2.grid(True, alpha=0.3)

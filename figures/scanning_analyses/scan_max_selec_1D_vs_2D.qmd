@@ -34,18 +34,16 @@ Three visualizations:
 %config InlineBackend.figure_formats = ['svg']
 import os
 import sys
-sys.path.insert(0, '/home/sama/bi-cytok-2')
+
+sys.path.insert(0, "/home/sama/bi-cytok-2")
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.lines as mlines
 import yaml
-from adjustText import adjust_text
 
 from figures.scanning_analyses.scan_runners import (
-    load_selec_scan_results,
     load_KL_EMD_scan_results,
+    load_selec_scan_results,
 )
 
 # --- Path to scan results ---
@@ -107,7 +105,9 @@ elif scan_type == "KL_EMD":
     assert KL_EMD_METRIC in ("EMD", "KL_Divergence"), (
         f"KL_EMD_METRIC must be 'EMD' or 'KL_Divergence', got '{KL_EMD_METRIC}'."
     )
-    KL_results, EMD_results, all_receptors, cell_types = load_KL_EMD_scan_results(SCAN_PATH)
+    KL_results, EMD_results, all_receptors, cell_types = load_KL_EMD_scan_results(
+        SCAN_PATH
+    )
     metric_matrix = EMD_results if KL_EMD_METRIC == "EMD" else KL_results
     signal_idx = None  # No signal receptor in KL/EMD scans
 
@@ -117,16 +117,21 @@ elif scan_type == "KL_EMD":
     log2_gain_label = f"log₂(2D / 1D {KL_EMD_METRIC})"
     title_suffix = f" — {KL_EMD_METRIC}"
 
-print(f"\nLoaded {len(all_receptors)} receptors, {len(cell_types)} cell types: {cell_types}")
+print(
+    f"\nLoaded {len(all_receptors)} receptors, {len(cell_types)} cell types: {cell_types}"
+)
 
 
 # Read asym_targs from YAML (selectivity scans only; KL/EMD always uses lower triangle).
 asym_targs = (
     scan_params["binding_model"].get("asym_targs", False)
-    if scan_type == "selectivity" else False
+    if scan_type == "selectivity"
+    else False
 )
 if asym_targs:
-    print("Asymmetric scan detected: searching full matrix (both orderings) for max 2D.")
+    print(
+        "Asymmetric scan detected: searching full matrix (both orderings) for max 2D."
+    )
 
 # Extract max 1D and 2D metric per cell type.
 #
@@ -166,21 +171,36 @@ for i, cell_type in enumerate(cell_types):
     best_pair_local = int(np.nanargmax(off_diag_vals))
 
     fold_change = max_2d / max_1d if max_1d > 0 else np.nan
-    records.append({
-        "Cell Type": cell_type,
-        "Max 1D": max_1d,
-        "Best 1D Receptor": all_receptors[best_1d_idx],
-        "Max 2D": max_2d,
-        "Best 2D Receptor 1": all_receptors[rows_targ[best_pair_local]],
-        "Best 2D Receptor 2": all_receptors[cols_targ[best_pair_local]],
-        "2D/1D": fold_change,
-        "log2(2D/1D)": np.log2(fold_change) if fold_change and fold_change > 0 else np.nan,
-    })
+    records.append(
+        {
+            "Cell Type": cell_type,
+            "Max 1D": max_1d,
+            "Best 1D Receptor": all_receptors[best_1d_idx],
+            "Max 2D": max_2d,
+            "Best 2D Receptor 1": all_receptors[rows_targ[best_pair_local]],
+            "Best 2D Receptor 2": all_receptors[cols_targ[best_pair_local]],
+            "2D/1D": fold_change,
+            "log2(2D/1D)": np.log2(fold_change)
+            if fold_change and fold_change > 0
+            else np.nan,
+        }
+    )
 
 df = pd.DataFrame(records).sort_values("Max 2D", ascending=False).reset_index(drop=True)
-print(df[["Cell Type", "Max 1D", "Best 1D Receptor",
-          "Max 2D", "Best 2D Receptor 1", "Best 2D Receptor 2",
-          "2D/1D", "log2(2D/1D)"]].to_string(index=False))
+print(
+    df[
+        [
+            "Cell Type",
+            "Max 1D",
+            "Best 1D Receptor",
+            "Max 2D",
+            "Best 2D Receptor 1",
+            "Best 2D Receptor 2",
+            "2D/1D",
+            "log2(2D/1D)",
+        ]
+    ].to_string(index=False)
+)
 ```
 
 ```{python}
@@ -195,7 +215,9 @@ s2d = df["Max 2D"].values
 
 lim_low = min(s1d.min(), s2d.min()) * 0.995
 lim_high = max(s1d.max(), s2d.max()) * 1.005
-ax.plot([lim_low, lim_high], [lim_low, lim_high], "k--", linewidth=1, alpha=0.4, zorder=0)
+ax.plot(
+    [lim_low, lim_high], [lim_low, lim_high], "k--", linewidth=1, alpha=0.4, zorder=0
+)
 
 colors = ["#2274A5" if r >= 1.0 else "#C0392B" for r in df["2D/1D"]]
 ax.scatter(s1d, s2d, c=colors, s=70, zorder=3, edgecolors="white", linewidths=0.5)
@@ -206,14 +228,21 @@ for _, row in df.iterrows():
     declined = row["2D/1D"] < SCATTER_LABEL_DECLINE_THRESHOLD
     if improved or declined:
         label_color = "#2274A5" if row["2D/1D"] >= 1.0 else "#C0392B"
-        texts.append(ax.text(
-            row["Max 1D"], row["Max 2D"], row["Cell Type"],
-            fontsize=10, color=label_color, alpha=0.9,
-        ))
+        texts.append(
+            ax.text(
+                row["Max 1D"],
+                row["Max 2D"],
+                row["Cell Type"],
+                fontsize=10,
+                color=label_color,
+                alpha=0.9,
+            )
+        )
 
 adjust_text(
     texts,
-    x=s1d, y=s2d,
+    x=s1d,
+    y=s2d,
     arrowprops=dict(arrowstyle="-", lw=1.0, color="#555555", alpha=0.8),
     ax=ax,
     # only_move={"static": "x-y?"}
@@ -225,10 +254,18 @@ ax.set_title(
     f"Single Receptor vs Receptor Pair:\nMax Achievable {metric_name} per Cell Type{title_suffix}",
     fontsize=16,
 )
-improved_handle = mlines.Line2D([], [], color="#2274A5", marker="o", linestyle="None",
-                                 markersize=7, label=f"2D ≥ 1D (pairing helps)")
-declined_handle = mlines.Line2D([], [], color="#C0392B", marker="o", linestyle="None",
-                                 markersize=7, label="2D < 1D")
+improved_handle = mlines.Line2D(
+    [],
+    [],
+    color="#2274A5",
+    marker="o",
+    linestyle="None",
+    markersize=7,
+    label="2D ≥ 1D (pairing helps)",
+)
+declined_handle = mlines.Line2D(
+    [], [], color="#C0392B", marker="o", linestyle="None", markersize=7, label="2D < 1D"
+)
 ax.legend(handles=[improved_handle, declined_handle], fontsize=12, loc="upper left")
 ax.set_xlim(lim_low, lim_high)
 ax.set_ylim(lim_low, lim_high)
@@ -244,6 +281,7 @@ plt.show()
 
 df_slope = df.sort_values("Max 2D", ascending=False).reset_index(drop=True)
 
+
 def spread_labels(values, min_gap=0.015):
     """Nudge label y-positions to avoid overlaps, preserving relative order."""
     order = np.argsort(-np.array(values))
@@ -258,6 +296,7 @@ def spread_labels(values, min_gap=0.015):
     result[order] = sorted_pos
     return result
 
+
 left_label_y = spread_labels(df_slope["Max 1D"].values)
 right_label_y = spread_labels(df_slope["Max 2D"].values)
 
@@ -265,13 +304,33 @@ fig, ax = plt.subplots(figsize=(5.5, max(5, len(df_slope) * 0.45)))
 
 for idx, (_, row) in enumerate(df_slope.iterrows()):
     color = "#2274A5" if row["Max 2D"] >= row["Max 1D"] else "#C0392B"
-    ax.plot([0, 1], [row["Max 1D"], row["Max 2D"]],
-            color=color, linewidth=1.5, alpha=0.75, zorder=2)
+    ax.plot(
+        [0, 1],
+        [row["Max 1D"], row["Max 2D"]],
+        color=color,
+        linewidth=1.5,
+        alpha=0.75,
+        zorder=2,
+    )
     ax.scatter([0, 1], [row["Max 1D"], row["Max 2D"]], color=color, s=40, zorder=3)
-    ax.text(-0.06, left_label_y[idx], row["Cell Type"],
-            ha="right", va="center", fontsize=10, color=color)
-    ax.text(1.06, right_label_y[idx], row["Cell Type"],
-            ha="left", va="center", fontsize=10, color=color)
+    ax.text(
+        -0.06,
+        left_label_y[idx],
+        row["Cell Type"],
+        ha="right",
+        va="center",
+        fontsize=10,
+        color=color,
+    )
+    ax.text(
+        1.06,
+        right_label_y[idx],
+        row["Cell Type"],
+        ha="left",
+        va="center",
+        fontsize=10,
+        color=color,
+    )
 
 ax.set_xticks([0, 1])
 ax.set_xticklabels(["1D\n(single receptor)", "2D\n(receptor pair)"], fontsize=14)
@@ -299,19 +358,32 @@ df_log = df.sort_values("log2(2D/1D)", ascending=True).reset_index(drop=True)
 fig, ax = plt.subplots(figsize=(max(5, len(df_log) * 0.65), 4.5))
 
 bar_colors = ["#2274A5" if v >= 0 else "#C0392B" for v in df_log["log2(2D/1D)"]]
-bars = ax.bar(df_log["Cell Type"], df_log["log2(2D/1D)"],
-              color=bar_colors, edgecolor="white", linewidth=0.5)
+bars = ax.bar(
+    df_log["Cell Type"],
+    df_log["log2(2D/1D)"],
+    color=bar_colors,
+    edgecolor="white",
+    linewidth=0.5,
+)
 ax.axhline(0, color="black", linewidth=1, linestyle="--", alpha=0.5)
 
-for bar, log2_val, raw_val in zip(bars, df_log["log2(2D/1D)"], df_log["2D/1D"]):
-    offset = 0.003 * (ax.get_ylim()[1] - ax.get_ylim()[0]) if ax.get_ylim()[1] != ax.get_ylim()[0] else 0.002
+for bar, log2_val, raw_val in zip(
+    bars, df_log["log2(2D/1D)"], df_log["2D/1D"], strict=False
+):
+    offset = (
+        0.003 * (ax.get_ylim()[1] - ax.get_ylim()[0])
+        if ax.get_ylim()[1] != ax.get_ylim()[0]
+        else 0.002
+    )
     va = "bottom" if log2_val >= 0 else "top"
     y_pos = log2_val + (offset if log2_val >= 0 else -offset)
     ax.text(
         bar.get_x() + bar.get_width() / 2,
         y_pos,
         f"{raw_val:.3f}×",
-        ha="center", va=va, fontsize=10,
+        ha="center",
+        va=va,
+        fontsize=10,
     )
 
 # Floor the y-axis to at least log₂(0.9) ≈ -0.152 to keep the scale meaningful
