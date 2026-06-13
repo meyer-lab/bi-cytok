@@ -9,24 +9,33 @@ A receptor pair (A, B) is synergistic when the bispecific metric exceeds the mon
 
 > metric(A, B) > max(metric(A, A), metric(B, B))
 
-Every target receptor is classified as **synergistic** (involved in ≥ 1 synergistic pair)
-or **non-synergistic** for each target cell type. Distribution plots compare the two groups
-per cell type, and the globally highest-gain synergistic pairs are shown as 2D joint
-distributions. Supports both selectivity and KL/EMD scan results; scan type is detected
-automatically from the accompanying YAML file.
+Every receptor is classified as **synergistic** (involved in ≥ 1 synergistic pair) or
+**non-synergistic** for each target cell type. Four figure types are produced:
+
+1. **V-shape slopegraphs** — per-pair 1D → 2D trajectories with opacity scaled to synergy gain
+2. **Max-1D vs. 2D scatter** — each pair as (max monospecific, pair metric); synergistic pairs lie above the diagonal
+3. **Synergy landscape** — each receptor as (monospecific metric, max synergy gain); non-synergistic receptors cluster at y = 0
+4. **CITE-seq abundance** — 1D histograms for top receptors per synergy category and 2D joint distributions for top synergistic pairs
+
+Supports both selectivity and KL/EMD scan results; scan type is detected automatically from
+the accompanying YAML file.
 
 # Inputs
 - `SCAN_PATH`: path to a scan CSV; a matching `.yaml` must exist in the same directory
 - `KL_METRIC`: for KL/EMD scans, selects which method to use — `"KL_Divergence"` or `"EMD"`; sampling parameters and cell categorization are read from the YAML automatically
 - `TARG_CELL_TYPES`: list of target cell types to analyze, or `None` for all in the scan
+- `PLOT_CELL_TYPES`: subset of target cell types for per-cell-type figures
 - `N_TOP_HIST`: receptors per category per cell type shown in 1D histogram plots
 - `N_TOP_JOINT`: top synergistic pairs by gain shown in 2D joint distribution plots
 - `MIN_PAIR_METRIC`: minimum metric value for inclusion in joint plots; `None` for no filter
 
 # Outputs
-- Per-cell-type summary of synergistic / non-synergistic receptor counts and pair tables
-- 1D abundance histograms (one figure per cell type, top receptors in each category)
-- 2D joint distributions for globally top-gain synergistic pairs across all cell types
+- Printed per-cell-type summary: synergistic / non-synergistic receptor counts and top pairs by gain
+- V-shape slopegraphs: per-cell-type and global summary
+- Max-1D vs. 2D scatter: per-cell-type and combined across all cell types
+- Synergy landscape scatter: per-cell-type and combined across all cell types
+- 1D abundance histograms: per cell type, top receptors in each synergy category
+- 2D joint distributions: top synergistic pairs by gain across all cell types
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -52,10 +61,10 @@ EXCLUDE_CELL_TYPES = [
     "CD4 Proliferating",  # Proliferating cells are at low abundance
     "CD8 Proliferating",  # Proliferating cells are at low abundance
     "cDC1",  # cDC1 dominates top gain pairs
-]  # cell types to exclude from analysis (if present in scan)
-N_TOP_HIST = 3  # top receptors per category per cell type (histograms)
-N_TOP_JOINT = 10  # top pairs by gain across all cell types (2D joints)
-MIN_PAIR_METRIC = None  # minimum metric value for joint plots; None for no filter
+]
+N_TOP_HIST = 3
+N_TOP_JOINT = 10
+MIN_PAIR_METRIC = None
 
 # ── Detect scan type and load data from YAML ──────────────────────────────────
 yaml_path = os.path.splitext(SCAN_PATH)[0] + ".yaml"
@@ -96,7 +105,6 @@ else:
     targ_cell_types = [ct for ct in TARG_CELL_TYPES if ct in cell_types]
 assert targ_cell_types, "No valid target cell types found in scan."
 
-# Exclude specified cell types
 targ_cell_types = [ct for ct in targ_cell_types if ct not in EXCLUDE_CELL_TYPES]
 
 exclude_set = {SIGNAL_REC_NAME} if EXCLUDE_SIGNAL_REC and SIGNAL_REC_NAME else set()
@@ -110,7 +118,6 @@ for ct in targ_cell_types:
     metric_2d = metric_2d_all[:, :, ct_idx]
     mono_metric = np.array([metric_2d[i, i] for i in range(n_recs)])
 
-    # Valid receptors: non-NaN monospecific metric, not excluded
     valid_recs = {
         receptors[i]
         for i in range(n_recs)
@@ -120,8 +127,7 @@ for ct in targ_cell_types:
 
     # Collect synergistic pairs. For symmetric scans the lower triangle is
     # checked (with a fallback to [j,i] due to alphabetical re-indexing).
-    # For asymmetric scans, (i,j) and (j,i) are independent ordered pairs and
-    # are evaluated separately without a fallback.
+    # For asymmetric scans, (i,j) and (j,i) are independent ordered pairs.
     synergy_records = []
     pair_indices = (
         [(i, j) for i in range(n_recs) for j in range(n_recs) if i != j]
@@ -169,7 +175,6 @@ for ct in targ_cell_types:
     )
     non_synergistic_recs = valid_recs - synergistic_recs
 
-    # Best pair metric per synergistic receptor
     syn_best = {}
     for _, row in synergy_df.iterrows():
         for rec in [row["rec1"], row["rec2"]]:
@@ -192,7 +197,6 @@ for ct in targ_cell_types:
         f"pairs: {len(synergy_df)}"
     )
 
-# Pool across all cell types, sorted by gain for joint plots
 all_synergy_df = (
     pd.DataFrame(all_synergy_records)
     .sort_values("synergy_gain", ascending=False)
@@ -217,36 +221,52 @@ print(all_synergy_df.head(15).to_string(index=False))
 
 
 ```{python}
-# ── 1D → 2D trajectory slopegraphs (V-shape per pair) ────────────────────────
+# ── V-shape slopegraphs (1D → 2D trajectory per pair) ─────────────────────────
 # Each synergistic pair (A, B) is drawn as a V-shape: two lines converging from
-# (0, mono_A) and (0, mono_B) to (1, pair_metric). When both lines slope upward
+# (0, mono_A) and (0, mono_B) to (1, pair_metric). When both arms slope upward
 # the pair is genuinely synergistic — pair_metric exceeds both monospecific values.
 # Non-synergistic reference pairs are shown in blue: one arm slopes up (weaker
-# receptor gains) and one slopes down (stronger receptor can't be beaten), making
+# receptor gains) and one slopes down (stronger receptor cannot be beaten), making
 # the "obvious carrier" pattern visually distinct from true synergy.
 # Opacity is proportional to synergy gain so low-gain pairs recede into the background.
 #
-# Figure A — per-cell-type: one plot per target cell type, all synergistic pairs.
-# Figure B — summary: top global pairs by gain, each shown at its best cell type.
+# Per-cell-type figure: one plot per target cell type, all synergistic pairs.
+# Global summary figure: top global pairs by gain, each shown at its best cell type.
 
 import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
+import seaborn as sns
+from matplotlib import gridspec
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 
+# ── Font size constants (used across all figure cells) ────────────────────────
+FS_TITLE = 11    # figure / subplot titles
+FS_LABEL = 10    # axis labels
+FS_TICK = 9      # tick labels
+FS_LEGEND = 9    # legend text
+FS_ANNOT = 7     # text annotations on figures
+
 # ── Parameters ────────────────────────────────────────────────────────────────
-N_LABEL = 8  # top synergistic pairs to label per cell type (Figure A)
-N_NONSYN_REF = 3  # non-synergistic reference pairs per cell type (Figure A)
-N_PAIRS_SUMMARY = 20  # top global synergistic pairs shown in Figure B
-N_NONSYN_SUMMARY = 3  # non-synergistic reference pairs in Figure B
-MIN_ALPHA = 0.04  # opacity of lowest-gain synergistic pairs
-MAX_ALPHA = 0.85  # opacity of highest-gain synergistic pairs
+N_LABEL = 8           # top pairs to label per cell type
+N_NONSYN_REF = 3      # non-synergistic reference pairs per cell type
+N_PAIRS_SUMMARY = 20  # top global pairs shown in the summary figure
+N_NONSYN_SUMMARY = 3  # non-synergistic reference pairs in the summary figure
+MIN_ALPHA = 0.04      # opacity of lowest-gain synergistic pairs
+MAX_ALPHA = 0.85      # opacity of highest-gain synergistic pairs
 SYNERGY_CMAP = plt.cm.Reds
-NONSYN_COLOR = "#3A86FF"  # blue for non-synergistic reference
+NONSYN_COLOR = "#3A86FF"
 PLOT_CELL_TYPES = ["Treg", "CD4 TEM", "CD8 TEM"]
 
+
+def _label(ax, x, y, s, fontsize=FS_ANNOT, **kwargs):
+    """Add a white-stroked text label to avoid overlap with plot elements."""
+    txt = ax.text(x, y, s, fontsize=fontsize, **kwargs)
+    txt.set_path_effects([pe.withStroke(linewidth=1.5, foreground="white")])
+    return txt
+
+
 # ── Compute best-pair partner for every receptor in every cell type ───────────
-# Needed to draw non-synergistic reference V-shapes. Returns (partner, pair_metric).
 best_pair_info_maps = {}  # ct → {rec: (partner_name, pair_metric)}
 for ct in targ_cell_types:
     ct_idx = cell_types.index(ct)
@@ -284,7 +304,7 @@ def _draw_v_shapes(
 ):
     """
     Draw V-shapes: two lines per pair from (0, mono1) and (0, mono2) to (1, pair_metric).
-    Opacity and color scale with gain. Returns (xs, ys, cs) dot arrays for a single scatter call.
+    Opacity and color scale with gain. Returns (xs, ys, cs) dot arrays for a scatter call.
     """
     xs, ys, cs = [], [], []
     for _, r in pairs_df.sort_values(gain_col).iterrows():
@@ -314,7 +334,7 @@ def _draw_v_shapes(
     return np.array(xs), np.array(ys), np.array(cs)
 
 
-# ── Figure A: per-cell-type V-shape slopegraphs ───────────────────────────────
+# ── Per-cell-type V-shape slopegraphs ─────────────────────────────────────────
 for ct in PLOT_CELL_TYPES:
     res = ct_results[ct]
     syn_df = res["synergy_df"]
@@ -389,39 +409,24 @@ for ct in PLOT_CELL_TYPES:
             zorder=6,
             linewidths=0,
         )
-        txt = ax.text(
-            1.04,
-            pm,
-            f"{rec} + {partner}",
-            fontsize=5.5,
-            va="center",
-            color=NONSYN_COLOR,
-        )
-        txt.set_path_effects([pe.withStroke(linewidth=1.5, foreground="white")])
+        _label(ax, 1.04, pm, f"{rec} + {partner}", va="center", color=NONSYN_COLOR)
 
     # Labels for top synergistic pairs
     for _, r in syn_df.nlargest(N_LABEL, "synergy_gain").iterrows():
-        txt = ax.text(
-            1.04,
-            r["pair_metric"],
-            f"{r['rec1']} + {r['rec2']}",
-            fontsize=5.5,
-            va="center",
-        )
-        txt.set_path_effects([pe.withStroke(linewidth=1.5, foreground="white")])
+        _label(ax, 1.04, r["pair_metric"], f"{r['rec1']} + {r['rec2']}", va="center")
 
     sm = ScalarMappable(cmap=SYNERGY_CMAP, norm=gain_norm)
     sm.set_array([])
     plt.colorbar(sm, ax=ax, label="Synergy gain", fraction=0.035, pad=0.02)
     ax.set_xticks([0, 1])
-    ax.set_xticklabels(["1D\n(monospecific)", "2D\n(best pair)"], fontsize=9)
+    ax.set_xticklabels(["1D\n(monospecific)", "2D\n(best pair)"], fontsize=FS_TICK)
     ax.set_xlim(-0.3, 1.6)
-    ax.set_ylabel(metric_label, fontsize=10)
+    ax.set_ylabel(metric_label, fontsize=FS_LABEL)
     ax.set_title(
         f"1D → 2D trajectory — {ct}\n"
         f"{len(syn_df)} synergistic pairs   |   {len(res['non_synergistic_recs'])} non-synergistic receptors\n"
         "Warm = synergistic (opacity ∝ gain)   |   Blue = non-synergistic reference",
-        fontsize=9,
+        fontsize=FS_TICK,
     )
     ax.grid(axis="y", alpha=0.3, linestyle="--")
     plt.tight_layout()
@@ -476,7 +481,7 @@ for rec in global_nonsyn:
                 "mono_partner": m_par,
             }
 
-# ── Figure B: summary — top global pairs ──────────────────────────────────────
+# ── Global summary slopegraph ─────────────────────────────────────────────────
 if top_global.empty:
     print("No synergistic pairs found for summary figure.")
 else:
@@ -556,34 +561,25 @@ else:
             linewidths=0,
         )
         lbl = f"{rec} + {info['partner']}  [{info['cell_type']}]"
-        txt = ax_b.text(
-            1.04,
-            info["pair_metric"],
-            lbl,
-            fontsize=5.5,
-            va="center",
-            color=NONSYN_COLOR,
-        )
-        txt.set_path_effects([pe.withStroke(linewidth=1.5, foreground="white")])
+        _label(ax_b, 1.04, info["pair_metric"], lbl, va="center", color=NONSYN_COLOR)
 
     # Labels for top synergistic pairs
     for _, r in top_global.iterrows():
         lbl = f"{r['rec1']} + {r['rec2']}  [{r['cell_type']}]"
-        txt = ax_b.text(1.04, r["pair_metric"], lbl, fontsize=5.5, va="center")
-        txt.set_path_effects([pe.withStroke(linewidth=1.5, foreground="white")])
+        _label(ax_b, 1.04, r["pair_metric"], lbl, va="center")
 
     sm_b = ScalarMappable(cmap=SYNERGY_CMAP, norm=gain_norm_b)
     sm_b.set_array([])
     plt.colorbar(sm_b, ax=ax_b, label="Synergy gain", fraction=0.03, pad=0.02)
     ax_b.set_xticks([0, 1])
-    ax_b.set_xticklabels(["1D\n(monospecific)", "2D\n(best pair)"], fontsize=9)
+    ax_b.set_xticklabels(["1D\n(monospecific)", "2D\n(best pair)"], fontsize=FS_TICK)
     ax_b.set_xlim(-0.3, 1.7)
-    ax_b.set_ylabel(metric_label, fontsize=11)
+    ax_b.set_ylabel(metric_label, fontsize=FS_LABEL)
     ax_b.set_title(
         f"1D → 2D trajectory summary — top {len(top_global)} global synergistic pairs\n"
         f"({len(global_nonsyn)} globally non-synergistic receptors as gray dots)\n"
         "Warm = synergistic (opacity ∝ gain)   |   Blue = non-synergistic reference",
-        fontsize=10,
+        fontsize=FS_TICK,
     )
     ax_b.grid(axis="y", alpha=0.3, linestyle="--")
     plt.tight_layout()
@@ -591,13 +587,13 @@ else:
 ```
 
 ```{python}
-# ── Option 1: max-1D vs. 2D pair scatter ──────────────────────────────────────
-# x = max(mono_A, mono_B)  y = pair_metric(A,B)
+# ── Max monospecific vs. 2D pair scatter ──────────────────────────────────────
+# x = max(mono_A, mono_B)  y = pair_metric(A, B)
 # All synergistic pairs lie above the diagonal (y > x) by definition.
-# Gray points below diagonal: best non-synergistic pair per non-syn receptor.
+# Gray points below the diagonal: best non-synergistic pair per non-syn receptor.
 
-OPT1_N_LABEL = 10  # top pairs to label (per plot)
-OPT1_N_NONSYN = 200  # max non-syn reference points per plot
+OPT1_N_LABEL = 10
+OPT1_N_NONSYN = 200
 OPT1_FIGSIZE = (5.5, 5.5)
 
 
@@ -609,7 +605,7 @@ def _opt1_scatter(ax, syn_df, nonsyn_recs, mono_map, bpim, title, n_label=OPT1_N
     max_gain = syn_df["synergy_gain"].max()
     gain_norm = Normalize(vmin=0, vmax=max_gain)
 
-    # Non-synergistic reference
+    # Non-synergistic reference points
     nonsyn_pts = []
     for rec in nonsyn_recs:
         partner, pm = bpim.get(rec, (None, np.nan))
@@ -666,22 +662,21 @@ def _opt1_scatter(ax, syn_df, nonsyn_recs, mono_map, bpim, title, n_label=OPT1_N
     )
 
     for _, r in syn_df.nlargest(n_label, "synergy_gain").iterrows():
-        txt = ax.text(
+        _label(
+            ax,
             max(r["mono_rec1"], r["mono_rec2"]),
             r["pair_metric"],
             f"{r['rec1']} + {r['rec2']}",
-            fontsize=5.5,
             va="bottom",
         )
-        txt.set_path_effects([pe.withStroke(linewidth=1.5, foreground="white")])
 
     plt.colorbar(sc, ax=ax, label="Synergy gain", fraction=0.035, pad=0.02)
     ax.set_xlim(0.475, 1.01)
     ax.set_ylim(0.475, 1.01)
-    ax.set_xlabel(f"max(mono_A, mono_B)  [{metric_label}]", fontsize=10)
-    ax.set_ylabel(f"Pair {metric_label}", fontsize=10)
-    ax.set_title(title, fontsize=10)
-    ax.legend(fontsize=7, loc="upper left")
+    ax.set_xlabel(f"max(mono_A, mono_B)  [{metric_label}]", fontsize=FS_LABEL)
+    ax.set_ylabel(f"Pair {metric_label}", fontsize=FS_LABEL)
+    ax.set_title(title, fontsize=FS_TITLE)
+    ax.legend(fontsize=FS_LEGEND, loc="upper left")
     ax.grid(alpha=0.25, ls="--")
 
 
@@ -707,6 +702,27 @@ if not all_synergy_df.empty:
     gain_norm_s = Normalize(vmin=0, vmax=max_gain_s)
 
     fig_s, ax_s = plt.subplots(figsize=(6.5, 6.5))
+
+    # Non-synergistic reference points: globally non-syn receptors at their best pair
+    nonsyn_summary_pts = [
+        {"x": max(info["mono_rec"], info["mono_partner"]), "y": info["pair_metric"]}
+        for info in global_nonsyn_best.values()
+    ]
+    if nonsyn_summary_pts:
+        nsyn_sum_df = pd.DataFrame(nonsyn_summary_pts)
+        if len(nsyn_sum_df) > OPT1_N_NONSYN:
+            nsyn_sum_df = nsyn_sum_df.sample(OPT1_N_NONSYN, random_state=42)
+        ax_s.scatter(
+            nsyn_sum_df["x"],
+            nsyn_sum_df["y"],
+            s=10,
+            color=NONSYN_COLOR,
+            alpha=0.5,
+            zorder=1,
+            linewidths=0,
+            label="Non-synergistic",
+        )
+
     syn_x_all = all_synergy_df[["mono_rec1", "mono_rec2"]].max(axis=1)
     syn_y_all = all_synergy_df["pair_metric"]
     sc_s = ax_s.scatter(
@@ -733,26 +749,16 @@ if not all_synergy_df.empty:
         .drop_duplicates("pk")
         .head(OPT1_N_LABEL)
     )
-    for _, r in top_s.iterrows():
-        txt = ax_s.text(
-            max(r["mono_rec1"], r["mono_rec2"]),
-            r["pair_metric"],
-            f"{r['rec1']} + {r['rec2']}  [{r['cell_type']}]",
-            fontsize=5.5,
-            va="bottom",
-        )
-        txt.set_path_effects([pe.withStroke(linewidth=1.5, foreground="white")])
-
     plt.colorbar(sc_s, ax=ax_s, label="Synergy gain", fraction=0.03, pad=0.02)
     ax_s.set_xlim(0.475, 1.01)
     ax_s.set_ylim(0.475, 1.01)
-    ax_s.set_xlabel(f"max(mono_A, mono_B)  [{metric_label}]", fontsize=11)
-    ax_s.set_ylabel(f"Pair {metric_label}", fontsize=11)
+    ax_s.set_xlabel(f"max(mono_A, mono_B)  [{metric_label}]", fontsize=FS_LABEL)
+    ax_s.set_ylabel(f"Pair {metric_label}", fontsize=FS_LABEL)
     ax_s.set_title(
         f"1D max vs. 2D pair — all cell types combined\n"
         f"({len(all_synergy_df)} synergistic pairs  |  "
         f"{len(set(all_synergy_df['rec1']) | set(all_synergy_df['rec2']))} receptors involved)",
-        fontsize=10,
+        fontsize=FS_TITLE,
     )
     ax_s.grid(alpha=0.25, ls="--")
     plt.tight_layout()
@@ -760,12 +766,9 @@ if not all_synergy_df.empty:
 ```
 
 ```{python}
-# ── Option 2: synergy-landscape scatter ───────────────────────────────────────
-# One point per receptor per cell type.
-# x = monospecific (1D) selectivity
-# y = max synergy gain (0 for non-synergistic)
+# ── Synergy landscape scatter ─────────────────────────────────────────────────
+# x = monospecific (1D) metric  y = max synergy gain (0 for non-synergistic)
 # Non-synergistic receptors cluster along y = 0; synergistic ones rise above it.
-# Reveals whether the minimum-selectivity attractor inflates synergy counts.
 
 OPT2_N_LABEL = 10
 OPT2_FIGSIZE = (6.0, 5.0)
@@ -814,14 +817,13 @@ def _opt2_scatter(
         )
         plt.colorbar(sc, ax=ax, label="Synergy gain", fraction=0.035, pad=0.02)
         for _, r in syn_pts.nlargest(n_label, "gain").iterrows():
-            txt = ax.text(r["mono"], r["gain"], r["rec"], fontsize=6, va="bottom")
-            txt.set_path_effects([pe.withStroke(linewidth=1.5, foreground="white")])
+            _label(ax, r["mono"], r["gain"], r["rec"], va="bottom")
 
     ax.axhline(0, color="dimgray", lw=1.0, ls="--", alpha=0.6)
-    ax.set_xlabel(f"Monospecific {metric_label}", fontsize=10)
-    ax.set_ylabel("Max synergy gain (2D − 1D)", fontsize=10)
-    ax.set_title(title, fontsize=10)
-    ax.legend(fontsize=8, loc="upper right")
+    ax.set_xlabel(f"Monospecific {metric_label}", fontsize=FS_LABEL)
+    ax.set_ylabel("Max synergy gain (2D − 1D)", fontsize=FS_LABEL)
+    ax.set_title(title, fontsize=FS_TITLE)
+    ax.legend(fontsize=FS_LEGEND, loc="upper right")
     ax.grid(alpha=0.25, ls="--")
 
 
@@ -904,27 +906,20 @@ if not syn_s.empty:
     )
     plt.colorbar(sc2, ax=ax_s2, label="Synergy gain", fraction=0.03, pad=0.02)
     for _, r in syn_s.nlargest(OPT2_N_LABEL, "gain").iterrows():
-        txt = ax_s2.text(
-            r["mono"],
-            r["gain"],
-            f"{r['rec']}  [{r['cell_type']}]",
-            fontsize=6,
-            va="bottom",
-        )
-        txt.set_path_effects([pe.withStroke(linewidth=1.5, foreground="white")])
+        _label(ax_s2, r["mono"], r["gain"], f"{r['rec']}  [{r['cell_type']}]", va="bottom")
 
 ax_s2.axhline(0, color="dimgray", lw=1.0, ls="--", alpha=0.6)
 ax_s2.set_xlabel(
-    f"Monospecific {metric_label}  (at cell type of max gain)", fontsize=10
+    f"Monospecific {metric_label}  (at cell type of max gain)", fontsize=FS_LABEL
 )
-ax_s2.set_ylabel("Max synergy gain (2D − 1D)", fontsize=10)
+ax_s2.set_ylabel("Max synergy gain (2D − 1D)", fontsize=FS_LABEL)
 ax_s2.set_title(
     f"Synergy landscape — all cell types\n"
     f"(each receptor at its cell type of max gain  |  "
     f"{len(syn_s)} synergistic  |  {len(nsyn_s)} non-synergistic)",
-    fontsize=10,
+    fontsize=FS_TITLE,
 )
-ax_s2.legend(fontsize=8, loc="upper right")
+ax_s2.legend(fontsize=FS_LEGEND, loc="upper right")
 ax_s2.grid(alpha=0.25, ls="--")
 plt.tight_layout()
 plt.show()
@@ -932,10 +927,6 @@ plt.show()
 
 
 ```{python}
-import matplotlib.pyplot as plt
-import seaborn as sns
-from matplotlib import gridspec
-
 from bicytok.imports import importCITE, sample_receptor_abundances
 
 # ── Load CITE-seq data and sample per cell type ───────────────────────────────
@@ -946,9 +937,9 @@ epitopes_df = CITE_DF[rec_cols_cite + [CELL_CATEGORIZATION]].rename(
     columns={CELL_CATEGORIZATION: "Cell Type"}
 )
 
-# Sample once per target cell type; reused for histograms and joint plots
+# Sample for all target cell types; reused for histograms and joint plots
 samples = {}
-for ct in PLOT_CELL_TYPES:
+for ct in targ_cell_types:
     samples[ct] = sample_receptor_abundances(
         CITE_DF=epitopes_df,
         numCells=min(SAMPLE_SIZE, epitopes_df.shape[0]),
@@ -961,7 +952,7 @@ available_recs = set(epitopes_df.columns) - {"Cell Type"}
 TARG_COLOR = "#CF4D6F"
 OFFTARG_COLOR = "#2774AE"
 
-# ── Figure per cell type: 1D histograms, top receptors in each category ───────
+# ── 1D histograms: top receptors per synergy category ─────────────────────────
 for ct in PLOT_CELL_TYPES:
     sample_df = samples[ct]
     on_targ_mask = (sample_df["Cell Type"] == ct).to_numpy()
@@ -1019,22 +1010,22 @@ for ct in PLOT_CELL_TYPES:
                 if row_idx == 1
                 else f"Monospecific {metric_label}: {res['rec_mono_map'].get(rec, np.nan):.2f}"
             )
-            ax.set_title(f"{rec}\n{metric_str}", fontsize=8)
-            ax.set_xlabel("Abundance", fontsize=7)
-            ax.tick_params(labelsize=6)
+            ax.set_title(f"{rec}\n{metric_str}", fontsize=FS_TICK)
+            ax.set_xlabel("Abundance", fontsize=FS_TICK)
+            ax.tick_params(labelsize=FS_TICK - 1)
             if col_idx == 0:
-                ax.set_ylabel(f"{row_label}\nDensity", fontsize=7)
-                ax.legend(fontsize=6)
+                ax.set_ylabel(f"{row_label}\nDensity", fontsize=FS_TICK)
+                ax.legend(fontsize=FS_LEGEND - 1)
 
     fig.suptitle(
         f"Top {N_TOP_HIST} receptors per category — target: {ct}",
-        fontsize=10,
+        fontsize=FS_TITLE,
         fontweight="bold",
     )
     plt.tight_layout()
     plt.show()
 
-# ── 2D joint distributions: top N_TOP_JOINT pairs by gain across all types ────
+# ── 2D joint distributions: top synergistic pairs by gain ─────────────────────
 filt_synergy_df = (
     all_synergy_df[all_synergy_df["pair_metric"] >= MIN_PAIR_METRIC]
     if MIN_PAIR_METRIC is not None
@@ -1107,28 +1098,28 @@ else:
 
         ax_main.set_xlim(0, x_max)
         ax_main.set_ylim(0, y_max)
-        ax_main.set_xlabel(rec1, fontsize=8)
-        ax_main.set_ylabel(rec2, fontsize=8)
-        ax_main.tick_params(labelsize=7)
+        ax_main.set_xlabel(rec1, fontsize=FS_TICK)
+        ax_main.set_ylabel(rec2, fontsize=FS_TICK)
+        ax_main.tick_params(labelsize=FS_TICK - 1)
         ax_main.grid(alpha=0.25, linestyle="--")
 
         plt.setp(ax_top.get_xticklabels(), visible=False)
         plt.setp(ax_right.get_yticklabels(), visible=False)
-        ax_top.tick_params(labelsize=6)
-        ax_right.tick_params(labelsize=6)
-        ax_top.legend(fontsize=5.5, loc="upper right")
+        ax_top.tick_params(labelsize=FS_TICK - 1)
+        ax_right.tick_params(labelsize=FS_TICK - 1)
+        ax_top.legend(fontsize=FS_LEGEND - 1, loc="upper right")
 
         pair_s = pair_row["pair_metric"]
         gain_s = pair_row["synergy_gain"]
         ax_top.set_title(
             f"[{ct}]  {rec1} × {rec2}\n{metric_label}: {pair_s:.2f}  Gain: {gain_s:.2f}",
-            fontsize=7,
+            fontsize=FS_TICK,
             pad=2,
         )
 
     fig2.suptitle(
         f"Top {n_pairs} synergistic pairs by gain — all target cell types",
-        fontsize=10,
+        fontsize=FS_TITLE,
         fontweight="bold",
         y=1.02,
     )
