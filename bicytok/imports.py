@@ -51,6 +51,10 @@ def sample_receptor_abundances(
             cells
         insert_mock_signal_rec: if True, inserts a prototypical signal receptor with
             a normally distributed count distribution
+        silent: if True, suppresses print statements about off-target sampling
+        off_targ_proportions: list of floats specifying the proportion of each
+            off-target cell type to sample. If None, all off-target cell types will
+            be sampled equally.
     Return:
         sampleDF: dataframe containing single cell abundances of
             receptors (column) for each individual cell (row).
