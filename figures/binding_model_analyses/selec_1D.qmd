@@ -41,9 +41,7 @@ epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
 
 if receptors is None:
-    receptors = [
-        col for col in epitopes_df.columns if col != "Cell Type"
-    ]
+    receptors = [col for col in epitopes_df.columns if col != "Cell Type"]
 
 sample_df = sample_receptor_abundances(epitopes_df, sample_size, cell_type)
 

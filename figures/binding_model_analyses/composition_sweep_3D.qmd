@@ -1,0 +1,338 @@
+---
+title: "Three-Receptor Valency Composition Scan"
+---
+
+# Summary
+This analysis calculates selectivity across varying compositions of three binding subunits for fixed total valencies. The first receptor is the signaling subunit, and the remaining three receptors are binding targets. Results are displayed as ternary heatmaps — one triangle per total valency — where each vertex represents 100% allocation to that receptor and color encodes selectivity.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- Selectivity optimization functions (`optimize_affs`)
+
+# Parameters
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `targ_cell`: String identifier for target cell type in selectivity optimization
+- `dose`: Float concentration of ligand complex in binding model
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `receptors`: List of 4 strings naming receptors [signal_receptor, binding_target_1, binding_target_2, binding_target_3]
+- `fixed_valencies`: List of total valencies to test (e.g., [3, 4, 5, 6])
+- `signal_valency`: Integer number of signaling receptor subunits (fixed for all compositions)
+
+# Outputs
+- **Ternary Heatmaps**: One triangle per total valency. Each vertex = 100% allocation to that binding receptor. Color = selectivity.
+- **Printed Output**: Processing time and summary statistics
+
+## Calculate Selectivity for all compositions
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import time
+
+import numpy as np
+import pandas as pd
+
+from bicytok.imports import (
+    filter_receptor_abundances,
+    importCITE,
+    sample_receptor_abundances,
+)
+from bicytok.selectivity_funcs import optimize_affs
+
+sample_size = 2500
+targ_cell = "CD4 TEM"
+dose = 1e-10
+cell_categorization = "CellType2"
+receptors = ["sim_signal", "Integrin-7", "CD45RO", "CD4-1"]
+off_targ_cells = ["CD4 TCM", "CD8 TEM", "CD4 CTL", "CD4 Naive"]
+CD8_prop = 0.33
+off_targ_props = [(1 - CD8_prop) / 3, CD8_prop, (1 - CD8_prop) / 3, (1 - CD8_prop) / 3]
+signal_valency = 1
+max_valency = 6
+init_mod = [6.0, 7.0, 7.0, 7.0, -9.0]
+fixed_valencies = range(signal_valency, max_valency + 1)
+expr_matching = True
+
+CITE_DF = importCITE()
+assert targ_cell in CITE_DF[cell_categorization].unique()
+assert len(receptors) == 4, (
+    "Must specify exactly 4 receptors: [signal, target1, target2, target3]"
+)
+
+signal_receptor = receptors[0]
+target_receptor_1 = receptors[1]
+target_receptor_2 = receptors[2]
+target_receptor_3 = receptors[3]
+epitopes = [
+    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
+]
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=min(sample_size, epitopes_df.shape[0]),
+    targCellType=targ_cell,
+    insert_mock_signal_rec=True,
+    offTargCellTypes=off_targ_cells,
+    off_targ_proportions=off_targ_props,
+    silent=False,
+)
+filtered_sample_df = filter_receptor_abundances(
+    sample_df, targ_cell, whitelist=receptors
+)
+on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
+off_target_mask = ~on_target_mask
+if expr_matching:
+    rec_abundances = filtered_sample_df[receptors].to_numpy()
+    for i in range(len(receptors)):
+        rec_abundances[:, i] = (
+            rec_abundances[:, i]
+            * np.mean(rec_abundances[:, 3])
+            / np.mean(rec_abundances[:, i])
+        )
+    targ_recs = rec_abundances[on_target_mask]
+    off_targ_recs = rec_abundances[off_target_mask]
+else:
+    df_targ_cell = filtered_sample_df.loc[on_target_mask]
+    df_off_targ_cell = filtered_sample_df.loc[off_target_mask]
+    targ_recs = df_targ_cell[receptors].to_numpy()
+    off_targ_recs = df_off_targ_cell[receptors].to_numpy()
+
+results = []
+time_start = time.time()
+for total_valency in fixed_valencies:
+    print(f"Calculating selectivity for total valency {total_valency}...")
+    binding_valency = total_valency - signal_valency
+    for n_target1 in range(binding_valency + 1):
+        for n_target2 in range(binding_valency - n_target1 + 1):
+            n_target3 = binding_valency - n_target1 - n_target2
+            model_valencies = np.array(
+                [[signal_valency, n_target1, n_target2, n_target3]]
+            )
+
+            opt_selec, opt_affs, opt_kx_star = optimize_affs(
+                targRecs=targ_recs,
+                offTargRecs=off_targ_recs,
+                dose=dose,
+                valencies=model_valencies,
+                init_vals=init_mod,
+                Kx_star_bounds=(-15, -5),
+                affinity_bounds=(3.0, 15.0),
+            )
+            selectivity = 1 / opt_selec
+            print(
+                f"  (Signal: {signal_valency}, {target_receptor_1}: {n_target1}, "
+                f"{target_receptor_2}: {n_target2}, {target_receptor_3}: {n_target3})"
+            )
+            print(
+                f"  Affinities: {opt_affs}, Kx*: {opt_kx_star:.2e}, Selectivity: {selectivity:.4f}\n"
+            )
+            results.append(
+                {
+                    "Total_Valency": total_valency,
+                    "Binding_Valency": binding_valency,
+                    signal_receptor: signal_valency,
+                    target_receptor_1: n_target1,
+                    target_receptor_2: n_target2,
+                    target_receptor_3: n_target3,
+                    "Selectivity": selectivity,
+                }
+            )
+time_end = time.time()
+print(f"\nTotal processing time: {time_end - time_start:.2f} seconds")
+
+results_df = pd.DataFrame(results)
+```
+
+
+## Ternary Heatmaps by Valency
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import matplotlib.pyplot as plt
+import matplotlib.tri as mtri
+from matplotlib.patches import Polygon
+
+
+def bary_to_cart(_t1, t2, t3):
+    """Convert fractional ternary coordinates to Cartesian.
+
+    Vertex layout: t1 -> bottom-left, t2 -> bottom-right, t3 -> top.
+    """
+    x = t2 + t3 / 2
+    y = (np.sqrt(3) / 2) * t3
+    return x, y
+
+
+def draw_ternary_frame(ax, labels, gridlines=5, fontsize=11):
+    """Draw triangle border, tick gridlines, and axis labels."""
+    corners = np.array([[0, 0], [1, 0], [0.5, np.sqrt(3) / 2]])
+    tri_patch = Polygon(corners, fill=False, edgecolor="black", linewidth=1.5, zorder=3)
+    ax.add_patch(tri_patch)
+
+    # Gridlines parallel to each side at equal fractional intervals
+    fracs = np.linspace(0, 1, gridlines + 2)[1:-1]
+    for f in fracs:
+        g = 1 - f
+        # Lines of constant t1 (parallel to t2-t3 edge)
+        p1 = np.array(bary_to_cart(f, g, 0))
+        p2 = np.array(bary_to_cart(f, 0, g))
+        ax.plot(
+            [p1[0], p2[0]], [p1[1], p2[1]], color="gray", lw=0.5, alpha=0.4, zorder=1
+        )
+        # Lines of constant t2
+        p1 = np.array(bary_to_cart(g, f, 0))
+        p2 = np.array(bary_to_cart(0, f, g))
+        ax.plot(
+            [p1[0], p2[0]], [p1[1], p2[1]], color="gray", lw=0.5, alpha=0.4, zorder=1
+        )
+        # Lines of constant t3
+        p1 = np.array(bary_to_cart(g, 0, f))
+        p2 = np.array(bary_to_cart(0, g, f))
+        ax.plot(
+            [p1[0], p2[0]], [p1[1], p2[1]], color="gray", lw=0.5, alpha=0.4, zorder=1
+        )
+
+    offset = 0.10
+    ax.text(
+        -offset,
+        -0.04,
+        labels[0],
+        ha="right",
+        va="top",
+        fontsize=fontsize,
+        fontweight="bold",
+    )
+    ax.text(
+        1 + offset,
+        -0.04,
+        labels[1],
+        ha="left",
+        va="top",
+        fontsize=fontsize,
+        fontweight="bold",
+    )
+    ax.text(
+        0.5,
+        np.sqrt(3) / 2 + 0.06,
+        labels[2],
+        ha="center",
+        va="bottom",
+        fontsize=fontsize,
+        fontweight="bold",
+    )
+
+    ax.set_xlim(-0.25, 1.25)
+    ax.set_ylim(-0.18, np.sqrt(3) / 2 + 0.18)
+    ax.set_aspect("equal")
+    ax.axis("off")
+
+
+binding_labels = [target_receptor_1, target_receptor_2, target_receptor_3]
+plot_valencies = [v for v in fixed_valencies if v > signal_valency]
+
+vmin = results_df["Selectivity"].min()
+vmax = results_df["Selectivity"].max()
+cmap = plt.cm.plasma
+
+n_plots = len(plot_valencies)
+fig, axes = plt.subplots(1, n_plots, figsize=(4.5 * n_plots, 4.5))
+if n_plots == 1:
+    axes = [axes]
+
+for ax, total_valency in zip(axes, plot_valencies, strict=False):
+    subset = results_df[results_df["Total_Valency"] == total_valency].copy()
+    binding_valency = total_valency - signal_valency
+
+    xs, ys, colors = [], [], []
+    for _, row in subset.iterrows():
+        if binding_valency == 0:
+            t1, t2, t3 = 1 / 3, 1 / 3, 1 / 3
+        else:
+            t1 = row[target_receptor_1] / binding_valency
+            t2 = row[target_receptor_2] / binding_valency
+            t3 = row[target_receptor_3] / binding_valency
+        x, y = bary_to_cart(t1, t2, t3)
+        xs.append(x)
+        ys.append(y)
+        colors.append(row["Selectivity"])
+
+    # Interpolate onto a fine grid for smooth fill when enough points exist
+    if len(xs) >= 3:
+        triang = mtri.Triangulation(xs, ys)
+        interp = mtri.LinearTriInterpolator(triang, np.array(colors))
+        fine = np.linspace(0, 1, 200)
+        xi, yi = np.meshgrid(fine, fine)
+        zi = interp(xi, yi)
+        ax.contourf(
+            xi,
+            yi,
+            zi,
+            levels=50,
+            cmap=cmap,
+            vmin=vmin,
+            vmax=vmax,
+            zorder=0,
+        )
+
+    sc = ax.scatter(
+        xs,
+        ys,
+        c=colors,
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+        s=120,
+        edgecolors="white",
+        linewidths=0.8,
+        zorder=4,
+    )
+
+    # Mark and label the optimal composition
+    best_idx = np.argmax(colors)
+    ax.scatter(
+        xs[best_idx],
+        ys[best_idx],
+        marker="*",
+        s=350,
+        color="white",
+        edgecolors="black",
+        linewidths=0.8,
+        zorder=5,
+    )
+    best_row = subset.iloc[best_idx]
+    opt_label = (
+        f"({int(best_row[target_receptor_1])}, "
+        f"{int(best_row[target_receptor_2])}, "
+        f"{int(best_row[target_receptor_3])})"
+    )
+    ax.annotate(
+        opt_label,
+        xy=(xs[best_idx], ys[best_idx]),
+        xytext=(0, 14),
+        textcoords="offset points",
+        ha="center",
+        fontsize=8,
+        color="black",
+        zorder=6,
+    )
+
+    draw_ternary_frame(ax, binding_labels, gridlines=binding_valency)
+    ax.set_title(
+        f"Total Valency {total_valency}\n(binding = {binding_valency})",
+        fontsize=12,
+        pad=8,
+    )
+
+sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=vmin, vmax=vmax))
+sm.set_array([])
+# cbar = fig.colorbar(sm, ax=axes, fraction=0.02, pad=0.04)
+# cbar.set_label("Selectivity", fontsize=13)
+
+fig.suptitle(
+    f"Selectivity vs Binding Receptor Composition\n(Signal: {signal_receptor}, valency = {signal_valency})",
+    fontsize=14,
+    fontweight="bold",
+    y=1.02,
+)
+
+plt.tight_layout()
+plt.show()
+```
