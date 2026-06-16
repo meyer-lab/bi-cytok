@@ -426,7 +426,7 @@ def filter_scan_by_target_expr():
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--results-path")
+    parser.add_argument("--results-path", required=True)
     parser.add_argument("--filter-id", default="filt")
     args = parser.parse_args()
     results_path = args.results_path
