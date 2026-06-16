@@ -33,9 +33,6 @@ Three visualizations:
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
 import os
-import sys
-
-sys.path.insert(0, "/home/sama/bi-cytok-2")
 
 import numpy as np
 import pandas as pd

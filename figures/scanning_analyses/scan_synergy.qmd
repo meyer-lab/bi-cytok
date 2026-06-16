@@ -79,6 +79,9 @@ MIN_PAIR_METRIC = None
 
 # ── Detect scan type and load data from YAML ──────────────────────────────────
 yaml_path = os.path.splitext(SCAN_PATH)[0] + ".yaml"
+assert os.path.exists(yaml_path), (
+     f"YAML not found at {yaml_path}. Every scan must have an accompanying YAML file."
+)
 with open(yaml_path) as f:
     scan_params = yaml.safe_load(f)
 
