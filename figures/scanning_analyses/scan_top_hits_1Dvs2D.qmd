@@ -208,6 +208,10 @@ print(
 # Blue points (2D ≥ 1D) are always labeled. Red points are labeled only when
 # 2D/1D ratio falls below SCATTER_LABEL_DECLINE_THRESHOLD.
 
+import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
+from adjustText import adjust_text
+
 fig, ax = plt.subplots(figsize=(6, 6))
 
 s1d = df["Max 1D"].values
@@ -245,7 +249,6 @@ adjust_text(
     y=s2d,
     arrowprops=dict(arrowstyle="-", lw=1.0, color="#555555", alpha=0.8),
     ax=ax,
-    # only_move={"static": "x-y?"}
 )
 
 ax.set_xlabel(metric_label_1d, fontsize=14)
