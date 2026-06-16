@@ -317,9 +317,7 @@ ax.set_title(
 ax.tick_params(labelsize=11)
 plt.tight_layout()
 plt.show()
-```
 
-```{python}
 # Tabular summary of all annotated receptor pairs
 summary = all_label_rows[["rec1", "rec2", "s1", "s2", "r", "category"]].copy()
 summary.columns = [
