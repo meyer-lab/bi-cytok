@@ -51,7 +51,6 @@ targ_cell = "CD4 Naive"
 off_targ_cell_types = [
     "CD4 TCM",
     "CD8 TCM",
-    "CD4 Naive",
     "CD4 Proliferating",
     "Treg",
     "CD4 CTL",

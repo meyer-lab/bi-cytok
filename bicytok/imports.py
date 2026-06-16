@@ -62,6 +62,8 @@ def sample_receptor_abundances(
     if off_targ_proportions is not None:
         assert offTargCellTypes is not None
         assert len(offTargCellTypes) == len(off_targ_proportions)
+    if offTargCellTypes is not None:
+        assert targCellType not in offTargCellTypes
 
     # Sample an equal number of target and off-target cells
     target_cells = CITE_DF[CITE_DF["Cell Type"] == targCellType]
