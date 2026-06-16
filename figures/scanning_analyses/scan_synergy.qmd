@@ -50,9 +50,8 @@ sys.path.insert(0, ".")
 from scan_runners import load_KL_EMD_scan_results, load_selec_scan_results
 
 # ── Parameters ────────────────────────────────────────────────────────────────
-# SCAN_PATH = "/home/sama/receptor_sweep_data/20260212_full_geom_sweep.csv"
-# SCAN_PATH = "/home/sama/receptor_sweep_data/20260514_selec_scan_high-val-Treg.csv"
-SCAN_PATH = "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv"
+SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+# SCAN_PATH = "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv"
 
 KL_METRIC = "KL_Divergence"  # For KL_EMD scans: "KL_Divergence" or "EMD"
 
@@ -242,10 +241,10 @@ from matplotlib.colors import Normalize
 
 # ── Font size constants (used across all figure cells) ────────────────────────
 FS_TITLE = 11    # figure / subplot titles
-FS_LABEL = 10    # axis labels
-FS_TICK = 9      # tick labels
-FS_LEGEND = 9    # legend text
-FS_ANNOT = 7     # text annotations on figures
+FS_LABEL = 15    # axis labels
+FS_TICK = 15      # tick labels
+FS_LEGEND = 12    # legend text
+FS_ANNOT = 10     # text annotations on figures
 
 # ── Parameters ────────────────────────────────────────────────────────────────
 N_LABEL = 8           # top pairs to label per cell type
@@ -256,7 +255,7 @@ MIN_ALPHA = 0.04      # opacity of lowest-gain synergistic pairs
 MAX_ALPHA = 0.85      # opacity of highest-gain synergistic pairs
 SYNERGY_CMAP = plt.cm.Reds
 NONSYN_COLOR = "#3A86FF"
-PLOT_CELL_TYPES = ["Treg", "CD4 TEM", "CD8 TEM"]
+PLOT_CELL_TYPES = ["Treg", "CD4 TEM", "CD8 TEM", "B memory", "B naive"]
 
 
 def _label(ax, x, y, s, fontsize=FS_ANNOT, **kwargs):
