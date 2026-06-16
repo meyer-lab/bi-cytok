@@ -23,7 +23,7 @@ line and Spearman ρ (highlighted red when p < 0.05) are shown per panel.
 - `CELL_CATEGORIZATION`: String column name for cell type classification in CITE-seq data
 
 # Outputs
-- **Scatter plot grid**: 17 rows (distribution features) × 3 columns (KL Divergence, EMD,
+- **Scatter plot grid**: 9 rows (distribution features) × 3 columns (KL Divergence, EMD,
   Selectivity). Each point is a receptor; feature name labels the left panel of each row.
   Features are grouped by the distributional property they capture:
 
@@ -31,9 +31,6 @@ line and Spearman ρ (highlighted red when p < 0.05) are shown per panel.
     - *Log2 Mean FC*: log2(target mean / off-target mean)
     - *Log2 Median FC*: log2(target median / off-target median); robust to outliers
     - *Log2 90th Pct FC*: log2(target p90 / off-target p90); captures separation at the high end
-    - *Cohen's d*: mean difference normalized by pooled SD
-    - *Target Mean*: absolute mean abundance in target cells
-    - *Off-target Mean*: absolute mean abundance in off-target cells
 
   *Spread:*
     - *Log10 SD Ratio*: log10(target SD / off-target SD)
@@ -43,27 +40,11 @@ line and Spearman ρ (highlighted red when p < 0.05) are shown per panel.
   *Shape:*
     - *Skewness Difference*: target skewness minus off-target skewness
     - *Kurtosis Difference*: target excess kurtosis minus off-target excess kurtosis
-    - *Target Bimodality Coeff*: (skewness² + 1) / kurtosis for target distribution;
-      values > 5/9 ≈ 0.56 suggest bimodality
-
-  *Separability:*
-    - *Tail Enrichment*: fraction of target cells above off-target mean + 2σ, minus same
-      fraction for off-target cells
-    - *Non-expressing Frac Diff*: fraction of target cells below the 10th percentile of the
-      combined distribution, minus the same fraction for off-target cells; captures zero-inflation
-    - *Bhattacharyya Coeff*: histogram-based overlap between the two distributions
-      (1 = identical, 0 = no overlap; high values indicate low separability)
     - *KS Statistic*: maximum absolute CDF difference between the two distributions
 
-  *Outliers:*
-    - *Outlier Mean Inflation*: log2(mean / trimmed_mean[95%]) for target minus the same
-      for off-target; quantifies how much the top-5% cells inflate the mean differentially
-      between populations
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-import os
-
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -76,13 +57,10 @@ from bicytok.imports import (
 )
 from bicytok.selectivity_funcs import optimize_affs
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
 SIGNAL_RECEPTOR = "sim_signal"
 SAMPLE_SIZE = 1000
 # List of target cell types to analyze, or None to analyze all cell types in the data.
 TARG_CELL_TYPES: list[str] | None = ["Treg"]
-TARG_CELL_TYPES = None
 VALENCY = 1
 DOSE = 1e-10
 CELL_CATEGORIZATION = "CellType2"
@@ -98,28 +76,17 @@ all_epitopes = [
     if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
 ]
 
-# Features ordered by conceptual group: location, spread, shape, separability, outliers
+# Features ordered by conceptual group: location, spread, shape
 FEATURE_NAMES = [
     "Log2 Mean FC",
     "Log2 Median FC",
     "Log2 90th Pct FC",
-    "Cohen's d",
-    "Target Mean",
-    "Off-target Mean",
     "Log10 SD Ratio",
     "Log10 IQR Ratio",
     "CV Difference",
     "Skewness Difference",
     "Kurtosis Difference",
-    "Target Bimodality Coeff",
-    "Tail Enrichment",
-    "Non-expressing Frac Diff",
-    "Bhattacharyya Coeff",
     "KS Statistic",
-    "Outlier Mean Inflation",
-    "Target Max",
-    "Off-target Max",
-    "Max Log2 FC",
 ]
 METRIC_NAMES = ["KL Divergence", "EMD", "Selectivity"]
 
@@ -169,13 +136,11 @@ for targ_cell in TARG_CELL_TYPES:
     for receptor in epitopes:
         targ_abun = df_targ[receptor].to_numpy().astype(float)
         offtarg_abun = df_offtarg[receptor].to_numpy().astype(float)
-        all_abun = np.concatenate([targ_abun, offtarg_abun])
 
         targ_mean = np.mean(targ_abun)
         offtarg_mean = np.mean(offtarg_abun)
         targ_std = np.std(targ_abun)
         offtarg_std = np.std(offtarg_abun)
-        pooled_std = np.sqrt((targ_std**2 + offtarg_std**2) / 2)
         targ_median = np.median(targ_abun)
         offtarg_median = np.median(offtarg_abun)
         targ_p90 = np.percentile(targ_abun, 90)
@@ -199,7 +164,6 @@ for targ_cell in TARG_CELL_TYPES:
             if (targ_p90 > 0 and offtarg_p90 > 0)
             else np.nan
         )
-        cohens_d = (targ_mean - offtarg_mean) / pooled_std if pooled_std > 0 else np.nan
 
         # --- Spread ---
         log_sd_ratio = (
@@ -219,69 +183,11 @@ for targ_cell in TARG_CELL_TYPES:
         )
 
         # --- Shape ---
-        targ_skew = float(stats.skew(targ_abun))
-        offtarg_skew = float(stats.skew(offtarg_abun))
-        skew_diff = targ_skew - offtarg_skew
-        targ_kurt = float(stats.kurtosis(targ_abun))  # excess kurtosis
-        offtarg_kurt = float(stats.kurtosis(offtarg_abun))
-        kurt_diff = targ_kurt - offtarg_kurt
-        n_t = len(targ_abun)
-        if n_t > 3:
-            bc_denom = targ_kurt + 3 * (n_t - 1) ** 2 / ((n_t - 2) * (n_t - 3))
-            bc_target = (targ_skew**2 + 1) / bc_denom if bc_denom != 0 else np.nan
-        else:
-            bc_target = np.nan
-
-        # --- Separability ---
-        threshold_2sd = offtarg_mean + 2 * offtarg_std
-        tail_enrichment = float(
-            np.mean(targ_abun > threshold_2sd) - np.mean(offtarg_abun > threshold_2sd)
+        skew_diff = float(stats.skew(targ_abun)) - float(stats.skew(offtarg_abun))
+        kurt_diff = float(stats.kurtosis(targ_abun)) - float(
+            stats.kurtosis(offtarg_abun)
         )
-        low_threshold = np.percentile(all_abun, 10)
-        non_expressing_diff = float(
-            np.mean(targ_abun < low_threshold) - np.mean(offtarg_abun < low_threshold)
-        )
-        bins = np.linspace(all_abun.min(), all_abun.max(), 50)
-        hist_t, _ = np.histogram(targ_abun, bins=bins, density=True)
-        hist_o, _ = np.histogram(offtarg_abun, bins=bins, density=True)
-        bin_width = bins[1] - bins[0]
-        bhatt = float(np.sum(np.sqrt(hist_t * bin_width * hist_o * bin_width)))
         ks_stat = float(stats.ks_2samp(targ_abun, offtarg_abun).statistic)
-
-        # --- Outliers ---
-        # Measures how much the top-5% cells inflate the mean, differentially between populations.
-        # Positive values mean target outliers inflate its mean more than off-target outliers do.
-        targ_p95 = np.percentile(targ_abun, 95)
-        offtarg_p95 = np.percentile(offtarg_abun, 95)
-        targ_trimmed = targ_abun[targ_abun <= targ_p95]
-        offtarg_trimmed = offtarg_abun[offtarg_abun <= offtarg_p95]
-        if len(targ_trimmed) > 0 and len(offtarg_trimmed) > 0:
-            targ_trimmed_mean = np.mean(targ_trimmed)
-            offtarg_trimmed_mean = np.mean(offtarg_trimmed)
-            targ_inflation = (
-                np.log2(targ_mean / targ_trimmed_mean)
-                if targ_trimmed_mean > 0
-                else np.nan
-            )
-            offtarg_inflation = (
-                np.log2(offtarg_mean / offtarg_trimmed_mean)
-                if offtarg_trimmed_mean > 0
-                else np.nan
-            )
-            outlier_mean_inflation = (
-                targ_inflation - offtarg_inflation
-                if not (np.isnan(targ_inflation) or np.isnan(offtarg_inflation))
-                else np.nan
-            )
-        else:
-            outlier_mean_inflation = np.nan
-        targ_max = targ_abun.max()
-        offtarg_max = offtarg_abun.max()
-        log2_max_fc = (
-            np.log2(targ_max / offtarg_max)
-            if (targ_max > 0 and offtarg_max > 0)
-            else np.nan
-        )
 
         # --- Distance metrics ---
         rec_abun_2d = filtered_sample_df[receptor].to_numpy().reshape(-1, 1)
@@ -311,26 +217,15 @@ for targ_cell in TARG_CELL_TYPES:
                 "Log2 Mean FC": log2_mean_fc,
                 "Log2 Median FC": log2_median_fc,
                 "Log2 90th Pct FC": log2_p90_fc,
-                "Cohen's d": cohens_d,
-                "Target Mean": float(targ_mean),
-                "Off-target Mean": float(offtarg_mean),
                 "Log10 SD Ratio": log_sd_ratio,
                 "Log10 IQR Ratio": log_iqr_ratio,
                 "CV Difference": cv_diff,
                 "Skewness Difference": skew_diff,
                 "Kurtosis Difference": kurt_diff,
-                "Target Bimodality Coeff": bc_target,
-                "Tail Enrichment": tail_enrichment,
-                "Non-expressing Frac Diff": non_expressing_diff,
-                "Bhattacharyya Coeff": bhatt,
                 "KS Statistic": ks_stat,
-                "Outlier Mean Inflation": outlier_mean_inflation,
                 "KL Divergence": kl_div,
                 "EMD": emd,
                 "Selectivity": selectivity,
-                "Target Max": targ_max,
-                "Off-target Max": offtarg_max,
-                "Max Log2 FC": log2_max_fc,
             }
         )
 
@@ -356,7 +251,7 @@ import matplotlib.pyplot as plt
 SIG_COLOR = "#CF4D6F"
 NSIG_COLOR = "gray"
 SIG_THRESHOLD = 0.05
-GROUP_BOUNDARIES = {6, 9, 12, 16}
+GROUP_BOUNDARIES = {3, 6}
 
 n_ct = len(TARG_CELL_TYPES)
 _cmap = plt.colormaps["tab20"]
@@ -383,7 +278,7 @@ for row, feature in enumerate(FEATURE_NAMES):
             ax.scatter(
                 x_v[mask],
                 y_v[mask],
-                s=20,
+                s=40,
                 alpha=0.45,
                 color=ct_colors[ct],
                 linewidths=0,
@@ -399,7 +294,7 @@ for row, feature in enumerate(FEATURE_NAMES):
                 color="black",
                 linestyle="--",
                 alpha=0.45,
-                linewidth=1.2,
+                linewidth=1.5,
             )
 
             rho, p_val = stats.spearmanr(x_v, y_v)
@@ -409,7 +304,7 @@ for row, feature in enumerate(FEATURE_NAMES):
                 xy=(0.05, 0.95),
                 xycoords="axes fraction",
                 va="top",
-                fontsize=8,
+                fontsize=12,
                 color=annot_color,
                 bbox=dict(
                     boxstyle="round,pad=0.3",
@@ -421,16 +316,13 @@ for row, feature in enumerate(FEATURE_NAMES):
             )
 
         ax.grid(True, linestyle="--", alpha=0.35)
-        ax.tick_params(labelsize=7)
+        ax.tick_params(labelsize=12)
 
         if row == 0:
-            ax.set_title(metric, fontsize=12, fontweight="bold", pad=6)
+            ax.set_title(metric, fontsize=20, fontweight="bold", pad=6)
 
-        if col == 0:
-            ax.set_ylabel(metric, fontsize=9)
-            ax.set_xlabel(feature, fontsize=9)
-        else:
-            ax.set_xlabel("")
+        ax.set_ylabel(metric, fontsize=15)
+        ax.set_xlabel(feature, fontsize=15)
 
         if row in GROUP_BOUNDARIES:
             for spine in ax.spines.values():
@@ -476,18 +368,16 @@ plt.show()
 ct_list = ", ".join(f"**{ct}**" for ct in TARG_CELL_TYPES)
 rec_counts = ", ".join(f"{ct}: {len(all_records[ct])}" for ct in TARG_CELL_TYPES)
 text = f"""
-Analyzed the Spearman correlation between 17 receptor distribution features and three
+Analyzed the Spearman correlation between 9 receptor distribution features and three
 selectivity metrics across {len(TARG_CELL_TYPES)} target cell type(s): {ct_list}.
 Signal receptor: **{SIGNAL_RECEPTOR}** with bivalent valency [{VALENCY}, {VALENCY}]
 at dose **{DOSE}**. Analysis performed on **{SAMPLE_SIZE}** sampled cells per cell type.
 Filtered receptor counts (mean abundance > 5 and higher target expression,
 plus whitelisted signal receptor) — {rec_counts}.
 
-Features are grouped into five conceptual categories: *location* (rows 1–6), *spread*
-(rows 7–9), *shape* (rows 10–12), *separability* (rows 13–16), and *outliers* (row 17).
-Note that Bhattacharyya Coefficient is a similarity metric (high = more overlap = less
-separable), so its expected correlation with the other metrics is inverted. Correlation
-significance threshold: p < {SIG_THRESHOLD} (★ marker in heatmap).
+Features are grouped into three conceptual categories: *location* (rows 1–3), *spread*
+(rows 4–6), and *shape* (rows 7–9). Correlation significance threshold:
+p < {SIG_THRESHOLD} (highlighted red).
 """
 print(text)
 ```
