@@ -26,8 +26,8 @@ Generates a two-panel figure comparing the raw receptor expression distribution 
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import get_cell_bindings, optimize_affs
