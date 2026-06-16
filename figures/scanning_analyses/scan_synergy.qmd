@@ -958,7 +958,13 @@ else:
             ax_main.scatter(xs, ys, s=5, alpha=0.3, color=color, linewidths=0)
             if len(xs) > 10:
                 sns.kdeplot(
-                    x=xs, y=ys, color=color, levels=4, linewidths=1.0, ax=ax_main
+                    x=xs,
+                    y=ys,
+                    color=color,
+                    levels=4,
+                    linewidths=1.0,
+                    ax=ax_main,
+                    warn_singular=False,
                 )
             ax_top.hist(xs, bins=35, alpha=0.55, color=color, label=lbl)
             ax_right.hist(

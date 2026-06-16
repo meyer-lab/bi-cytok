@@ -72,9 +72,7 @@ def sample_receptor_abundances(
     # Sample an equal number of target and off-target cells
     target_cells = CITE_DF[CITE_DF["Cell Type"] == targCellType]
     if offTargCellTypes is not None:
-        off_target_cells = CITE_DF[
-            CITE_DF["Cell Type"].isin(offTargCellTypes)
-        ]
+        off_target_cells = CITE_DF[CITE_DF["Cell Type"].isin(offTargCellTypes)]
     else:
         off_target_cells = CITE_DF[CITE_DF["Cell Type"] != targCellType]
 
