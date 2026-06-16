@@ -293,7 +293,11 @@ for ct in targ_cell_types:
         for j, partner in enumerate(receptors):
             if j == i or partner in exclude_set:
                 continue
-            val = metric_2d[i, j] if not np.isnan(metric_2d[i, j]) else metric_2d[j, i]
+            if asym_scan:
+                vals = [v for v in [metric_2d[i, j], metric_2d[j, i]] if not np.isnan(v)]
+                val = max(vals) if vals else np.nan
+            else:
+                val = metric_2d[i, j] if not np.isnan(metric_2d[i, j]) else metric_2d[j, i]
             if not np.isnan(val) and (np.isnan(best_val) or val > best_val):
                 best_val, best_partner = val, partner
         info[rec] = (
@@ -461,7 +465,8 @@ for _, row in all_synergy_df.iterrows():
 top_global = (
     all_synergy_df.assign(
         pair_key=all_synergy_df.apply(
-            lambda r: tuple(sorted([r["rec1"], r["rec2"]])), axis=1
+            lambda r: (r["rec1"], r["rec2"]) if asym_scan else tuple(sorted([r["rec1"], r["rec2"]])),
+            axis=1,
         )
     )
     .sort_values("synergy_gain", ascending=False)
@@ -756,7 +761,8 @@ if not all_synergy_df.empty:
     top_s = (
         all_synergy_df.assign(
             pk=all_synergy_df.apply(
-                lambda r: tuple(sorted([r["rec1"], r["rec2"]])), axis=1
+                lambda r: (r["rec1"], r["rec2"]) if asym_scan else tuple(sorted([r["rec1"], r["rec2"]])),
+                axis=1,
             )
         )
         .sort_values("synergy_gain", ascending=False)
@@ -778,167 +784,6 @@ if not all_synergy_df.empty:
     plt.tight_layout()
     plt.show()
 ```
-
-```{python}
-# ── Synergy landscape scatter ─────────────────────────────────────────────────
-# x = monospecific (1D) metric  y = max synergy gain (0 for non-synergistic)
-# Non-synergistic receptors cluster along y = 0; synergistic ones rise above it.
-
-OPT2_N_LABEL = 10
-OPT2_FIGSIZE = (6.0, 5.0)
-
-
-def _opt2_scatter(
-    ax, valid_recs, mono_map, synergistic_recs, syn_best, title, n_label=OPT2_N_LABEL
-):
-    rows = []
-    for rec in valid_recs:
-        mono = mono_map.get(rec, np.nan)
-        if np.isnan(mono):
-            continue
-        is_syn = rec in synergistic_recs
-        gain = syn_best.get(rec, 0) - mono if is_syn else 0.0
-        rows.append({"rec": rec, "mono": mono, "gain": gain, "is_syn": is_syn})
-    if not rows:
-        ax.set_title(title + "\n(no data)")
-        return
-    df = pd.DataFrame(rows)
-
-    ax.scatter(
-        df.loc[~df["is_syn"], "mono"],
-        df.loc[~df["is_syn"], "gain"],
-        s=18,
-        color="lightgray",
-        alpha=0.5,
-        zorder=1,
-        linewidths=0,
-        label="Non-synergistic",
-    )
-    syn_pts = df[df["is_syn"]]
-    if not syn_pts.empty:
-        gn = Normalize(vmin=0, vmax=syn_pts["gain"].max())
-        sc = ax.scatter(
-            syn_pts["mono"],
-            syn_pts["gain"],
-            s=30,
-            c=syn_pts["gain"],
-            cmap=SYNERGY_CMAP,
-            norm=gn,
-            alpha=0.85,
-            zorder=3,
-            linewidths=0,
-            label="Synergistic",
-        )
-        plt.colorbar(sc, ax=ax, label="Synergy gain", fraction=0.035, pad=0.02)
-        for _, r in syn_pts.nlargest(n_label, "gain").iterrows():
-            _label(ax, r["mono"], r["gain"], r["rec"], va="bottom")
-
-    ax.axhline(0, color="dimgray", lw=1.0, ls="--", alpha=0.6)
-    ax.set_xlabel(f"Monospecific {metric_label}", fontsize=FS_LABEL)
-    ax.set_ylabel("Max synergy gain (2D − 1D)", fontsize=FS_LABEL)
-    ax.set_title(title, fontsize=FS_TITLE)
-    ax.legend(fontsize=FS_LEGEND, loc="upper right")
-    ax.grid(alpha=0.25, ls="--")
-
-
-# Per-cell-type
-for ct in PLOT_CELL_TYPES:
-    res = ct_results[ct]
-    fig, ax = plt.subplots(figsize=OPT2_FIGSIZE)
-    syn_count = len(res["synergistic_recs"])
-    nsyn_count = len(res["non_synergistic_recs"])
-    _opt2_scatter(
-        ax,
-        res["valid_recs"],
-        res["rec_mono_map"],
-        res["synergistic_recs"],
-        res["syn_best"],
-        f"Synergy landscape — target: {ct}\n"
-        f"({syn_count} synergistic  |  {nsyn_count} non-synergistic receptors)",
-    )
-    plt.tight_layout()
-    plt.show()
-
-# Summary: each receptor at its cell type of maximum synergy gain
-_all_recs = sorted(set().union(*[res["valid_recs"] for res in ct_results.values()]))
-sum_rows = []
-for rec in _all_recs:
-    if rec in rec_best_syn:
-        info = rec_best_syn[rec]
-        best_ct = info["cell_type"]
-        mono = ct_results[best_ct]["rec_mono_map"].get(rec, np.nan)
-        gain = info["pair_metric"] - mono if not np.isnan(mono) else np.nan
-        is_syn = True
-    else:
-        best_ct = max(
-            targ_cell_types,
-            key=lambda ct: ct_results[ct]["rec_mono_map"].get(rec, float("-inf")),
-        )
-        mono = ct_results[best_ct]["rec_mono_map"].get(rec, np.nan)
-        gain = 0.0
-        is_syn = False
-    if not np.isnan(mono):
-        sum_rows.append(
-            {
-                "rec": rec,
-                "cell_type": best_ct,
-                "mono": mono,
-                "gain": gain,
-                "is_syn": is_syn,
-            }
-        )
-
-sum_df = pd.DataFrame(sum_rows)
-syn_s = sum_df[sum_df["is_syn"]]
-nsyn_s = sum_df[~sum_df["is_syn"]]
-max_gain_s = syn_s["gain"].max() if not syn_s.empty else 1.0
-gn_s = Normalize(vmin=0, vmax=max_gain_s)
-
-fig_s2, ax_s2 = plt.subplots(figsize=(6.5, 5.5))
-ax_s2.scatter(
-    nsyn_s["mono"],
-    nsyn_s["gain"],
-    s=18,
-    color="lightgray",
-    alpha=0.5,
-    zorder=1,
-    linewidths=0,
-    label="Non-synergistic",
-)
-if not syn_s.empty:
-    sc2 = ax_s2.scatter(
-        syn_s["mono"],
-        syn_s["gain"],
-        s=30,
-        c=syn_s["gain"],
-        cmap=SYNERGY_CMAP,
-        norm=gn_s,
-        alpha=0.85,
-        zorder=3,
-        linewidths=0,
-        label="Synergistic",
-    )
-    plt.colorbar(sc2, ax=ax_s2, label="Synergy gain", fraction=0.03, pad=0.02)
-    for _, r in syn_s.nlargest(OPT2_N_LABEL, "gain").iterrows():
-        _label(ax_s2, r["mono"], r["gain"], f"{r['rec']}  [{r['cell_type']}]", va="bottom")
-
-ax_s2.axhline(0, color="dimgray", lw=1.0, ls="--", alpha=0.6)
-ax_s2.set_xlabel(
-    f"Monospecific {metric_label}  (at cell type of max gain)", fontsize=FS_LABEL
-)
-ax_s2.set_ylabel("Max synergy gain (2D − 1D)", fontsize=FS_LABEL)
-ax_s2.set_title(
-    f"Synergy landscape — all cell types\n"
-    f"(each receptor at its cell type of max gain  |  "
-    f"{len(syn_s)} synergistic  |  {len(nsyn_s)} non-synergistic)",
-    fontsize=FS_TITLE,
-)
-ax_s2.legend(fontsize=FS_LEGEND, loc="upper right")
-ax_s2.grid(alpha=0.25, ls="--")
-plt.tight_layout()
-plt.show()
-```
-
 
 ```{python}
 from bicytok.imports import importCITE, sample_receptor_abundances
