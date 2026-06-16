@@ -44,10 +44,10 @@ def run_selectivity_scan():
     sample_size = 1000
     min_avg_count = 5 # Expression threshold
     receptors = None # Receptors to analyze; list or None for all
-
     cell_types = None # Cell types to analyze; list or None for all
     targ_cell_types = None # Target cell types for selectivity calculation; list or None for all
     exclude_cell_types = False # Boolean to exclude cell types not in cell_types list
+    expr_matching = None # If not None, scales receptor expression values to match this average across all cell types
 
     # Binding model parameters
     dose = 1e-10
@@ -89,11 +89,17 @@ def run_selectivity_scan():
     if cell_types is not None and exclude_cell_types:
         epitopes_df = epitopes_df[epitopes_df["Cell Type"].isin(cell_types)]
 
+    # Match receptor abundance averages
     rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
+    if expr_matching is not None:
+        for i, rec in enumerate(receptors):
+            if i != signal_ind and signal != "prototype":  # Don't scale the signal receptor if it's the prototype
+                rec_abundances[:, i] = rec_abundances[:, i] * expr_matching / np.mean(rec_abundances[:, i])
+
+    # Define cell type labels if not pre-specified
     cell_type_labels = epitopes_df["Cell Type"].tolist()
     if cell_types is None:
         cell_types = list(set(cell_type_labels))
-
     if targ_cell_types is None:
         targ_cell_types = cell_types
     
@@ -149,6 +155,7 @@ def run_selectivity_scan():
             "min_expression_threshold": min_avg_count,
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
+            "expr_matching": expr_matching,
         },
         "binding_model": {
             "dose": float(dose),
@@ -202,6 +209,7 @@ def run_KL_EMD_scan():
     cell_types = None # Cell types to analyze; list or None for all
     targ_cell_types = None # Target cell types for selectivity calculation; list or None for all
     exclude_cell_types = False # Boolean to exclude cell types not in cell_types list
+    expr_matching = None # If not None, scales receptor expression values to match this average across all cell types
 
     # Distance metric scan parameters
     filter_by_target_expr = False # Boolean to filter out receptors with higher off-target expression
@@ -225,11 +233,16 @@ def run_KL_EMD_scan():
     if cell_types is not None and exclude_cell_types:
         epitopes_df = epitopes_df[epitopes_df["Cell Type"].isin(cell_types)]
 
+    # Match receptor abundance averages
     rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
+    if expr_matching is not None:
+        for i, rec in enumerate(receptors):
+            rec_abundances[:, i] = rec_abundances[:, i] * expr_matching / np.mean(rec_abundances[:, i])
+
+    # Define cell type labels if not pre-specified
     cell_type_labels = epitopes_df["Cell Type"].tolist()
     if cell_types is None:
         cell_types = list(set(cell_type_labels))
-
     if targ_cell_types is None:
         targ_cell_types = cell_types
     
@@ -275,6 +288,7 @@ def run_KL_EMD_scan():
             "min_expression_threshold": min_avg_count,
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
+            "expr_matching": expr_matching,
         },
         "distance_metric": {
             "filter_by_target_expr": filter_by_target_expr,

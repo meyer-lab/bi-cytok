@@ -45,10 +45,11 @@ from bicytok.selectivity_funcs import optimize_affs
 plt.rcParams["svg.fonttype"] = "none"
 
 # Parameters
-receptor1 = "CD71"
-receptor2 = "CD271"
-targ_cell = "pDC"
-sample_size = 1000
+receptor1 = "CD45RO"
+receptor2 = "Integrin-7"
+targ_cell = "CD4 Naive"
+off_targ_cell_types = None
+sample_size = 2500
 cell_categorization = "CellType2"
 plot_cell_types = [targ_cell, "other"]
 normalize = False
@@ -98,6 +99,7 @@ sample_df_metrics = sample_receptor_abundances(
     CITE_DF=epitopes_df,
     numCells=min(sample_size, epitopes_df.shape[0]),
     targCellType=targ_cell,
+    offTargCellTypes=off_targ_cell_types,
     balance=True,
     rand_state=42,
 )
@@ -107,6 +109,7 @@ sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,
     numCells=min(sample_size, epitopes_df.shape[0]),
     targCellType=targ_cell,
+    offTargCellTypes=off_targ_cell_types,
     balance=False,
     rand_state=42,
 )

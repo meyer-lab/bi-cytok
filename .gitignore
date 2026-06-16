@@ -104,3 +104,5 @@ _output/
 output
 
 .DS_Store
+
+**/*.quarto_ipynb
