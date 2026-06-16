@@ -1,5 +1,5 @@
 ---
-title: "Max Selectivity: Single Receptor vs Receptor Pair"
+title: "Receptor Scan Maximum 1D vs 2D Selectivity"
 ---
 
 # Summary

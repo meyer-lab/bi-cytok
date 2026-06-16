@@ -1,5 +1,5 @@
 ---
-title: "Receptor Scan Metric Comparison"
+title: "Receptor Scan Outlier Analysis"
 ---
 
 # Summary
