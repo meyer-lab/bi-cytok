@@ -50,10 +50,22 @@ sys.path.insert(0, ".")
 from scan_runners import load_KL_EMD_scan_results, load_selec_scan_results
 
 # ── Parameters ────────────────────────────────────────────────────────────────
+# --- Paths to scan results ---
+# Default selectivity scan
 SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+
+# Varying valency selectivity scans
+# SCAN_PATH = "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv"
 # SCAN_PATH = "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv"
 
-KL_METRIC = "KL_Divergence"  # For KL_EMD scans: "KL_Divergence" or "EMD"
+# Varying signal receptor selectivity scans
+# SCAN_PATH = "/home/sama/receptor_sweep_data/20260604_selec_scan_full_sigCD122.csv"
+# SCAN_PATH = "/home/sama/receptor_sweep_data/20260609_selec_scan_full_sigCD28.csv"
+
+# Distribution overlap scans
+# SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
+# --- KL/EMD metric (only used when scan_type is "KL_EMD") ---
+# KL_METRIC = "KL_Divergence"  # For KL_EMD scans: "KL_Divergence" or "EMD"
 
 TARG_CELL_TYPES = None  # list of cell types, or None for all in the scan
 EXCLUDE_CELL_TYPES = [
