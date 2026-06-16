@@ -1,114 +1,23 @@
-"""File that deals with everything about importing and sampling."""
+"""File for importing and sampling CITE-seq data."""
 
 from pathlib import Path
 from zipfile import ZipFile
 
+import numpy as np
 import pandas as pd
 
 path_here = Path(__file__).parent.parent
 
-SC_Stims = [
-    "control",
-    "IL2_100pM",
-    "IL2_1nM",
-    "IL2_10nM",
-    "IL2_50nM",
-    "IL2_200nM",
-    "IL7_100nM",
-    "IL10_500nM",
-    "IL10_2000nM",
-    "TGFB_10nM",
-    "TGFB_50nM",
-]  # "IL7_500nM is blank"
-
-
-# Originally called in selectivityFuncs.getConvFactDict
-def getBindDict():
-    """Gets binding to pSTAT fluorescent conversion dictionary"""
-    bindingDF = pd.read_csv(
-        path_here / "bicytok" / "data" / "BindingConvDict.csv", encoding="latin1"
-    )
-    return bindingDF
-
-
-# Sam: Not called anywhere, not sure what original use was
-def importReceptors():
-    """Makes Complete receptor expression Dict"""
-    recDF = pd.read_csv(path_here / "bicytok" / "data" / "RecQuantitation.csv")
-    recDFbin = pd.read_csv(path_here / "bicytok" / "data" / "BinnedReceptorData.csv")
-    recDFbin = recDFbin.loc[recDFbin["Bin"].isin([1, 3])]
-    recDFbin.loc[recDFbin["Bin"] == 1, "Cell Type"] += r" $IL2Ra^{lo}$"
-    recDFbin.loc[recDFbin["Bin"] == 3, "Cell Type"] += r" $IL2Ra^{hi}$"
-    recDF = pd.concat([recDF, recDFbin])
-    return recDF
-
-
-# Not called anywhere
-def makeCITEdf():
-    """Makes cite surface epitope csv for given cell type,
-    DON'T USE THIS UNLESS DATA NEEDS RESTRUCTURING"""
-    """
-    matrixDF = pd.read_csv(join(path_here, "bicytok/data/CITEmatrix.gz"),
-        compression='gzip', header=0, sep=' ', quotechar='"', error_bad_lines=False)
-    matrixDF = matrixDF.iloc[:, 0:-2]
-    matrixDF.columns = ["Marker", "Cell", "Number"]
-    matrixDF.to_csv(join(path_here, "bicytok/data/CITEmatrix.csv"), index=False)
-    """
-    featureDF = pd.read_csv(path_here / "bicytok" / "data" / "CITEfeatures.csv")
-    matrixDF = pd.read_csv(path_here / "bicytok" / "data" / "CITEmatrix.csv").iloc[
-        1::, :
-    ]
-    metaDF = pd.read_csv(path_here / "bicytok" / "data" / "metaData3P.csv")
-
-    metaDF["cellNumber"] = metaDF.index + 1
-    cellNums = metaDF.cellNumber.values
-    cellT1 = metaDF["celltype.l1"].values
-    cellT2 = metaDF["celltype.l2"].values
-    cellT3 = metaDF["celltype.l3"].values
-    cellTDict1 = {cellNums[i]: cellT1[i] for i in range(len(cellNums))}
-    cellTDict2 = {cellNums[i]: cellT2[i] for i in range(len(cellNums))}
-    cellTDict3 = {cellNums[i]: cellT3[i] for i in range(len(cellNums))}
-
-    featureDF["featNumber"] = featureDF.index + 1
-    featNums = featureDF.featNumber.values
-    features = featureDF.Marker.values
-    featDict = {featNums[i]: features[i] for i in range(len(featNums))}
-    matrixDF["Marker"] = matrixDF["Marker"].replace(featDict)
-
-    categories1 = metaDF["celltype.l1"].unique()
-    categories2 = metaDF["celltype.l2"].unique()
-    categories3 = metaDF["celltype.l3"].unique()
-
-    matrixDF = (
-        matrixDF.pivot(index=["Cell"], columns="Marker", values="Number")
-        .reset_index()
-        .fillna(0)
-    )
-
-    matrixDF["CellType1"] = pd.Categorical(
-        matrixDF["Cell"].replace(cellTDict1), categories=categories1
-    )
-    matrixDF["CellType2"] = pd.Categorical(
-        matrixDF["Cell"].replace(cellTDict2), categories=categories2
-    )
-    matrixDF["CellType3"] = pd.Categorical(
-        matrixDF["Cell"].replace(cellTDict3), categories=categories3
-    )
-    matrixDF.to_csv(path_here / "bicytok" / "data" / "CITEdata.csv", index=False)
-    return matrixDF  # , featureDF, metaDF
-
 
 def importCITE():
     """Downloads all surface markers and cell types"""
-    CITEmarkerDF = pd.read_csv(
-        path_here / "bicytok" / "data" / "CITEdata_SurfMarkers.zip"
-    )
+    CITEmarkerDF = pd.read_csv(path_here / "data" / "CITEdata_SurfMarkers.zip")
     return CITEmarkerDF
 
 
 def importRNACITE():
     """Downloads all surface markers and cell types"""
-    with ZipFile(path_here / "bicytok" / "data" / "RNAseqSurface.csv.zip") as zip_file:
+    with ZipFile(path_here / "data" / "RNAseqSurface.csv.zip") as zip_file:
         RNAsurfDF = pd.read_csv(zip_file.open("RNAseqSurface.csv"))
     return RNAsurfDF
 
@@ -120,6 +29,9 @@ def sample_receptor_abundances(
     offTargCellTypes: list[str] = None,
     rand_state: int = 42,
     balance: bool = False,
+    insert_mock_signal_rec: bool = False,
+    silent: bool = True,
+    off_targ_proportions: list[float] = None,
 ) -> pd.DataFrame:
     """
     Samples a subset of cells and converts unprocessed CITE-seq receptor values
@@ -137,6 +49,12 @@ def sample_receptor_abundances(
         rand_state: random seed for reproducibility
         balance: if True, forces sampling of an equal number of target and off-target
             cells
+        insert_mock_signal_rec: if True, inserts a prototypical signal receptor with
+            a normally distributed count distribution
+        silent: if True, suppresses print statements about off-target sampling
+        off_targ_proportions: list of floats specifying the proportion of each
+            off-target cell type to sample. If None, all off-target cell types will
+            be sampled equally.
     Return:
         sampleDF: dataframe containing single cell abundances of
             receptors (column) for each individual cell (row).
@@ -145,6 +63,11 @@ def sample_receptor_abundances(
 
     assert numCells <= CITE_DF.shape[0]
     assert "Cell Type" in CITE_DF.columns
+    if off_targ_proportions is not None:
+        assert offTargCellTypes is not None
+        assert len(offTargCellTypes) == len(off_targ_proportions)
+    if offTargCellTypes is not None:
+        assert targCellType not in offTargCellTypes
 
     # Sample an equal number of target and off-target cells
     target_cells = CITE_DF[CITE_DF["Cell Type"] == targCellType]
@@ -166,11 +89,48 @@ def sample_receptor_abundances(
     sampled_target_cells = target_cells.sample(
         num_target_cells, random_state=rand_state
     )
-    sampled_off_target_cells = off_target_cells.sample(
-        num_off_target_cells, random_state=rand_state
-    )
+    if off_targ_proportions is None:
+        sampled_off_target_cells = off_target_cells.sample(
+            num_off_target_cells, random_state=rand_state
+        )
+    else:
+        for otct in off_target_cells["Cell Type"].unique():
+            otct_cells = off_target_cells[off_target_cells["Cell Type"] == otct]
+            sampled_otcs = otct_cells.sample(
+                min(
+                    otct_cells.shape[0],
+                    int(
+                        num_off_target_cells
+                        * off_targ_proportions[offTargCellTypes.index(otct)]
+                    ),
+                ),
+                random_state=rand_state,
+            )
+            sampled_off_target_cells = (
+                pd.concat([sampled_off_target_cells, sampled_otcs])
+                if "sampled_off_target_cells" in locals()
+                else sampled_otcs
+            )
+
+    if not silent:
+        print(
+            f"Sampled {num_target_cells} target cells and {num_off_target_cells} off-target cells "
+            f"(balance={balance})"
+        )
+        print(
+            f"Target cell types: {sampled_target_cells['Cell Type'].value_counts().to_dict()}"
+        )
+        print(
+            f"Off-target cell types: {sampled_off_target_cells['Cell Type'].value_counts().to_dict()}"
+        )
 
     sampleDF = pd.concat([sampled_target_cells, sampled_off_target_cells])
+
+    if insert_mock_signal_rec:
+        rng = np.random.default_rng(rand_state)
+        mock_signal_rec = rng.normal(loc=50, scale=5, size=(sampleDF.shape[0],))
+        mock_signal_rec = np.clip(mock_signal_rec, a_min=0, a_max=None)
+        sampleDF.insert(0, column="sim_signal", value=mock_signal_rec)
 
     return sampleDF
 
@@ -179,51 +139,87 @@ def filter_receptor_abundances(
     abundance_df: pd.DataFrame,
     targ_cell_type: str,
     min_mean_abundance: float = 5.0,
-    epitope_list: list[str] = None,
-    cell_type_list: list[str] = None,
+    whitelist: list[str] = None,
+    blacklist: list[str] = None,
 ) -> pd.DataFrame:
     """
-    Filters receptor abundances by removing biologically irrelevant receptors and
-        user specified epitopes and cell types. Biologically irrelevant receptors are
-        defined as those with large enough mean abundance (can't target a receptor
-        with low overall expression) and those that have higher expression in target
-        cells compared to other cell types.
+    Filters receptor abundances by removing biologically irrelevant receptors.
+        Biologically irrelevant receptors are defined as those with large enough mean
+        abundance (can't target a receptor with low overall expression) and those that
+        have higher expression in target cells compared to other cell types.
+        Whitelisted receptors are always included and blacklisted receptors excluded.
     Args:
         abundance_df: DataFrame containing receptor abundances for filtering
         targ_cell_type: The cell type to determine biologically relevant receptors
         min_mean_abundance: Minimum mean abundance threshold for receptors
-        epitope_list: List of specific epitopes to retain; if None, all are retained
-        cell_type_list: List of specific cell types to retain; if None, all are retained
+        whitelist: List of receptors to include regardless of filtering criteria
+        blacklist: List of receptors to exclude regardless of filtering criteria
     Return:
         A DataFrame containing filtered receptor abundances
     """
 
-    assert "Cell Type" in abundance_df.columns
+    assert "Cell Type" in abundance_df.columns, "Missing cell type annotations"
 
+    whitelist = whitelist or []
+    blacklist = blacklist or []
+    assert not [r for r in whitelist if r not in abundance_df.columns], (
+        "Whitelist receptors not found in data"
+    )
+    assert not set(whitelist).intersection(set(blacklist)), (
+        "Overlap between whitelisted and blacklisted receptors"
+    )
+
+    # Separate cell type column for filtering
     cell_type_df = abundance_df["Cell Type"]
     abundance_df = abundance_df.drop(columns=["Cell Type"])
 
-    # Filter irrelevant receptors
+    # Remove blacklisted receptors
+    abundance_df = abundance_df.drop(columns=blacklist, errors="ignore")
+
+    # Filter irrelevant receptors based on mean abundance
     mean_abundances = abundance_df.mean(axis=0)
-    relevant_receptors = mean_abundances[mean_abundances > min_mean_abundance].index
-    abundance_df = abundance_df[relevant_receptors]
+    high_mean = list(mean_abundances[mean_abundances > min_mean_abundance].index)
+
+    # Filter based on target vs off-target expression
     mean_targ_abundances = abundance_df[cell_type_df == targ_cell_type].mean(axis=0)
     mean_off_targ_abundances = abundance_df[cell_type_df != targ_cell_type].mean(axis=0)
-    relevant_receptors = mean_targ_abundances[
-        mean_targ_abundances > mean_off_targ_abundances
-    ].index
+    higher_in_target = list(
+        mean_targ_abundances[mean_targ_abundances > mean_off_targ_abundances].index
+    )
+
+    # Apply filtering (receptors must pass both filters or be whitelisted)
+    relevant_receptors = list(
+        set(high_mean).intersection(set(higher_in_target)).union(set(whitelist))
+    )
     abundance_df = abundance_df[relevant_receptors]
 
-    # Filter user-specified epitopes and cell types
-    if epitope_list is not None:
-        abundance_df = abundance_df[epitope_list]
-    if cell_type_list is not None:
-        abundance_df = abundance_df[cell_type_df.isin(cell_type_list)]
-        cell_type_df = cell_type_df[cell_type_df.isin(cell_type_list)]
-
-    # Re-add the cell type column efficiently using pd.concat
-    epitope_cols = abundance_df.copy()
-    cell_type_df = pd.DataFrame(cell_type_df, columns=["Cell Type"])
-    abundance_df = pd.concat([epitope_cols, cell_type_df], axis=1)
+    # Re-add the cell type column
+    abundance_df = pd.concat([abundance_df, cell_type_df], axis=1)
 
     return abundance_df
+
+
+def sample_test_data(n_obs=100, n_var=10):
+    """
+    Creates synthetic receptor abundance data for binding model and distribution metric
+       unit testing.
+
+    Args:
+        n_obs: number of observations (cells)
+        n_var: number of variables (receptors)
+    Returns:
+        recAbundances: synthetic receptor abundance data
+        targ: boolean array indicating target cells
+        offTarg: boolean array indicating off-target cells
+    """
+    rng = np.random.default_rng(42)
+    recAbundances = rng.normal(loc=50, scale=2, size=(n_obs, n_var))
+    targ_ind = rng.choice(n_obs, size=n_obs // 2, replace=False)
+    targ = np.zeros(n_obs, dtype=bool)
+    targ[targ_ind] = True
+    offTarg = ~targ
+
+    # Scale target receptor abundances to higher mean
+    recAbundances[targ] = recAbundances[targ] + rng.random() * 5.5 + 0.5
+
+    return recAbundances, targ, offTarg

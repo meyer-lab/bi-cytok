@@ -17,7 +17,7 @@ num_scaling_tests = 50
 
 # Model constants
 affinity_bounds = (6.0, 12.0)
-Kx_star_bounds = (2.24e-15, 2.24e-9)
+Kx_star_bounds = (-15, -9)
 dose_bounds = (1e-13, 1e-7)
 valency_bounds = (1, 2)
 cell_count = 50

@@ -1,5 +1,7 @@
 [run]
 
 omit = 
-  bicytok/figures/*
+  figures/*
+  tools/*
   bicytok/data/*
+  bicytok/imports.py

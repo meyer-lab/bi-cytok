@@ -7,15 +7,22 @@ jobs:
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
-    - name: Setup rye
-      uses: eifinger/setup-rye@v4
+    - name: Install the latest version of uv
+      uses: astral-sh/setup-uv@v7
       with:
-        enable-cache: true
-        version: '0.44.0'
+        enable-cache: false
     - name: Check linting
-      run: rye lint bicytok
+      run: uv run ruff check bicytok
     - name: Check formatting
-      run: rye fmt --check bicytok
+      run: uv run ruff format --check bicytok
+    - name: Check tools linting
+      run: uv run ruff check tools
+    - name: Check tools formatting
+      run: uv run ruff format --check tools
+    - name: Check Quarto figures linting
+      run: uv run python tools/format_qmd.py check --check figures
+    - name: Check Quarto figures formatting
+      run: uv run python tools/format_qmd.py format --check figures
     - name: Test with pytest
       run: make coverage.xml
     - name: Upload coverage to Codecov

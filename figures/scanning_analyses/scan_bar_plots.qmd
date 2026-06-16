@@ -1,0 +1,140 @@
+---
+title: "Receptor Scan Bar Plots"
+---
+
+# Summary
+Generates bar plots showing the top receptor pairs per cell type for optimal selectivity, KL Divergence, and EMD from receptor scan results. Each panel displays the top-N receptor pairs ranked by the respective metric for a given target cell type, with receptor pair labels annotated inside each bar.
+
+# Imports
+- Receptor scan result loading functions (`load_selec_scan_results`, `load_KL_EMD_scan_results`)
+- Visualization and data libraries (matplotlib, pandas, numpy)
+
+# Parameters
+- `scan_data_path`: String path to directory containing receptor scan result files
+- `TOP_N`: Integer number of top receptor pairs to display per cell type panel
+
+# Outputs
+- **Bar Plot 1**: Top N receptor pairs by optimal selectivity per cell type showing:
+  - One subplot per cell type with shared y-axis
+  - Bars ranked by selectivity, labeled with receptor pair names inside each bar
+- **Bar Plot 2**: Top N receptor pairs by KL Divergence per cell type with identical formatting
+- **Bar Plot 3**: Top N receptor pairs by EMD per cell type with identical formatting
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+from figures.scanning_analyses.scan_runners import load_selec_scan_results
+
+scan_data_path = "/home/sama/receptor_sweep_data/20260212_full_geom_sweep.csv"
+TOP_N = 5
+
+opt_selec, _, _, receptors, cell_types = load_selec_scan_results(scan_data_path)
+
+row_indices, col_indices = np.tril_indices(len(receptors), k=0)
+top_per_cell = {}
+for i, cell_type in enumerate(cell_types):
+    selectivity_matrix = opt_selec[:, :, i]
+    rows = []
+    for rec1_idx, rec2_idx in zip(row_indices, col_indices, strict=False):
+        selec_val = selectivity_matrix[rec1_idx, rec2_idx]
+        if not np.isnan(selec_val):
+            rows.append(
+                {
+                    "Receptor Pair": f"{receptors[rec1_idx]} + {receptors[rec2_idx]}",
+                    "Selectivity": selec_val,
+                }
+            )
+    top_per_cell[cell_type] = (
+        pd.DataFrame(rows).nlargest(TOP_N, "Selectivity").reset_index(drop=True)
+    )
+
+n_cell_types = len(cell_types)
+fig, axes = plt.subplots(1, n_cell_types, figsize=(4 * n_cell_types, 5), sharey=True)
+if n_cell_types == 1:
+    axes = [axes]
+for ax, cell_type in zip(axes, cell_types, strict=False):
+    df = top_per_cell[cell_type]
+    bars = ax.bar(range(TOP_N), df["Selectivity"], color="steelblue")
+    for bar, pair in zip(bars, df["Receptor Pair"], strict=False):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() * 0.95,
+            pair,
+            ha="center",
+            va="top",
+            fontsize=9,
+            rotation=90,
+        )
+    ax.set_title(cell_type)
+    ax.set_xticks(range(TOP_N))
+    ax.set_xticklabels([f"#{k + 1}" for k in range(TOP_N)])
+axes[0].set_ylabel("Optimal Selectivity")
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+from figures.scanning_analyses.scan_runners import load_KL_EMD_scan_results
+
+scan_data_path = "/home/sama/receptor_sweep_data/20260319_dist_scan.csv"
+TOP_N = 5
+
+KL_results, EMD_results, receptors, cell_types = load_KL_EMD_scan_results(
+    scan_data_path
+)
+
+row_indices, col_indices = np.tril_indices(len(receptors), k=0)
+for metric_name, metric_results in [
+    ("KL Divergence", KL_results),
+    ("EMD", EMD_results),
+]:
+    top_per_cell = {}
+    for i, cell_type in enumerate(cell_types):
+        metric_matrix = metric_results[:, :, i]
+        rows = []
+        for rec1_idx, rec2_idx in zip(row_indices, col_indices, strict=False):
+            val = metric_matrix[rec1_idx, rec2_idx]
+            if not np.isnan(val):
+                rows.append(
+                    {
+                        "Receptor Pair": f"{receptors[rec1_idx]} + {receptors[rec2_idx]}",
+                        metric_name: val,
+                    }
+                )
+        top_per_cell[cell_type] = (
+            pd.DataFrame(rows).nlargest(TOP_N, metric_name).reset_index(drop=True)
+        )
+
+    n_cell_types = len(cell_types)
+    fig, axes = plt.subplots(
+        1, n_cell_types, figsize=(4 * n_cell_types, 5), sharey=True
+    )
+    if n_cell_types == 1:
+        axes = [axes]
+    for ax, cell_type in zip(axes, cell_types, strict=False):
+        df = top_per_cell[cell_type]
+        bars = ax.bar(range(TOP_N), df[metric_name], color="steelblue")
+        for bar, pair in zip(bars, df["Receptor Pair"], strict=False):
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() * 0.95,
+                pair,
+                ha="center",
+                va="top",
+                fontsize=9,
+                rotation=90,
+            )
+        ax.set_title(cell_type)
+        ax.set_xticks(range(TOP_N))
+        ax.set_xticklabels([f"#{k + 1}" for k in range(TOP_N)])
+    axes[0].set_ylabel(f"Optimal {metric_name}")
+    plt.tight_layout()
+    plt.show()
+```
