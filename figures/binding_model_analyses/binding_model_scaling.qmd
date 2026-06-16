@@ -41,19 +41,16 @@ from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import get_cell_bindings, optimize_affs
 
 # Parameters
-targ_cell = "CD4 TEM"
-off_targ_cells = ["CD4 TCM", "CD8 TEM", "CD4 CTL", "CD4 Naive"]
-# off_targ_cells = None
-sample_size = 2500
+targ_cell = "Treg"
+sample_size = 100
 cell_categorization = "CellType2"
 dose = 1e-10
-signal_receptor = "sim_signal"
-receptors_of_interest = [("CD4-1", 2), ("CD45RO", 2)]
-affinity_bounds = (3, 12)
+signal_receptor = "CD122"
+receptors_of_interest = [("CD25", 2), ("CD4-1", 2)]
+affinity_bounds = (6, 12)
 kx_star_bounds = (-15, -3)
 num_conv_factors = 10
 conversion_factors = np.logspace(-1, 8, num=num_conv_factors)
-init = [6.0, 7.0, -9.0]
 
 CITE_DF = importCITE()
 
@@ -67,8 +64,6 @@ sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,
     numCells=sample_size,
     targCellType=targ_cell,
-    offTargCellTypes=off_targ_cells,
-    insert_mock_signal_rec=True,
 )
 
 filter_df = pd.DataFrame(
@@ -108,7 +103,6 @@ for receptor_valency in receptors_of_interest:
 
         test_df = filter_df.copy()
         test_df[receptor] = test_df[receptor] * conv_fact
-        # test_df[signal_receptor] = test_df[signal_receptor] * conv_fact
         rec_mat = test_df[[signal_receptor, receptor]].to_numpy()
 
         opt_selec, opt_affs, opt_kx_star = optimize_affs(
@@ -118,7 +112,6 @@ for receptor_valency in receptors_of_interest:
             valencies=model_valencies,
             affinity_bounds=affinity_bounds,
             Kx_star_bounds=kx_star_bounds,
-            init_vals=init,
         )
 
         per_rec_results["selectivities"].append(1 / opt_selec)
