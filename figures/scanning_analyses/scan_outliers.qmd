@@ -645,12 +645,16 @@ for group_idx, cat in enumerate(CAT_ORDER):
         ]:
             ax_main.scatter(xs, ys, s=5, alpha=0.3, color=color, linewidths=0)
             if len(xs) > 10:
-                try:
-                    sns.kdeplot(
-                        x=xs, y=ys, color=color, levels=4, linewidths=1.0, ax=ax_main
-                    )
-                except Exception:
-                    pass
+                sns.kdeplot(
+                    x=xs,
+                    y=ys,
+                    color=color,
+                    levels=4,
+                    linewidths=1.0,
+                    ax=ax_main,
+                    warn_singular=False,
+                )
+
             ax_top.hist(xs, bins=40, alpha=0.55, color=color)
             ax_right.hist(
                 ys, bins=40, alpha=0.55, color=color, orientation="horizontal"
@@ -689,6 +693,5 @@ plt.suptitle(
     fontweight="bold",
     y=1.01,
 )
-plt.tight_layout()
 plt.show()
 ```
