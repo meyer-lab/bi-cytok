@@ -27,9 +27,8 @@ Visualizes receptor expression distributions with each off-target cell populatio
 ```{python}
 #| fig-cap: "1D receptor distribution colored by off-target population"
 %config InlineBackend.figure_formats = ['svg']
-
+import matplotlib
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import numpy as np
 import seaborn as sns
 
@@ -49,7 +48,9 @@ x_lim = True
 
 # Color scheme: target is fixed, off-target populations get distinct colors
 TARGET_COLOR = "#CF4D6F"
-off_targ_palette = cm.get_cmap("tab10", len(off_targ_cell_types))
+off_targ_palette = matplotlib.colormaps.get_cmap("tab10").resampled(
+    len(off_targ_cell_types)
+)
 off_targ_colors = [off_targ_palette(i) for i in range(len(off_targ_cell_types))]
 
 # Load and prepare data
@@ -63,7 +64,9 @@ epitopes = [
 
 assert targ_cell in CITE_DF[cell_categorization].unique()
 if receptor not in epitopes:
-    raise ValueError(f"Receptor '{receptor}' not found. Available receptors: {epitopes}")
+    raise ValueError(
+        f"Receptor '{receptor}' not found. Available receptors: {epitopes}"
+    )
 
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
@@ -96,8 +99,8 @@ for cell_type in populations:
 
 fig, ax = plt.subplots(figsize=(6, 4))
 
-for i, (abundances, color, label) in enumerate(
-    zip(all_cell_abundances, colors, labels)
+for _, (abundances, color, label) in enumerate(
+    zip(all_cell_abundances, colors, labels, strict=False)
 ):
     if len(abundances) == 0:
         continue
@@ -159,10 +162,9 @@ plt.show()
 ```{python}
 #| fig-cap: "2D distribution with marginal projections colored by off-target population"
 %config InlineBackend.figure_formats = ['svg']
-
+import matplotlib
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -186,7 +188,9 @@ DPI = 100
 
 # Color scheme
 TARGET_COLOR = "#CF4D6F"
-off_targ_palette = cm.get_cmap("tab10", len(off_targ_cell_types))
+off_targ_palette = matplotlib.colormaps.get_cmap("tab10").resampled(
+    len(off_targ_cell_types)
+)
 off_targ_colors = [off_targ_palette(i) for i in range(len(off_targ_cell_types))]
 
 populations = [targ_cell] + off_targ_cell_types
@@ -205,7 +209,9 @@ epitopes = [
 assert targ_cell in CITE_DF[cell_categorization].unique()
 for receptor in [receptor1, receptor2]:
     if receptor not in epitopes:
-        raise ValueError(f"Receptor '{receptor}' not found. Available receptors: {epitopes}")
+        raise ValueError(
+            f"Receptor '{receptor}' not found. Available receptors: {epitopes}"
+        )
 
 epitopes_df = CITE_DF[epitopes + [cell_categorization]]
 epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
@@ -255,7 +261,7 @@ ax_main = fig.add_subplot(gs[1, 1])
 ax_top = fig.add_subplot(gs[0, 1], sharex=ax_main)
 ax_right = fig.add_subplot(gs[1, 2], sharey=ax_main)
 
-for cell_type, color, label in zip(populations, colors, labels):
+for cell_type, color, label in zip(populations, colors, labels, strict=False):
     cell_df = plot_df[plot_df["Cell Type"] == cell_type]
     if cell_df.empty:
         continue
@@ -317,7 +323,8 @@ if len(off_targ_df) > 10:
         edgecolor="none",
         bins=30,
         kde=True,
-        kde_kws={"bw_method": "scott", "linestyle": "--", "linewidth": 2.5},
+        kde_kws={"bw_method": "scott"},
+        line_kws={"linestyle": "--", "linewidth": 2.5},
         ax=ax_top,
     )
     sns.histplot(
@@ -327,7 +334,8 @@ if len(off_targ_df) > 10:
         edgecolor="none",
         bins=30,
         kde=True,
-        kde_kws={"bw_method": "scott", "linestyle": "--", "linewidth": 2.5},
+        kde_kws={"bw_method": "scott"},
+        line_kws={"linestyle": "--", "linewidth": 2.5},
         ax=ax_right,
     )
 
@@ -367,9 +375,9 @@ plt.show()
 ```{python}
 #| output: asis
 text = f"""
-**1D analysis**: receptor **{receptor}**, target **{targ_cell}**, off-target populations: {', '.join(f'**{c}**' for c in off_targ_cell_types)}.
+**1D analysis**: receptor **{receptor}**, target **{targ_cell}**, off-target populations: {", ".join(f"**{c}**" for c in off_targ_cell_types)}.
 
-**2D analysis**: receptors **{receptor1}** × **{receptor2}**, target **{targ_cell}**, off-target populations: {', '.join(f'**{c}**' for c in off_targ_cell_types)}.
+**2D analysis**: receptors **{receptor1}** × **{receptor2}**, target **{targ_cell}**, off-target populations: {", ".join(f"**{c}**" for c in off_targ_cell_types)}.
 
 Sample size: **{sample_size}** cells per analysis. Receptor counts were {"**normalized**" if normalize else "**not normalized**"}.
 """

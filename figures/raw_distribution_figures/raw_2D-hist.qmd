@@ -48,7 +48,17 @@ plt.rcParams["svg.fonttype"] = "none"
 receptor1 = "CD45RO"
 receptor2 = "Integrin-7"
 targ_cell = "CD4 Naive"
-off_targ_cell_types = ["CD4 TCM", "CD8 TCM", "CD4 Naive", "CD4 Proliferating", "Treg", "CD4 CTL", "CD8 TEM", "CD8 Proliferating", "CD8 Naive"]
+off_targ_cell_types = [
+    "CD4 TCM",
+    "CD8 TCM",
+    "CD4 Naive",
+    "CD4 Proliferating",
+    "Treg",
+    "CD4 CTL",
+    "CD8 TEM",
+    "CD8 Proliferating",
+    "CD8 Naive",
+]
 sample_size = 2500
 cell_categorization = "CellType2"
 plot_cell_types = [targ_cell, "other"]

@@ -91,7 +91,13 @@ def sample_receptor_abundances(
         for otct in off_target_cells["Cell Type"].unique():
             otct_cells = off_target_cells[off_target_cells["Cell Type"] == otct]
             sampled_otcs = otct_cells.sample(
-                min(otct_cells.shape[0], int(num_off_target_cells * off_targ_proportions[offTargCellTypes.index(otct)])),
+                min(
+                    otct_cells.shape[0],
+                    int(
+                        num_off_target_cells
+                        * off_targ_proportions[offTargCellTypes.index(otct)]
+                    ),
+                ),
                 random_state=rand_state,
             )
             sampled_off_target_cells = (

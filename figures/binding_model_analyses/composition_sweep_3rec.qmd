@@ -44,7 +44,7 @@ cell_categorization = "CellType2"
 receptors = ["sim_signal", "Integrin-7", "CD45RO", "CD4-1"]
 off_targ_cells = ["CD4 TCM", "CD8 TEM", "CD4 CTL", "CD4 Naive"]
 CD8_prop = 0.33
-off_targ_props = [(1-CD8_prop)/3, CD8_prop, (1-CD8_prop)/3, (1-CD8_prop)/3]
+off_targ_props = [(1 - CD8_prop) / 3, CD8_prop, (1 - CD8_prop) / 3, (1 - CD8_prop) / 3]
 signal_valency = 1
 max_valency = 6
 init_mod = [6.0, 7.0, 7.0, 7.0, -9.0]
@@ -73,7 +73,7 @@ sample_df = sample_receptor_abundances(
     insert_mock_signal_rec=True,
     offTargCellTypes=off_targ_cells,
     off_targ_proportions=off_targ_props,
-    silent=False
+    silent=False,
 )
 filtered_sample_df = filter_receptor_abundances(
     sample_df, targ_cell, whitelist=receptors
@@ -82,8 +82,12 @@ on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
 off_target_mask = ~on_target_mask
 if expr_matching:
     rec_abundances = filtered_sample_df[receptors].to_numpy()
-    for i, rec in enumerate(receptors):
-        rec_abundances[:, i] = rec_abundances[:, i] * np.mean(rec_abundances[:, 3]) / np.mean(rec_abundances[:, i])
+    for i in range(len(receptors)):
+        rec_abundances[:, i] = (
+            rec_abundances[:, i]
+            * np.mean(rec_abundances[:, 3])
+            / np.mean(rec_abundances[:, i])
+        )
     targ_recs = rec_abundances[on_target_mask]
     off_targ_recs = rec_abundances[off_target_mask]
 else:
@@ -147,7 +151,7 @@ import matplotlib.tri as mtri
 from matplotlib.patches import Polygon
 
 
-def bary_to_cart(t1, t2, t3):
+def bary_to_cart(_t1, t2, t3):
     """Convert fractional ternary coordinates to Cartesian.
 
     Vertex layout: t1 -> bottom-left, t2 -> bottom-right, t3 -> top.
@@ -170,20 +174,50 @@ def draw_ternary_frame(ax, labels, gridlines=5, fontsize=11):
         # Lines of constant t1 (parallel to t2-t3 edge)
         p1 = np.array(bary_to_cart(f, g, 0))
         p2 = np.array(bary_to_cart(f, 0, g))
-        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color="gray", lw=0.5, alpha=0.4, zorder=1)
+        ax.plot(
+            [p1[0], p2[0]], [p1[1], p2[1]], color="gray", lw=0.5, alpha=0.4, zorder=1
+        )
         # Lines of constant t2
         p1 = np.array(bary_to_cart(g, f, 0))
         p2 = np.array(bary_to_cart(0, f, g))
-        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color="gray", lw=0.5, alpha=0.4, zorder=1)
+        ax.plot(
+            [p1[0], p2[0]], [p1[1], p2[1]], color="gray", lw=0.5, alpha=0.4, zorder=1
+        )
         # Lines of constant t3
         p1 = np.array(bary_to_cart(g, 0, f))
         p2 = np.array(bary_to_cart(0, g, f))
-        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color="gray", lw=0.5, alpha=0.4, zorder=1)
+        ax.plot(
+            [p1[0], p2[0]], [p1[1], p2[1]], color="gray", lw=0.5, alpha=0.4, zorder=1
+        )
 
     offset = 0.10
-    ax.text(-offset, -0.04, labels[0], ha="right", va="top", fontsize=fontsize, fontweight="bold")
-    ax.text(1 + offset, -0.04, labels[1], ha="left", va="top", fontsize=fontsize, fontweight="bold")
-    ax.text(0.5, np.sqrt(3) / 2 + 0.06, labels[2], ha="center", va="bottom", fontsize=fontsize, fontweight="bold")
+    ax.text(
+        -offset,
+        -0.04,
+        labels[0],
+        ha="right",
+        va="top",
+        fontsize=fontsize,
+        fontweight="bold",
+    )
+    ax.text(
+        1 + offset,
+        -0.04,
+        labels[1],
+        ha="left",
+        va="top",
+        fontsize=fontsize,
+        fontweight="bold",
+    )
+    ax.text(
+        0.5,
+        np.sqrt(3) / 2 + 0.06,
+        labels[2],
+        ha="center",
+        va="bottom",
+        fontsize=fontsize,
+        fontweight="bold",
+    )
 
     ax.set_xlim(-0.25, 1.25)
     ax.set_ylim(-0.18, np.sqrt(3) / 2 + 0.18)
@@ -203,7 +237,7 @@ fig, axes = plt.subplots(1, n_plots, figsize=(4.5 * n_plots, 4.5))
 if n_plots == 1:
     axes = [axes]
 
-for ax, total_valency in zip(axes, plot_valencies):
+for ax, total_valency in zip(axes, plot_valencies, strict=False):
     subset = results_df[results_df["Total_Valency"] == total_valency].copy()
     binding_valency = total_valency - signal_valency
 
