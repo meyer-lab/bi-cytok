@@ -1,14 +1,6 @@
 SHELL := /bin/bash
 
-flist = $(wildcard bicytok/figures/figure*.py)
-
 .PHONY: clean test all testprofile pyright ruff-check-figures ruff-format-figures ruff-check-all ruff-format-all
-
-all: $(patsubst bicytok/figures/figure%.py, output/figure%.svg, $(flist))
-
-output/figure%.svg: bicytok/figures/figure%.py
-	@ mkdir -p ./output
-	uv run fbuild $*
 
 clean:
 	rm -r output
