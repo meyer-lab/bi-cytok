@@ -110,7 +110,7 @@ for cell_type in plot_cell_types:
 ```
 
 ```{python}
-# | fig-cap: "1D distribution of receptor with histogram and KDE overlay"
+#| fig-cap: "1D distribution of receptor with histogram and KDE overlay"
 import seaborn as sns
 
 fig_size = (5, 3)

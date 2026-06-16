@@ -3,7 +3,7 @@ title: "Receptor Scan Summary Heatmaps"
 ---
 
 # Summary
-Generates a lower-triangular heatmap placing each cell type at its optimal receptor pair position for a chosen metric. Visualizes which receptor pairs are most discriminating for each cell type and reveals overlap in optimal pairs across cell types. Supports both selectivity and KL/EMD scan results; scan type is detected automatically from the accompanying YAML file.
+Generates a heatmap placing each cell type at its optimal receptor pair position for a chosen metric. Visualizes which receptor pairs are most discriminating for each cell type and reveals overlap in optimal pairs across cell types. Supports both selectivity and KL/EMD scan results; scan type is detected automatically from the accompanying YAML file.
 
 # Imports
 - Receptor scan result loading functions (`load_selec_scan_results`, `load_KL_EMD_scan_results`)
