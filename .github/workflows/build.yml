@@ -3,54 +3,18 @@ name: Build
 on: [push]
 
 jobs:
-  discover-figures:
-    runs-on: self-hosted
-    outputs:
-      figures: ${{ steps.get-figures.outputs.figures }}
-    steps:
-    - uses: actions/checkout@v4
-    - name: Get figure list
-      id: get-figures
-      run: |
-        cd figures
-        figures="["
-        first=true
-        for qmd_file in *.qmd; do
-          basename=$(basename "$qmd_file" .qmd)
-          if [ "$first" = true ]; then
-            figures="$figures\"$basename\""
-            first=false
-          else
-            figures="$figures,\"$basename\""
-          fi
-        done
-        figures="$figures]"
-        echo "figures=$figures" >> $GITHUB_OUTPUT
-
   build:
     runs-on: self-hosted
-    needs: discover-figures
-    strategy:
-      matrix:
-        figure: ${{ fromJson(needs.discover-figures.outputs.figures) }}
-      fail-fast: false
     steps:
     - uses: actions/checkout@v4
     - name: Install the latest version of uv
       uses: astral-sh/setup-uv@v7
       with:
         enable-cache: false
-    - name: Setup environment
-      run: make .venv
-    - name: Render figure ${{ matrix.figure }}
-      run: |
-        source .venv/bin/activate
-        quarto render figures/${{ matrix.figure }}.qmd --to typst
-      env:
-        QUARTO_PYTHON: .venv/bin/python
-    - name: Upload files
+    - name: Build all figures
+      run: make all
+    - name: Upload figures
       uses: actions/upload-artifact@v4
       with:
-        name: figure-${{ matrix.figure }}
-        path: |
-          _output/figures/${{ matrix.figure }}.*
+        name: figures
+        path: _output/

@@ -1,0 +1,194 @@
+---
+title: "1D receptor distribution with binding model"
+---
+
+# Summary
+Generates a two-panel figure comparing the raw receptor expression distribution against the bound receptor distribution predicted by the binding model at selectivity-optimized affinities. Performs affinity optimization to maximize target cell selectivity, then displays both raw counts and binding model output for target and off-target cell populations.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- Selectivity optimization and binding prediction functions (`optimize_affs`, `get_cell_bindings`)
+
+# Parameters
+- `receptor`: String name of receptor for distribution analysis
+- `cell_type`: String identifier for target cell type
+- `dose`: Float concentration of ligand complex in binding model
+- `valencies`: 2D numpy array specifying ligand valencies for the complex
+- `sample_size`: Integer number of cells sampled from CITE-seq data for analysis
+- `cell_categorization`: String column name for cell type classification in CITE-seq data
+- `stat`: String specifying histogram statistic ('count', 'density', 'probability')
+- `normalize_raw`: Boolean flag to normalize raw receptor counts by mean expression
+
+# Outputs
+- **Two-panel figure**:
+  - Left panel: Raw receptor expression distribution (histogram + KDE) for target and off-target cells
+  - Right panel: Bound receptor distribution (histogram + KDE) at optimized affinities
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import matplotlib.pyplot as plt
+import numpy as np
+
+from bicytok.imports import importCITE, sample_receptor_abundances
+from bicytok.selectivity_funcs import get_cell_bindings, optimize_affs
+
+plt.rcParams["svg.fonttype"] = "none"
+
+receptor = "CD98"
+sample_size = 1000
+cell_type = "pDC"
+off_targ_cell_types = None
+cell_categorization = "CellType2"
+dose = 1e-10
+valencies = np.array([[4]])
+stat = "count"
+normalize_raw = False
+cell_type_labels = [cell_type, "Off-target"]
+
+CITE_DF = importCITE()
+
+epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
+]
+if receptor not in epitopes:
+    raise ValueError(
+        f"Receptor '{receptor}' not found. Available receptors: {epitopes}"
+    )
+epitopes_df = CITE_DF[epitopes + [cell_categorization]]
+epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+
+assert cell_type in epitopes_df["Cell Type"].unique()
+
+sample_df = sample_receptor_abundances(
+    CITE_DF=epitopes_df,
+    numCells=min(sample_size, epitopes_df.shape[0]),
+    targCellType=cell_type,
+    offTargCellTypes=off_targ_cell_types,
+    balance=False,
+    rand_state=42,
+)
+targ_mask = (sample_df["Cell Type"] == cell_type).to_numpy()
+off_targ_mask = ~targ_mask
+sample_df.loc[off_targ_mask, "Cell Type"] = "other"
+
+raw_abun = sample_df[receptor].values
+mean_abun = np.mean(raw_abun)
+
+# Optimize affinities to maximize target cell selectivity
+opt_selec, opt_affs, opt_Kx_star = optimize_affs(
+    raw_abun[targ_mask].reshape(-1, 1),
+    raw_abun[off_targ_mask].reshape(-1, 1),
+    dose,
+    valencies=valencies,
+)
+print(
+    f"Optimized selectivity: {1 / opt_selec:.4f}, "
+    f"Optimal affinities (M): {opt_affs}, "
+    f"Optimal Kx*: {opt_Kx_star:.2e}"
+)
+
+# Compute bound receptor amounts
+bound = get_cell_bindings(
+    recCounts=sample_df[[receptor]].to_numpy(),
+    monomerAffs=np.array(opt_affs),
+    dose=dose,
+    valencies=valencies,
+    Kx_star=opt_Kx_star,
+)
+
+# Separate distributions by cell type for plotting
+plot_cell_types = [cell_type, "other"]
+raw_by_type = []
+bound_by_type = []
+for cell in plot_cell_types:
+    if cell not in sample_df["Cell Type"].unique():
+        continue
+    mask = (sample_df["Cell Type"] == cell).to_numpy()
+    raw_vals = raw_abun[mask] / mean_abun if normalize_raw else raw_abun[mask]
+    raw_by_type.append(raw_vals)
+    bound_by_type.append(bound[mask, 0])
+```
+
+```{python}
+# | fig-cap: "Raw receptor distribution alongside binding model output at optimized affinities"
+import seaborn as sns
+
+fig_size = (10, 3)
+colors = ["#CF4D6F", "#2774AE"]
+
+fig, (ax_raw, ax_bound) = plt.subplots(1, 2, figsize=fig_size)
+
+# Left panel: raw receptor expression distribution
+for i, abundances in enumerate(raw_by_type):
+    if len(abundances) == 0:
+        continue
+    sns.histplot(
+        abundances,
+        color=colors[i],
+        alpha=0.5,
+        label=cell_type_labels[i],
+        stat=stat,
+        kde=True,
+        kde_kws={"bw_method": "scott"},
+        edgecolor="black",
+        ax=ax_raw,
+    )
+if normalize_raw:
+    ax_raw.set_xlabel("Normalized receptor count", fontsize=18)
+else:
+    ax_raw.set_xlabel(f"Number of {receptor} Antibodies", fontsize=18)
+if stat == "density":
+    ax_raw.set_ylabel("Density", fontsize=18)
+elif stat == "count":
+    ax_raw.set_ylabel("Number of Cells", fontsize=18)
+elif stat == "probability":
+    ax_raw.set_ylabel("Proportion of cells", fontsize=18)
+ax_raw.tick_params(axis="x", labelsize=15)
+ax_raw.tick_params(axis="y", labelsize=15)
+ax_raw.legend(loc="upper right", fontsize=18)
+ax_raw.grid(alpha=0.3, linestyle="--")
+
+# Right panel: bound receptor distribution at optimized affinities
+for i, bound_vals in enumerate(bound_by_type):
+    if len(bound_vals) == 0:
+        continue
+    sns.histplot(
+        bound_vals,
+        color=colors[i],
+        alpha=0.5,
+        label=cell_type_labels[i],
+        stat=stat,
+        kde=True,
+        kde_kws={"bw_method": "scott"},
+        edgecolor="black",
+        ax=ax_bound,
+    )
+ax_bound.set_xlabel(f"Bound {receptor}", fontsize=18)
+if stat == "density":
+    ax_bound.set_ylabel("Density", fontsize=18)
+elif stat == "count":
+    ax_bound.set_ylabel("Number of Cells", fontsize=18)
+elif stat == "probability":
+    ax_bound.set_ylabel("Proportion of cells", fontsize=18)
+ax_bound.tick_params(axis="x", labelsize=15)
+ax_bound.tick_params(axis="y", labelsize=15)
+ax_bound.legend(loc="upper right", fontsize=18)
+ax_bound.grid(alpha=0.3, linestyle="--")
+
+plt.tight_layout()
+plt.show()
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+text = f"""
+Compared the raw receptor distribution of **{receptor}** against the binding model output at selectivity-optimized affinities, targeting cell type **{cell_type}**. The analysis used **{sample_size}** cells sampled from the CITE-seq dataset with a ligand dose of **{dose}** and valencies **{valencies.tolist()}**.
+
+Optimal affinities (log10 M): **{[f"{a:.2f}" for a in opt_affs]}**, Optimal Kx*: **{opt_Kx_star:.2e}**.
+"""
+
+print(text)
+```

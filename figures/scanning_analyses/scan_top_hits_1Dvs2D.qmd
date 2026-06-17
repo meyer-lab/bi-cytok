@@ -1,5 +1,5 @@
 ---
-title: "Max Selectivity: Single Receptor vs Receptor Pair"
+title: "Receptor Scan Maximum 1D vs 2D Selectivity"
 ---
 
 # Summary
@@ -205,8 +205,8 @@ print(
 # Blue points (2D ≥ 1D) are always labeled. Red points are labeled only when
 # 2D/1D ratio falls below SCATTER_LABEL_DECLINE_THRESHOLD.
 
-import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
 from adjustText import adjust_text
 
 fig, ax = plt.subplots(figsize=(6, 6))

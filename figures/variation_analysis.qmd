@@ -38,12 +38,12 @@ from bicytok.distance_metric_funcs import KL_EMD_2D
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
-sample_sizes = [50, 100, 200]
-randomizations = 3
+sample_sizes = [50, 100, 500, 1000, 5000]
+randomizations = 50
 targ_cell = "Treg"
 signal_receptor = "CD122"
-valencies = np.array([[2, 1, 1]])
-targets = ["CD25", "CD4-1"]
+valencies = np.array([[1, 1, 1]])
+targets = ["CD27", "CD4-1"]
 dose = 1e-10
 cell_categorization = "CellType2"
 
@@ -98,6 +98,7 @@ for sample_size in sample_sizes:
             offTargRecs=off_targ_recs,
             dose=dose,
             valencies=valencies,
+            init_vals=[6.0, 7.0, 7.0, -9.0],
         )
         time_ellapsed_mod = time.time() - time_start_mod
         print(
@@ -137,33 +138,33 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 sns.boxplot(x="sample_size", y="KL_div", data=metrics_df)
-plt.xlabel("Sample Size")
-plt.ylabel("KL Divergence")
+plt.xlabel("Sample Size", fontsize=15)
+plt.ylabel("KL Divergence", fontsize=15)
 plt.show()
 ```
 
 ```{python}
 #| fig-cap: "Bootstrap variation in EMD across sample sizes"
 sns.boxplot(x="sample_size", y="EMD", data=metrics_df)
-plt.xlabel("Sample Size")
-plt.ylabel("EMD")
+plt.xlabel("Sample Size", fontsize=15)
+plt.ylabel("EMD", fontsize=15)
 plt.show()
 ```
 
 ```{python}
 #| fig-cap: "Bootstrap variation in selectivity across sample sizes"
 sns.boxplot(x="sample_size", y="selectivity", data=metrics_df)
-plt.xlabel("Sample Size")
-plt.ylabel("Selectivity")
+plt.xlabel("Sample Size", fontsize=15)
+plt.ylabel("Selectivity", fontsize=15)
 plt.show()
 ```
 
 ```{python}
 #| fig-cap: "Bootstrap variation in optimal affinities across sample sizes"
 sns.boxplot(x="sample_size", y="Value", hue="Affinity", data=affinities_melted)
-plt.xlabel("Sample Size")
-plt.ylabel("Affinity Value")
-plt.legend(title="Affinity")
+plt.xlabel("Sample Size", fontsize=15)
+plt.ylabel("Affinity Value", fontsize=15)
+plt.legend(title="Affinity", fontsize=15)
 plt.show()
 ```
 

@@ -30,7 +30,7 @@ receptors = None
 cell_type = "Treg"
 dose = 1e-10
 cell_categorization = "CellType2"
-sample_size = 100
+sample_size = 1000
 
 CITE_DF = importCITE()
 
@@ -70,14 +70,19 @@ sort_indices = np.argsort(selectivities)
 #| fig-cap: "Optimal selectivity of various epitopes"
 import matplotlib.pyplot as plt
 
+top_receptors = np.array(receptors)[sort_indices][-10:]
+top_selectivities = np.array(selectivities)[sort_indices][-10:]
+
 plt.barh(
-    np.array(receptors)[sort_indices],
-    np.array(selectivities)[sort_indices],
-    color="k",
+    top_receptors,
+    top_selectivities,
+    color="r",
 )
 
-plt.xlabel("Selectivity")
-plt.ylabel("Epitope")
+plt.xlabel("Selectivity", fontsize=20)
+plt.ylabel("Epitope", fontsize=20)
+plt.tick_params(axis="x", labelsize=15)
+plt.tick_params(axis="y", labelsize=15)
 plt.gca().invert_yaxis()
 plt.show()
 ```
