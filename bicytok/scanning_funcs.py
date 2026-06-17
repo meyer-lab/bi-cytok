@@ -14,7 +14,7 @@ from .imports import sample_receptor_abundances
 from .selectivity_funcs import optimize_affs
 
 
-def _sample_cells(
+def sample_cells(
     rec_abundances: np.ndarray,
     cell_type_labels: np.ndarray,
     targ_cell_type: str,
@@ -103,7 +103,7 @@ def scan_KL_EMD(
         time_start = time.time()
 
         # Resample for each target cell type because number of cells per type varies
-        sampled_rec_abundances, sampled_cell_type_labels = _sample_cells(
+        sampled_rec_abundances, sampled_cell_type_labels = sample_cells(
             rec_abundances,
             cell_type_labels,
             targ_cell_type=cell_type,
@@ -227,7 +227,7 @@ def scan_selectivity(
     for i, cell_type in enumerate(targ_cell_types):
         time_start = time.time()
 
-        sampled_rec_abundances, sampled_cell_type_labels = _sample_cells(
+        sampled_rec_abundances, sampled_cell_type_labels = sample_cells(
             rec_abundances,
             cell_type_labels,
             targ_cell_type=cell_type,

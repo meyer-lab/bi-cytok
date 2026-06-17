@@ -75,7 +75,7 @@ for target_pairs in all_targets:
     off_targ_recs = df_off_targ_cell[[signal[0]] + targets]
 
     for dose in dose_vec:
-        opt_selec, opt_params, _ = optimize_affs(
+        opt_selec, opt_affs, opt_Kx_star = optimize_affs(
             targRecs=targ_recs.to_numpy(),
             offTargRecs=off_targ_recs.to_numpy(),
             dose=dose,
@@ -84,9 +84,10 @@ for target_pairs in all_targets:
 
         r_bound = get_cell_bindings(
             recCounts=sample_df[[signal[0]] + targets].to_numpy(),
-            monomerAffs=opt_params,
+            monomerAffs=opt_affs,
             dose=dose,
             valencies=valencies,
+            Kx_star=opt_Kx_star,
         )
 
         cell_bind_df = sample_df[[signal[0]] + ["Cell Type"]]
@@ -98,7 +99,8 @@ for target_pairs in all_targets:
             "Selectivity": 1 / opt_selec,
             "Target Bound": cell_bind_df["Receptor Bound"].loc[targ_cell],
             "Ligand": " + ".join(naming),
-            "Affinities": opt_params,
+            "Kx_star": opt_Kx_star,
+            "Affinities": opt_affs,
         }
         df_temp = pd.DataFrame(
             data, columns=["Dose", "Selectivity", "Target Bound", "Ligand"]

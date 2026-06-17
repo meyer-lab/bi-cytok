@@ -1,5 +1,5 @@
 ---
-title: "Receptor Synergy Analysis"
+title: "Receptor Scan Synergy Analysis"
 ---
 
 # Summary
@@ -80,7 +80,7 @@ MIN_PAIR_METRIC = None
 # ── Detect scan type and load data from YAML ──────────────────────────────────
 yaml_path = os.path.splitext(SCAN_PATH)[0] + ".yaml"
 assert os.path.exists(yaml_path), (
-     f"YAML not found at {yaml_path}. Every scan must have an accompanying YAML file."
+    f"YAML not found at {yaml_path}. Every scan must have an accompanying YAML file."
 )
 with open(yaml_path) as f:
     scan_params = yaml.safe_load(f)
@@ -249,25 +249,23 @@ print(all_synergy_df.head(15).to_string(index=False))
 
 import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
-import seaborn as sns
-from matplotlib import gridspec
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 
 # ── Font size constants (used across all figure cells) ────────────────────────
-FS_TITLE = 11    # figure / subplot titles
-FS_LABEL = 15    # axis labels
-FS_TICK = 15      # tick labels
-FS_LEGEND = 12    # legend text
-FS_ANNOT = 10     # text annotations on figures
+FS_TITLE = 11  # figure / subplot titles
+FS_LABEL = 15  # axis labels
+FS_TICK = 15  # tick labels
+FS_LEGEND = 12  # legend text
+FS_ANNOT = 10  # text annotations on figures
 
 # ── Parameters ────────────────────────────────────────────────────────────────
-N_LABEL = 8           # top pairs to label per cell type
-N_NONSYN_REF = 3      # non-synergistic reference pairs per cell type
+N_LABEL = 8  # top pairs to label per cell type
+N_NONSYN_REF = 3  # non-synergistic reference pairs per cell type
 N_PAIRS_SUMMARY = 20  # top global pairs shown in the summary figure
 N_NONSYN_SUMMARY = 3  # non-synergistic reference pairs in the summary figure
-MIN_ALPHA = 0.04      # opacity of lowest-gain synergistic pairs
-MAX_ALPHA = 0.85      # opacity of highest-gain synergistic pairs
+MIN_ALPHA = 0.04  # opacity of lowest-gain synergistic pairs
+MAX_ALPHA = 0.85  # opacity of highest-gain synergistic pairs
 SYNERGY_CMAP = plt.cm.Reds
 NONSYN_COLOR = "#3A86FF"
 PLOT_CELL_TYPES = ["Treg", "CD4 TEM", "CD8 TEM", "B memory", "B naive"]
@@ -294,10 +292,16 @@ for ct in targ_cell_types:
             if j == i or partner in exclude_set:
                 continue
             if asym_scan:
-                vals = [v for v in [metric_2d[i, j], metric_2d[j, i]] if not np.isnan(v)]
+                vals = [
+                    v for v in [metric_2d[i, j], metric_2d[j, i]] if not np.isnan(v)
+                ]
                 val = max(vals) if vals else np.nan
             else:
-                val = metric_2d[i, j] if not np.isnan(metric_2d[i, j]) else metric_2d[j, i]
+                val = (
+                    metric_2d[i, j]
+                    if not np.isnan(metric_2d[i, j])
+                    else metric_2d[j, i]
+                )
             if not np.isnan(val) and (np.isnan(best_val) or val > best_val):
                 best_val, best_partner = val, partner
         info[rec] = (
@@ -465,7 +469,9 @@ for _, row in all_synergy_df.iterrows():
 top_global = (
     all_synergy_df.assign(
         pair_key=all_synergy_df.apply(
-            lambda r: (r["rec1"], r["rec2"]) if asym_scan else tuple(sorted([r["rec1"], r["rec2"]])),
+            lambda r: (r["rec1"], r["rec2"])
+            if asym_scan
+            else tuple(sorted([r["rec1"], r["rec2"]])),
             axis=1,
         )
     )
@@ -761,7 +767,9 @@ if not all_synergy_df.empty:
     top_s = (
         all_synergy_df.assign(
             pk=all_synergy_df.apply(
-                lambda r: (r["rec1"], r["rec2"]) if asym_scan else tuple(sorted([r["rec1"], r["rec2"]])),
+                lambda r: (r["rec1"], r["rec2"])
+                if asym_scan
+                else tuple(sorted([r["rec1"], r["rec2"]])),
                 axis=1,
             )
         )
@@ -786,6 +794,11 @@ if not all_synergy_df.empty:
 ```
 
 ```{python}
+# Raw distributions of high-synergy targets
+
+import seaborn as sns
+from matplotlib import gridspec
+
 from bicytok.imports import importCITE, sample_receptor_abundances
 
 # ── Load CITE-seq data and sample per cell type ───────────────────────────────
@@ -944,12 +957,15 @@ else:
         ]:
             ax_main.scatter(xs, ys, s=5, alpha=0.3, color=color, linewidths=0)
             if len(xs) > 10:
-                try:
-                    sns.kdeplot(
-                        x=xs, y=ys, color=color, levels=4, linewidths=1.0, ax=ax_main
-                    )
-                except Exception:
-                    pass
+                sns.kdeplot(
+                    x=xs,
+                    y=ys,
+                    color=color,
+                    levels=4,
+                    linewidths=1.0,
+                    ax=ax_main,
+                    warn_singular=False,
+                )
             ax_top.hist(xs, bins=35, alpha=0.55, color=color, label=lbl)
             ax_right.hist(
                 ys, bins=35, alpha=0.55, color=color, orientation="horizontal"

@@ -1,17 +1,15 @@
 SHELL := /bin/bash
 
-flist = $(wildcard bicytok/figures/figure*.py)
-
 .PHONY: clean test all testprofile pyright ruff-check-figures ruff-format-figures ruff-check-all ruff-format-all
 
-all: $(patsubst bicytok/figures/figure%.py, output/figure%.svg, $(flist))
-
-output/figure%.svg: bicytok/figures/figure%.py
-	@ mkdir -p ./output
-	uv run fbuild $*
+all: .venv
+	source .venv/bin/activate && \
+	find figures -name "*.qmd" | while read -r f; do \
+		QUARTO_PYTHON=.venv/bin/python quarto render "$$f" --to typst; \
+	done
 
 clean:
-	rm -r output
+	rm -rf _output
 
 test: .venv
 	uv run pytest -s -v -x
@@ -19,7 +17,7 @@ test: .venv
 .venv: pyproject.toml
 	uv sync --dev
 
-testprofile:
+testprofile: .venv
 	uv run python3 -m cProfile -o profile -m pytest -s -v -x
 	gprof2dot -f pstats --node-thres=5.0 profile | dot -Tsvg -o profile.svg
 

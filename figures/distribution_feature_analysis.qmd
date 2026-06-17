@@ -1,0 +1,383 @@
+---
+title: "Distribution feature correlation with selectivity metrics"
+---
+
+# Summary
+Computes distribution features characterizing how receptor abundances differ between
+target and off-target cell populations, then examines Spearman correlations between
+those features and three selectivity metrics: KL Divergence, EMD, and binding model
+selectivity. Each point in the scatter plots represents one receptor. A regression
+line and Spearman ρ (highlighted red when p < 0.05) are shown per panel.
+
+# Imports
+- CITE-seq surface marker expression data (`importCITE`)
+- 1D distance metric calculation functions (`KL_EMD_1D`)
+- Selectivity optimization functions (`optimize_affs`)
+
+# Parameters
+- `SIGNAL_RECEPTOR`: String name of receptor used for signal delivery in binding model
+- `SAMPLE_SIZE`: Integer number of cells sampled from CITE-seq data for analysis
+- `TARG_CELL`: String identifier for target cell type
+- `VALENCY`: Integer valency of each arm in the bivalent complex [signal, target]
+- `DOSE`: Float concentration of ligand complex in binding model
+- `CELL_CATEGORIZATION`: String column name for cell type classification in CITE-seq data
+
+# Outputs
+- **Scatter plot grid**: 9 rows (distribution features) × 3 columns (KL Divergence, EMD,
+  Selectivity). Each point is a receptor; feature name labels the left panel of each row.
+  Features are grouped by the distributional property they capture:
+
+  *Location:*
+    - *Log2 Mean FC*: log2(target mean / off-target mean)
+    - *Log2 Median FC*: log2(target median / off-target median); robust to outliers
+    - *Log2 90th Pct FC*: log2(target p90 / off-target p90); captures separation at the high end
+
+  *Spread:*
+    - *Log10 SD Ratio*: log10(target SD / off-target SD)
+    - *Log10 IQR Ratio*: log10(target IQR / off-target IQR); robust version of SD ratio
+    - *CV Difference*: target coefficient of variation minus off-target CV
+
+  *Shape:*
+    - *Skewness Difference*: target skewness minus off-target skewness
+    - *Kurtosis Difference*: target excess kurtosis minus off-target excess kurtosis
+    - *KS Statistic*: maximum absolute CDF difference between the two distributions
+
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import numpy as np
+import pandas as pd
+from scipy import stats
+
+from bicytok.distance_metric_funcs import KL_EMD_1D
+from bicytok.imports import (
+    filter_receptor_abundances,
+    importCITE,
+    sample_receptor_abundances,
+)
+from bicytok.selectivity_funcs import optimize_affs
+
+SIGNAL_RECEPTOR = "sim_signal"
+SAMPLE_SIZE = 1000
+# List of target cell types to analyze, or None to analyze all cell types in the data.
+TARG_CELL_TYPES: list[str] | None = ["Treg"]
+VALENCY = 1
+DOSE = 1e-10
+CELL_CATEGORIZATION = "CellType2"
+
+CITE_DF = importCITE()
+
+if TARG_CELL_TYPES is None:
+    TARG_CELL_TYPES = sorted(CITE_DF[CELL_CATEGORIZATION].unique().tolist())
+
+all_epitopes = [
+    col
+    for col in CITE_DF.columns
+    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
+]
+
+# Features ordered by conceptual group: location, spread, shape
+FEATURE_NAMES = [
+    "Log2 Mean FC",
+    "Log2 Median FC",
+    "Log2 90th Pct FC",
+    "Log10 SD Ratio",
+    "Log10 IQR Ratio",
+    "CV Difference",
+    "Skewness Difference",
+    "Kurtosis Difference",
+    "KS Statistic",
+]
+METRIC_NAMES = ["KL Divergence", "EMD", "Selectivity"]
+
+# ── Per-cell-type computation ──────────────────────────────────────────────────
+all_records = {}  # cell_type → records DataFrame
+
+for targ_cell in TARG_CELL_TYPES:
+    print(f"Processing {targ_cell}...")
+    assert targ_cell in CITE_DF[CELL_CATEGORIZATION].unique(), (
+        f"{targ_cell!r} not found in {CELL_CATEGORIZATION}"
+    )
+
+    epitopes_df = CITE_DF[all_epitopes + [CELL_CATEGORIZATION]].rename(
+        columns={CELL_CATEGORIZATION: "Cell Type"}
+    )
+    sample_df = sample_receptor_abundances(
+        CITE_DF=epitopes_df,
+        numCells=min(SAMPLE_SIZE, epitopes_df.shape[0]),
+        targCellType=targ_cell,
+        balance=True,
+        insert_mock_signal_rec=True,
+    )
+    filtered_sample_df = filter_receptor_abundances(
+        sample_df, targ_cell, whitelist=[SIGNAL_RECEPTOR]
+    )
+    epitopes = list(filtered_sample_df.columns[:-1])
+
+    # Filter bad receptors
+    epitopes = [
+        ep
+        for ep in epitopes
+        if (filtered_sample_df[ep].mean() > 5)
+        and (
+            filtered_sample_df[ep].mean()
+            > filtered_sample_df[ep][
+                filtered_sample_df["Cell Type"] != targ_cell
+            ].mean()
+        )
+    ]
+
+    on_target_mask = (filtered_sample_df["Cell Type"] == targ_cell).to_numpy()
+    off_target_mask = ~on_target_mask
+    df_targ = filtered_sample_df.loc[on_target_mask]
+    df_offtarg = filtered_sample_df.loc[off_target_mask]
+
+    records = []
+    for receptor in epitopes:
+        targ_abun = df_targ[receptor].to_numpy().astype(float)
+        offtarg_abun = df_offtarg[receptor].to_numpy().astype(float)
+
+        targ_mean = np.mean(targ_abun)
+        offtarg_mean = np.mean(offtarg_abun)
+        targ_std = np.std(targ_abun)
+        offtarg_std = np.std(offtarg_abun)
+        targ_median = np.median(targ_abun)
+        offtarg_median = np.median(offtarg_abun)
+        targ_p90 = np.percentile(targ_abun, 90)
+        offtarg_p90 = np.percentile(offtarg_abun, 90)
+        targ_iqr = np.percentile(targ_abun, 75) - np.percentile(targ_abun, 25)
+        offtarg_iqr = np.percentile(offtarg_abun, 75) - np.percentile(offtarg_abun, 25)
+
+        # --- Location ---
+        log2_mean_fc = (
+            np.log2(targ_mean / offtarg_mean)
+            if (targ_mean > 0 and offtarg_mean > 0)
+            else np.nan
+        )
+        log2_median_fc = (
+            np.log2(targ_median / offtarg_median)
+            if (targ_median > 0 and offtarg_median > 0)
+            else np.nan
+        )
+        log2_p90_fc = (
+            np.log2(targ_p90 / offtarg_p90)
+            if (targ_p90 > 0 and offtarg_p90 > 0)
+            else np.nan
+        )
+
+        # --- Spread ---
+        log_sd_ratio = (
+            np.log10(targ_std / offtarg_std)
+            if (targ_std > 0 and offtarg_std > 0)
+            else np.nan
+        )
+        log_iqr_ratio = (
+            np.log10(targ_iqr / offtarg_iqr)
+            if (targ_iqr > 0 and offtarg_iqr > 0)
+            else np.nan
+        )
+        cv_diff = (
+            (targ_std / targ_mean) - (offtarg_std / offtarg_mean)
+            if (targ_mean > 0 and offtarg_mean > 0)
+            else np.nan
+        )
+
+        # --- Shape ---
+        skew_diff = float(stats.skew(targ_abun)) - float(stats.skew(offtarg_abun))
+        kurt_diff = float(stats.kurtosis(targ_abun)) - float(
+            stats.kurtosis(offtarg_abun)
+        )
+        ks_stat = float(stats.ks_2samp(targ_abun, offtarg_abun).statistic)
+
+        # --- Distance metrics ---
+        rec_abun_2d = filtered_sample_df[receptor].to_numpy().reshape(-1, 1)
+        kl_vals, emd_vals = KL_EMD_1D(rec_abun_2d, on_target_mask, off_target_mask)
+        kl_div = float(kl_vals[0])
+        emd = float(emd_vals[0])
+
+        # --- Binding model selectivity ---
+        if receptor == SIGNAL_RECEPTOR:
+            selectivity = np.nan
+        else:
+            targ_recs = df_targ[[SIGNAL_RECEPTOR, receptor]].to_numpy()
+            offtarg_recs = df_offtarg[[SIGNAL_RECEPTOR, receptor]].to_numpy()
+            model_valencies = np.array([[VALENCY, VALENCY]])
+            opt_selec, _, _ = optimize_affs(
+                targRecs=targ_recs,
+                offTargRecs=offtarg_recs,
+                dose=DOSE,
+                valencies=model_valencies,
+                init_vals=[6.0, 7.0, -9.0],
+            )
+            selectivity = 1 / opt_selec
+
+        records.append(
+            {
+                "Receptor": receptor,
+                "Log2 Mean FC": log2_mean_fc,
+                "Log2 Median FC": log2_median_fc,
+                "Log2 90th Pct FC": log2_p90_fc,
+                "Log10 SD Ratio": log_sd_ratio,
+                "Log10 IQR Ratio": log_iqr_ratio,
+                "CV Difference": cv_diff,
+                "Skewness Difference": skew_diff,
+                "Kurtosis Difference": kurt_diff,
+                "KS Statistic": ks_stat,
+                "KL Divergence": kl_div,
+                "EMD": emd,
+                "Selectivity": selectivity,
+            }
+        )
+
+    all_records[targ_cell] = pd.DataFrame(records)
+    print(f"Completed {targ_cell}: {len(records)} receptors")
+
+# Backward-compatibility alias (first cell type)
+records_df = all_records[TARG_CELL_TYPES[0]]
+TARG_CELL = TARG_CELL_TYPES[0]
+
+# Pool all cell types into one DataFrame for combined analysis
+combined_df = pd.concat(
+    [df.assign(**{"Cell_Type": ct}) for ct, df in all_records.items()],
+    ignore_index=True,
+)
+```
+
+```{python}
+#| fig-cap: "Spearman correlation between distribution features and selectivity metrics (all cell types pooled)"
+import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
+
+SIG_COLOR = "#CF4D6F"
+NSIG_COLOR = "gray"
+SIG_THRESHOLD = 0.05
+GROUP_BOUNDARIES = {3, 6}
+
+n_ct = len(TARG_CELL_TYPES)
+_cmap = plt.colormaps["tab20"]
+ct_colors = {ct: _cmap(i / max(n_ct - 1, 1)) for i, ct in enumerate(TARG_CELL_TYPES)}
+
+fig, axes = plt.subplots(
+    len(FEATURE_NAMES),
+    len(METRIC_NAMES),
+    figsize=(15, 3.5 * len(FEATURE_NAMES)),
+)
+
+for row, feature in enumerate(FEATURE_NAMES):
+    for col, metric in enumerate(METRIC_NAMES):
+        ax = axes[row, col]
+
+        x = combined_df[feature].to_numpy(dtype=float)
+        y = combined_df[metric].to_numpy(dtype=float)
+        ct_col = combined_df["Cell_Type"].to_numpy()
+        valid = ~(np.isnan(x) | np.isnan(y) | np.isinf(x) | np.isinf(y))
+        x_v, y_v, ct_v = x[valid], y[valid], ct_col[valid]
+
+        for ct in TARG_CELL_TYPES:
+            mask = ct_v == ct
+            ax.scatter(
+                x_v[mask],
+                y_v[mask],
+                s=40,
+                alpha=0.45,
+                color=ct_colors[ct],
+                linewidths=0,
+            )
+
+        annot_color = NSIG_COLOR
+        if len(x_v) > 2:
+            m, b = np.polyfit(x_v, y_v, 1)
+            x_line = np.linspace(x_v.min(), x_v.max(), 100)
+            ax.plot(
+                x_line,
+                m * x_line + b,
+                color="black",
+                linestyle="--",
+                alpha=0.45,
+                linewidth=1.5,
+            )
+
+            rho, p_val = stats.spearmanr(x_v, y_v)
+            annot_color = SIG_COLOR if p_val < SIG_THRESHOLD else NSIG_COLOR
+            ax.annotate(
+                f"ρ = {rho:.2f}\np = {p_val:.2e}",
+                xy=(0.05, 0.95),
+                xycoords="axes fraction",
+                va="top",
+                fontsize=12,
+                color=annot_color,
+                bbox=dict(
+                    boxstyle="round,pad=0.3",
+                    facecolor="white",
+                    alpha=0.85,
+                    edgecolor=annot_color,
+                    linewidth=1.0,
+                ),
+            )
+
+        ax.grid(True, linestyle="--", alpha=0.35)
+        ax.tick_params(labelsize=12)
+
+        if row == 0:
+            ax.set_title(metric, fontsize=20, fontweight="bold", pad=6)
+
+        ax.set_ylabel(metric, fontsize=15)
+        ax.set_xlabel(feature, fontsize=15)
+
+        if row in GROUP_BOUNDARIES:
+            for spine in ax.spines.values():
+                spine.set_linewidth(1.8)
+                spine.set_edgecolor("#888888")
+
+handles = [
+    mlines.Line2D(
+        [0],
+        [0],
+        marker="o",
+        color="w",
+        markerfacecolor=ct_colors[ct],
+        markersize=6,
+        label=ct,
+    )
+    for ct in TARG_CELL_TYPES
+]
+fig.legend(
+    handles=handles,
+    title="Cell type",
+    bbox_to_anchor=(1.01, 0.5),
+    loc="center left",
+    fontsize=7,
+    title_fontsize=8,
+    framealpha=0.8,
+)
+
+plt.suptitle(
+    f"Distribution Features vs Selectivity Metrics — {len(TARG_CELL_TYPES)} cell types pooled, "
+    f"{len(combined_df)} receptor×cell-type pairs",
+    fontsize=13,
+    fontweight="bold",
+    y=1.005,
+)
+plt.tight_layout(h_pad=0.6, rect=[0, 0, 0.88, 1.0])
+plt.show()
+```
+
+## Parameter Summary
+```{python}
+#| output: asis
+ct_list = ", ".join(f"**{ct}**" for ct in TARG_CELL_TYPES)
+rec_counts = ", ".join(f"{ct}: {len(all_records[ct])}" for ct in TARG_CELL_TYPES)
+text = f"""
+Analyzed the Spearman correlation between 9 receptor distribution features and three
+selectivity metrics across {len(TARG_CELL_TYPES)} target cell type(s): {ct_list}.
+Signal receptor: **{SIGNAL_RECEPTOR}** with bivalent valency [{VALENCY}, {VALENCY}]
+at dose **{DOSE}**. Analysis performed on **{SAMPLE_SIZE}** sampled cells per cell type.
+Filtered receptor counts (mean abundance > 5 and higher target expression,
+plus whitelisted signal receptor) — {rec_counts}.
+
+Features are grouped into three conceptual categories: *location* (rows 1–3), *spread*
+(rows 4–6), and *shape* (rows 7–9). Correlation significance threshold:
+p < {SIG_THRESHOLD} (highlighted red).
+"""
+print(text)
+```
