@@ -9,7 +9,7 @@ import pandas as pd
 import os
 
 # New constants for export locations
-DATA_DIR = "/home/sama/bi-cytok-2/bicytok/data"
+DATA_DIR = "/home/sama/bi-cytok-2/data"
 CUSTOM_ANNOT_DIR = os.path.join(DATA_DIR, "custom_annotations")
 os.makedirs(CUSTOM_ANNOT_DIR, exist_ok=True)
 assert os.path.isdir(CUSTOM_ANNOT_DIR), f"Could not create custom annotations dir: {CUSTOM_ANNOT_DIR}"
@@ -66,45 +66,30 @@ plt.show()
 ```
 
 ```{python}
+from imports import importCITE
+# Filter cells and genes based on quality metrics
+# sc.pp.filter_cells(adata, min_genes=100)
+# sc.pp.filter_genes(adata, min_cells=3)
+```
+
+```{python}
 # Log normalize the data
-sc.pp.normalize_total(adata, target_sum=1e4)
+sc.pp.normalize_total(adata)
 sc.pp.log1p(adata)
 print("Log normalization completed")
 ```
 
 ```{python}
-sc.pp.highly_variable_genes(adata, min_mean=0.0005, max_mean=10, min_disp=0.5, flavor="seurat_v3")
+sc.pp.highly_variable_genes(adata, min_mean=0.01, max_mean=10, min_disp=0.5)
 adata_high_variability = adata[:, adata.var.highly_variable]
 print(adata_high_variability)
 ```
 
 ```{python}
-# Z-score the highly variable genes data
-sc.pp.scale(adata_high_variability, max_value=10)
-print("Z-score normalization completed")
-print(adata_high_variability)
-```
-
-```{python}
-# Select three random genes
-# np.random.seed(42)  # For reproducibility
-random_genes = np.random.choice(adata_high_variability.var_names, size=3, replace=False)
-print(f"Selected genes: {random_genes}")
-
-# Plot expression distributions
-fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-
-for i, gene in enumerate(random_genes):
-    gene_expression = adata_high_variability[:, gene].X.toarray().flatten()
-    
-    axes[i].hist(gene_expression, bins=50, alpha=0.7, edgecolor='black')
-    axes[i].set_title(f'Expression Distribution: {gene}')
-    axes[i].set_xlabel('Expression Level')
-    axes[i].set_ylabel('Number of Cells')
-    axes[i].grid(True, alpha=0.3)
-
-plt.tight_layout()
-plt.show()
+# # Z-score the highly variable genes data
+# sc.pp.scale(adata_high_variability, max_value=10)
+# print("Z-score normalization completed")
+# print(adata_high_variability)
 ```
 
 ```{python}
@@ -112,9 +97,7 @@ plt.show()
 N_PRINCIPAL_COMPONENTS = 50
 sc.tl.pca(adata_high_variability, n_comps=N_PRINCIPAL_COMPONENTS)
 print(f"PCA completed with {N_PRINCIPAL_COMPONENTS} components")
-```
 
-```{python}
 # Create elbow plot
 variance_ratio = adata_high_variability.uns['pca']['variance_ratio']
 
@@ -131,18 +114,14 @@ print(f"First 9 PCs explain {sum(variance_ratio[:9]):.3f} of total variance")
 
 ```{python}
 # Compute neighborhood graph
-N_NEIGHBORS = 15
-N_PCS = 9
-sc.pp.neighbors(adata_high_variability, n_neighbors=N_NEIGHBORS, n_pcs=N_PCS)
-print(f"Neighborhood graph computed using {N_NEIGHBORS} neighbors and {N_PCS} PCs")
+N_PCS = 8
+sc.pp.neighbors(adata_high_variability, n_pcs=N_PCS, n_neighbors=30)
 ```
 
 ```{python}
 # Perform Leiden clustering
-LEIDEN_RESOLUTION = 1.5
-sc.tl.leiden(adata_high_variability, resolution=LEIDEN_RESOLUTION, flavor="igraph", n_iterations=2, directed=False)
-print(f"Leiden clustering completed with resolution {LEIDEN_RESOLUTION}")
-print(f"Number of clusters: {len(adata_high_variability.obs['leiden'].unique())}")
+LEIDEN_RESOLUTION = 0.5
+sc.tl.leiden(adata_high_variability, random_state=42, resolution=LEIDEN_RESOLUTION, flavor="igraph", n_iterations=2, key_added=f"leiden")
 ```
 
 ```{python}
@@ -152,9 +131,23 @@ print("UMAP computation completed")
 ```
 
 ```{python}
+from imports import importCITE
+
+# Label doublets and pre-annotated cells
+CITE_data = importCITE()
+hao_annotations_mid = CITE_data["CellType2"]
+doublet_mask = [hao_annotations_mid[i] == "Doublet" for i in range(len(hao_annotations_mid))]
+adata_high_variability.obs["doublet"] = doublet_mask
+
+# Add pre-annotated cell types
+hao_annotations_low = CITE_data["CellType1"]
+adata_high_variability.obs["pre_annotated_low"] = [hao_annotations_low[i] for i in range(len(hao_annotations_low))]
+adata_high_variability.obs["pre_annotated_mid"] = [hao_annotations_mid[i] for i in range(len(hao_annotations_mid))]
+```
+
+```{python}
 # Visualize clusters in UMAP space (do not save images)
-sc.pl.umap(adata_high_variability, color='leiden', legend_loc='on data',
-           title='Leiden Clustering', frameon=False, show=True)
+sc.pl.umap(adata_high_variability, color=["leiden", "doublet", "pre_annotated_low", "pre_annotated_mid"], legend_loc='on data')
 plt.show()
 ```
 
