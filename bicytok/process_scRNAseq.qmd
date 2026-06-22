@@ -2,11 +2,14 @@
 
 
 ```{python}
+import warnings
 import scanpy as sc
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import os
+
+warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
 
 # New constants for export locations
 DATA_DIR = "/home/sama/bi-cytok-2/data"
@@ -73,7 +76,7 @@ print("Log normalization completed")
 ```
 
 ```{python}
-sc.pp.highly_variable_genes(adata, min_mean=0.01, max_mean=10, min_disp=0.5)
+sc.pp.highly_variable_genes(adata, min_mean=0.0005, max_mean=10, min_disp=0.5)
 adata_high_variability = adata[:, adata.var.highly_variable]
 print(adata_high_variability)
 ```
@@ -175,4 +178,189 @@ with open(out_path, "w") as f:
     f.write("\n".join(lines))
 
 print(f"Exported marker genes for {len(clusters)} clusters to {out_path}")
+```
+
+```{python}
+# After reviewing cluster_markers_for_annotation.md with Gemini, assign broad clusters here.
+# List the leiden cluster IDs (as strings) that belong to each broad cell type.
+BROAD_CLUSTER_ASSIGNMENTS = {
+    "B_cell":     ["10"],  # e.g. ["3", "7"]
+    "CD4_T_cell": ["5", "6", "7"],  # e.g. ["0", "2", "5"]
+    "NK_cell":    ["9"],  # e.g. ["1"]
+}
+
+# Sub-clustering parameters
+N_TOP_SUBCLUSTERS_GENES = 20
+SUBCLUSTER_LEIDEN_RESOLUTIONS = [0.08, 0.4, 0.14]
+
+# Cell types to highlight per broad group; everything else is colored gray
+RELEVANT_SUBTYPES = {
+    "B_cell":     {"B memory", "B intermediate", "B naive"},
+    "NK_cell":    {"NK", "NK Proliferating", "NK_CD56bright"},
+    "CD4_T_cell": {"CD4 TEM", "CD4 TCM", "CD4 CTL", "CD4 Naive", "CD4 Proliferating",
+                   "CD8 TEM", "CD8 TCM", "CD8 Naive", "CD8 Proliferating", "Treg"},
+}
+
+# Canonical markers to display in dot plots for each broad group.
+# Genes absent from the HVG set are skipped with a warning.
+CANONICAL_MARKERS = {
+    "B_cell": [
+        "MS4A1",     # CD20 — pan-B
+        "CD19",      # pan-B
+        "CD27",      # memory B
+        "CD21",       # CR2 — follicular/memory B
+        "IGHM",      # IgM — naive / unswitched
+        "IGHG1",     # class-switched memory
+        "BANK1",     # enriched in memory B
+        "TNFRSF13B", # TACI — memory / marginal zone B
+    ],
+    "CD4_T_cell": [
+        "FOXP3",     # master Treg TF
+        "IL2RA",     # CD25 — Treg activation marker
+        "CTLA4",     # co-inhibitory; high in Tregs
+        "IKZF2",     # Helios — thymic Treg marker
+        "TIGIT",     # co-inhibitory; enriched in Tregs
+        "TNFRSF18",  # GITR — Treg co-stimulatory receptor
+        "IL10",      # effector Treg cytokine
+    ],
+    "NK_cell": [
+        "NKG7",   # cytotoxic granule — pan-NK
+        "GNLY",   # granulysin — cytotoxic NK
+        "PRF1",   # perforin — cytotoxic NK
+        "GZMB",   # granzyme B — cytotoxic NK
+        "KLRD1",  # CD94 — NK/NKT
+        "NCAM1",  # CD56 — high on CD56bright
+        "FCGR3A", # CD16 — high on CD56dim cytotoxic NK
+        "XCL1",   # NK-derived chemokine; low on CD56bright
+    ],
+}
+```
+
+```{python}
+# Subset each broad group, re-select HVGs, run PCA, and plot elbow plots.
+# Stores prepared adata objects in adata_subs for the next cell.
+adata_subs = {}
+for broad_label, cluster_ids in BROAD_CLUSTER_ASSIGNMENTS.items():
+    if not cluster_ids:
+        print(f"Skipping {broad_label}: no clusters assigned")
+        continue
+
+    cell_mask = adata_high_variability.obs['leiden'].isin(cluster_ids)
+    cell_barcodes = adata_high_variability.obs_names[cell_mask]
+    adata_sub = adata[cell_barcodes].copy()
+    for col in ["leiden", "doublet", "pre_annotated_low", "pre_annotated_mid"]:
+        adata_sub.obs[col] = adata_high_variability.obs.loc[cell_barcodes, col]
+
+    sc.pp.highly_variable_genes(adata_sub, min_mean=0.0005, max_mean=10, min_disp=0.5)
+    adata_sub = adata_sub[:, adata_sub.var.highly_variable]
+    print(f"{broad_label}: {adata_sub.n_obs} cells, {adata_sub.n_vars} HVGs")
+
+    sc.tl.pca(adata_sub, n_comps=N_PRINCIPAL_COMPONENTS)
+
+    variance_ratio = adata_sub.uns['pca']['variance_ratio']
+    plt.figure(figsize=(8, 4))
+    plt.plot(range(1, len(variance_ratio) + 1), variance_ratio, 'bo-')
+    plt.xlabel('Principal Component')
+    plt.ylabel('Variance Ratio')
+    plt.title(f'{broad_label} PCA Elbow Plot')
+    plt.grid(True, alpha=0.3)
+    plt.show()
+
+    adata_subs[broad_label] = adata_sub
+
+print("Review elbow plots, set SUBCLUSTER_N_PCS below, then run the next cell.")
+```
+
+```{python}
+# Set the number of PCs to use for each lineage based on the elbow plots above.
+SUBCLUSTER_N_PCS = {
+    "B_cell":     6,
+    "CD4_T_cell": 6,
+    "NK_cell":    9,
+}
+```
+
+```{python}
+# Cluster, visualize, and export marker genes for each broad group.
+for i, (broad_label, cluster_ids) in enumerate(BROAD_CLUSTER_ASSIGNMENTS.items()):
+    if broad_label not in adata_subs:
+        continue
+
+    adata_sub = adata_subs[broad_label]
+    sc.pp.neighbors(adata_sub, n_pcs=SUBCLUSTER_N_PCS[broad_label], n_neighbors=15)
+    res = SUBCLUSTER_LEIDEN_RESOLUTIONS[i]
+    sc.tl.leiden(
+        adata_sub, random_state=42, resolution=res,
+        flavor="igraph", n_iterations=2, key_added="leiden_sub"
+    )
+    sc.tl.umap(adata_sub)
+
+    relevant = RELEVANT_SUBTYPES[broad_label]
+    adata_sub.obs['cell_type_highlight'] = adata_sub.obs['pre_annotated_mid'].apply(
+        lambda x: x if x in relevant else "Other"
+    )
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+    sc.pl.umap(adata_sub, color="leiden_sub", ax=axes[0], show=False,
+               title=f"{broad_label} sub-clusters")
+
+    coords = adata_sub.obsm['X_umap']
+    highlight = adata_sub.obs['cell_type_highlight']
+    other_mask = (highlight == "Other").values
+    axes[1].scatter(coords[other_mask, 0], coords[other_mask, 1],
+                    c='lightgray', s=2, alpha=0.4, rasterized=True)
+    present_relevant = sorted(t for t in highlight.unique() if t != "Other")
+    colors = plt.cm.tab10(np.linspace(0, 0.9, max(len(present_relevant), 1)))
+    for color, cell_type in zip(colors, present_relevant):
+        mask = (highlight == cell_type).values
+        axes[1].scatter(coords[mask, 0], coords[mask, 1],
+                        c=[color], s=4, label=cell_type, rasterized=True)
+    axes[1].legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8, markerscale=3)
+    axes[1].set_title(f"{broad_label} annotations")
+    axes[1].set_xlabel("UMAP1")
+    axes[1].set_ylabel("UMAP2")
+    axes[1].set_aspect('equal')
+    plt.tight_layout()
+    plt.show()
+
+    canonical = CANONICAL_MARKERS[broad_label]
+    present_canonical = [g for g in canonical if g in adata_sub.var_names]
+    missing_canonical = [g for g in canonical if g not in adata_sub.var_names]
+    if missing_canonical:
+        print(f"  Canonical markers not in HVG set (skipped): {missing_canonical}")
+    if present_canonical:
+        sc.pl.dotplot(adata_sub, present_canonical, groupby='leiden_sub', standard_scale='var',
+                      title=f"{broad_label} canonical markers")
+        plt.show()
+
+    sc.tl.rank_genes_groups(adata_sub, 'leiden_sub', method='wilcoxon')
+
+    sub_marker_df = sc.get.rank_genes_groups_df(adata_sub, group=None, key='rank_genes_groups')
+    subclusters = sorted(adata_sub.obs['leiden_sub'].unique(), key=lambda x: int(x))
+
+    target = {"B_cell": "Bmem", "CD4_T_cell": "Treg", "NK_cell": "non-proliferating non-CD56bright NK"}
+    lines = [
+        f"# {broad_label} Sub-cluster Marker Genes",
+        "",
+        f"Top marker genes per sub-cluster ranked by Wilcoxon test score. "
+        f"Please identify which sub-clusters are likely **{target[broad_label]}** "
+        f"based on canonical marker gene expression.",
+        "",
+    ]
+
+    for sub in subclusters:
+        top_genes = (
+            sub_marker_df[sub_marker_df['group'] == sub]
+            .nlargest(N_TOP_SUBCLUSTERS_GENES, 'scores')['names']
+            .tolist()
+        )
+        lines.append(f"## Sub-cluster {sub}")
+        lines.append(", ".join(top_genes))
+        lines.append("")
+
+    out_path = os.path.join(CUSTOM_ANNOT_DIR, f"{broad_label}_subclusters_for_annotation.md")
+    with open(out_path, "w") as f:
+        f.write("\n".join(lines))
+
+    print(f"  -> Exported {len(subclusters)} sub-clusters to {out_path}")
 ```
