@@ -143,3 +143,36 @@ sc.tl.rank_genes_groups(adata_high_variability, 'leiden', method='wilcoxon')
 sc.pl.rank_genes_groups(adata_high_variability, n_genes=20, sharey=False)
 plt.show()
 ```
+
+```{python}
+# Export top N marker genes per cluster to markdown for Gemini-assisted annotation
+N_TOP_GENES = 20
+
+marker_df = sc.get.rank_genes_groups_df(adata_high_variability, group=None, key='rank_genes_groups')
+clusters = sorted(adata_high_variability.obs['leiden'].unique(), key=lambda x: int(x))
+
+lines = [
+    "# Leiden Cluster Marker Genes",
+    "",
+    "Top marker genes per cluster ranked by Wilcoxon test score. "
+    "Please identify which clusters are likely **Treg**, **Bmem (memory B cells)**, or **NK cells** "
+    "based on canonical marker gene expression.",
+    "",
+]
+
+for cluster in clusters:
+    top_genes = (
+        marker_df[marker_df['group'] == cluster]
+        .nlargest(N_TOP_GENES, 'scores')['names']
+        .tolist()
+    )
+    lines.append(f"## Cluster {cluster}")
+    lines.append(", ".join(top_genes))
+    lines.append("")
+
+out_path = os.path.join(CUSTOM_ANNOT_DIR, "cluster_markers_for_annotation.md")
+with open(out_path, "w") as f:
+    f.write("\n".join(lines))
+
+print(f"Exported marker genes for {len(clusters)} clusters to {out_path}")
+```
