@@ -77,7 +77,13 @@ print("Log normalization completed")
 
 ```{python}
 sc.pp.highly_variable_genes(adata, min_mean=0.0005, max_mean=10, min_disp=0.5)
-adata_high_variability = adata[:, adata.var.highly_variable]
+adata_high_variability = adata[:, adata.var.highly_variable].copy()
+
+# Scale (z-score) HVGs as PCA input only -- this is NOT a permanent transform.
+# The log-normalized values are stashed in .raw first so that rank_genes_groups
+# and dotplots downstream read expression values, not z-scores.
+adata_high_variability.raw = adata_high_variability
+sc.pp.scale(adata_high_variability)
 print(adata_high_variability)
 ```
 
@@ -103,7 +109,7 @@ print(f"First 9 PCs explain {sum(variance_ratio[:9]):.3f} of total variance")
 
 ```{python}
 # Compute neighborhood graph
-N_PCS = 8
+N_PCS = 50
 sc.pp.neighbors(adata_high_variability, n_pcs=N_PCS, n_neighbors=15)
 ```
 
@@ -141,8 +147,9 @@ plt.show()
 ```
 
 ```{python}
-# Find marker genes for each cluster
-sc.tl.rank_genes_groups(adata_high_variability, 'leiden', method='wilcoxon')
+# Find marker genes for each cluster (use_raw reads log-normalized values from .raw,
+# not the scaled PCA-input matrix)
+sc.tl.rank_genes_groups(adata_high_variability, 'leiden', method='wilcoxon', use_raw=True)
 sc.pl.rank_genes_groups(adata_high_variability, n_genes=20, sharey=False)
 plt.show()
 ```
@@ -158,7 +165,7 @@ lines = [
     "# Leiden Cluster Marker Genes",
     "",
     "Top marker genes per cluster ranked by Wilcoxon test score. "
-    "Please identify which clusters are likely **Treg**, **Bmem (memory B cells)**, or **NK cells** "
+    "Please identify which clusters are likely **CD4+ T cells**, **B cells**, **NK cells**, or **dendritic cells** "
     "based on canonical marker gene expression.",
     "",
 ]
@@ -184,21 +191,24 @@ print(f"Exported marker genes for {len(clusters)} clusters to {out_path}")
 # After reviewing cluster_markers_for_annotation.md with Gemini, assign broad clusters here.
 # List the leiden cluster IDs (as strings) that belong to each broad cell type.
 BROAD_CLUSTER_ASSIGNMENTS = {
-    "B_cell":     ["10"],  # e.g. ["3", "7"]
-    "CD4_T_cell": ["5", "6", "7"],  # e.g. ["0", "2", "5"]
-    "NK_cell":    ["9"],  # e.g. ["1"]
+    # "B_cell":     ["14", "15"],  # e.g. ["3", "7"]
+    # "CD4_T_cell": ["5", "7"],  # e.g. ["0", "2", "5"]
+    # "NK_cell":    ["11", "13"],  # e.g. ["1"]
+    "DC":         ["17", "18"], # e.g. ["2"]
 }
 
 # Sub-clustering parameters
 N_TOP_SUBCLUSTERS_GENES = 20
-SUBCLUSTER_LEIDEN_RESOLUTIONS = [0.08, 0.4, 0.14]
+# SUBCLUSTER_LEIDEN_RESOLUTIONS = [0.2, 0.4, 0.3]
+SUBCLUSTER_LEIDEN_RESOLUTIONS = [0.15]
 
 # Cell types to highlight per broad group; everything else is colored gray
 RELEVANT_SUBTYPES = {
-    "B_cell":     {"B memory", "B intermediate", "B naive"},
-    "NK_cell":    {"NK", "NK Proliferating", "NK_CD56bright"},
-    "CD4_T_cell": {"CD4 TEM", "CD4 TCM", "CD4 CTL", "CD4 Naive", "CD4 Proliferating",
-                   "CD8 TEM", "CD8 TCM", "CD8 Naive", "CD8 Proliferating", "Treg"},
+    # "B_cell":     {"B memory", "B intermediate", "B naive"},
+    # "NK_cell":    {"NK", "NK Proliferating", "NK_CD56bright"},
+    "DC":  {"cDC1", "cDC2", "pDC", "ASDC"},
+    # "CD4_T_cell": {"CD4 TEM", "CD4 TCM", "CD4 CTL", "CD4 Naive", "CD4 Proliferating",
+    #                "CD8 TEM", "CD8 TCM", "CD8 Naive", "CD8 Proliferating", "Treg"},
 }
 
 # Canonical markers to display in dot plots for each broad group.
@@ -233,6 +243,12 @@ CANONICAL_MARKERS = {
         "FCGR3A", # CD16 — high on CD56dim cytotoxic NK
         "XCL1",   # NK-derived chemokine; low on CD56bright
     ],
+    "DC": [
+        "CD11C",    # CD11c — pan-DC
+        "CD14",     # CD14 — monocyte
+        "CD163",    # CD163 — macrophage
+        "CD209",    # CD209 — DC marker
+    ]
 }
 ```
 
@@ -252,9 +268,13 @@ for broad_label, cluster_ids in BROAD_CLUSTER_ASSIGNMENTS.items():
         adata_sub.obs[col] = adata_high_variability.obs.loc[cell_barcodes, col]
 
     sc.pp.highly_variable_genes(adata_sub, min_mean=0.0005, max_mean=10, min_disp=0.5)
-    adata_sub = adata_sub[:, adata_sub.var.highly_variable]
+    adata_sub = adata_sub[:, adata_sub.var.highly_variable].copy()
     print(f"{broad_label}: {adata_sub.n_obs} cells, {adata_sub.n_vars} HVGs")
 
+    # Same as the global step: keep log-normalized values in .raw and scale only
+    # the PCA input.
+    adata_sub.raw = adata_sub
+    sc.pp.scale(adata_sub)
     sc.tl.pca(adata_sub, n_comps=N_PRINCIPAL_COMPONENTS)
 
     variance_ratio = adata_sub.uns['pca']['variance_ratio']
@@ -274,9 +294,10 @@ print("Review elbow plots, set SUBCLUSTER_N_PCS below, then run the next cell.")
 ```{python}
 # Set the number of PCs to use for each lineage based on the elbow plots above.
 SUBCLUSTER_N_PCS = {
-    "B_cell":     6,
-    "CD4_T_cell": 6,
-    "NK_cell":    9,
+    "B_cell":     40,
+    "CD4_T_cell": 40,
+    "NK_cell":    40,
+    "DC":         40,
 }
 ```
 
@@ -330,10 +351,10 @@ for i, (broad_label, cluster_ids) in enumerate(BROAD_CLUSTER_ASSIGNMENTS.items()
         print(f"  Canonical markers not in HVG set (skipped): {missing_canonical}")
     if present_canonical:
         sc.pl.dotplot(adata_sub, present_canonical, groupby='leiden_sub', standard_scale='var',
-                      title=f"{broad_label} canonical markers")
+                      use_raw=True, title=f"{broad_label} canonical markers")
         plt.show()
 
-    sc.tl.rank_genes_groups(adata_sub, 'leiden_sub', method='wilcoxon')
+    sc.tl.rank_genes_groups(adata_sub, 'leiden_sub', method='wilcoxon', use_raw=True)
 
     sub_marker_df = sc.get.rank_genes_groups_df(adata_sub, group=None, key='rank_genes_groups')
     subclusters = sorted(adata_sub.obs['leiden_sub'].unique(), key=lambda x: int(x))
