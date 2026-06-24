@@ -29,8 +29,8 @@ two-level annotations (`CellType1`, `CellType2`) are written to CSV.
 - **QC plots**: Expression distributions of the top-expressed genes and per-cell metrics
 - **Sub-cluster UMAPs**: Leiden sub-clusters and pre-annotated cell types per lineage
 - **Canonical marker dot plots**: Marker expression per sub-cluster per lineage
-- **Global annotation UMAP**: Custom vs. CITE-seq annotations side by side
-- **Marker gene markdown files** and a **custom annotation CSV** in `custom_annotations/`
+- **Global annotation UMAP**: Transcript-based vs. CITE-seq annotations side by side
+- **Marker gene markdown files** and a **transcript-based annotation CSV** in `transcript-based_annotations/`
 
 ```{python}
 # 1. Global analyses: load, QC, normalize, cluster, annotate, and rank markers
@@ -405,27 +405,27 @@ adata_global = apply_subcluster_annotations(
 ```
 
 ```{python}
-# 8. Export the two-level custom annotations to CSV
+# 8. Export the two-level transcript-based annotations to CSV
 from bicytok.scrnaseq_annotation_funcs import export_annotations
 
 annot_df = export_annotations(
     adata_global,
     ["CellType1", "CellType2"],
-    os.path.join(CUSTOM_ANNOT_DIR, "custom_cell_type_annotations.csv"),
+    os.path.join(CUSTOM_ANNOT_DIR, "transcript-based_cell_type_annotations.csv"),
 )
 ```
 
 ```{python}
-#| fig-cap: "Custom (CellType1/2) vs. CITE-seq annotations on the global UMAP"
-# 9. Custom vs. CITE-seq annotations on the global UMAP
+#| fig-cap: "Transcript-based (CellType1/2) vs. CITE-seq annotations on the global UMAP"
+# 9. Transcript-based vs. CITE-seq annotations on the global UMAP
 
 fig, axes = plt.subplots(2, 2, figsize=(10, 8))
 for ax, key, title in zip(
     axes.flat,
     ["CellType1", "CellType2", "pre_annotated_level1", "pre_annotated_level2"],
     [
-        "CellType1 (custom)",
-        "CellType2 (custom)",
+        "CellType1 (transcript-base)",
+        "CellType2 (transcript-base)",
         "CellType1 (CITE-seq)",
         "CellType2 (CITE-seq)",
     ],
