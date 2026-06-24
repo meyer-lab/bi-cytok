@@ -33,7 +33,6 @@ two-level annotations (`CellType1`, `CellType2`) are written to CSV.
 - **Marker gene markdown files** and a **custom annotation CSV** in `custom_annotations/`
 
 ```{python}
-%config InlineBackend.figure_formats = ['svg']
 # 1. Global analyses: load, QC, normalize, cluster, annotate, and rank markers
 import os
 import warnings
