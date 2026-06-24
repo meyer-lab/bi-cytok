@@ -385,3 +385,135 @@ for i, (broad_label, cluster_ids) in enumerate(BROAD_CLUSTER_ASSIGNMENTS.items()
 
     print(f"  -> Exported {len(subclusters)} sub-clusters to {out_path}")
 ```
+
+```{python}
+# Print a summary of all cluster IDs at both levels to aid filling in annotations below.
+print("=== Level 1: Global Leiden Clusters ===")
+for cluster in sorted(adata_high_variability.obs['leiden'].unique(), key=int):
+    n = (adata_high_variability.obs['leiden'] == cluster).sum()
+    top = adata_high_variability.obs.loc[
+        adata_high_variability.obs['leiden'] == cluster, 'pre_annotated_mid'
+    ].value_counts()
+    top_str = ", ".join(f"{ct}({c})" for ct, c in top.head(3).items())
+    print(f"  Cluster {cluster:>2}: {n:>5} cells  [{top_str}]")
+
+print("\n=== Level 2: Sub-clusters ===")
+for broad_label, adata_sub in adata_subs.items():
+    print(f"\n  {broad_label}:")
+    for sub in sorted(adata_sub.obs['leiden_sub'].unique(), key=int):
+        n = (adata_sub.obs['leiden_sub'] == sub).sum()
+        top = adata_sub.obs.loc[
+            adata_sub.obs['leiden_sub'] == sub, 'pre_annotated_mid'
+        ].value_counts()
+        top_str = ", ".join(f"{ct}({c})" for ct, c in top.head(3).items())
+        print(f"    Sub-cluster {sub:>2}: {n:>5} cells  [{top_str}]")
+```
+
+```{python}
+# Fill in cell type names after reviewing the cluster summary, UMAPs, and marker files.
+# Omit a cluster entirely or set it to None to label those cells "Other".
+
+# Level 1: one label per global Leiden cluster.
+GLOBAL_CLUSTER_ANNOTATIONS: dict[str, str | None] = {
+    "0":  None,
+    "1":  None,
+    "2":  None,
+    "3":  None,
+    "4":  None,
+    "5":  "CD4 T",
+    "6":  None,
+    "7":  "CD4 T",
+    "8":  None,
+    "9":  None,
+    "10": None,
+    "11": "NK",
+    "12": None,
+    "13": "NK",
+    "14": "B",
+    "15": "B",
+    "16": None,
+    "17": "DC",
+    "18": "DC",
+}
+
+# Level 2: one label per sub-cluster within each broad group.
+# Cells not present here (or set to None) are labeled "Other"; level 1 is not inherited.
+SUBCLUSTER_ANNOTATIONS: dict[str, dict[str, str | None]] = {
+    "B_cell": {
+        "0": "B memory",
+        "1": "B naive",
+        "2": "B naive",
+        "3": None,
+        "4": "B naive",
+        "5": None,
+    },
+    "CD4_T_cell": {
+        "0": None,
+        "1": None,
+        "2": None,
+        "3": None,
+        "4": None,
+        "5": None,
+        "6": None,
+        "7": "Treg",
+        "8": None,
+        "9": None,
+        "10": None,
+    },
+    "NK_cell": {
+        "0": "NK",
+        "1": "NK",
+        "2": None,
+        "3": "NK",
+        "4": None,
+        "5": "NK_CD56bright",
+        "6": None,
+    },
+    "DC": {
+        "0": "pDC",
+        "1": "cDC2",
+        "2": "ASDC",
+        "3": "cDC1",
+        "4": "cDC2",
+    },
+}
+```
+
+```{python}
+# Apply annotations at both levels, propagate sub-cluster labels back to the global
+# object, visualize, and export.
+
+# CellType1: global Leiden cluster → annotation; anything not in the dict is "Other"
+adata_high_variability.obs['CellType1'] = (
+    adata_high_variability.obs['leiden']
+    .map(GLOBAL_CLUSTER_ANNOTATIONS)
+    .fillna("Other")
+)
+
+# CellType2: independent of CellType1 — only sub-cluster annotations count
+adata_high_variability.obs['CellType2'] = "Other"
+for broad_label, sub_map in SUBCLUSTER_ANNOTATIONS.items():
+    if broad_label not in adata_subs:
+        continue
+    adata_sub = adata_subs[broad_label]
+    for barcode, sub_id in adata_sub.obs['leiden_sub'].items():
+        label = sub_map.get(sub_id)
+        if label is not None:
+            adata_high_variability.obs.at[barcode, 'CellType2'] = label
+
+# Visualize both annotation levels on the global UMAP
+sc.pl.umap(adata_high_variability, color=['CellType1', 'CellType2'],
+           legend_loc='on data', title=['CellType1', 'CellType2'])
+plt.show()
+
+# Export to CSV
+annot_df = adata_high_variability.obs[['CellType1', 'CellType2']].copy()
+annot_df.index.name = 'barcode'
+out_path = os.path.join(CUSTOM_ANNOT_DIR, "custom_cell_type_annotations.csv")
+annot_df.to_csv(out_path)
+print(f"Saved annotations for {len(annot_df)} cells to {out_path}")
+print("CellType1:")
+print(annot_df['CellType1'].value_counts().to_string())
+print("\nCellType2:")
+print(annot_df['CellType2'].value_counts().to_string())
+```
