@@ -191,24 +191,23 @@ print(f"Exported marker genes for {len(clusters)} clusters to {out_path}")
 # After reviewing cluster_markers_for_annotation.md with Gemini, assign broad clusters here.
 # List the leiden cluster IDs (as strings) that belong to each broad cell type.
 BROAD_CLUSTER_ASSIGNMENTS = {
-    # "B_cell":     ["14", "15"],  # e.g. ["3", "7"]
-    # "CD4_T_cell": ["5", "7"],  # e.g. ["0", "2", "5"]
-    # "NK_cell":    ["11", "13"],  # e.g. ["1"]
+    "B_cell":     ["14", "15"],  # e.g. ["3", "7"]
+    "CD4_T_cell": ["5", "7"],  # e.g. ["0", "2", "5"]
+    "NK_cell":    ["11", "13"],  # e.g. ["1"]
     "DC":         ["17", "18"], # e.g. ["2"]
 }
 
 # Sub-clustering parameters
 N_TOP_SUBCLUSTERS_GENES = 20
-# SUBCLUSTER_LEIDEN_RESOLUTIONS = [0.2, 0.4, 0.3]
-SUBCLUSTER_LEIDEN_RESOLUTIONS = [0.15]
+SUBCLUSTER_LEIDEN_RESOLUTIONS = [0.2, 0.4, 0.2, 0.15]
 
 # Cell types to highlight per broad group; everything else is colored gray
 RELEVANT_SUBTYPES = {
-    # "B_cell":     {"B memory", "B intermediate", "B naive"},
-    # "NK_cell":    {"NK", "NK Proliferating", "NK_CD56bright"},
+    "B_cell":     {"B memory", "B intermediate", "B naive"},
+    "NK_cell":    {"NK", "NK Proliferating", "NK_CD56bright"},
     "DC":  {"cDC1", "cDC2", "pDC", "ASDC"},
-    # "CD4_T_cell": {"CD4 TEM", "CD4 TCM", "CD4 CTL", "CD4 Naive", "CD4 Proliferating",
-    #                "CD8 TEM", "CD8 TCM", "CD8 Naive", "CD8 Proliferating", "Treg"},
+    "CD4_T_cell": {"CD4 TEM", "CD4 TCM", "CD4 CTL", "CD4 Naive", "CD4 Proliferating",
+                   "CD8 TEM", "CD8 TCM", "CD8 Naive", "CD8 Proliferating", "Treg"},
 }
 
 # Canonical markers to display in dot plots for each broad group.
@@ -217,37 +216,71 @@ CANONICAL_MARKERS = {
     "B_cell": [
         "MS4A1",     # CD20 — pan-B
         "CD19",      # pan-B
-        "CD27",      # memory B
         "CD21",       # CR2 — follicular/memory B
-        "IGHM",      # IgM — naive / unswitched
-        "IGHG1",     # class-switched memory
-        "BANK1",     # enriched in memory B
-        "TNFRSF13B", # TACI — memory / marginal zone B
-    ],
+
+        "MME", # Transitional B cells
+        "CD9",
+        "CD38",
+        "PAX5",
+        "FCER2",
+
+        "IL4R", # Naive B cells
+        "IGHM", # Claude recommended
+
+        "AIM2", # Memory B cells
+        "IGHG1",
+        "IGHG2",
+        "IGHG3",
+        "IGHG4",
+        "IGHA1",
+        "IGHA2",
+        "TNFRSF13B", # Claude
+
+        "ITGAX", # Effector B cells
+        "FCRL4",
+        "FCRL5",
+        "ZEB2",
+    ], #['MS4A1', 'CD19', 'CD21', 'PAX5', 'IGHMAIM2', 'BANK1', 'FCRL4', 'FCRL4', 'TBX21', 'PDCD1', 'CD19', 'PRDM1', 'XBP1', 'MZB1']
     "CD4_T_cell": [
         "FOXP3",     # master Treg TF
         "IL2RA",     # CD25 — Treg activation marker
         "CTLA4",     # co-inhibitory; high in Tregs
-        "IKZF2",     # Helios — thymic Treg marker
         "TIGIT",     # co-inhibitory; enriched in Tregs
-        "TNFRSF18",  # GITR — Treg co-stimulatory receptor
         "IL10",      # effector Treg cytokine
     ],
     "NK_cell": [
-        "NKG7",   # cytotoxic granule — pan-NK
         "GNLY",   # granulysin — cytotoxic NK
         "PRF1",   # perforin — cytotoxic NK
         "GZMB",   # granzyme B — cytotoxic NK
-        "KLRD1",  # CD94 — NK/NKT
-        "NCAM1",  # CD56 — high on CD56bright
         "FCGR3A", # CD16 — high on CD56dim cytotoxic NK
-        "XCL1",   # NK-derived chemokine; low on CD56bright
+
+        "NCAM1",  # CD56 — high on CD56bright
+        "XCL1",   # NK-derived chemokine; high on CD56bright
+        "CCR7",
+        "KIT",
+
+        "CD8A", # NKT markers?
+        "CD3E",
     ],
     "DC": [
-        "CD11C",    # CD11c — pan-DC
-        "CD14",     # CD14 — monocyte
-        "CD163",    # CD163 — macrophage
-        "CD209",    # CD209 — DC marker
+        "AXL", # ASDC markers
+        "SIGLEC6",
+        "HAMP",
+
+        "CLEC9A", # cDC1 markers
+        "XCR1",
+        "IDO1",
+        "C1orf54",
+
+        "CD1C", # cDC2 markers
+        "FCN1",
+        "PILRA",
+
+        "PTCRA", # pDC markers
+        "SMIM5",
+        "LAMP5",
+        "IL3RA",
+        "JCHAIN",
     ]
 }
 ```
@@ -359,7 +392,7 @@ for i, (broad_label, cluster_ids) in enumerate(BROAD_CLUSTER_ASSIGNMENTS.items()
     sub_marker_df = sc.get.rank_genes_groups_df(adata_sub, group=None, key='rank_genes_groups')
     subclusters = sorted(adata_sub.obs['leiden_sub'].unique(), key=lambda x: int(x))
 
-    target = {"B_cell": "Bmem", "CD4_T_cell": "Treg", "NK_cell": "non-proliferating non-CD56bright NK"}
+    target = {"B_cell": "Bmem", "CD4_T_cell": "Treg", "NK_cell": "non-proliferating non-CD56bright NK", "DC": "cDC1"}
     lines = [
         f"# {broad_label} Sub-cluster Marker Genes",
         "",
