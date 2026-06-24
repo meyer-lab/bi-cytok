@@ -534,9 +534,16 @@ for broad_label, sub_map in SUBCLUSTER_ANNOTATIONS.items():
         if label is not None:
             adata_high_variability.obs.at[barcode, 'CellType2'] = label
 
-# Visualize both annotation levels on the global UMAP
-sc.pl.umap(adata_high_variability, color=['CellType1', 'CellType2'],
-           legend_loc='on data', title=['CellType1', 'CellType2'])
+# Visualize custom and pre-defined annotations side by side on the global UMAP
+fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+for ax, key, title in zip(
+    axes.flat,
+    ['CellType1', 'CellType2', 'pre_annotated_low', 'pre_annotated_mid'],
+    ['CellType1 (custom)', 'CellType2 (custom)', 'CellType1 (CITE-seq)', 'CellType2 (CITE-seq)'],
+):
+    sc.pl.umap(adata_high_variability, color=key, ax=ax, show=False,
+               legend_loc='on data', title=title)
+plt.tight_layout()
 plt.show()
 
 # Export to CSV
