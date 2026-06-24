@@ -436,3 +436,22 @@ for ax, key, title in zip(
 plt.tight_layout()
 plt.show()
 ```
+
+```{python}
+# 10. Append the transcript-based annotations to the CITE-seq surface marker dataset.
+# The CITE-seq rows align by position with the scRNA-seq cells, so the labels are
+# attached positionally.
+DATA_DIR = os.path.dirname(CUSTOM_ANNOT_DIR)
+
+cite_annotated = cite_df.copy()
+assert cite_annotated.shape[0] == adata_global.n_obs, (
+    "CITE-seq rows and annotated cells are misaligned"
+)
+cite_annotated["CellType1_RNA"] = adata_global.obs["CellType1"].to_numpy()
+cite_annotated["CellType2_RNA"] = adata_global.obs["CellType2"].to_numpy()
+
+out_path = os.path.join(DATA_DIR, "CITEdata_SurfMarkers_RNA_annotated.csv.zip")
+cite_annotated.to_csv(out_path, index=False)
+print(f"Wrote {cite_annotated.shape[0]} cells x {cite_annotated.shape[1]} columns to {out_path}")
+print(cite_annotated[["CellType1", "CellType2", "CellType1_RNA", "CellType2_RNA"]].head())
+```
