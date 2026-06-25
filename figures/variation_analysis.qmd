@@ -58,6 +58,8 @@ sample_df = sample_receptor_abundances(
     targCellType=targ_cell,
 )
 
+off_targ_cts = sample_df[sample_df["Cell Type"] != targ_cell]["Cell Type"].unique()
+
 metrics = []
 for sample_size in sample_sizes:
     target_cells = sample_df[sample_df["Cell Type"] == targ_cell]
@@ -105,6 +107,16 @@ for sample_size in sample_sizes:
             f"Sample Size: {sample_size}, Randomization: {i + 1}/{randomizations}, Model Time: {time_ellapsed_mod:.4f}s"
         )
 
+        off_targ_props = []
+        for ct in off_targ_cts:
+            if ct in sampled_off_target_cells["Cell Type"].unique():
+                off_targ_props.append(
+                    sampled_off_target_cells[sampled_off_target_cells["Cell Type"] == ct].shape[0]
+                    / sample_size
+                )
+            else:
+                off_targ_props.append(0)
+
         metrics.append(
             {
                 "sample_size": sample_size,
@@ -114,6 +126,7 @@ for sample_size in sample_sizes:
                 "affinities": opt_affs,
                 "model_time": time_ellapsed_mod,
                 "distance_metric_time": time_ellapsed_dist,
+                "off_target_props": off_targ_props,
             }
         )
 
@@ -175,6 +188,35 @@ avg_times = (
     .reset_index()
 )
 print(avg_times.to_string(index=False))
+```
+
+```{python}
+#| fig-cap: "Bootstrap variation in off-target cell proportions across sample sizes"
+off_targ_props_df = pd.DataFrame(
+    metrics_df["off_target_props"].tolist(), columns=[f"{ct}" for ct in off_targ_cts]
+)
+off_targ_props_df["sample_size"] = metrics_df["sample_size"].astype(str)
+
+off_targ_props_melted = off_targ_props_df.melt(
+    id_vars=["sample_size"],
+    value_vars=[f"{ct}" for ct in off_targ_cts],
+    var_name="Off-Target Cell Type",
+    value_name="Proportion",
+)
+
+# Plot horizontally to reduce x-axis clutter with many off-target cell types
+plt.figure(figsize=(14, 12))
+sns.boxplot(
+    y="Off-Target Cell Type",
+    x="Proportion",
+    hue="sample_size",
+    data=off_targ_props_melted,
+    orient="h",
+)
+plt.ylabel("Off-Target Cell Type", fontsize=15)
+plt.xlabel("Off-Target Proportion", fontsize=15)
+plt.legend(title="Sample Size", fontsize=12, bbox_to_anchor=(1.02, 1), loc="upper left")
+plt.show()
 ```
 
 ## Parameter Summary
