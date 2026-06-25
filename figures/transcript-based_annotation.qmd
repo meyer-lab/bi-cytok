@@ -39,8 +39,6 @@ import warnings
 
 import numpy as np
 import pandas as pd
-
-from bicytok.imports import importCITE
 from bicytok.scrnaseq_annotation_funcs import (
     add_reference_annotations,
     cluster_cells,
@@ -50,6 +48,8 @@ from bicytok.scrnaseq_annotation_funcs import (
     rank_marker_genes,
     reduce_dims,
 )
+
+from bicytok.imports import importCITE
 
 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
 
@@ -166,8 +166,11 @@ for i, (broad_label, cluster_ids) in enumerate(BROAD_CLUSTER_ASSIGNMENTS.items()
     adata_sub = subset_cells(adata, adata_global, cluster_ids)
     adata_sub = reduce_dims(adata_sub, MIN_MEAN, MAX_MEAN, MIN_DISP, N_GLOBAL_PCS)
     adata_sub = cluster_cells(
-        adata_sub, N_SUBCLUSTER_PCS, N_NEIGHBORS,
-        SUBCLUSTER_LEIDEN_RESOLUTIONS[i], "leiden_sub",
+        adata_sub,
+        N_SUBCLUSTER_PCS,
+        N_NEIGHBORS,
+        SUBCLUSTER_LEIDEN_RESOLUTIONS[i],
+        "leiden_sub",
     )
     adata_sub = rank_marker_genes(adata_sub, "leiden_sub")
     adata_subs[broad_label] = adata_sub
@@ -214,8 +217,16 @@ RELEVANT_SUBTYPES = {
     "NK_cell": {"NK", "NK Proliferating", "NK_CD56bright"},
     "DC": {"cDC1", "cDC2", "pDC", "ASDC"},
     "CD4_T_cell": {
-        "CD4 TEM", "CD4 TCM", "CD4 CTL", "CD4 Naive", "CD4 Proliferating",
-        "CD8 TEM", "CD8 TCM", "CD8 Naive", "CD8 Proliferating", "Treg",
+        "CD4 TEM",
+        "CD4 TCM",
+        "CD4 CTL",
+        "CD4 Naive",
+        "CD4 Proliferating",
+        "CD8 TEM",
+        "CD8 TCM",
+        "CD8 Naive",
+        "CD8 Proliferating",
+        "Treg",
     },
 }
 
@@ -291,21 +302,40 @@ for broad_label, adata_sub in adata_subs.items():
     )
 
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
-    sc.pl.umap(adata_sub, color="leiden_sub", ax=axes[0], show=False,
-               title=f"{broad_label} sub-clusters")
+    sc.pl.umap(
+        adata_sub,
+        color="leiden_sub",
+        ax=axes[0],
+        show=False,
+        title=f"{broad_label} sub-clusters",
+    )
 
     coords = adata_sub.obsm["X_umap"]
     highlight = adata_sub.obs["cell_type_highlight"]
     other_mask = (highlight == "Other").values
-    axes[1].scatter(coords[other_mask, 0], coords[other_mask, 1],
-                    c="lightgray", s=2, alpha=0.4, rasterized=True)
+    axes[1].scatter(
+        coords[other_mask, 0],
+        coords[other_mask, 1],
+        c="lightgray",
+        s=2,
+        alpha=0.4,
+        rasterized=True,
+    )
     present_relevant = sorted(t for t in highlight.unique() if t != "Other")
     colors = plt.cm.tab10(np.linspace(0, 0.9, max(len(present_relevant), 1)))
     for color, cell_type in zip(colors, present_relevant, strict=False):
         mask = (highlight == cell_type).values
-        axes[1].scatter(coords[mask, 0], coords[mask, 1],
-                        c=[color], s=4, label=cell_type, rasterized=True)
-    axes[1].legend(bbox_to_anchor=(1.05, 1), loc="upper left", fontsize=8, markerscale=3)
+        axes[1].scatter(
+            coords[mask, 0],
+            coords[mask, 1],
+            c=[color],
+            s=4,
+            label=cell_type,
+            rasterized=True,
+        )
+    axes[1].legend(
+        bbox_to_anchor=(1.05, 1), loc="upper left", fontsize=8, markerscale=3
+    )
     axes[1].set_title(f"{broad_label} annotations")
     axes[1].set_xlabel("UMAP1")
     axes[1].set_ylabel("UMAP2")
@@ -319,8 +349,14 @@ for broad_label, adata_sub in adata_subs.items():
     if missing:
         print(f"{broad_label}: canonical markers not in HVG set (skipped): {missing}")
     if present:
-        sc.pl.dotplot(adata_sub, present, groupby="leiden_sub", standard_scale="var",
-                      use_raw=True, title=f"{broad_label} canonical markers")
+        sc.pl.dotplot(
+            adata_sub,
+            present,
+            groupby="leiden_sub",
+            standard_scale="var",
+            use_raw=True,
+            title=f"{broad_label} canonical markers",
+        )
         plt.show()
 ```
 
@@ -431,8 +467,9 @@ for ax, key, title in zip(
     ],
     strict=True,
 ):
-    sc.pl.umap(adata_global, color=key, ax=ax, show=False,
-               legend_loc="on data", title=title)
+    sc.pl.umap(
+        adata_global, color=key, ax=ax, show=False, legend_loc="on data", title=title
+    )
 plt.tight_layout()
 plt.show()
 ```
@@ -452,6 +489,10 @@ cite_annotated["CellType2_RNA"] = adata_global.obs["CellType2"].to_numpy()
 
 out_path = os.path.join(DATA_DIR, "CITEdata_SurfMarkers_RNA_annotated.csv.zip")
 cite_annotated.to_csv(out_path, index=False)
-print(f"Wrote {cite_annotated.shape[0]} cells x {cite_annotated.shape[1]} columns to {out_path}")
-print(cite_annotated[["CellType1", "CellType2", "CellType1_RNA", "CellType2_RNA"]].head())
+print(
+    f"Wrote {cite_annotated.shape[0]} cells x {cite_annotated.shape[1]} columns to {out_path}"
+)
+print(
+    cite_annotated[["CellType1", "CellType2", "CellType1_RNA", "CellType2_RNA"]].head()
+)
 ```

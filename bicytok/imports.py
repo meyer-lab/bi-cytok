@@ -12,7 +12,9 @@ path_here = Path(__file__).parent.parent
 def importCITE(type: str = ""):
     """Downloads all surface markers and cell types"""
     if type == "RNA_annotated":
-        CITEmarkerDF = pd.read_csv(path_here / "data" / "CITEdata_SurfMarkers_RNA_annotated.csv.zip")
+        CITEmarkerDF = pd.read_csv(
+            path_here / "data" / "CITEdata_SurfMarkers_RNA_annotated.csv.zip"
+        )
         CITEmarkerDF["CellType1"] = CITEmarkerDF["CellType1_RNA"]
         CITEmarkerDF["CellType2"] = CITEmarkerDF["CellType2_RNA"]
         CITEmarkerDF = CITEmarkerDF.drop(columns=["CellType1_RNA", "CellType2_RNA"])
