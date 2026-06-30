@@ -48,25 +48,21 @@ x_limit = False
 normalize = False
 cell_type_labels = [targ_cell, "Off-target"]
 
-CITE_DF = importCITE()
+CITE_DF, cell_types = importCITE(cell_categorization)
 
-print(f"List of cell types in dataset: {CITE_DF[cell_categorization].unique()}")
+print(f"List of cell types in dataset: {cell_types.unique()}")
 print(f"List of receptors in dataset: {CITE_DF.columns.tolist()}")
 
-assert targ_cell in CITE_DF[cell_categorization].unique()
+assert targ_cell in cell_types.unique()
 
-epitopes = [
-    col
-    for col in CITE_DF.columns
-    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
-]
+epitopes = list(CITE_DF.columns)
 if receptor not in epitopes:
     raise ValueError(
         f"Receptor '{receptor}' not found. Available receptors: {epitopes}"
     )
 # Use converted receptor abundances to calculate metric values
-epitopes_df = CITE_DF[epitopes + [cell_categorization]]
-epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+epitopes_df = CITE_DF.copy()
+epitopes_df["Cell Type"] = cell_types
 sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,
     numCells=min(sample_size, epitopes_df.shape[0]),

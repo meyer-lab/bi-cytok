@@ -77,10 +77,11 @@ qc_top_genes = adata.var_names[np.argsort(adata.X.mean(axis=0).A1)[-N_TOP_EXPRES
 qc_top_gene_expr = {g: adata[:, g].X.toarray().flatten() for g in qc_top_genes}
 
 # Extract the pre-annotated reference cell type labels from the CITE-seq data
-cite_df = importCITE()
+_, pre_annotated_level1 = importCITE("CellType1")
+_, pre_annotated_level2 = importCITE("CellType2")
 reference_labels = {
-    "pre_annotated_level1": cite_df["CellType1"],
-    "pre_annotated_level2": cite_df["CellType2"],
+    "pre_annotated_level1": pre_annotated_level1,
+    "pre_annotated_level2": pre_annotated_level2,
 }
 
 # Global processing
