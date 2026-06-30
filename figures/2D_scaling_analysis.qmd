@@ -5,11 +5,6 @@ title: "2D receptor scaling analysis: Selectivity, EMD, and KL Divergence"
 # Summary
 Extends the 1D binding model scaling analysis to examine how independently scaling two target receptor distributions affects three metrics: selectivity (binding model), EMD, and KL divergence. A 2D grid of scale factors is swept, applying `scale1` to receptor 1 and `scale2` to receptor 2 for each cell. Results are shown as marginal line plots and 2D heatmaps.
 
-**Key properties of the metrics under scaling:**
-- **Selectivity**: depends on absolute receptor counts — varies with both `scale1` and `scale2`.
-- **EMD (raw)**: measures Euclidean transport cost between target and off-target distributions. Scales linearly when `scale1 = scale2`. Changes non-trivially with differential scaling (`scale1 ≠ scale2`) because it stretches the cost matrix differently per dimension.
-- **KL divergence**: mathematically scale-invariant by reparameterization invariance — `D_KL(P || Q)` is unchanged when both distributions are rescaled by the same factor(s). Expect a flat surface across the full 2D grid.
-
 # Imports
 - CITE-seq surface marker expression data (`importCITE`, `sample_receptor_abundances`)
 - Distance metric computation (`calculate_KL_EMD`)
@@ -33,7 +28,6 @@ Extends the 1D binding model scaling analysis to examine how independently scali
 import time
 
 import numpy as np
-import pandas as pd
 
 from bicytok.distance_metric_funcs import calculate_KL_EMD
 from bicytok.imports import importCITE, sample_receptor_abundances
@@ -168,7 +162,7 @@ for pair_idx, (pair_label, res) in enumerate(all_results.items()):
 
         # Top row: vary rec1 scale; each line = fixed rec2 scale
         ax_top = axes[met_idx * 2][pair_idx]
-        for j, s2 in enumerate(scale_factors):
+        for j in range(len(scale_factors)):
             ax_top.plot(
                 scale_factors,
                 res[met_key][:, j],
@@ -188,7 +182,7 @@ for pair_idx, (pair_label, res) in enumerate(all_results.items()):
 
         # Bottom row: vary rec2 scale; each line = fixed rec1 scale
         ax_bot = axes[met_idx * 2 + 1][pair_idx]
-        for i, s1 in enumerate(scale_factors):
+        for i in range(len(scale_factors)):
             ax_bot.plot(
                 scale_factors,
                 res[met_key][i, :],
@@ -211,7 +205,6 @@ plt.show()
 ```
 
 ## 2D Heatmaps
-
 ```{python}
 #| fig-cap: "2D heatmaps with scale1 on the y-axis and scale2 on the x-axis. Color encodes the metric value; EMD uses a log color scale. Dashed white lines mark the unscaled reference (scale = 1)."
 import matplotlib.colors as mcolors
