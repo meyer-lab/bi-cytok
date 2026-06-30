@@ -5,6 +5,7 @@ marker genes, annotations) are defined in the corresponding figure file:
 transcript-based_annotation.qmd.
 """
 
+import numpy as np
 import pandas as pd
 import scanpy as sc
 
@@ -24,8 +25,8 @@ def compute_cell_metrics(adata: sc.AnnData) -> sc.AnnData:
     """
     Adds per-cell number of detected genes and total counts to .obs.
     """
-    adata.obs["n_genes"] = (adata.X > 0).sum(axis=1)
-    adata.obs["total_counts"] = adata.X.sum(axis=1)
+    adata.obs["n_genes"] = np.asarray((adata.X > 0).sum(axis=1)).ravel()
+    adata.obs["total_counts"] = np.asarray(adata.X.sum(axis=1)).ravel()
     return adata
 
 
