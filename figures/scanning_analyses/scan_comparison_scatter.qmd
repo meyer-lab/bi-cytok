@@ -1,0 +1,251 @@
+---
+title: "Receptor Scan Comparison Scatter Plot"
+---
+
+# Summary
+Overlays receptor scan results for multiple target cell types on a single metric
+scatter plot. Each receptor pair appears once per cell type as a point colored by
+cell type, with no thresholding or labeling. Useful for visually assessing whether
+the metric landscape shifts across cell types and which pairs score consistently
+high or are cell-type-specific.
+
+# Inputs
+- Two CSV files produced by `run_selectivity_scan` or `run_KL_EMD_scan`
+  (may be the same file to compare two metrics within it); matching `.yaml` files must exist
+- `SCAN_PATH_1`, `SCAN_PATH_2`: paths to those CSVs
+- `KL_METRIC_1`, `KL_METRIC_2`: for KL/EMD scans, selects which method to use per path — `"KL_Divergence"` or `"EMD"`; metrics for selectivity scans are derived automatically
+- `AXIS_1_LABEL`, `AXIS_2_LABEL`: human-readable axis labels; set to `None` to auto-derive from the metric name
+- `TARG_CELL_TYPES`: list of target cell types to extract and overlay
+
+# Outputs
+- Scatter plot: x = metric 1, y = metric 2
+  - One color per cell type; all receptor pairs plotted as equal-sized points
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import os
+
+import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
+import pandas as pd
+import yaml
+
+# ── Parameters ────────────────────────────────────────────────────────────────
+SCAN_PATH_1 = "/home/sama/receptor_sweep_data/20260609_selec_scan_full_sigCD28.csv"
+SCAN_PATH_2 = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
+# SCAN_PATH_1 = (
+#     SCAN_PATH_2  # For comparing two metrics within the same scan, set paths equal.
+# )
+
+# For KL_EMD scans, selects which method to use as the axis metric.
+KL_METRIC_1 = "EMD"  # "KL_Divergence" or "EMD"
+KL_METRIC_2 = "EMD"
+
+# Human-readable axis labels; set to None to auto-derive from the metric name.
+AXIS_1_LABEL = None
+AXIS_2_LABEL = None
+
+
+# ── Derive metrics from YAML ───────────────────────────────────────────────────
+def _scan_metric(scan_path, kl_metric):
+    yaml_path = os.path.splitext(scan_path)[0] + ".yaml"
+    with open(yaml_path) as f:
+        scan_type = yaml.safe_load(f)["scan_type"]
+    return "Selectivity" if scan_type == "selectivity" else kl_metric
+
+
+METRIC_1 = _scan_metric(SCAN_PATH_1, KL_METRIC_1)
+METRIC_2 = _scan_metric(SCAN_PATH_2, KL_METRIC_2)
+AXIS_1_LABEL = AXIS_1_LABEL or METRIC_1.replace("_", " ")
+AXIS_2_LABEL = AXIS_2_LABEL or METRIC_2.replace("_", " ")
+
+# List of target cell types to overlay; each is plotted in a distinct color.
+TARG_CELL_TYPES: list[str] = [
+    "Treg",
+    "CD4 TEM",
+    "CD4 CTL",
+    "CD4 Naive",
+    "CD8 TEM",
+    "dnT",
+    "ILC",
+    "NK_CD56bright",
+]
+TARG_CELL_TYPES = None
+
+POINT_SIZE = 12
+POINT_ALPHA = 0.35
+AXIS_NORM = "z-score"  # "none", "z-score", "rank"
+DISP_LEGEND = False
+
+
+# ── Load scans ────────────────────────────────────────────────────────────────
+def load_scan_flat(path, metric_col, cell_type):
+    """Return DataFrame with columns rec1, rec2, metric for the given cell type."""
+    raw = pd.read_csv(path)
+    assert cell_type in raw["Cell_Type"].values, f"{cell_type!r} not found in {path}"
+    assert metric_col in raw.columns, f"{metric_col!r} not a column in {path}"
+    sub = raw[raw["Cell_Type"] == cell_type][
+        ["Receptor_1", "Receptor_2", metric_col]
+    ].copy()
+    return sub.rename(
+        columns={"Receptor_1": "rec1", "Receptor_2": "rec2", metric_col: "metric"}
+    ).reset_index(drop=True)
+
+
+# ── Resolve cell types ────────────────────────────────────────────────────────
+if TARG_CELL_TYPES is None:
+    ct1 = set(pd.read_csv(SCAN_PATH_1)["Cell_Type"].unique())
+    ct2 = set(pd.read_csv(SCAN_PATH_2)["Cell_Type"].unique())
+    TARG_CELL_TYPES = sorted(ct1 & ct2)
+
+# ── Load all cell-type data ────────────────────────────────────────────────────
+_ct_dfs = {}
+for cell_type in TARG_CELL_TYPES:
+    scan1 = load_scan_flat(SCAN_PATH_1, METRIC_1, cell_type)
+    scan2 = load_scan_flat(SCAN_PATH_2, METRIC_2, cell_type)
+    _merged = (
+        pd.merge(scan1, scan2, on=["rec1", "rec2"], suffixes=("_1", "_2"))
+        .rename(columns={"metric_1": "s1", "metric_2": "s2"})
+        .dropna(subset=["s1", "s2"])
+    )
+    assert len(_merged) > 0, f"No valid receptor pairs found for {cell_type!r}"
+    _merged["cell_type"] = cell_type
+    _ct_dfs[cell_type] = _merged
+
+# ── Apply normalization globally across all cell types ─────────────────────────
+_all = pd.concat(_ct_dfs.values(), ignore_index=True)
+if AXIS_NORM == "z-score":
+    _s1_mean, _s1_std = _all["s1"].mean(), _all["s1"].std() + 1e-9
+    _s2_mean, _s2_std = _all["s2"].mean(), _all["s2"].std() + 1e-9
+    _all["s1"] = (_all["s1"] - _s1_mean) / _s1_std
+    _all["s2"] = (_all["s2"] - _s2_mean) / _s2_std
+elif AXIS_NORM == "rank":
+    _all["s1"] = _all["s1"].rank(method="average")
+    _all["s2"] = _all["s2"].rank(method="average")
+
+_norm_suffix = {"none": "", "z-score": " (z-score)", "rank": " (rank)"}[AXIS_NORM]
+AXIS_1_LABEL = AXIS_1_LABEL + _norm_suffix
+AXIS_2_LABEL = AXIS_2_LABEL + _norm_suffix
+
+# ── Plot ──────────────────────────────────────────────────────────────────────
+_cmap = plt.colormaps["tab20"]
+cell_type_colors = {
+    ct: _cmap(i / max(len(TARG_CELL_TYPES) - 1, 1))
+    for i, ct in enumerate(TARG_CELL_TYPES)
+}
+
+fig, ax = plt.subplots(figsize=(7, 7))
+
+for cell_type in TARG_CELL_TYPES:
+    df = _all[_all["cell_type"] == cell_type]
+    ax.scatter(
+        df["s1"],
+        df["s2"],
+        s=POINT_SIZE,
+        alpha=POINT_ALPHA,
+        color=cell_type_colors[cell_type],
+        linewidths=0,
+        zorder=2,
+    )
+
+# Highlight the top-selectivity receptor pair for each cell type
+_top_pairs = _all.loc[_all.groupby("cell_type")["s1"].idxmax()]
+for _, row in _top_pairs.iterrows():
+    ax.scatter(
+        row["s1"],
+        row["s2"],
+        s=POINT_SIZE * 10,
+        marker="*",
+        color=cell_type_colors[row["cell_type"]],
+        edgecolors="black",
+        linewidths=0.5,
+        zorder=5,
+    )
+
+_top_pairs = _all.loc[_all.groupby("cell_type")["s2"].idxmax()]
+for _, row in _top_pairs.iterrows():
+    ax.scatter(
+        row["s1"],
+        row["s2"],
+        s=POINT_SIZE * 10,
+        marker="*",
+        color=cell_type_colors[row["cell_type"]],
+        edgecolors="black",
+        linewidths=0.5,
+        zorder=5,
+    )
+
+handles = [
+    mlines.Line2D(
+        [0],
+        [0],
+        marker="o",
+        color="w",
+        markerfacecolor=cell_type_colors[ct],
+        markersize=8,
+        label=ct,
+    )
+    for ct in TARG_CELL_TYPES
+]
+handles.append(
+    mlines.Line2D(
+        [0],
+        [0],
+        marker="*",
+        color="w",
+        markerfacecolor="gray",
+        markeredgecolor="black",
+        markeredgewidth=0.5,
+        markersize=12,
+        label="Top selectivity pair",
+    )
+)
+
+if DISP_LEGEND:
+    ax.legend(
+        handles=handles,
+        title="Cell type",
+        fontsize=9,
+        title_fontsize=10,
+        framealpha=0.8,
+    )
+
+ax.set_xlabel(AXIS_1_LABEL, fontsize=13)
+ax.set_ylabel(AXIS_2_LABEL, fontsize=13)
+types_str = (
+    ", ".join(TARG_CELL_TYPES)
+    if len(TARG_CELL_TYPES) <= 3
+    else f"{len(TARG_CELL_TYPES)} cell types"
+)
+ax.set_title(
+    f"{AXIS_1_LABEL} vs. {AXIS_2_LABEL}\nTargets: {types_str}",
+    fontsize=12,
+    pad=12,
+)
+ax.tick_params(labelsize=11)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+from scipy.stats import spearmanr
+
+rows = []
+for ct in TARG_CELL_TYPES:
+    sub = _all[_all["cell_type"] == ct]
+    r, p = spearmanr(sub["s1"], sub["s2"])
+    rows.append({"Cell Type": ct, "Spearman r": round(r, 4), "p-value": f"{p:.2e}"})
+
+overall_r, overall_p = spearmanr(_all["s1"], _all["s2"])
+rows.append(
+    {
+        "Cell Type": "Overall",
+        "Spearman r": round(overall_r, 4),
+        "p-value": f"{overall_p:.2e}",
+    }
+)
+
+corr_df = pd.DataFrame(rows)
+print(f"Spearman correlation: {AXIS_1_LABEL} vs. {AXIS_2_LABEL}\n")
+print(corr_df.to_string(index=False))
+```

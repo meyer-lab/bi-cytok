@@ -16,6 +16,7 @@ dependencies = [
     "pot>=0.9.6",
     "jaxtyping>=0.3.2",
     "jaxopt>=0.8.5",
+    "adjusttext>=1.4.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.13"
@@ -25,6 +26,7 @@ fbuild = "bicytok.figures.common:genFigure"
 distanceCSV = "bicytok.distance_metric_funcs:make_2D_distance_metrics"
 selectivity_scan = "figures.scanning_analyses.scan_runners:run_selectivity_scan"
 KL_EMD_scan = "figures.scanning_analyses.scan_runners:run_KL_EMD_scan"
+filt_scan = "figures.scanning_analyses.scan_runners:filter_scan_by_target_expr"
 
 [build-system]
 requires = ["hatchling"]
