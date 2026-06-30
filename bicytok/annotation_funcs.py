@@ -2,7 +2,7 @@
 Processing and export functions supporting transcript-based scRNA-seq cell type
 annotation. All user-specified parameters (cluster assignments, cell types of interest,
 marker genes, annotations) are defined in the corresponding figure file:
-transcript_annotation.qmd.
+transcript-based_annotation.qmd.
 """
 
 import pandas as pd

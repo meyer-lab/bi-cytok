@@ -39,7 +39,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from bicytok.scrnaseq_annotation_funcs import (
+from bicytok.annotation_funcs import (
     add_reference_annotations,
     cluster_cells,
     compute_cell_metrics,
@@ -93,7 +93,7 @@ adata_global = rank_marker_genes(adata_global, "leiden")
 
 ```{python}
 # 2. Export global cluster markers for Gemini-assisted broad-lineage annotation
-from bicytok.scrnaseq_annotation_funcs import export_marker_genes_md
+from bicytok.annotation_funcs import export_marker_genes_md
 
 N_TOP_GENES = 20
 global_instruction = (
@@ -141,7 +141,7 @@ plt.show()
 # 4. Sub-cluster analyses: subset each broad lineage, re-cluster, and rank markers.
 # After reviewing cluster_markers_for_annotation.md, assign global Leiden cluster
 # IDs (as strings) to each broad lineage below.
-from bicytok.scrnaseq_annotation_funcs import (
+from bicytok.annotation_funcs import (
     cluster_cells,
     reduce_dims,
     subset_cells,
@@ -362,7 +362,7 @@ for broad_label, adata_sub in adata_subs.items():
 
 ```{python}
 # 7. Annotation: review the cluster summary, then label clusters and sub-clusters.
-from bicytok.scrnaseq_annotation_funcs import (
+from bicytok.annotation_funcs import (
     apply_cluster_annotations,
     apply_subcluster_annotations,
 )
@@ -442,7 +442,7 @@ adata_global = apply_subcluster_annotations(
 
 ```{python}
 # 8. Export the two-level transcript-based annotations to CSV
-from bicytok.scrnaseq_annotation_funcs import export_annotations
+from bicytok.annotation_funcs import export_annotations
 
 annot_df = export_annotations(
     adata_global,
