@@ -110,8 +110,10 @@ def run_selectivity_scan():
     if expr_matching is not None:
         for i in range(len(receptors)):
             if (
-                i != signal_ind and signal != "prototype"
-            ):  # Don't scale the signal receptor if it's the prototype
+                i == signal_ind and signal == "prototype"
+            ): # Don't scale the signal receptor if it is the prototype
+                pass
+            else:
                 rec_abundances[:, i] = (
                     rec_abundances[:, i] * expr_matching / np.mean(rec_abundances[:, i])
                 )
