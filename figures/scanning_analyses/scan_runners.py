@@ -55,6 +55,7 @@ def run_selectivity_scan():
     )
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
     expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
+    annotation_type = "WNN"  # "WNN" or "RNA_annotated" for CITE-seq data annotation type
 
     # Binding model parameters
     dose = 1e-10
@@ -64,7 +65,7 @@ def run_selectivity_scan():
     asym_targs = False  # Calculates both symmetric cases (rec1, rec2) and (rec2, rec1)
 
     # Load and define receptor set
-    CITE_DF = importCITE()
+    CITE_DF = importCITE(annot_type=annotation_type)
     epitopes = CITE_DF.columns.tolist()
     exclude_cols = ["Cell", "CellType1", "CellType2", "CellType3"]
     if receptors is None:
@@ -181,6 +182,7 @@ def run_selectivity_scan():
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
             "expr_matching": expr_matching,
+            "annotation_type": annotation_type,
         },
         "binding_model": {
             "dose": float(dose),
@@ -239,6 +241,7 @@ def run_KL_EMD_scan():
     )
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
     expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
+    annotation_type = "WNN"  # "WNN" or "RNA_annotated" for CITE-seq data annotation type
 
     # Distance metric scan parameters
     filter_by_target_expr = (
@@ -246,7 +249,7 @@ def run_KL_EMD_scan():
     )
 
     # Load and define receptor set
-    CITE_DF = importCITE()
+    CITE_DF = importCITE(annot_type=annotation_type)
     epitopes = CITE_DF.columns.tolist()
     exclude_cols = ["Cell", "CellType1", "CellType2", "CellType3"]
     if receptors is None:
@@ -330,6 +333,7 @@ def run_KL_EMD_scan():
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
             "expr_matching": expr_matching,
+            "annotation_type": annotation_type,
         },
         "distance_metric": {
             "filter_by_target_expr": filter_by_target_expr,
