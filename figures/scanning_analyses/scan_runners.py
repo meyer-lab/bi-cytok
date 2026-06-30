@@ -55,7 +55,9 @@ def run_selectivity_scan():
     )
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
     expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
-    annotation_type = "WNN"  # "WNN" or "RNA_annotated" for CITE-seq data annotation type
+    annotation_type = (
+        "WNN"  # "WNN" or "RNA_annotated" for CITE-seq data annotation type
+    )
 
     # Binding model parameters
     dose = 1e-10
@@ -111,7 +113,7 @@ def run_selectivity_scan():
         for i in range(len(receptors)):
             if (
                 i == signal_ind and signal == "prototype"
-            ): # Don't scale the signal receptor if it is the prototype
+            ):  # Don't scale the signal receptor if it is the prototype
                 pass
             else:
                 rec_abundances[:, i] = (
@@ -243,7 +245,9 @@ def run_KL_EMD_scan():
     )
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
     expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
-    annotation_type = "WNN"  # "WNN" or "RNA_annotated" for CITE-seq data annotation type
+    annotation_type = (
+        "WNN"  # "WNN" or "RNA_annotated" for CITE-seq data annotation type
+    )
 
     # Distance metric scan parameters
     filter_by_target_expr = (
