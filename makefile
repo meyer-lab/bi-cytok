@@ -38,9 +38,11 @@ ruff-format-figures: .venv
 ruff-check-all: .venv
 	uv run ruff check --fix bicytok
 	uv run ruff check --fix tools
+	uv run ruff check --fix figures
 	uv run python tools/format_qmd.py check figures
 
 ruff-format-all: .venv
 	uv run ruff format bicytok
 	uv run ruff format tools
+	uv run ruff format figures
 	uv run python tools/format_qmd.py format figures

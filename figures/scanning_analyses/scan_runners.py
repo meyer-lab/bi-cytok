@@ -5,12 +5,14 @@ results.
 
 import argparse
 import os
-import yaml
+
 import numpy as np
 import pandas as pd
+import yaml
 
 from bicytok.imports import importCITE
-from bicytok.scanning_funcs import scan_selectivity, scan_KL_EMD, sample_cells
+from bicytok.scanning_funcs import sample_cells, scan_KL_EMD, scan_selectivity
+
 
 def run_selectivity_scan():
     """
@@ -35,40 +37,52 @@ def run_selectivity_scan():
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output-path", default="/home/sama/receptor_sweep_data/tmp_selectivity_scan.csv")
+    parser.add_argument(
+        "--output-path",
+        default="/home/sama/receptor_sweep_data/tmp_selectivity_scan.csv",
+    )
     args = parser.parse_args()
     output_path = args.output_path
 
     # General parameters (match distribution metric scans)
-    cell_categorization = "CellType2" # Cell types column to use
+    cell_categorization = "CellType2"  # Cell types column to use
     sample_size = 1000
-    min_avg_count = 5 # Expression threshold
-    receptors = None # Receptors to analyze; list or None for all
-    cell_types = None # Cell types to analyze; list or None for all
-    targ_cell_types = None # Target cell types for selectivity calculation; list or None for all
-    exclude_cell_types = False # Boolean to exclude cell types not in cell_types list
-    expr_matching = None # If not None, scales receptor expression values to match this average across all cell types
+    min_avg_count = 5  # Expression threshold
+    receptors = None  # Receptors to analyze; list or None for all
+    cell_types = None  # Cell types to analyze; list or None for all
+    targ_cell_types = (
+        None  # Target cell types for selectivity calculation; list or None for all
+    )
+    exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
+    expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
+    annotation_type = (
+        "WNN"  # "WNN" or "RNA_annotated" for CITE-seq data annotation type
+    )
 
     # Binding model parameters
     dose = 1e-10
     valency = np.array([[1, 1, 1]])
-    init = [6.0, 7.0, 7.0, -9.0] # Initial optimization values
-    signal = "prototype" # Define signal receptor; "prototype" or receptor name
-    asym_targs = False # Calculates both symmetric cases (rec1, rec2) and (rec2, rec1)
+    init = [6.0, 7.0, 7.0, -9.0]  # Initial optimization values
+    signal = "prototype"  # Define signal receptor; "prototype" or receptor name
+    asym_targs = False  # Calculates both symmetric cases (rec1, rec2) and (rec2, rec1)
 
     # Load and define receptor set
-    CITE_DF = importCITE()
+    CITE_DF = importCITE(annot_type=annotation_type)
     epitopes = CITE_DF.columns.tolist()
     exclude_cols = ["Cell", "CellType1", "CellType2", "CellType3"]
     if receptors is None:
         receptors = [ep for ep in epitopes if ep not in exclude_cols]
-    assert signal == "prototype" or signal in receptors, f"Signal receptor '{signal}' not found in receptors list"
-    
+    assert signal == "prototype" or signal in receptors, (
+        f"Signal receptor '{signal}' not found in receptors list"
+    )
+
     # Filter lowly expressed receptors
     mean_expr = CITE_DF[receptors].mean(axis=0)
     selected_receptors = mean_expr[mean_expr >= min_avg_count].index.tolist()
     assert len(selected_receptors) > 0, "No receptors pass the expression threshold"
-    assert signal == "prototype" or signal in selected_receptors, f"Signal receptor '{signal}' not found in selected receptors after filtering"
+    assert signal == "prototype" or signal in selected_receptors, (
+        f"Signal receptor '{signal}' not found in selected receptors after filtering"
+    )
     epitopes_df = CITE_DF[selected_receptors + [cell_categorization]]
     epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
     receptors = selected_receptors
@@ -77,14 +91,18 @@ def run_selectivity_scan():
     if signal == "prototype":
         # Insert prototype signal receptor with normally distributed expression values
         rng = np.random.default_rng()
-        prototype_signal_receptor = rng.normal(loc=50, scale=5, size=(epitopes_df.shape[0],))
-        prototype_signal_receptor = np.clip(prototype_signal_receptor, a_min=0, a_max=None)
+        prototype_signal_receptor = rng.normal(
+            loc=50, scale=5, size=(epitopes_df.shape[0],)
+        )
+        prototype_signal_receptor = np.clip(
+            prototype_signal_receptor, a_min=0, a_max=None
+        )
         epitopes_df.insert(0, "Prototype_Signal_Receptor", prototype_signal_receptor)
         receptors = ["Prototype_Signal_Receptor"] + receptors
         signal_ind = 0
     else:
         signal_ind = receptors.index(signal)
-    
+
     # Filter out unused cell types
     if cell_types is not None and exclude_cell_types:
         epitopes_df = epitopes_df[epitopes_df["Cell Type"].isin(cell_types)]
@@ -92,9 +110,15 @@ def run_selectivity_scan():
     # Match receptor abundance averages
     rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
     if expr_matching is not None:
-        for i, rec in enumerate(receptors):
-            if i != signal_ind and signal != "prototype":  # Don't scale the signal receptor if it's the prototype
-                rec_abundances[:, i] = rec_abundances[:, i] * expr_matching / np.mean(rec_abundances[:, i])
+        for i in range(len(receptors)):
+            if (
+                i == signal_ind and signal == "prototype"
+            ):  # Don't scale the signal receptor if it is the prototype
+                pass
+            else:
+                rec_abundances[:, i] = (
+                    rec_abundances[:, i] * expr_matching / np.mean(rec_abundances[:, i])
+                )
 
     # Define cell type labels if not pre-specified
     cell_type_labels = epitopes_df["Cell Type"].tolist()
@@ -102,12 +126,18 @@ def run_selectivity_scan():
         cell_types = list(set(cell_type_labels))
     if targ_cell_types is None:
         targ_cell_types = cell_types
-    
+
     print(f"Using receptors: {receptors}, total {len(receptors)} receptors.")
-    print(f"Total possible receptor pairs: {len(receptors) * (len(receptors) + 1) // 2}.")
-    print(f"Off-target cell types considered: {cell_types}, total {len(cell_types)} cell types.")
-    print(f"Target cell types for selectivity: {targ_cell_types}, total {len(targ_cell_types)} cell types.")
-    
+    print(
+        f"Total possible receptor pairs: {len(receptors) * (len(receptors) + 1) // 2}."
+    )
+    print(
+        f"Off-target cell types considered: {cell_types}, total {len(cell_types)} cell types."
+    )
+    print(
+        f"Target cell types for selectivity: {targ_cell_types}, total {len(targ_cell_types)} cell types."
+    )
+
     opt_selec, opt_affs, opt_Kx_star = scan_selectivity(
         rec_abundances,
         cell_type_labels,
@@ -156,6 +186,7 @@ def run_selectivity_scan():
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
             "expr_matching": expr_matching,
+            "annotation_type": annotation_type,
         },
         "binding_model": {
             "dose": float(dose),
@@ -197,30 +228,39 @@ def run_KL_EMD_scan():
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output-path", default="/home/sama/receptor_sweep_data/tmp_KL-EMD_scan.csv")
+    parser.add_argument(
+        "--output-path", default="/home/sama/receptor_sweep_data/tmp_KL-EMD_scan.csv"
+    )
     args = parser.parse_args()
     output_path = args.output_path
-    
+
     # General parameters (match selectivity scans)
-    cell_categorization = "CellType2" # Cell types column to use
+    cell_categorization = "CellType2"  # Cell types column to use
     sample_size = 1000
-    min_avg_count = 5 # Expression threshold
-    receptors = None # Receptors to analyze; list or None for all
-    cell_types = None # Cell types to analyze; list or None for all
-    targ_cell_types = None # Target cell types for selectivity calculation; list or None for all
-    exclude_cell_types = False # Boolean to exclude cell types not in cell_types list
-    expr_matching = None # If not None, scales receptor expression values to match this average across all cell types
+    min_avg_count = 5  # Expression threshold
+    receptors = None  # Receptors to analyze; list or None for all
+    cell_types = None  # Cell types to analyze; list or None for all
+    targ_cell_types = (
+        None  # Target cell types for selectivity calculation; list or None for all
+    )
+    exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
+    expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
+    annotation_type = (
+        "WNN"  # "WNN" or "RNA_annotated" for CITE-seq data annotation type
+    )
 
     # Distance metric scan parameters
-    filter_by_target_expr = False # Boolean to filter out receptors with higher off-target expression
+    filter_by_target_expr = (
+        False  # Boolean to filter out receptors with higher off-target expression
+    )
 
     # Load and define receptor set
-    CITE_DF = importCITE()
+    CITE_DF = importCITE(annot_type=annotation_type)
     epitopes = CITE_DF.columns.tolist()
     exclude_cols = ["Cell", "CellType1", "CellType2", "CellType3"]
     if receptors is None:
         receptors = [ep for ep in epitopes if ep not in exclude_cols]
-    
+
     # Filter lowly expressed receptors
     mean_expr = CITE_DF[receptors].mean(axis=0)
     selected_receptors = mean_expr[mean_expr >= min_avg_count].index.tolist()
@@ -236,8 +276,10 @@ def run_KL_EMD_scan():
     # Match receptor abundance averages
     rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
     if expr_matching is not None:
-        for i, rec in enumerate(receptors):
-            rec_abundances[:, i] = rec_abundances[:, i] * expr_matching / np.mean(rec_abundances[:, i])
+        for i in range(len(receptors)):
+            rec_abundances[:, i] = (
+                rec_abundances[:, i] * expr_matching / np.mean(rec_abundances[:, i])
+            )
 
     # Define cell type labels if not pre-specified
     cell_type_labels = epitopes_df["Cell Type"].tolist()
@@ -245,11 +287,17 @@ def run_KL_EMD_scan():
         cell_types = list(set(cell_type_labels))
     if targ_cell_types is None:
         targ_cell_types = cell_types
-    
+
     print(f"Using receptors: {receptors}, total {len(receptors)} receptors.")
-    print(f"Total possible receptor pairs: {len(receptors) * (len(receptors) + 1) // 2}.")
-    print(f"Off-target cell types considered: {cell_types}, total {len(cell_types)} cell types.")
-    print(f"Target cell types for selectivity: {targ_cell_types}, total {len(targ_cell_types)} cell types.")
+    print(
+        f"Total possible receptor pairs: {len(receptors) * (len(receptors) + 1) // 2}."
+    )
+    print(
+        f"Off-target cell types considered: {cell_types}, total {len(cell_types)} cell types."
+    )
+    print(
+        f"Target cell types for selectivity: {targ_cell_types}, total {len(targ_cell_types)} cell types."
+    )
 
     KL_results, EMD_results = scan_KL_EMD(
         rec_abundances,
@@ -268,13 +316,15 @@ def run_KL_EMD_scan():
             rec2_name = receptors[rec2_idx]
             KL_val = KL_results[rec1_idx, rec2_idx, i]
             EMD_val = EMD_results[rec1_idx, rec2_idx, i]
-            flattened_data.append({
-                "Cell_Type": cell_type,
-                "Receptor_1": rec1_name,
-                "Receptor_2": rec2_name,
-                "KL_Divergence": KL_val,
-                "EMD": EMD_val,
-            })
+            flattened_data.append(
+                {
+                    "Cell_Type": cell_type,
+                    "Receptor_1": rec1_name,
+                    "Receptor_2": rec2_name,
+                    "KL_Divergence": KL_val,
+                    "EMD": EMD_val,
+                }
+            )
     flattened_df = pd.DataFrame(flattened_data)
     flattened_df.to_csv(output_path, index=False)
 
@@ -289,6 +339,7 @@ def run_KL_EMD_scan():
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
             "expr_matching": expr_matching,
+            "annotation_type": annotation_type,
         },
         "distance_metric": {
             "filter_by_target_expr": filter_by_target_expr,
@@ -311,7 +362,7 @@ def load_selec_scan_results(results_path):
 
     Args:
         results_path (str): Path to the flattened CSV file containing scan results.
-    
+
     Returns:
         opt_selec (np.ndarray): 3D array of selectivity values indexed by receptor
             pairs and cell types.
@@ -333,14 +384,17 @@ def load_selec_scan_results(results_path):
 
     # Create receptor index mapping
     receptor_to_idx = {rec: idx for idx, rec in enumerate(all_receptors)}
-    
+
     # Reconstruct opt_selec matrix
-    n_affinities = len([col for col in scan_data.columns if col.startswith("Affinity_Receptor_")])
+    n_affinities = len(
+        [col for col in scan_data.columns if col.startswith("Affinity_Receptor_")]
+    )
     opt_selec = np.full(
         (len(all_receptors), len(all_receptors), len(cell_types_loaded)), np.nan
     )
     opt_affs = np.full(
-        (len(all_receptors), len(all_receptors), len(cell_types_loaded), n_affinities), np.nan
+        (len(all_receptors), len(all_receptors), len(cell_types_loaded), n_affinities),
+        np.nan,
     )
     opt_Kx_star = np.full(
         (len(all_receptors), len(all_receptors), len(cell_types_loaded)), np.nan
@@ -365,7 +419,7 @@ def load_KL_EMD_scan_results(results_path):
 
     Args:
         results_path (str): Path to the flattened CSV file containing scan results.
-    
+
     Returns:
         KL_results (np.ndarray): 3D array of KL divergence values indexed by receptor
             pairs and cell types.
@@ -433,7 +487,9 @@ def filter_scan_by_target_expr():
     filter_id = args.filter_id
 
     yaml_path = os.path.splitext(results_path)[0] + ".yaml"
-    assert os.path.exists(yaml_path), f"YAML file with scan parameters not found at {yaml_path}"
+    assert os.path.exists(yaml_path), (
+        f"YAML file with scan parameters not found at {yaml_path}"
+    )
     with open(yaml_path) as f:
         scan_params = yaml.safe_load(f)
 
@@ -469,15 +525,18 @@ def filter_scan_by_target_expr():
     cell_type_labels = epitopes_df["Cell Type"].tolist()
 
     # Receptors absent from CITE_DF (e.g. Prototype_Signal_Receptor) are always valid
-    all_scan_receptors = (
-        set(scan_data["Receptor_1"].unique()) | set(scan_data["Receptor_2"].unique())
+    all_scan_receptors = set(scan_data["Receptor_1"].unique()) | set(
+        scan_data["Receptor_2"].unique()
     )
     non_cite_receptors = all_scan_receptors - set(cite_receptors)
 
     for cell_type in targ_cell_types:
         sampled_rec_abundances, sampled_cell_type_labels = sample_cells(
-            rec_abundances, cell_type_labels, cell_type,
-            sample_size=sample_size, balance=balance,
+            rec_abundances,
+            cell_type_labels,
+            cell_type,
+            sample_size=sample_size,
+            balance=balance,
         )
 
         targ_mask = sampled_cell_type_labels == cell_type
@@ -485,10 +544,13 @@ def filter_scan_by_target_expr():
         mean_targ = sampled_rec_abundances[targ_mask, :].mean(axis=0)
         mean_off_targ = sampled_rec_abundances[off_targ_mask, :].mean(axis=0)
 
-        valid_receptors = (
-            {rec for rec, mt, mo in zip(cite_receptors, mean_targ, mean_off_targ) if mt > mo}
-            | non_cite_receptors
-        )
+        valid_receptors = {
+            rec
+            for rec, mt, mo in zip(
+                cite_receptors, mean_targ, mean_off_targ, strict=False
+            )
+            if mt > mo
+        } | non_cite_receptors
 
         ct_mask = scan_data["Cell_Type"] == cell_type
         invalid_mask = ct_mask & (
