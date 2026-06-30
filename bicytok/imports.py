@@ -10,7 +10,12 @@ path_here = Path(__file__).parent.parent
 
 def importCITE(annot_type: str = "WNN"):
     """
-    Downloads all surface markers and cell types
+    Loads CITE-seq surface marker counts and attaches cell type annotations.
+
+    The surface marker counts are stored once in CITEdata_SurfMarkers.parquet and
+    the cell type annotations are stored separately in
+    CITE_cell_type_annotations.parquet (one column per annotation type), aligned by
+    row position. This function joins the requested annotations onto the markers.
 
     Args:
         annot_type: str, either "WNN" or "RNA_annotated" to specify which CITE-seq
@@ -20,17 +25,18 @@ def importCITE(annot_type: str = "WNN"):
     """
     assert annot_type in ["WNN", "RNA_annotated"]
 
+    CITEmarkerDF = pd.read_parquet(path_here / "data" / "CITEdata_SurfMarkers.parquet")
+    annotDF = pd.read_parquet(
+        path_here / "data" / "CITE_cell_type_annotations.parquet"
+    )
+
     if annot_type == "RNA_annotated":
-        CITEmarkerDF = pd.read_parquet(
-            path_here / "data" / "CITEdata_SurfMarkers_RNA_annotated.parquet"
-        )
-        CITEmarkerDF["CellType1"] = CITEmarkerDF["CellType1_RNA"]
-        CITEmarkerDF["CellType2"] = CITEmarkerDF["CellType2_RNA"]
-        CITEmarkerDF = CITEmarkerDF.drop(columns=["CellType1_RNA", "CellType2_RNA"])
+        CITEmarkerDF["CellType1"] = annotDF["CellType1_RNA"].to_numpy()
+        CITEmarkerDF["CellType2"] = annotDF["CellType2_RNA"].to_numpy()
     elif annot_type == "WNN":
-        CITEmarkerDF = pd.read_parquet(
-            path_here / "data" / "CITEdata_SurfMarkers.parquet"
-        )
+        CITEmarkerDF["CellType1"] = annotDF["CellType1"].to_numpy()
+        CITEmarkerDF["CellType2"] = annotDF["CellType2"].to_numpy()
+        CITEmarkerDF["CellType3"] = annotDF["CellType3"].to_numpy()
     return CITEmarkerDF
 
 
