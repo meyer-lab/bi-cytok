@@ -33,7 +33,7 @@ from bicytok.imports import (
 )
 
 targ_cell = "Treg"
-sample_size = 100
+sample_size = 1000
 cell_categorization = "CellType2"
 
 CITE_DF = importCITE()
@@ -79,7 +79,7 @@ plt.bar(
 plt.tick_params(axis="x", labelsize=20)
 plt.tick_params(axis="y", labelsize=20)
 plt.ylabel("KL divergence", fontsize=25)
-plt.xticks(rotation=45)
+plt.xticks(rotation=45, ha="right")
 plt.show()
 ```
 
@@ -94,7 +94,7 @@ plt.bar(
 plt.tick_params(axis="x", labelsize=20)
 plt.tick_params(axis="y", labelsize=15)
 plt.ylabel("EMD", fontsize=25)
-plt.xticks(rotation=45)
+plt.xticks(rotation=45, ha="right")
 plt.show()
 ```
 

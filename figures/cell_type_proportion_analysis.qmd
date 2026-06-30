@@ -44,8 +44,8 @@ TARGET_PROPORTIONS = [0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99]
 RANDOMIZATIONS = 10
 TARG_CELL = "Treg"
 SIGNAL_RECEPTOR = "CD122"
-VALENCIES = np.array([[2, 1, 1]])
-TARGETS = ["CD25", "CD4-1"]
+VALENCIES = np.array([[1, 1, 1]])
+TARGETS = ["CD27", "CD4-1"]
 DOSE = 1e-10
 CELL_CATEGORIZATION = "CellType2"
 
@@ -87,6 +87,7 @@ for target_prop in TARGET_PROPORTIONS:
             offTargRecs=off_targ_recs,
             dose=DOSE,
             valencies=VALENCIES,
+            init_vals=[6.0, 7.0, 7.0, -9.0],
         )
         time_ellapsed_mod = time.time() - time_start_mod
         print(
