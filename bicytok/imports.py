@@ -1,7 +1,6 @@
 """File for importing and sampling CITE-seq data."""
 
 from pathlib import Path
-from zipfile import ZipFile
 
 import numpy as np
 import pandas as pd
@@ -22,21 +21,22 @@ def importCITE(annot_type: str = "WNN"):
     assert annot_type in ["WNN", "RNA_annotated"]
 
     if annot_type == "RNA_annotated":
-        CITEmarkerDF = pd.read_csv(
-            path_here / "data" / "CITEdata_SurfMarkers_RNA_annotated.csv.zip"
+        CITEmarkerDF = pd.read_parquet(
+            path_here / "data" / "CITEdata_SurfMarkers_RNA_annotated.parquet"
         )
         CITEmarkerDF["CellType1"] = CITEmarkerDF["CellType1_RNA"]
         CITEmarkerDF["CellType2"] = CITEmarkerDF["CellType2_RNA"]
         CITEmarkerDF = CITEmarkerDF.drop(columns=["CellType1_RNA", "CellType2_RNA"])
     elif annot_type == "WNN":
-        CITEmarkerDF = pd.read_csv(path_here / "data" / "CITEdata_SurfMarkers.zip")
+        CITEmarkerDF = pd.read_parquet(
+            path_here / "data" / "CITEdata_SurfMarkers.parquet"
+        )
     return CITEmarkerDF
 
 
 def importRNACITE():
     """Downloads all surface markers and cell types"""
-    with ZipFile(path_here / "data" / "RNAseqSurface.csv.zip") as zip_file:
-        RNAsurfDF = pd.read_csv(zip_file.open("RNAseqSurface.csv"))
+    RNAsurfDF = pd.read_parquet(path_here / "data" / "RNAseqSurface.parquet")
     return RNAsurfDF
 
 
