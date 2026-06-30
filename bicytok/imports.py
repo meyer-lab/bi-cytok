@@ -9,16 +9,26 @@ import pandas as pd
 path_here = Path(__file__).parent.parent
 
 
-def importCITE(type: str = ""):
-    """Downloads all surface markers and cell types"""
-    if type == "RNA_annotated":
+def importCITE(annot_type: str = "WNN"):
+    """
+    Downloads all surface markers and cell types
+
+    Args:
+        annot_type: str, either "WNN" or "RNA_annotated" to specify which CITE-seq
+            annotations to use. "WNN" uses original weighted nearest neighbor
+            annotations, while "RNA_annotated" uses custom annotations based on RNA
+            expression.
+    """
+    assert annot_type in ["WNN", "RNA_annotated"]
+
+    if annot_type == "RNA_annotated":
         CITEmarkerDF = pd.read_csv(
             path_here / "data" / "CITEdata_SurfMarkers_RNA_annotated.csv.zip"
         )
         CITEmarkerDF["CellType1"] = CITEmarkerDF["CellType1_RNA"]
         CITEmarkerDF["CellType2"] = CITEmarkerDF["CellType2_RNA"]
         CITEmarkerDF = CITEmarkerDF.drop(columns=["CellType1_RNA", "CellType2_RNA"])
-    else:
+    elif annot_type == "WNN":
         CITEmarkerDF = pd.read_csv(path_here / "data" / "CITEdata_SurfMarkers.zip")
     return CITEmarkerDF
 
