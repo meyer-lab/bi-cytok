@@ -79,7 +79,6 @@ source = { editable = "." }
 dependencies = [
     { name = "adjusttext" },
     { name = "anndata" },
-    { name = "hypothesis" },
     { name = "jax", extra = ["cuda12"] },
     { name = "jaxopt" },
     { name = "jaxtyping" },
@@ -112,7 +111,6 @@ dev = [
 requires-dist = [
     { name = "adjusttext", specifier = ">=1.4.0" },
     { name = "anndata", specifier = ">=0.12" },
-    { name = "hypothesis", specifier = ">=6.137.1" },
     { name = "jax", extras = ["cuda12"], specifier = ">=0.8" },
     { name = "jaxopt", specifier = ">=0.8.5" },
     { name = "jaxtyping", specifier = ">=0.3.2" },
