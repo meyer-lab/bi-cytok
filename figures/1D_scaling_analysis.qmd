@@ -55,16 +55,11 @@ kx_star_bounds = (-15, -3)
 num_conv_factors = 10
 conversion_factors = np.logspace(-1, 8, num=num_conv_factors)
 
-CITE_DF = importCITE()
-
-epitopes_all = [
-    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
-]
-epitopes_df = CITE_DF[epitopes_all + [cell_categorization]]
-epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+CITE_DF, cell_types = importCITE(cell_categorization)
+CITE_DF["Cell Type"] = cell_types
 
 sample_df = sample_receptor_abundances(
-    CITE_DF=epitopes_df,
+    CITE_DF=CITE_DF,
     numCells=sample_size,
     targCellType=targ_cell,
 )
