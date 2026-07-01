@@ -49,7 +49,21 @@ LITERATURE_TO_CITE: dict[str, list[str]] = {
     "B cells": ["B naive", "B memory", "B intermediate"],
     "NK cells": ["NK", "NK Proliferating", "NK_CD56bright"],
     "Plasma cells": ["Plasmablast"],
-    "T cells": ["CD4 Naive", "CD4 CTL", "CD4 TCM", "CD4 TEM", "CD8 Naive", "CD8 TCM", "CD8 TEM", "Treg", "CD4 Proliferating", "CD8 Proliferating", "dnT", "gdT", "MAIT"],
+    "T cells": [
+        "CD4 Naive",
+        "CD4 CTL",
+        "CD4 TCM",
+        "CD4 TEM",
+        "CD8 Naive",
+        "CD8 TCM",
+        "CD8 TEM",
+        "Treg",
+        "CD4 Proliferating",
+        "CD8 Proliferating",
+        "dnT",
+        "gdT",
+        "MAIT",
+    ],
     "Basophils": [],
     "Eosinophils": [],
     "Neutrophils": [],
@@ -65,7 +79,6 @@ print(density_summary.to_string())
 ```
 
 ```{python}
-import numpy as np
 import pandas as pd
 
 from bicytok.imports import importCITE, sample_receptor_abundances
@@ -95,7 +108,7 @@ for sample_size in SAMPLE_SIZES:
     num_target_cells = sample_size // 2
     num_off_target_cells = sample_size - num_target_cells
 
-    for i in range(RANDOMIZATIONS):
+    for _ in range(RANDOMIZATIONS):
         sampled_target_cells = target_cells.sample(
             min(num_target_cells, target_cells.shape[0]), replace=True
         )
@@ -123,7 +136,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 off_targ_props_df = pd.DataFrame(
-    proportions_df["off_target_props"].tolist(), columns=[f"{ct}" for ct in off_targ_cts]
+    proportions_df["off_target_props"].tolist(),
+    columns=[f"{ct}" for ct in off_targ_cts],
 )
 off_targ_props_df["sample_size"] = proportions_df["sample_size"].astype(str)
 
