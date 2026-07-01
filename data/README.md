@@ -31,7 +31,6 @@ Single-cell RNA-seq expression restricted to surface-protein-coding genes.
 - **Shape:** 161,764 cells (rows) × 490 columns.
 - **Grain:** one row per cell. Columns are gene symbols (e.g. `TNFRSF18`, `TNFRSF4`),
   plus a leading `Unnamed: 0` index column carried over from the source.
-- **Relationship to the CITE files:** contains the same cells as in.
 - **Loaded by:** `importRNACITE()`.
 - **Row alignment:** row `i` corresponds to the same cell as row `i` in
   `CITE_cell_type_annotations.parquet` and `CITEdata_SurfMarkers.parquet`.
