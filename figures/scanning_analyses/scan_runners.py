@@ -182,7 +182,6 @@ def run_selectivity_scan():
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
             "expr_matching": expr_matching,
-            "annotation_type": annotation_type,
         },
         "binding_model": {
             "dose": float(dose),
@@ -331,7 +330,6 @@ def run_KL_EMD_scan():
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
             "expr_matching": expr_matching,
-            "annotation_type": annotation_type,
         },
         "distance_metric": {
             "filter_by_target_expr": filter_by_target_expr,
