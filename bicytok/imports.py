@@ -58,7 +58,9 @@ def import_cell_densities(tissue: str = None) -> pd.DataFrame:
             "cell_type", and "density".
     """
     density_df = pd.read_csv(
-        path_here / "data" / "Sender_cell_type_densities.csv", index_col=0
+        path_here / "data" / "Sender_cell_type_densities.csv",
+        index_col=0,
+        encoding="utf-8-sig",
     )
 
     if tissue is not None:
