@@ -46,6 +46,32 @@ def importRNACITE():
     return RNAsurfDF
 
 
+def import_cell_densities(tissue: str = None) -> pd.DataFrame:
+    """
+    Loads literature-validated cell type densities from Sender_cell_type_densities.csv.
+    See data/README.md for details on the source and meaning of the data.
+
+    Args:
+        tissue: if provided, return only rows for this tissue (e.g. "Blood"). If
+            None, all tissues are returned.
+    Returns:
+        density_df: DataFrame of cell type densities. Key columns are "tissue",
+            "cell_type", and "density".
+    """
+    density_df = pd.read_csv(
+        path_here / "data" / "Sender_cell_type_densities.csv", index_col=0
+    )
+
+    if tissue is not None:
+        assert tissue in density_df["tissue"].unique(), (
+            f"Tissue '{tissue}' not found; "
+            f"available tissues: {sorted(density_df['tissue'].unique())}"
+        )
+        density_df = density_df[density_df["tissue"] == tissue].reset_index(drop=True)
+
+    return density_df
+
+
 def sample_receptor_abundances(
     CITE_DF: pd.DataFrame,
     numCells: int,

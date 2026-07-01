@@ -27,14 +27,11 @@ Bootstraps off-target cell type proportions from random samplings of the CITE-se
 %config InlineBackend.figure_formats = ['svg']
 import pandas as pd
 
-from bicytok.imports import path_here
+from bicytok.imports import import_cell_densities
 
 TISSUE = "Blood"
 
-density_df = pd.read_csv(
-    path_here / "data" / "Sender_cell_type_densities.csv", index_col=0
-)
-blood_df = density_df[density_df["tissue"] == TISSUE]
+blood_df = import_cell_densities(TISSUE)
 
 blood_densities = blood_df.set_index("cell_type")["density"]
 literature_props = blood_densities / blood_densities.sum()
