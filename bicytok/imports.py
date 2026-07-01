@@ -11,11 +11,7 @@ path_here = Path(__file__).parent.parent
 def importCITE(annotation: str = "CellType2"):
     """
     Loads CITE-seq surface marker counts and the matching cell type annotations.
-
-    The surface marker counts are stored once in CITEdata_SurfMarkers.parquet and the
-    cell type annotations are stored separately in CITE_cell_type_annotations.parquet
-    (one column per annotation type), aligned by row position. The marker counts and
-    the requested annotation column are returned separately.
+    See data/README.md for details on the source and meaning of the data.
 
     Args:
         annotation: name of the cell type annotation column to return. One of
@@ -41,7 +37,10 @@ def importCITE(annotation: str = "CellType2"):
 
 
 def importRNACITE():
-    """Downloads all surface markers and cell types"""
+    """
+    Loads mRNA counts of surface markers.
+    See data/README.md for details on the source and meaning of the data.
+    """
     RNAsurfDF = pd.read_parquet(path_here / "data" / "RNAseqSurface.parquet")
     return RNAsurfDF
 
