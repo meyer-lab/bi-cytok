@@ -45,7 +45,7 @@ def run_selectivity_scan():
     output_path = args.output_path
 
     # General parameters (match distribution metric scans)
-    cell_categorization = "CellType2"  # Cell types column to use
+    annotation_type = "CellType2"  # CITE-seq cell type annotation column; e.g. "CellType2" (WNN) or "CellType2_RNA" (transcript-based)
     sample_size = 1000
     min_avg_count = 5  # Expression threshold
     receptors = None  # Receptors to analyze; list or None for all
@@ -55,9 +55,6 @@ def run_selectivity_scan():
     )
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
     expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
-    annotation_type = (
-        "WNN"  # "WNN" or "RNA_annotated" for CITE-seq data annotation type
-    )
 
     # Binding model parameters
     dose = 1e-10
@@ -67,11 +64,10 @@ def run_selectivity_scan():
     asym_targs = False  # Calculates both symmetric cases (rec1, rec2) and (rec2, rec1)
 
     # Load and define receptor set
-    CITE_DF = importCITE(annot_type=annotation_type)
+    CITE_DF, cite_labels = importCITE(annotation_type)
     epitopes = CITE_DF.columns.tolist()
-    exclude_cols = ["Cell", "CellType1", "CellType2", "CellType3"]
     if receptors is None:
-        receptors = [ep for ep in epitopes if ep not in exclude_cols]
+        receptors = list(epitopes)
     assert signal == "prototype" or signal in receptors, (
         f"Signal receptor '{signal}' not found in receptors list"
     )
@@ -83,8 +79,8 @@ def run_selectivity_scan():
     assert signal == "prototype" or signal in selected_receptors, (
         f"Signal receptor '{signal}' not found in selected receptors after filtering"
     )
-    epitopes_df = CITE_DF[selected_receptors + [cell_categorization]]
-    epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+    epitopes_df = CITE_DF[selected_receptors].copy()
+    epitopes_df["Cell Type"] = cite_labels
     receptors = selected_receptors
 
     # Define signal receptor for binding model selectivity ratio
@@ -180,7 +176,7 @@ def run_selectivity_scan():
         "scan_type": "selectivity",
         "output_csv": output_path,
         "general": {
-            "cell_categorization": cell_categorization,
+            "annotation_type": annotation_type,
             "sample_size": sample_size,
             "min_expression_threshold": min_avg_count,
             "exclude_unused_cell_types": exclude_cell_types,
@@ -235,7 +231,7 @@ def run_KL_EMD_scan():
     output_path = args.output_path
 
     # General parameters (match selectivity scans)
-    cell_categorization = "CellType2"  # Cell types column to use
+    annotation_type = "CellType2"  # CITE-seq cell type annotation column; e.g. "CellType2" (WNN) or "CellType2_RNA" (transcript-based)
     sample_size = 1000
     min_avg_count = 5  # Expression threshold
     receptors = None  # Receptors to analyze; list or None for all
@@ -245,9 +241,6 @@ def run_KL_EMD_scan():
     )
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
     expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
-    annotation_type = (
-        "WNN"  # "WNN" or "RNA_annotated" for CITE-seq data annotation type
-    )
 
     # Distance metric scan parameters
     filter_by_target_expr = (
@@ -255,18 +248,17 @@ def run_KL_EMD_scan():
     )
 
     # Load and define receptor set
-    CITE_DF = importCITE(annot_type=annotation_type)
+    CITE_DF, cite_labels = importCITE(annotation_type)
     epitopes = CITE_DF.columns.tolist()
-    exclude_cols = ["Cell", "CellType1", "CellType2", "CellType3"]
     if receptors is None:
-        receptors = [ep for ep in epitopes if ep not in exclude_cols]
+        receptors = list(epitopes)
 
     # Filter lowly expressed receptors
     mean_expr = CITE_DF[receptors].mean(axis=0)
     selected_receptors = mean_expr[mean_expr >= min_avg_count].index.tolist()
     assert len(selected_receptors) > 0, "No receptors pass the expression threshold"
-    epitopes_df = CITE_DF[selected_receptors + [cell_categorization]]
-    epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+    epitopes_df = CITE_DF[selected_receptors].copy()
+    epitopes_df["Cell Type"] = cite_labels
     receptors = selected_receptors
 
     # Filter out unused cell types
@@ -333,7 +325,7 @@ def run_KL_EMD_scan():
         "scan_type": "KL_EMD",
         "output_csv": output_path,
         "general": {
-            "cell_categorization": cell_categorization,
+            "annotation_type": annotation_type,
             "sample_size": sample_size,
             "min_expression_threshold": min_avg_count,
             "exclude_unused_cell_types": exclude_cell_types,
@@ -494,7 +486,7 @@ def filter_scan_by_target_expr():
         scan_params = yaml.safe_load(f)
 
     scan_type = scan_params["scan_type"]
-    cell_categorization = scan_params["general"]["cell_categorization"]
+    annotation_type = scan_params["general"]["annotation_type"]
     sample_size = scan_params["general"]["sample_size"]
     targ_cell_types = scan_params["target_cell_types"]
     min_avg_count = scan_params["general"]["min_expression_threshold"]
@@ -512,15 +504,13 @@ def filter_scan_by_target_expr():
     else:
         raise ValueError(f"Unknown scan_type '{scan_type}' in {yaml_path}")
 
-    CITE_DF = importCITE()
-    exclude_cols = ["Cell", "CellType1", "CellType2", "CellType3"]
-    cite_receptors = [ep for ep in CITE_DF.columns if ep not in exclude_cols]
+    CITE_DF, cite_labels = importCITE(annotation_type)
+    cite_receptors = list(CITE_DF.columns)
     mean_expr = CITE_DF[cite_receptors].mean(axis=0)
     cite_receptors = mean_expr[mean_expr >= min_avg_count].index.tolist()
 
-    epitopes_df = CITE_DF[cite_receptors + [cell_categorization]].rename(
-        columns={cell_categorization: "Cell Type"}
-    )
+    epitopes_df = CITE_DF[cite_receptors].copy()
+    epitopes_df["Cell Type"] = cite_labels
     rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
     cell_type_labels = epitopes_df["Cell Type"].tolist()
 

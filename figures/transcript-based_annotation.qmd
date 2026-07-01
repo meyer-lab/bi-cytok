@@ -8,7 +8,8 @@ et al. 10X scRNA-seq data. The data are normalized, reduced to highly variable
 genes, and Leiden-clustered globally. Broad lineages (B cells, CD4 T cells, NK
 cells, dendritic cells) are then subset, re-clustered, and annotated at finer
 resolution. Marker genes are exported per cluster for review, and the resulting
-two-level annotations (`CellType1`, `CellType2`) are written to CSV.
+two-level annotations (`CellType1`, `CellType2`) are written into the consolidated
+CITE-seq annotation file as the `CellType1_RNA`/`CellType2_RNA` columns.
 
 # Imports
 - 10X scRNA-seq expression data (`load_scRNAseq_data`)
@@ -30,7 +31,8 @@ two-level annotations (`CellType1`, `CellType2`) are written to CSV.
 - **Sub-cluster UMAPs**: Leiden sub-clusters and pre-annotated cell types per lineage
 - **Canonical marker dot plots**: Marker expression per sub-cluster per lineage
 - **Global annotation UMAP**: Transcript-based vs. CITE-seq annotations side by side
-- **Marker gene markdown files** and a **transcript-based annotation CSV** in `transcript-based_annotations/`
+- **Marker gene markdown files** in `transcript-based_annotations/`
+- **Updated `CellType1_RNA`/`CellType2_RNA` columns** in `data/CITE_cell_type_annotations.parquet`
 
 ```{python}
 # 1. Global analyses: load, QC, normalize, cluster, annotate, and rank markers
@@ -75,10 +77,11 @@ qc_top_genes = adata.var_names[np.argsort(adata.X.mean(axis=0).A1)[-N_TOP_EXPRES
 qc_top_gene_expr = {g: adata[:, g].X.toarray().flatten() for g in qc_top_genes}
 
 # Extract the pre-annotated reference cell type labels from the CITE-seq data
-cite_df = importCITE()
+_, pre_annotated_level1 = importCITE("CellType1")
+_, pre_annotated_level2 = importCITE("CellType2")
 reference_labels = {
-    "pre_annotated_level1": cite_df["CellType1"],
-    "pre_annotated_level2": cite_df["CellType2"],
+    "pre_annotated_level1": pre_annotated_level1,
+    "pre_annotated_level2": pre_annotated_level2,
 }
 
 # Global processing
@@ -441,19 +444,8 @@ adata_global = apply_subcluster_annotations(
 ```
 
 ```{python}
-# 8. Export the two-level transcript-based annotations to CSV
-from bicytok.annotation_funcs import export_annotations
-
-annot_df = export_annotations(
-    adata_global,
-    ["CellType1", "CellType2"],
-    os.path.join(CUSTOM_ANNOT_DIR, "transcript-based_cell_type_annotations.csv"),
-)
-```
-
-```{python}
 #| fig-cap: "Transcript-based (CellType1/2) vs. CITE-seq annotations on the global UMAP"
-# 9. Transcript-based vs. CITE-seq annotations on the global UMAP
+# 8. Transcript-based vs. CITE-seq annotations on the global UMAP
 
 fig, axes = plt.subplots(2, 2, figsize=(10, 8))
 for ax, key, title in zip(
@@ -475,24 +467,21 @@ plt.show()
 ```
 
 ```{python}
-# 10. Append the transcript-based annotations to the CITE-seq surface marker dataset.
-# The CITE-seq rows align by position with the scRNA-seq cells, so the labels are
-# attached positionally.
+# 9. Persist the transcript-based annotations into the consolidated CITE-seq cell
+# type annotation file (one column per annotation type). The CITE-seq rows align by
+# position with the scRNA-seq cells, so the labels are attached positionally as the
+# RNA-annotated columns alongside the existing WNN annotations.
 DATA_DIR = os.path.dirname(CUSTOM_ANNOT_DIR)
+annot_path = os.path.join(DATA_DIR, "CITE_cell_type_annotations.parquet")
 
-cite_annotated = cite_df.copy()
-assert cite_annotated.shape[0] == adata_global.n_obs, (
-    "CITE-seq rows and annotated cells are misaligned"
+annot_df = pd.read_parquet(annot_path)
+assert annot_df.shape[0] == adata_global.n_obs, (
+    "CITE-seq annotation rows and annotated cells are misaligned"
 )
-cite_annotated["CellType1_RNA"] = adata_global.obs["CellType1"].to_numpy()
-cite_annotated["CellType2_RNA"] = adata_global.obs["CellType2"].to_numpy()
+annot_df["CellType1_RNA"] = adata_global.obs["CellType1"].to_numpy()
+annot_df["CellType2_RNA"] = adata_global.obs["CellType2"].to_numpy()
 
-out_path = os.path.join(DATA_DIR, "CITEdata_SurfMarkers_RNA_annotated.csv.zip")
-cite_annotated.to_csv(out_path, index=False)
-print(
-    f"Wrote {cite_annotated.shape[0]} cells x {cite_annotated.shape[1]} columns to {out_path}"
-)
-print(
-    cite_annotated[["CellType1", "CellType2", "CellType1_RNA", "CellType2_RNA"]].head()
-)
+annot_df.to_parquet(annot_path, compression="zstd")
+print(f"Updated RNA annotations for {annot_df.shape[0]} cells in {annot_path}")
+print(annot_df[["CellType1", "CellType2", "CellType1_RNA", "CellType2_RNA"]].head())
 ```

@@ -48,8 +48,8 @@ max_valency = 6
 init_mod = [6.0, 7.0, 7.0, -9.0]
 fixed_valencies = range(signal_valency, max_valency + 1)
 
-CITE_DF = importCITE()
-assert targ_cell in CITE_DF[cell_categorization].unique()
+CITE_DF, cell_types = importCITE(cell_categorization)
+assert targ_cell in cell_types.unique()
 assert len(receptors) == 3, (
     "Must specify exactly 3 receptors: [signal, target1, target2]"
 )
@@ -57,11 +57,8 @@ assert len(receptors) == 3, (
 signal_receptor = receptors[0]
 target_receptor_1 = receptors[1]
 target_receptor_2 = receptors[2]
-epitopes = [
-    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
-]
-epitopes_df = CITE_DF[epitopes + [cell_categorization]]
-epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+epitopes_df = CITE_DF.copy()
+epitopes_df["Cell Type"] = cell_types
 sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,
     numCells=min(sample_size, epitopes_df.shape[0]),

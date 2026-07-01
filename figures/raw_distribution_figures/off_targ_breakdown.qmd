@@ -54,22 +54,18 @@ off_targ_palette = matplotlib.colormaps.get_cmap("tab10").resampled(
 off_targ_colors = [off_targ_palette(i) for i in range(len(off_targ_cell_types))]
 
 # Load and prepare data
-CITE_DF = importCITE()
+CITE_DF, cell_types = importCITE(cell_categorization)
 
-epitopes = [
-    col
-    for col in CITE_DF.columns
-    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
-]
+epitopes = list(CITE_DF.columns)
 
-assert targ_cell in CITE_DF[cell_categorization].unique()
+assert targ_cell in cell_types.unique()
 if receptor not in epitopes:
     raise ValueError(
         f"Receptor '{receptor}' not found. Available receptors: {epitopes}"
     )
 
-epitopes_df = CITE_DF[epitopes + [cell_categorization]]
-epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+epitopes_df = CITE_DF.copy()
+epitopes_df["Cell Type"] = cell_types
 
 # Sample with all off-target types explicitly preserved (unbalanced)
 sample_df = sample_receptor_abundances(
@@ -198,23 +194,19 @@ colors = [TARGET_COLOR] + off_targ_colors
 labels = [targ_cell] + off_targ_cell_types
 
 # Load and prepare data
-CITE_DF = importCITE()
+CITE_DF, cell_types = importCITE(cell_categorization)
 
-epitopes = [
-    col
-    for col in CITE_DF.columns
-    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
-]
+epitopes = list(CITE_DF.columns)
 
-assert targ_cell in CITE_DF[cell_categorization].unique()
+assert targ_cell in cell_types.unique()
 for receptor in [receptor1, receptor2]:
     if receptor not in epitopes:
         raise ValueError(
             f"Receptor '{receptor}' not found. Available receptors: {epitopes}"
         )
 
-epitopes_df = CITE_DF[epitopes + [cell_categorization]]
-epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+epitopes_df = CITE_DF.copy()
+epitopes_df["Cell Type"] = cell_types
 
 sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,

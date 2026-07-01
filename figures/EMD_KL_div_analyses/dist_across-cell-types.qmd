@@ -52,23 +52,18 @@ cell_types = [
     "NK_CD56bright",
 ]
 
-CITE_DF = importCITE()
+CITE_DF, cell_types = importCITE(cell_categorization)
 
-epitopes = [
-    col
-    for col in CITE_DF.columns
-    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
-]
-epitopes_df = CITE_DF[epitopes + [cell_categorization]]
-epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+epitopes_df = CITE_DF.copy()
+epitopes_df["Cell Type"] = cell_types
 
-cell_types = epitopes_df["Cell Type"].unique()
+unique_cell_types = epitopes_df["Cell Type"].unique()
 
 top_EMD = []
 top_EMD_rec = []
 top_KL = []
 top_KL_rec = []
-for cell_type in cell_types:
+for cell_type in unique_cell_types:
     targ_cell = cell_type
 
     sample_df = sample_receptor_abundances(

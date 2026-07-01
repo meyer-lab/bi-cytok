@@ -49,10 +49,10 @@ TARGETS = ["CD27", "CD4-1"]
 DOSE = 1e-10
 CELL_CATEGORIZATION = "CellType2"
 
-CITE_DF = importCITE()
-assert TARG_CELL in CITE_DF[CELL_CATEGORIZATION].unique()
-epitopes_df = CITE_DF[[SIGNAL_RECEPTOR] + TARGETS + [CELL_CATEGORIZATION]]
-epitopes_df = epitopes_df.rename(columns={CELL_CATEGORIZATION: "Cell Type"})
+CITE_DF, cell_types = importCITE(CELL_CATEGORIZATION)
+assert TARG_CELL in cell_types.unique()
+epitopes_df = CITE_DF[[SIGNAL_RECEPTOR] + TARGETS].copy()
+epitopes_df["Cell Type"] = cell_types
 all_target_cells = epitopes_df[epitopes_df["Cell Type"] == TARG_CELL]
 all_off_target_cells = epitopes_df[epitopes_df["Cell Type"] != TARG_CELL]
 metrics = []

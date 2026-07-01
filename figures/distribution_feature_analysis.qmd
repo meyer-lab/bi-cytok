@@ -65,16 +65,12 @@ VALENCY = 1
 DOSE = 1e-10
 CELL_CATEGORIZATION = "CellType2"
 
-CITE_DF = importCITE()
+CITE_DF, cell_types = importCITE(CELL_CATEGORIZATION)
 
 if TARG_CELL_TYPES is None:
-    TARG_CELL_TYPES = sorted(CITE_DF[CELL_CATEGORIZATION].unique().tolist())
+    TARG_CELL_TYPES = sorted(cell_types.unique().tolist())
 
-all_epitopes = [
-    col
-    for col in CITE_DF.columns
-    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
-]
+all_epitopes = list(CITE_DF.columns)
 
 # Features ordered by conceptual group: location, spread, shape
 FEATURE_NAMES = [
@@ -95,13 +91,12 @@ all_records = {}  # cell_type → records DataFrame
 
 for targ_cell in TARG_CELL_TYPES:
     print(f"Processing {targ_cell}...")
-    assert targ_cell in CITE_DF[CELL_CATEGORIZATION].unique(), (
+    assert targ_cell in cell_types.unique(), (
         f"{targ_cell!r} not found in {CELL_CATEGORIZATION}"
     )
 
-    epitopes_df = CITE_DF[all_epitopes + [CELL_CATEGORIZATION]].rename(
-        columns={CELL_CATEGORIZATION: "Cell Type"}
-    )
+    epitopes_df = CITE_DF[all_epitopes].copy()
+    epitopes_df["Cell Type"] = cell_types
     sample_df = sample_receptor_abundances(
         CITE_DF=epitopes_df,
         numCells=min(SAMPLE_SIZE, epitopes_df.shape[0]),
