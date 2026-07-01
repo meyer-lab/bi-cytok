@@ -3,7 +3,7 @@ title: "Bootstrap variability analysis of various metrics"
 ---
 
 # Summary
-Performs bootstrap analysis to quantify variability in KL Divergence, EMD, and selectivity metrics across different sample sizes. Generates box plots showing the distribution of metric values and reports average computation times for model optimization and distance metric calculations.
+Performs bootstrap analysis to quantify variability in KL Divergence, EMD, selectivity metrics, and off-target cell type proportions across different sample sizes. Generates box plots showing the distribution of metric values and reports average computation times for model optimization and distance metric calculations.
 
 # Imports
 - CITE-seq surface marker expression data (`importCITE`)
