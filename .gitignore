@@ -99,10 +99,12 @@ dmypy.json
 _output/
 .figures/
 *.quarto_ipynb
+**/*.quarto_ipynb
 
 .vscode
 output
 
 .DS_Store
 
-**/*.quarto_ipynb
+# Claude stuff
+CLAUDE.local.md
