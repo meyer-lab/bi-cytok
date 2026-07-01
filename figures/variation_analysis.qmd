@@ -25,6 +25,7 @@ Performs bootstrap analysis to quantify variability in KL Divergence, EMD, and s
 - **Box Plot 2**: Bootstrap distribution of EMD values across sample sizes  
 - **Box Plot 3**: Bootstrap distribution of selectivity values (1/optimization_result) across sample sizes
 - **Box Plot 4**: Bootstrap distribution of optimal affinity parameters across sample sizes, grouped by affinity type
+- **Box Plot 5**: Bootstrap distribution of off-target cell type proportions across sample sizes
 - **Summary Table**: Average computation times for binding model optimization and distance metric calculations per sample size
 
 ```{python}
