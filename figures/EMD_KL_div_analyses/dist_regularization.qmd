@@ -47,13 +47,8 @@ RECEPTORS_1D = [
 RECEPTOR_PAIRS_2D = [["CD25", "CD4-1"], ["CD25", "CD27"], ["CD4-1", "CD27"]]
 RECEPTOR_TRIADS_3D = [["CD25", "CD4-1", "CD27"]]
 
-CITE_DF = importCITE()
-assert TARG_CELL in CITE_DF[CELL_CATEGORIZATION].unique()
-epitopes = [
-    col
-    for col in CITE_DF.columns
-    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
-]
+CITE_DF, cell_types = importCITE(CELL_CATEGORIZATION)
+assert TARG_CELL in cell_types.unique()
 ALL_RECEPTORS = list(
     set(
         [r for pair in RECEPTOR_PAIRS_2D for r in pair]
@@ -62,8 +57,8 @@ ALL_RECEPTORS = list(
 )
 if RECEPTORS_1D is not None:
     ALL_RECEPTORS = list(set(ALL_RECEPTORS + RECEPTORS_1D))
-epitopes_df = CITE_DF[epitopes + [CELL_CATEGORIZATION]]
-epitopes_df = epitopes_df.rename(columns={CELL_CATEGORIZATION: "Cell Type"})
+epitopes_df = CITE_DF.copy()
+epitopes_df["Cell Type"] = cell_types
 sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,
     numCells=min(SAMPLE_SIZE, epitopes_df.shape[0]),

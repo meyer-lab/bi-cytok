@@ -31,8 +31,8 @@ import pandas as pd
 import yaml
 
 # ── Parameters ────────────────────────────────────────────────────────────────
-SCAN_PATH_1 = "/home/sama/receptor_sweep_data/20260609_selec_scan_full_sigCD28.csv"
-SCAN_PATH_2 = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
+SCAN_PATH_1 = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+SCAN_PATH_2 = "/home/sama/receptor_sweep_data/20260624_selec_scan_RNA-annot_full.csv"
 # SCAN_PATH_1 = (
 #     SCAN_PATH_2  # For comparing two metrics within the same scan, set paths equal.
 # )
@@ -42,8 +42,10 @@ KL_METRIC_1 = "EMD"  # "KL_Divergence" or "EMD"
 KL_METRIC_2 = "EMD"
 
 # Human-readable axis labels; set to None to auto-derive from the metric name.
-AXIS_1_LABEL = None
-AXIS_2_LABEL = None
+AXIS_1_LABEL = "WNN Annotated"
+AXIS_2_LABEL = "RNA Annotated"
+
+FILTER_SELEC_BASIN = True
 
 
 # ── Derive metrics from YAML ───────────────────────────────────────────────────
@@ -208,6 +210,25 @@ if DISP_LEGEND:
         fontsize=9,
         title_fontsize=10,
         framealpha=0.8,
+    )
+
+if METRIC_1 == "Selectivity" and METRIC_2 == "Selectivity" and FILTER_SELEC_BASIN:
+    if AXIS_NORM == "none":
+        low_val_1 = _all["s1"][_all["s1"] < 0.55].median() + 0.005
+        low_val_2 = _all["s2"][_all["s2"] < 0.55].median() + 0.005
+
+        _all = _all[(_all["s1"] > low_val_1) & (_all["s2"] > low_val_2)]
+    elif AXIS_NORM == "z-score":
+        low_val_1 = _all["s1"][_all["s1"] < 0.0].median() + 0.01
+        low_val_2 = _all["s2"][_all["s2"] < 0.0].median() + 0.01
+
+        _all = _all[(_all["s1"] > low_val_1) & (_all["s2"] > low_val_2)]
+
+    line_y = plt.axhline(y=low_val_2, color="red", linestyle="--", linewidth=0.5)
+    line_x = plt.axvline(x=low_val_1, color="blue", linestyle="--", linewidth=0.5)
+
+    ax.legend(
+        handles=[line_x, line_y], labels=["Spearman Cutoff (x)", "Spearman Cutoff (y)"]
     )
 
 ax.set_xlabel(AXIS_1_LABEL, fontsize=13)

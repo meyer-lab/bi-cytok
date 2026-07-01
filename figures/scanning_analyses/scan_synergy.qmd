@@ -87,7 +87,7 @@ with open(yaml_path) as f:
 
 scan_type = scan_params["scan_type"]
 SAMPLE_SIZE = scan_params["general"]["sample_size"]
-CELL_CATEGORIZATION = scan_params["general"]["cell_categorization"]
+CELL_CATEGORIZATION = scan_params["general"]["annotation_type"]
 asym_scan = (
     scan_params["binding_model"]["asym_targs"] if scan_type == "selectivity" else False
 )
@@ -802,12 +802,9 @@ from matplotlib import gridspec
 from bicytok.imports import importCITE, sample_receptor_abundances
 
 # ── Load CITE-seq data and sample per cell type ───────────────────────────────
-CITE_DF = importCITE()
-non_rec_cols = {"Cell", "CellType1", "CellType2", "CellType3"}
-rec_cols_cite = [c for c in CITE_DF.columns if c not in non_rec_cols]
-epitopes_df = CITE_DF[rec_cols_cite + [CELL_CATEGORIZATION]].rename(
-    columns={CELL_CATEGORIZATION: "Cell Type"}
-)
+CITE_DF, cell_types = importCITE(CELL_CATEGORIZATION)
+epitopes_df = CITE_DF.copy()
+epitopes_df["Cell Type"] = cell_types
 
 # Sample for all target cell types; reused for histograms and joint plots
 samples = {}

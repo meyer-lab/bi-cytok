@@ -1,7 +1,6 @@
 """File for importing and sampling CITE-seq data."""
 
 from pathlib import Path
-from zipfile import ZipFile
 
 import numpy as np
 import pandas as pd
@@ -9,16 +8,41 @@ import pandas as pd
 path_here = Path(__file__).parent.parent
 
 
-def importCITE():
-    """Downloads all surface markers and cell types"""
-    CITEmarkerDF = pd.read_csv(path_here / "data" / "CITEdata_SurfMarkers.zip")
-    return CITEmarkerDF
+def importCITE(annotation: str = "CellType2"):
+    """
+    Loads CITE-seq surface marker counts and the matching cell type annotations.
+
+    The surface marker counts are stored once in CITEdata_SurfMarkers.parquet and the
+    cell type annotations are stored separately in CITE_cell_type_annotations.parquet
+    (one column per annotation type), aligned by row position. The marker counts and
+    the requested annotation column are returned separately.
+
+    Args:
+        annotation: name of the cell type annotation column to return. One of
+            "CellType1", "CellType2", "CellType3" (weighted nearest neighbor
+            annotations) or "CellType1_RNA", "CellType2_RNA" (transcript-based
+            annotations).
+    Returns:
+        CITEmarkerDF: DataFrame of surface marker counts with receptors as columns.
+        cell_types: Series of cell type labels named "Cell Type", aligned by row
+            position to CITEmarkerDF.
+    """
+    CITEmarkerDF = pd.read_parquet(path_here / "data" / "CITEdata_SurfMarkers.parquet")
+    annotDF = pd.read_parquet(path_here / "data" / "CITE_cell_type_annotations.parquet")
+
+    assert annotation in annotDF.columns, (
+        f"Annotation '{annotation}' not found; "
+        f"available annotations: {list(annotDF.columns)}"
+    )
+
+    CITEmarkerDF = CITEmarkerDF.drop(columns="Cell")
+    cell_types = annotDF[annotation].rename("Cell Type")
+    return CITEmarkerDF, cell_types
 
 
 def importRNACITE():
     """Downloads all surface markers and cell types"""
-    with ZipFile(path_here / "data" / "RNAseqSurface.csv.zip") as zip_file:
-        RNAsurfDF = pd.read_csv(zip_file.open("RNAseqSurface.csv"))
+    RNAsurfDF = pd.read_parquet(path_here / "data" / "RNAseqSurface.parquet")
     return RNAsurfDF
 
 
