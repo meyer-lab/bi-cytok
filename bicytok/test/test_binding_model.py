@@ -46,19 +46,12 @@ def test_binding_model():
     num_receptors = 3
     num_cells = 1000
 
-    CITE_DF = importCITE()
-    epitopes = [
-        col
-        for col in CITE_DF.columns
-        if col not in ["CellType1", "CellType2", "CellType3"]
-    ]
-    CITE_DF = CITE_DF[epitopes + ["CellType2"]]
-    CITE_DF = CITE_DF.rename(columns={"CellType2": "Cell Type"})
+    CITE_DF, cell_types = importCITE("CellType2")
+    CITE_DF["Cell Type"] = cell_types
     sample_DF = sample_receptor_abundances(
         CITE_DF=CITE_DF,
         numCells=CITE_DF.shape[0],
         targCellType="Treg",
-        offTargCellTypes=["Treg"],
     )
     sample_DF = sample_DF.drop(columns="Cell Type")
     samples = sample_DF.to_numpy()
@@ -87,10 +80,8 @@ def _setup_starting_point_test_data(
     sample_size, cell_type, ill_conditioned_recs, dose, valencies
 ):
     """Helper function to set up common test data for starting point methods."""
-    CITE_DF = importCITE()
-    CITE_DF = CITE_DF.rename(columns={"CellType2": "Cell Type"})
-    CITE_DF = CITE_DF.drop(columns="CellType1")
-    CITE_DF = CITE_DF.drop(columns="CellType3")
+    CITE_DF, cell_types = importCITE("CellType2")
+    CITE_DF["Cell Type"] = cell_types
     sample_DF = sample_receptor_abundances(
         CITE_DF=CITE_DF,
         numCells=sample_size,

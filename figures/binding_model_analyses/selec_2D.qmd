@@ -52,29 +52,21 @@ cell_categorization = "CellType2"
 sample_size = 1000
 include_prototype_signal_receptor = False
 
-CITE_DF = importCITE()
-
-epitopes = [
-    col for col in CITE_DF.columns if col not in ["CellType1", "CellType2", "CellType3"]
-]
-epitopes_df = CITE_DF[epitopes + [cell_categorization]]
-epitopes_df = epitopes_df.rename(columns={cell_categorization: "Cell Type"})
+CITE_DF, cell_types = importCITE(cell_categorization)
 
 if receptors is None:
-    receptors = [
-        col for col in epitopes_df.columns if col != "Cell Type" and col not in signal
-    ]
+    receptors = [col for col in CITE_DF.columns if col not in signal]
 
 if include_prototype_signal_receptor:
     rng = np.random.default_rng()
-    prototype_signal_receptor = rng.normal(
-        loc=50, scale=5, size=(epitopes_df.shape[0],)
-    )
-    epitopes_df.insert(0, "Prototype_Signal_Receptor", prototype_signal_receptor)
+    prototype_signal_receptor = rng.normal(loc=50, scale=5, size=(CITE_DF.shape[0],))
+    CITE_DF.insert(0, "Prototype_Signal_Receptor", prototype_signal_receptor)
     receptors = ["Prototype_Signal_Receptor"] + receptors
 
+CITE_DF["Cell Type"] = cell_types
+
 sample_df = sample_receptor_abundances(
-    epitopes_df,
+    CITE_DF,
     sample_size,
     cell_type,
     offTargCellTypes=off_targ_cell_types,

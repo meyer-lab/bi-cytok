@@ -1,0 +1,487 @@
+---
+title: "Transcript-based cell type annotation of scRNA-seq data"
+---
+
+# Summary
+Reads, processes, and produces transcript-only cell type annotations from the Hao
+et al. 10X scRNA-seq data. The data are normalized, reduced to highly variable
+genes, and Leiden-clustered globally. Broad lineages (B cells, CD4 T cells, NK
+cells, dendritic cells) are then subset, re-clustered, and annotated at finer
+resolution. Marker genes are exported per cluster for review, and the resulting
+two-level annotations (`CellType1`, `CellType2`) are written into the consolidated
+CITE-seq annotation file as the `CellType1_RNA`/`CellType2_RNA` columns.
+
+# Imports
+- 10X scRNA-seq expression data (`load_scRNAseq_data`)
+- CITE-seq pre-annotations for reference labeling (`importCITE`)
+
+# Parameters
+- `MIN_MEAN`, `MAX_MEAN`, `MIN_DISP`: Highly variable gene selection thresholds
+- `N_PRINCIPAL_COMPONENTS`: Number of principal components computed for PCA
+- `N_PCS`, `N_NEIGHBORS`: Neighborhood graph parameters for global clustering
+- `GLOBAL_LEIDEN_RESOLUTION`: Resolution for global Leiden clustering
+- `BROAD_CLUSTER_ASSIGNMENTS`: Global Leiden clusters grouped into broad lineages
+- `SUBCLUSTER_LEIDEN_RESOLUTIONS`, `SUBCLUSTER_N_PCS`: Per-lineage sub-clustering settings
+- `RELEVANT_SUBTYPES`: Pre-annotated cell types of interest highlighted per lineage
+- `CANONICAL_MARKERS`: Canonical marker genes shown in dot plots per lineage
+- `GLOBAL_CLUSTER_ANNOTATIONS`, `SUBCLUSTER_ANNOTATIONS`: Final cell type labels
+
+# Outputs
+- **QC plots**: Expression distributions of the top-expressed genes and per-cell metrics
+- **Sub-cluster UMAPs**: Leiden sub-clusters and pre-annotated cell types per lineage
+- **Canonical marker dot plots**: Marker expression per sub-cluster per lineage
+- **Global annotation UMAP**: Transcript-based vs. CITE-seq annotations side by side
+- **Marker gene markdown files** in `transcript-based_annotations/`
+- **Updated `CellType1_RNA`/`CellType2_RNA` columns** in `data/CITE_cell_type_annotations.parquet`
+
+```{python}
+# 1. Global analyses: load, QC, normalize, cluster, annotate, and rank markers
+import os
+import warnings
+
+import numpy as np
+import pandas as pd
+
+from bicytok.annotation_funcs import (
+    add_reference_annotations,
+    cluster_cells,
+    compute_cell_metrics,
+    load_scRNAseq_data,
+    normalize_and_log,
+    rank_marker_genes,
+    reduce_dims,
+)
+from bicytok.imports import importCITE
+
+warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
+
+# Data source and export location
+DATA_PATH = "/home/sama/Hao_et_al_CITE-seq_data/RNA_data"
+PREFIX = "GSM5008737_RNA_3P-"
+CUSTOM_ANNOT_DIR = "/home/sama/bi-cytok-2/data/transcript-based_annotations"
+os.makedirs(CUSTOM_ANNOT_DIR, exist_ok=True)
+
+# Processing parameters
+N_TOP_EXPRESSED = 3
+MIN_MEAN = 0.0005
+MAX_MEAN = 10
+MIN_DISP = 0.5
+N_GLOBAL_PCS = 50
+N_NEIGHBORS = 15
+GLOBAL_LEIDEN_RESOLUTION = 0.5
+
+# Load data and capture QC inputs on raw counts (before normalization)
+adata = load_scRNAseq_data(DATA_PATH, PREFIX)
+adata = compute_cell_metrics(adata)
+qc_top_genes = adata.var_names[np.argsort(adata.X.mean(axis=0).A1)[-N_TOP_EXPRESSED:]]
+qc_top_gene_expr = {g: adata[:, g].X.toarray().flatten() for g in qc_top_genes}
+
+# Extract the pre-annotated reference cell type labels from the CITE-seq data
+_, pre_annotated_level1 = importCITE("CellType1")
+_, pre_annotated_level2 = importCITE("CellType2")
+reference_labels = {
+    "pre_annotated_level1": pre_annotated_level1,
+    "pre_annotated_level2": pre_annotated_level2,
+}
+
+# Global processing
+adata = normalize_and_log(adata)
+adata_global = reduce_dims(adata, MIN_MEAN, MAX_MEAN, MIN_DISP, N_GLOBAL_PCS)
+adata_global = cluster_cells(
+    adata_global, N_GLOBAL_PCS, N_NEIGHBORS, GLOBAL_LEIDEN_RESOLUTION, "leiden"
+)
+adata_global = add_reference_annotations(adata_global, reference_labels)
+adata_global = rank_marker_genes(adata_global, "leiden")
+```
+
+```{python}
+# 2. Export global cluster markers for Gemini-assisted broad-lineage annotation
+from bicytok.annotation_funcs import export_marker_genes_md
+
+N_TOP_GENES = 20
+global_instruction = (
+    "Top marker genes per cluster ranked by Wilcoxon test score. "
+    "Please identify which clusters are likely **CD4+ T cells**, **B cells**, "
+    "**NK cells**, or **dendritic cells** based on canonical marker gene expression."
+)
+export_marker_genes_md(
+    adata_global,
+    groupby="leiden",
+    group_label="Cluster",
+    n_top_genes=N_TOP_GENES,
+    title="Leiden Cluster Marker Genes",
+    instruction=global_instruction,
+    out_path=os.path.join(CUSTOM_ANNOT_DIR, "cluster_markers_for_annotation.md"),
+)
+```
+
+```{python}
+#| fig-cap: "Top-expressed gene distributions and per-cell QC metrics"
+# 3. Global QC plots: top-expressed gene distributions and per-cell metrics
+import matplotlib.pyplot as plt
+import scanpy as sc
+
+fig, axes = plt.subplots(1, N_TOP_EXPRESSED, figsize=(5 * N_TOP_EXPRESSED, 5))
+for ax, gene in zip(axes, qc_top_genes, strict=True):
+    ax.hist(qc_top_gene_expr[gene], bins=50, alpha=0.7, edgecolor="black")
+    ax.set_title(f"Expression Distribution: {gene}")
+    ax.set_xlabel("Expression Level")
+    ax.set_ylabel("Number of Cells")
+    ax.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+sc.pl.violin(adata, "n_genes", ax=axes[0], show=False)
+axes[0].set_title("Number of Genes per Cell")
+sc.pl.violin(adata, "total_counts", ax=axes[1], show=False)
+axes[1].set_title("Total Counts per Cell")
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+# 4. Sub-cluster analyses: subset each broad lineage, re-cluster, and rank markers.
+# After reviewing cluster_markers_for_annotation.md, assign global Leiden cluster
+# IDs (as strings) to each broad lineage below.
+from bicytok.annotation_funcs import (
+    cluster_cells,
+    reduce_dims,
+    subset_cells,
+)
+
+BROAD_CLUSTER_ASSIGNMENTS = {
+    "B_cell": ["14", "15"],
+    "CD4_T_cell": ["5", "7"],
+    "NK_cell": ["11", "13"],
+    "DC": ["17", "18"],
+}
+
+# Per-lineage sub-clustering parameters (ordered to match BROAD_CLUSTER_ASSIGNMENTS)
+SUBCLUSTER_LEIDEN_RESOLUTIONS = [0.2, 0.4, 0.2, 0.15]
+N_SUBCLUSTER_PCS = 40
+
+adata_subs = {}
+for i, (broad_label, cluster_ids) in enumerate(BROAD_CLUSTER_ASSIGNMENTS.items()):
+    if not cluster_ids:
+        print(f"Skipping {broad_label}: no clusters assigned")
+        continue
+    adata_sub = subset_cells(adata, adata_global, cluster_ids)
+    adata_sub = reduce_dims(adata_sub, MIN_MEAN, MAX_MEAN, MIN_DISP, N_GLOBAL_PCS)
+    adata_sub = cluster_cells(
+        adata_sub,
+        N_SUBCLUSTER_PCS,
+        N_NEIGHBORS,
+        SUBCLUSTER_LEIDEN_RESOLUTIONS[i],
+        "leiden_sub",
+    )
+    adata_sub = rank_marker_genes(adata_sub, "leiden_sub")
+    adata_subs[broad_label] = adata_sub
+```
+
+```{python}
+# 5. Export sub-cluster markers for each broad lineage
+
+N_TOP_SUBCLUSTERS_GENES = 20
+
+# Target cell type to identify within each broad lineage (used in the export prompt)
+SUBCLUSTER_TARGETS = {
+    "B_cell": "Bmem",
+    "CD4_T_cell": "Treg",
+    "NK_cell": "non-proliferating non-CD56bright NK",
+    "DC": "cDC1",
+}
+
+for broad_label, adata_sub in adata_subs.items():
+    sub_instruction = (
+        "Top marker genes per sub-cluster ranked by Wilcoxon test score. "
+        f"Please identify which sub-clusters are likely "
+        f"**{SUBCLUSTER_TARGETS[broad_label]}** based on canonical marker expression."
+    )
+    export_marker_genes_md(
+        adata_sub,
+        groupby="leiden_sub",
+        group_label="Sub-cluster",
+        n_top_genes=N_TOP_SUBCLUSTERS_GENES,
+        title=f"{broad_label} Sub-cluster Marker Genes",
+        instruction=sub_instruction,
+        out_path=os.path.join(
+            CUSTOM_ANNOT_DIR, f"{broad_label}_subclusters_for_annotation.md"
+        ),
+    )
+```
+
+```{python}
+# 6. Sub-cluster figures: Leiden sub-clusters, highlighted cell types, and markers
+
+# Pre-annotated cell types of interest to highlight per lineage; others are gray
+RELEVANT_SUBTYPES = {
+    "B_cell": {"B memory", "B intermediate", "B naive"},
+    "NK_cell": {"NK", "NK Proliferating", "NK_CD56bright"},
+    "DC": {"cDC1", "cDC2", "pDC", "ASDC"},
+    "CD4_T_cell": {
+        "CD4 TEM",
+        "CD4 TCM",
+        "CD4 CTL",
+        "CD4 Naive",
+        "CD4 Proliferating",
+        "CD8 TEM",
+        "CD8 TCM",
+        "CD8 Naive",
+        "CD8 Proliferating",
+        "Treg",
+    },
+}
+
+# Canonical markers to display in dot plots per lineage; genes absent from the
+# HVG set are skipped with a warning.
+CANONICAL_MARKERS = {
+    "B_cell": [
+        "MS4A1",  # CD20 -- pan-B
+        "CD19",  # pan-B
+        "CD21",  # CR2 -- follicular/memory B
+        "MME",  # transitional B cells
+        "CD9",
+        "CD38",
+        "PAX5",
+        "FCER2",
+        "IL4R",  # naive B cells
+        "IGHM",
+        "AIM2",  # memory B cells
+        "IGHG1",
+        "IGHG2",
+        "IGHG3",
+        "IGHG4",
+        "IGHA1",
+        "IGHA2",
+        "TNFRSF13B",
+        "ITGAX",  # effector B cells
+        "FCRL4",
+        "FCRL5",
+        "ZEB2",
+    ],
+    "CD4_T_cell": [
+        "FOXP3",  # master Treg TF
+        "IL2RA",  # CD25 -- Treg activation marker
+        "CTLA4",  # co-inhibitory; high in Tregs
+        "TIGIT",  # co-inhibitory; enriched in Tregs
+        "IL10",  # effector Treg cytokine
+    ],
+    "NK_cell": [
+        "GNLY",  # granulysin -- cytotoxic NK
+        "PRF1",  # perforin -- cytotoxic NK
+        "GZMB",  # granzyme B -- cytotoxic NK
+        "FCGR3A",  # CD16 -- high on CD56dim cytotoxic NK
+        "NCAM1",  # CD56 -- high on CD56bright
+        "XCL1",  # NK-derived chemokine; high on CD56bright
+        "CCR7",
+        "KIT",
+        "CD8A",  # NKT markers
+        "CD3E",
+    ],
+    "DC": [
+        "AXL",  # ASDC markers
+        "SIGLEC6",
+        "HAMP",
+        "CLEC9A",  # cDC1 markers
+        "XCR1",
+        "IDO1",
+        "C1orf54",
+        "CD1C",  # cDC2 markers
+        "FCN1",
+        "PILRA",
+        "PTCRA",  # pDC markers
+        "SMIM5",
+        "LAMP5",
+        "IL3RA",
+        "JCHAIN",
+    ],
+}
+
+for broad_label, adata_sub in adata_subs.items():
+    relevant = RELEVANT_SUBTYPES[broad_label]
+    adata_sub.obs["cell_type_highlight"] = adata_sub.obs["pre_annotated_level2"].apply(
+        lambda x, relevant=relevant: x if x in relevant else "Other"
+    )
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+    sc.pl.umap(
+        adata_sub,
+        color="leiden_sub",
+        ax=axes[0],
+        show=False,
+        title=f"{broad_label} sub-clusters",
+    )
+
+    coords = adata_sub.obsm["X_umap"]
+    highlight = adata_sub.obs["cell_type_highlight"]
+    other_mask = (highlight == "Other").values
+    axes[1].scatter(
+        coords[other_mask, 0],
+        coords[other_mask, 1],
+        c="lightgray",
+        s=2,
+        alpha=0.4,
+        rasterized=True,
+    )
+    present_relevant = sorted(t for t in highlight.unique() if t != "Other")
+    colors = plt.cm.tab10(np.linspace(0, 0.9, max(len(present_relevant), 1)))
+    for color, cell_type in zip(colors, present_relevant, strict=False):
+        mask = (highlight == cell_type).values
+        axes[1].scatter(
+            coords[mask, 0],
+            coords[mask, 1],
+            c=[color],
+            s=4,
+            label=cell_type,
+            rasterized=True,
+        )
+    axes[1].legend(
+        bbox_to_anchor=(1.05, 1), loc="upper left", fontsize=8, markerscale=3
+    )
+    axes[1].set_title(f"{broad_label} annotations")
+    axes[1].set_xlabel("UMAP1")
+    axes[1].set_ylabel("UMAP2")
+    axes[1].set_aspect("equal")
+    plt.tight_layout()
+    plt.show()
+
+    canonical = CANONICAL_MARKERS[broad_label]
+    present = [g for g in canonical if g in adata_sub.var_names]
+    missing = [g for g in canonical if g not in adata_sub.var_names]
+    if missing:
+        print(f"{broad_label}: canonical markers not in HVG set (skipped): {missing}")
+    if present:
+        sc.pl.dotplot(
+            adata_sub,
+            present,
+            groupby="leiden_sub",
+            standard_scale="var",
+            use_raw=True,
+            title=f"{broad_label} canonical markers",
+        )
+        plt.show()
+```
+
+```{python}
+# 7. Annotation: review the cluster summary, then label clusters and sub-clusters.
+from bicytok.annotation_funcs import (
+    apply_cluster_annotations,
+    apply_subcluster_annotations,
+)
+
+# Level 1 (CellType1): one label per global Leiden cluster.
+# Omit a cluster or set it to None to label those cells "Other".
+GLOBAL_CLUSTER_ANNOTATIONS: dict[str, str | None] = {
+    "0": None,
+    "1": None,
+    "2": None,
+    "3": None,
+    "4": None,
+    "5": "CD4 T",
+    "6": None,
+    "7": "CD4 T",
+    "8": None,
+    "9": None,
+    "10": None,
+    "11": "NK",
+    "12": None,
+    "13": "NK",
+    "14": "B",
+    "15": "B",
+    "16": None,
+    "17": "DC",
+    "18": "DC",
+}
+
+# Level 2 (CellType2): one label per sub-cluster within each broad lineage.
+SUBCLUSTER_ANNOTATIONS: dict[str, dict[str, str | None]] = {
+    "B_cell": {
+        "0": "B memory",
+        "1": "B naive",
+        "2": "B naive",
+        "3": None,
+        "4": "B naive",
+        "5": None,
+    },
+    "CD4_T_cell": {
+        "0": None,
+        "1": None,
+        "2": None,
+        "3": None,
+        "4": None,
+        "5": None,
+        "6": None,
+        "7": "Treg",
+        "8": None,
+        "9": None,
+        "10": None,
+    },
+    "NK_cell": {
+        "0": "NK",
+        "1": "NK",
+        "2": None,
+        "3": "NK",
+        "4": None,
+        "5": "NK_CD56bright",
+        "6": None,
+    },
+    "DC": {
+        "0": "pDC",
+        "1": "cDC2",
+        "2": "ASDC",
+        "3": "cDC1",
+        "4": "cDC2",
+    },
+}
+
+adata_global = apply_cluster_annotations(
+    adata_global, GLOBAL_CLUSTER_ANNOTATIONS, groupby="leiden", col="CellType1"
+)
+adata_global = apply_subcluster_annotations(
+    adata_global, adata_subs, SUBCLUSTER_ANNOTATIONS, col="CellType2"
+)
+```
+
+```{python}
+#| fig-cap: "Transcript-based (CellType1/2) vs. CITE-seq annotations on the global UMAP"
+# 8. Transcript-based vs. CITE-seq annotations on the global UMAP
+
+fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+for ax, key, title in zip(
+    axes.flat,
+    ["CellType1", "CellType2", "pre_annotated_level1", "pre_annotated_level2"],
+    [
+        "CellType1 (transcript-base)",
+        "CellType2 (transcript-base)",
+        "CellType1 (CITE-seq)",
+        "CellType2 (CITE-seq)",
+    ],
+    strict=True,
+):
+    sc.pl.umap(
+        adata_global, color=key, ax=ax, show=False, legend_loc="on data", title=title
+    )
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+# 9. Persist the transcript-based annotations into the consolidated CITE-seq cell
+# type annotation file (one column per annotation type). The CITE-seq rows align by
+# position with the scRNA-seq cells, so the labels are attached positionally as the
+# RNA-annotated columns alongside the existing WNN annotations.
+DATA_DIR = os.path.dirname(CUSTOM_ANNOT_DIR)
+annot_path = os.path.join(DATA_DIR, "CITE_cell_type_annotations.parquet")
+
+annot_df = pd.read_parquet(annot_path)
+assert annot_df.shape[0] == adata_global.n_obs, (
+    "CITE-seq annotation rows and annotated cells are misaligned"
+)
+annot_df["CellType1_RNA"] = adata_global.obs["CellType1"].to_numpy()
+annot_df["CellType2_RNA"] = adata_global.obs["CellType2"].to_numpy()
+
+annot_df.to_parquet(annot_path, compression="zstd")
+print(f"Updated RNA annotations for {annot_df.shape[0]} cells in {annot_path}")
+print(annot_df[["CellType1", "CellType2", "CellType1_RNA", "CellType2_RNA"]].head())
+```

@@ -36,17 +36,12 @@ targ_cell = "Treg"
 sample_size = 1000
 cell_categorization = "CellType2"
 
-CITE_DF = importCITE()
+CITE_DF, cell_types = importCITE(cell_categorization)
 
-assert targ_cell in CITE_DF[cell_categorization].unique()
+assert targ_cell in cell_types.unique()
 
-epitopes = [
-    col
-    for col in CITE_DF.columns
-    if col not in ["Cell", "CellType1", "CellType2", "CellType3"]
-]
-epitopesDF = CITE_DF[epitopes + [cell_categorization]]
-epitopesDF = epitopesDF.rename(columns={cell_categorization: "Cell Type"})
+epitopesDF = CITE_DF.copy()
+epitopesDF["Cell Type"] = cell_types
 sampleDF = sample_receptor_abundances(
     CITE_DF=epitopesDF,
     numCells=min(sample_size, epitopesDF.shape[0]),

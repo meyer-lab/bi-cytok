@@ -66,7 +66,7 @@ METRIC_1, _params_1 = _scan_metric(SCAN_PATH_1, KL_METRIC_1)
 METRIC_2, _params_2 = _scan_metric(SCAN_PATH_2, KL_METRIC_2)
 AXIS_1_LABEL = AXIS_1_LABEL or METRIC_1.replace("_", " ")
 AXIS_2_LABEL = AXIS_2_LABEL or METRIC_2.replace("_", " ")
-CELL_CATEGORIZATION = _params_1["general"]["cell_categorization"]
+CELL_CATEGORIZATION = _params_1["general"]["annotation_type"]
 
 # Percentile threshold (0–100) used for the "both" category (both axes independently high)
 HIGH_PERCENTILE = 90
@@ -356,12 +356,9 @@ FEATURE_SAMPLE_SIZE = 2000
 FEATURE_PAIR_AGGR = "mean"
 
 # ── Load and sample CITE-seq data ─────────────────────────────────────────────
-CITE_DF = importCITE()
-non_receptor_cols = {"Cell", "CellType1", "CellType2", "CellType3"}
-rec_cols = [c for c in CITE_DF.columns if c not in non_receptor_cols]
-epitopes_df = CITE_DF[rec_cols + [CELL_CATEGORIZATION]].rename(
-    columns={CELL_CATEGORIZATION: "Cell Type"}
-)
+CITE_DF, cell_types = importCITE(CELL_CATEGORIZATION)
+epitopes_df = CITE_DF.copy()
+epitopes_df["Cell Type"] = cell_types
 sample_df = sample_receptor_abundances(
     CITE_DF=epitopes_df,
     numCells=min(FEATURE_SAMPLE_SIZE, epitopes_df.shape[0]),
