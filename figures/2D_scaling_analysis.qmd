@@ -45,6 +45,7 @@ receptor_pairs = [("CD25", "CD4-1", 1), ("CD25", "CD27", 1)]
 affinity_bounds = (6, 12)
 kx_star_bounds = (-15, -3)
 init_affs = [6.0, 7.0, 7.0, -9.0]
+init_affs_scale = [6.0, 7.0, -9.0]
 num_scale_factors = 5
 scale_range = (-2, 3)  # log10 range: 0.01 to 1,000
 
@@ -66,8 +67,10 @@ all_results = {}
 
 for rec1, rec2, valency in receptor_pairs:
     pair_label = f"{rec1} + {rec2}"
+
     # Binding model valencies: [signal_receptor, receptor1, receptor2]
-    model_valencies = np.array([[signal_valency, valency, valency]])
+    model_valencies = np.array([[(signal_valency), (valency), (valency)]])
+    model_valencies_scale = np.array([(signal_valency), (valency)]).reshape(1, -1)
 
     n = num_scale_factors
     selectivities = np.full((n, n), np.nan)
@@ -86,7 +89,38 @@ for rec1, rec2, valency in receptor_pairs:
             scaled_rec2 = base_rec2 * s2
 
             # Binding model: columns are [signal, rec1, rec2]; signal is not scaled
+            # Get scaling factors from 1D optimization
             rec_mat = np.column_stack([base_sig, scaled_rec1, scaled_rec2])
+            rec_mat_scale_1 = np.column_stack([base_sig, scaled_rec1])
+            rec_mat_scale_2 = np.column_stack([base_sig, scaled_rec2])
+            _, _, Kx_1 = optimize_affs(
+                targRecs=rec_mat_scale_1[on_target_mask],
+                offTargRecs=rec_mat_scale_1[off_target_mask],
+                dose=dose,
+                valencies=model_valencies_scale,
+                affinity_bounds=affinity_bounds,
+                Kx_star_bounds=kx_star_bounds,
+                init_vals=init_affs_scale,
+            )
+            _, _, Kx_2 = optimize_affs(
+                targRecs=rec_mat_scale_2[on_target_mask],
+                offTargRecs=rec_mat_scale_2[off_target_mask],
+                dose=dose,
+                valencies=model_valencies_scale,
+                affinity_bounds=affinity_bounds,
+                Kx_star_bounds=kx_star_bounds,
+                init_vals=init_affs_scale,
+            )
+            Kx_1 = 10**Kx_1
+            Kx_2 = 10**Kx_2
+            Kx_max = max(Kx_1, Kx_2)
+            factor_1 = Kx_1 / Kx_max
+            factor_2 = Kx_2 / Kx_max
+
+            print(f"Pair: {pair_label}, s1={s1:.1e}, s2={s2:.1e}, Kx_1={Kx_1:.2f}, Kx_2={Kx_2:.2f}, factor_1={factor_1:.2f}, factor_2={factor_2:.2f}")
+
+            rec_mat[:, 1] = rec_mat[:, 1] * factor_1
+            rec_mat[:, 2] = rec_mat[:, 2] * factor_2
 
             opt_selec, _, _ = optimize_affs(
                 targRecs=rec_mat[on_target_mask],
