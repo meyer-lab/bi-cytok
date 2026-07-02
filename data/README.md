@@ -72,14 +72,18 @@ Literature-validated densities of immune cell types across human tissues.
 - **Source / citation:** Sender et al., PNAS 2023, Supporting Information Dataset S02,
   DOI: 10.1073/pnas.2308511120.
 
-### Column dictionary
+## `Hao_annotation_surface_markers.csv`
 
-The table gives, for each cell type in each tissue, a measured/estimated cell density
-plus the totals it implies for three reference individuals: a 10-year-old child, an
-adult woman, and an adult man. Relevant columns are described below.
+CITE-seq ADT types used by Hao et al to annotate cells during WNN.
 
-| Column | Meaning |
-|---|---|
-| `tissue` | Tissue / organ name (e.g. `Blood`, `Liver`, `Lymph nodes`). |
-| `cell_type` | Immune cell type (e.g. `B cells`, `T cells`, `Macrophages`). |
-| `density` | Cell density: number of cells per unit of tissue. |
+- **Shape:** 146 rows × 6 columns.
+- **Grain:** one row per surface marker. Each column is a type of cell whose annotation
+  involved the given marker. `cell_type_1`-`cell_type_3` are more granular annotations,
+  `cell_type_main_1` and `cell_type_main_2` are more general.
+- **Loaded by:** `import_annotation_markers()` — returns a dictionary mapping each
+  general cell type to a set of its markers.
+- **Used in:**
+  `figures/scanning_analyses/scan_marker_overlap.qmd` to compare the overlap between
+  the top hits of each selectivity predictor and the cell-type-defining markers.
+- **Source / citation:** Hao et al., Cell 2021, extracted fromFigures 4 and S4
+  DOI: 10.1016/j.cell.2021.04.048.
