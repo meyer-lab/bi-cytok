@@ -1,0 +1,258 @@
+﻿,tissue,cell_type,mass,groups,for_final_table,extrapolate,density,err,mean_volume_fl,mean_volume_err,child_10y,tot_child_10y,tot_mass_child_10y,woman,tot_woman,tot_mass_woman,man,tot_man,tot_mass_man,mass_err
+0,Adipose tissue,B cells,0.0,adipose tissue,Others,human,8.9E+02,2.6,199,1.0,7500,6.7E+06,0.0,19000,1.7E+07,0.0,14500,1.3E+07,0.0,2.6
+1,Adrenal glands,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,7,3.3E+06,0.0,13,6.2E+06,0.0,14,6.6E+06,0.0,2.3
+2,Blood,B cells,0.3,blood,Blood,human,2.4E+05,1.0,199,1.0,2616,6.4E+08,0.1,4251,1.0E+09,0.2,5500,1.3E+09,0.3,1.0
+3,Brain,B cells,0.0,CNS,Others,human,9.9E+03,1.1,199,1.0,1300,1.3E+07,0.0,1300,1.3E+07,0.0,1450,1.4E+07,0.0,1.1
+4,Breasts,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,15,7.1E+06,0.0,500,2.4E+08,0.1,25,1.2E+07,0.0,2.3
+5,Bronchial tree,B cells,0.0,barrier epithelial,Lungs,extrapolation,1.8E+06,3.9,199,1.0,13.15,2.4E+07,0.0,24.66,4.5E+07,0.0,30,5.4E+07,0.0,3.9
+6,Cartilage ,B cells,0.0,connective,Others,extrapolation,1.1E+04,2.0,199,1.0,820,9.2E+06,0.0,900,1.0E+07,0.0,1100,1.2E+07,0.0,2.0
+7,Colon,B cells,0.3,barrier epithelial,GI,human,3.4E+06,2.1,199,1.0,210,7.1E+08,0.2,360,1.2E+09,0.3,370,1.2E+09,0.3,2.1
+8,Connective tissue,B cells,0.0,connective,Others,extrapolation,1.1E+04,2.0,199,1.0,701.37,7.9E+06,0.0,1315.07,1.5E+07,0.0,1600,1.8E+07,0.0,2.0
+9,Epididymes,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,1.6,7.6E+05,0.0,0,0.0E+00,0.0,17,8.1E+06,0.0,2.3
+10,Esophagus,B cells,0.0,barrier epithelial,GI,extrapolation,1.8E+06,3.9,199,1.0,18,3.3E+07,0.0,35,6.3E+07,0.0,40,7.2E+07,0.0,3.9
+11,Eyes ,B cells,0.0,CNS,Others,extrapolation,9.9E+03,1.1,199,1.0,12,1.2E+05,0.0,15,1.5E+05,0.0,15,1.5E+05,0.0,1.1
+12,Fallopian tubes,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,0,0.0E+00,0.0,2.1,1.0E+06,0.0,0,0.0E+00,0.0,2.3
+13,Gallbladder,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,4.4,2.1E+06,0.0,8,3.8E+06,0.0,10,4.7E+06,0.0,2.3
+14,Heart,B cells,0.0,striated muscle,Others,human,1.4E+05,1.8,199,1.0,140,1.9E+07,0.0,250,3.4E+07,0.0,330,4.5E+07,0.0,1.8
+15,Kidneys,B cells,0.0,internal epithelial,Others,human,2.3E+05,1.1,199,1.0,180,4.1E+07,0.0,275,6.3E+07,0.0,310,7.1E+07,0.0,1.1
+16,Larynx,B cells,0.0,barrier epithelial,Lungs,extrapolation,1.8E+06,3.9,199,1.0,12,2.2E+07,0.0,19,3.4E+07,0.0,28,5.1E+07,0.0,3.9
+17,Liver,B cells,0.4,internal epithelial,Liver,human,9.8E+05,2.2,199,1.0,830,8.2E+08,0.2,1400,1.4E+09,0.3,1800,1.8E+09,0.4,2.2
+18,Lungs,B cells,0.5,barrier epithelial,Lungs,extrapolation,1.8E+06,3.9,199,1.0,487,8.8E+08,0.2,925,1.7E+09,0.4,1170,2.1E+09,0.5,3.9
+19,Lymph nodes,B cells,34.9,lymphatic system,Lymph system,multiplex,7.3E+08,1.4,199,1.0,99,7.2E+10,15.4,185,1.3E+11,28.7,225,1.6E+11,34.9,1.4
+20,Lymph vessels,B cells,0.0,connective,Lymph system,human,1.1E+04,2.0,199,1.0,221,2.5E+06,0.0,415,4.7E+06,0.0,505,5.7E+06,0.0,2.0
+21,Ovaries,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,0,0.0E+00,0.0,11,5.2E+06,0.0,0,0.0E+00,0.0,2.3
+22,Pancreas,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,60,2.8E+07,0.0,120,5.7E+07,0.0,140,6.6E+07,0.0,2.3
+23,Parathyroid glands,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,0.08,3.8E+04,0.0,0.15,7.1E+04,0.0,0.18,8.5E+04,0.0,2.3
+24,Periarticular tissue,B cells,0.0,connective,Others,extrapolation,1.1E+04,2.0,199,1.0,394.52,4.4E+06,0.0,739.73,8.3E+06,0.0,900,1.0E+07,0.0,2.0
+25,Pineal gland,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,0.08,3.8E+04,0.0,0.15,7.1E+04,0.0,0.18,8.5E+04,0.0,2.3
+26,Pituitary gland,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,0.35,1.7E+05,0.0,0.6,2.8E+05,0.0,0.6,2.8E+05,0.0,2.3
+27,Prostate gland,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,1.6,7.6E+05,0.0,0,0.0E+00,0.0,17,8.1E+06,0.0,2.3
+28,Red marrow,B cells,3.1,marrow,Bone Marrow,human,1.2E+07,1.9,199,1.0,630,7.7E+09,1.7,900,1.1E+10,2.4,1170,1.4E+10,3.1,1.9
+29,SI,B cells,1.3,barrier epithelial,GI,human,9.3E+06,2.2,199,1.0,369,3.4E+09,0.7,601,5.6E+09,1.2,649,6.1E+09,1.3,2.2
+30,Salivary glands,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,44,2.1E+07,0.0,70,3.3E+07,0.0,85,4.0E+07,0.0,2.3
+31,Skeletal Muscles,B cells,0.1,striated muscle,Others,human,8.8E+03,1.9,199,1.0,11000,9.7E+07,0.0,17500,1.5E+08,0.0,28500,2.5E+08,0.1,1.9
+32,Skin,B cells,0.1,barrier epithelial,Skin,human,1.9E+05,1.7,199,1.0,820,1.5E+08,0.0,2300,4.3E+08,0.1,3300,6.2E+08,0.1,1.7
+33,Spinal cord,B cells,0.0,CNS,Others,extrapolation,9.9E+03,1.1,199,1.0,13,1.3E+05,0.0,25,2.5E+05,0.0,30,3.0E+05,0.0,1.1
+34,Spleen,B cells,14.2,lymphatic system,Lymph system,multiplex,4.4E+08,1.1,199,1.0,80,3.5E+10,7.6,130,5.8E+10,12.3,150,6.7E+10,14.2,1.1
+35,Stomach,B cells,0.1,barrier epithelial,GI,extrapolation,1.8E+06,3.9,199,1.0,84,1.5E+08,0.0,141,2.6E+08,0.1,150,2.7E+08,0.1,3.9
+36,Testes,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,2,9.5E+05,0.0,0,0.0E+00,0.0,35,1.7E+07,0.0,2.3
+37,Thymus,B cells,0.1,lymphatic system,Lymph system,multiplex,3.1E+07,1.6,199,1.0,40,1.3E+09,0.3,25,7.8E+08,0.2,20,6.3E+08,0.1,1.6
+38,Thyroid,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,7.9,3.7E+06,0.0,17,8.1E+06,0.0,20,9.5E+06,0.0,2.3
+39,Tongue,B cells,0.0,striated muscle,Others,extrapolation,3.5E+04,4.5,199,1.0,32,1.1E+06,0.0,60,2.1E+06,0.0,73,2.5E+06,0.0,4.5
+40,Tonsils,B cells,0.4,lymphatic system,Lymph system,multiplex,6.2E+08,1.5,199,1.0,3,1.9E+09,0.4,3,1.9E+09,0.4,3,1.9E+09,0.4,1.5
+41,Trachea,B cells,0.0,barrier epithelial,Lungs,extrapolation,1.8E+06,3.9,199,1.0,4.5,8.1E+06,0.0,8,1.4E+07,0.0,10,1.8E+07,0.0,3.9
+42,Ureters,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,7,3.3E+06,0.0,15,7.1E+06,0.0,16,7.6E+06,0.0,2.3
+43,Urethra,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,3,1.4E+06,0.0,3,1.4E+06,0.0,10,4.7E+06,0.0,2.3
+44,Urinary bladder,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,25,1.2E+07,0.0,40,1.9E+07,0.0,50,2.4E+07,0.0,2.3
+45,Uterus,B cells,0.0,internal epithelial,Others,extrapolation,4.7E+05,2.3,199,1.0,0,0.0E+00,0.0,80,3.8E+07,0.0,0,0.0E+00,0.0,2.3
+46,Yellow marrow,B cells,0.0,adipose tissue,Others,extrapolation,8.9E+02,2.6,199,1.0,630,5.6E+05,0.0,1800,1.6E+06,0.0,2480,2.2E+06,0.0,2.6
+47,Adipose tissue,NK cells,0.0,adipose tissue,Others,human,5.9E+03,1.7,199,1.0,7500,4.4E+07,0.0,19000,1.1E+08,0.0,14500,8.5E+07,0.0,1.7
+48,Adrenal glands,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,7,2.2E+07,0.0,13,4.0E+07,0.0,14,4.3E+07,0.0,2.3
+49,Blood,NK cells,0.3,blood,Blood,human,2.8E+05,1.0,199,1.0,2616,7.4E+08,0.2,4251,1.2E+09,0.3,5500,1.6E+09,0.3,1.0
+51,Breasts,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,15,4.6E+07,0.0,500,1.5E+09,0.3,25,7.7E+07,0.0,2.3
+52,Bronchial tree,NK cells,0.0,barrier epithelial,Lungs,extrapolation,5.8E+05,1.7,199,1.0,13.15,7.7E+06,0.0,24.66,1.4E+07,0.0,30,1.8E+07,0.0,1.7
+53,Cartilage ,NK cells,0.0,connective,Others,extrapolation,7.6E+03,2.2,199,1.0,820,6.2E+06,0.0,900,6.8E+06,0.0,1100,8.4E+06,0.0,2.2
+54,Colon,NK cells,0.0,barrier epithelial,GI,human,4.0E+05,1.4,199,1.0,210,8.5E+07,0.0,360,1.5E+08,0.0,370,1.5E+08,0.0,1.4
+55,Connective tissue,NK cells,0.0,connective,Others,extrapolation,7.6E+03,2.2,199,1.0,701.37,5.3E+06,0.0,1315.07,1.0E+07,0.0,1600,1.2E+07,0.0,2.2
+56,Epididymes,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,1.6,4.9E+06,0.0,0,0.0E+00,0.0,17,5.2E+07,0.0,2.3
+57,Esophagus,NK cells,0.0,barrier epithelial,GI,extrapolation,5.8E+05,1.7,199,1.0,18,1.1E+07,0.0,35,2.0E+07,0.0,40,2.3E+07,0.0,1.7
+59,Fallopian tubes,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,0,0.0E+00,0.0,2.1,6.5E+06,0.0,0,0.0E+00,0.0,2.3
+60,Gallbladder,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,4.4,1.4E+07,0.0,8,2.5E+07,0.0,10,3.1E+07,0.0,2.3
+61,Heart,NK cells,0.0,striated muscle,Others,extrapolation,2.2E+04,1.9,199,1.0,140,3.1E+06,0.0,250,5.5E+06,0.0,330,7.2E+06,0.0,1.9
+62,Kidneys,NK cells,0.2,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,180,5.5E+08,0.1,275,8.5E+08,0.2,310,9.6E+08,0.2,2.3
+63,Larynx,NK cells,0.0,barrier epithelial,Lungs,extrapolation,5.8E+05,1.7,199,1.0,12,7.0E+06,0.0,19,1.1E+07,0.0,28,1.6E+07,0.0,1.7
+64,Liver,NK cells,1.2,internal epithelial,Liver,human,3.1E+06,2.3,199,1.0,830,2.6E+09,0.5,1400,4.3E+09,0.9,1800,5.5E+09,1.2,2.3
+65,Lungs,NK cells,0.1,barrier epithelial,Lungs,extrapolation,5.8E+05,1.7,199,1.0,487,2.8E+08,0.1,925,5.4E+08,0.1,1170,6.8E+08,0.1,1.7
+66,Lymph nodes,NK cells,0.0,lymphatic system,Lymph system,multiplex,8.8E+05,1.2,199,1.0,99,8.7E+07,0.0,185,1.6E+08,0.0,225,2.0E+08,0.0,1.2
+67,Lymph vessels,NK cells,0.0,connective,Lymph system,human,7.6E+03,2.2,199,1.0,221,1.7E+06,0.0,415,3.2E+06,0.0,505,3.8E+06,0.0,2.2
+68,Ovaries,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,0,0.0E+00,0.0,11,3.4E+07,0.0,0,0.0E+00,0.0,2.3
+69,Pancreas,NK cells,0.1,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,60,1.8E+08,0.0,120,3.7E+08,0.1,140,4.3E+08,0.1,2.3
+70,Parathyroid glands,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,0.08,2.5E+05,0.0,0.15,4.6E+05,0.0,0.18,5.5E+05,0.0,2.3
+71,Periarticular tissue,NK cells,0.0,connective,Others,extrapolation,7.6E+03,2.2,199,1.0,394.52,3.0E+06,0.0,739.73,5.6E+06,0.0,900,6.8E+06,0.0,2.2
+72,Pineal gland,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,0.08,2.5E+05,0.0,0.15,4.6E+05,0.0,0.18,5.5E+05,0.0,2.3
+73,Pituitary gland,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,0.35,1.1E+06,0.0,0.6,1.8E+06,0.0,0.6,1.8E+06,0.0,2.3
+74,Prostate gland,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,1.6,4.9E+06,0.0,0,0.0E+00,0.0,17,5.2E+07,0.0,2.3
+75,Red marrow,NK cells,0.7,marrow,Bone Marrow,human,2.8E+06,2.2,199,1.0,630,1.8E+09,0.4,900,2.5E+09,0.5,1170,3.3E+09,0.7,2.2
+76,SI,NK cells,0.1,barrier epithelial,GI,human,8.5E+05,1.4,199,1.0,369,3.1E+08,0.1,601,5.1E+08,0.1,649,5.5E+08,0.1,1.4
+77,Salivary glands,NK cells,0.1,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,44,1.4E+08,0.0,70,2.2E+08,0.0,85,2.6E+08,0.1,2.3
+78,Skeletal Muscles,NK cells,0.1,striated muscle,Others,human,2.2E+04,1.9,199,1.0,11000,2.4E+08,0.1,17500,3.8E+08,0.1,28500,6.3E+08,0.1,1.9
+79,Skin,NK cells,0.4,barrier epithelial,Skin,extrapolation,5.8E+05,1.7,199,1.0,820,4.8E+08,0.1,2300,1.3E+09,0.3,3300,1.9E+09,0.4,1.7
+81,Spleen,NK cells,0.1,lymphatic system,Lymph system,multiplex,2.7E+06,3.6,199,1.0,80,2.2E+08,0.0,130,3.5E+08,0.1,150,4.1E+08,0.1,3.6
+82,Stomach,NK cells,0.0,barrier epithelial,GI,extrapolation,5.8E+05,1.7,199,1.0,84,4.9E+07,0.0,141,8.2E+07,0.0,150,8.8E+07,0.0,1.7
+83,Testes,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,2,6.2E+06,0.0,0,0.0E+00,0.0,35,1.1E+08,0.0,2.3
+84,Thymus,NK cells,0.0,lymphatic system,Lymph system,multiplex,3.3E+06,1.1,199,1.0,40,1.3E+08,0.0,25,8.3E+07,0.0,20,6.6E+07,0.0,1.2
+85,Thyroid,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,7.9,2.4E+07,0.0,17,5.2E+07,0.0,20,6.2E+07,0.0,2.3
+86,Tongue,NK cells,0.0,striated muscle,Others,extrapolation,2.2E+04,1.9,199,1.0,32,7.0E+05,0.0,60,1.3E+06,0.0,73,1.6E+06,0.0,1.9
+87,Tonsils,NK cells,0.0,lymphatic system,Lymph system,extrapolation,3.2E+07,3.5,199,1.0,3,9.5E+07,0.0,3,9.5E+07,0.0,3,9.5E+07,0.0,3.5
+88,Trachea,NK cells,0.0,barrier epithelial,Lungs,extrapolation,5.8E+05,1.7,199,1.0,4.5,2.6E+06,0.0,8,4.7E+06,0.0,10,5.8E+06,0.0,1.7
+89,Ureters,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,7,2.2E+07,0.0,15,4.6E+07,0.0,16,4.9E+07,0.0,2.3
+90,Urethra,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,3,9.2E+06,0.0,3,9.2E+06,0.0,10,3.1E+07,0.0,2.3
+91,Urinary bladder,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,25,7.7E+07,0.0,40,1.2E+08,0.0,50,1.5E+08,0.0,2.3
+92,Uterus,NK cells,0.0,internal epithelial,Others,extrapolation,3.1E+06,2.3,199,1.0,0,0.0E+00,0.0,80,2.5E+08,0.1,0,0.0E+00,0.0,2.3
+93,Yellow marrow,NK cells,0.0,adipose tissue,Others,extrapolation,5.9E+03,1.7,199,1.0,630,3.7E+06,0.0,1800,1.1E+07,0.0,2480,1.5E+07,0.0,1.7
+94,Adipose tissue,Plasma cells,0.8,adipose tissue,Others,human,3.5E+04,2.0,1437,2.0,7500,2.6E+08,0.4,19000,6.6E+08,1.0,14500,5.0E+08,0.8,2.7
+96,Blood,Plasma cells,0.0,blood,Blood,human,3.4E+03,1.0,1437,2.0,2616,8.9E+06,0.0,4251,1.4E+07,0.0,5500,1.9E+07,0.0,2.0
+99,Bronchial tree,Plasma cells,0.1,barrier epithelial,Lungs,extrapolation,1.1E+06,11.2,1437,2.0,13.15,1.5E+07,0.0,24.66,2.7E+07,0.0,30,3.3E+07,0.1,12.3
+101,Colon,Plasma cells,5.8,barrier epithelial,GI,human,1.0E+07,1.8,1437,2.0,210,2.1E+09,3.3,360,3.6E+09,5.6,370,3.7E+09,5.8,2.5
+104,Esophagus,Plasma cells,0.1,barrier epithelial,GI,extrapolation,1.1E+06,11.2,1437,2.0,18,2.0E+07,0.0,35,3.9E+07,0.1,40,4.5E+07,0.1,12.3
+110,Larynx,Plasma cells,0.0,barrier epithelial,Lungs,extrapolation,1.1E+06,11.2,1437,2.0,12,1.3E+07,0.0,19,2.1E+07,0.0,28,3.1E+07,0.0,12.3
+112,Lungs,Plasma cells,2.0,barrier epithelial,Lungs,extrapolation,1.1E+06,11.2,1437,2.0,487,5.4E+08,0.8,925,1.0E+09,1.6,1170,1.3E+09,2.0,12.3
+113,Lymph nodes,Plasma cells,0.3,lymphatic system,Lymph system,human,9.8E+05,2.9,1437,2.0,99,9.7E+07,0.1,185,1.8E+08,0.3,225,2.2E+08,0.3,3.6
+122,Red marrow,Plasma cells,3.5,marrow,Bone Marrow,human,1.9E+06,2.0,1437,2.0,630,1.2E+09,1.9,900,1.7E+09,2.7,1170,2.2E+09,3.5,2.6
+123,SI,Plasma cells,12.6,barrier epithelial,GI,human,1.3E+07,2.1,1437,2.0,369,4.7E+09,7.2,601,7.6E+09,11.7,649,8.2E+09,12.6,2.8
+126,Skin,Plasma cells,0.1,barrier epithelial,Skin,human,1.1E+04,2.0,1437,2.0,820,8.8E+06,0.0,2300,2.5E+07,0.0,3300,3.6E+07,0.1,2.7
+128,Spleen,Plasma cells,1.5,lymphatic system,Lymph system,human,6.3E+06,1.3,1437,2.0,80,5.1E+08,0.8,130,8.2E+08,1.3,150,9.5E+08,1.5,2.1
+129,Stomach,Plasma cells,0.3,barrier epithelial,GI,extrapolation,1.1E+06,11.2,1437,2.0,84,9.4E+07,0.1,141,1.6E+08,0.2,150,1.7E+08,0.3,12.3
+131,Thymus,Plasma cells,0.1,lymphatic system,Lymph system,extrapolation,2.5E+06,3.2,1437,2.0,40,1.0E+08,0.2,25,6.2E+07,0.1,20,5.0E+07,0.1,3.8
+134,Tonsils,Plasma cells,0.0,lymphatic system,Lymph system,extrapolation,2.5E+06,3.2,1437,2.0,3,7.5E+06,0.0,3,7.5E+06,0.0,3,7.5E+06,0.0,3.8
+135,Trachea,Plasma cells,0.0,barrier epithelial,Lungs,extrapolation,1.1E+06,11.2,1437,2.0,4.5,5.0E+06,0.0,8,8.9E+06,0.0,10,1.1E+07,0.0,12.3
+140,Yellow marrow,Plasma cells,0.1,adipose tissue,Others,extrapolation,3.5E+04,2.0,1437,2.0,630,2.2E+07,0.0,1800,6.3E+07,0.1,2480,8.6E+07,0.1,2.7
+141,Adipose tissue,T cells,0.3,adipose tissue,Others,human,8.6E+04,1.7,199,1.0,7500,6.5E+08,0.1,19000,1.6E+09,0.4,14500,1.3E+09,0.3,1.7
+142,Adrenal glands,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,7,1.8E+07,0.0,13,3.3E+07,0.0,14,3.6E+07,0.0,2.0
+143,Blood,T cells,1.7,blood,Blood,human,1.4E+06,1.0,199,1.0,2616,3.7E+09,0.8,4251,6.1E+09,1.3,5500,7.9E+09,1.7,1.0
+144,Brain,T cells,0.0,CNS,Others,human,9.9E+04,1.1,199,1.0,1300,1.3E+08,0.0,1300,1.3E+08,0.0,1450,1.4E+08,0.0,1.2
+145,Breasts,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,15,3.9E+07,0.0,500,1.3E+09,0.3,25,6.4E+07,0.0,2.0
+146,Bronchial tree,T cells,0.1,barrier epithelial,Lungs,extrapolation,1.0E+07,1.5,199,1.0,13.15,1.3E+08,0.0,24.66,2.5E+08,0.1,30,3.1E+08,0.1,1.5
+147,Cartilage ,T cells,0.0,connective,Others,extrapolation,1.3E+05,1.4,199,1.0,820,1.1E+08,0.0,900,1.2E+08,0.0,1100,1.4E+08,0.0,1.4
+148,Colon,T cells,0.5,barrier epithelial,GI,human,6.6E+06,1.4,199,1.0,210,1.4E+09,0.3,360,2.4E+09,0.5,370,2.5E+09,0.5,1.4
+149,Connective tissue,T cells,0.0,connective,Others,extrapolation,1.3E+05,1.4,199,1.0,701.37,9.1E+07,0.0,1315.07,1.7E+08,0.0,1600,2.1E+08,0.0,1.4
+150,Epididymes,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,1.6,4.1E+06,0.0,0,0.0E+00,0.0,17,4.4E+07,0.0,2.0
+151,Esophagus,T cells,0.1,barrier epithelial,GI,extrapolation,1.0E+07,1.5,199,1.0,18,1.8E+08,0.0,35,3.6E+08,0.1,40,4.1E+08,0.1,1.5
+152,Eyes ,T cells,0.0,CNS,Others,extrapolation,9.9E+04,1.1,199,1.0,12,1.2E+06,0.0,15,1.5E+06,0.0,15,1.5E+06,0.0,1.2
+153,Fallopian tubes,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,0,0.0E+00,0.0,2.1,5.4E+06,0.0,0,0.0E+00,0.0,2.0
+154,Gallbladder,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,4.4,1.1E+07,0.0,8,2.1E+07,0.0,10,2.6E+07,0.0,2.0
+155,Heart,T cells,0.0,striated muscle,Others,human,5.5E+04,1.8,199,1.0,140,7.7E+06,0.0,250,1.4E+07,0.0,330,1.8E+07,0.0,1.8
+156,Kidneys,T cells,0.1,internal epithelial,Others,human,1.5E+06,1.1,199,1.0,180,2.7E+08,0.1,275,4.1E+08,0.1,310,4.6E+08,0.1,1.1
+157,Larynx,T cells,0.1,barrier epithelial,Lungs,extrapolation,1.0E+07,1.5,199,1.0,12,1.2E+08,0.0,19,2.0E+08,0.0,28,2.9E+08,0.1,1.5
+158,Liver,T cells,1.7,internal epithelial,Liver,human,4.4E+06,2.1,199,1.0,830,3.7E+09,0.8,1400,6.2E+09,1.3,1800,7.9E+09,1.7,2.1
+159,Lungs,T cells,2.6,barrier epithelial,Lungs,extrapolation,1.0E+07,1.5,199,1.0,487,5.0E+09,1.1,925,9.5E+09,2.0,1170,1.2E+10,2.6,1.5
+160,Lymph nodes,T cells,46.4,lymphatic system,Lymph system,multiplex,9.7E+08,1.3,199,1.0,99,9.6E+10,20.4,185,1.8E+11,38.2,225,2.2E+11,46.4,1.3
+161,Lymph vessels,T cells,0.0,connective,Lymph system,human,1.3E+05,1.4,199,1.0,221,2.9E+07,0.0,415,5.4E+07,0.0,505,6.5E+07,0.0,1.4
+162,Ovaries,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,0,0.0E+00,0.0,11,2.8E+07,0.0,0,0.0E+00,0.0,2.0
+163,Pancreas,T cells,0.1,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,60,1.5E+08,0.0,120,3.1E+08,0.1,140,3.6E+08,0.1,2.0
+164,Parathyroid glands,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,0.08,2.1E+05,0.0,0.15,3.9E+05,0.0,0.18,4.6E+05,0.0,2.0
+165,Periarticular tissue,T cells,0.0,connective,Others,extrapolation,1.3E+05,1.4,199,1.0,394.52,5.1E+07,0.0,739.73,9.6E+07,0.0,900,1.2E+08,0.0,1.4
+166,Pineal gland,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,0.08,2.1E+05,0.0,0.15,3.9E+05,0.0,0.18,4.6E+05,0.0,2.0
+167,Pituitary gland,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,0.35,9.0E+05,0.0,0.6,1.5E+06,0.0,0.6,1.5E+06,0.0,2.0
+168,Prostate gland,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,1.6,4.1E+06,0.0,0,0.0E+00,0.0,17,4.4E+07,0.0,2.0
+169,Red marrow,T cells,4.6,marrow,Bone Marrow,human,1.8E+07,2.0,199,1.0,630,1.2E+10,2.5,900,1.7E+10,3.5,1170,2.1E+10,4.6,2.0
+170,SI,T cells,2.8,barrier epithelial,GI,human,2.0E+07,1.4,199,1.0,369,7.5E+09,1.6,601,1.2E+10,2.6,649,1.3E+10,2.8,1.4
+171,Salivary glands,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,44,1.1E+08,0.0,70,1.8E+08,0.0,85,2.2E+08,0.0,2.0
+172,Skeletal Muscles,T cells,1.5,striated muscle,Others,human,2.5E+05,1.1,199,1.0,11000,2.7E+09,0.6,17500,4.3E+09,0.9,28500,7.1E+09,1.5,1.1
+173,Skin,T cells,5.7,barrier epithelial,Skin,human,8.0E+06,1.1,199,1.0,820,6.6E+09,1.4,2300,1.8E+10,3.9,3300,2.7E+10,5.7,1.2
+174,Spinal cord,T cells,0.0,CNS,Others,extrapolation,9.9E+04,1.1,199,1.0,13,1.3E+06,0.0,25,2.5E+06,0.0,30,3.0E+06,0.0,1.2
+175,Spleen,T cells,24.2,lymphatic system,Lymph system,multiplex,7.6E+08,1.3,199,1.0,80,6.1E+10,12.9,130,9.8E+10,21.0,150,1.1E+11,24.2,1.3
+176,Stomach,T cells,0.3,barrier epithelial,GI,extrapolation,1.0E+07,1.5,199,1.0,84,8.6E+08,0.2,141,1.4E+09,0.3,150,1.5E+09,0.3,1.5
+177,Testes,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,2,5.1E+06,0.0,0,0.0E+00,0.0,35,9.0E+07,0.0,2.0
+178,Thymus,T cells,6.3,lymphatic system,Lymph system,multiplex,1.5E+09,1.2,199,1.0,40,5.9E+10,12.6,25,3.7E+10,7.9,20,2.9E+10,6.3,1.3
+179,Thyroid,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,7.9,2.0E+07,0.0,17,4.4E+07,0.0,20,5.1E+07,0.0,2.0
+180,Tongue,T cells,0.0,striated muscle,Others,extrapolation,1.2E+05,2.3,199,1.0,32,3.7E+06,0.0,60,7.0E+06,0.0,73,8.5E+06,0.0,2.3
+181,Tonsils,T cells,0.5,lymphatic system,Lymph system,multiplex,7.1E+08,1.5,199,1.0,3,2.1E+09,0.5,3,2.1E+09,0.5,3,2.1E+09,0.5,1.5
+182,Trachea,T cells,0.0,barrier epithelial,Lungs,extrapolation,1.0E+07,1.5,199,1.0,4.5,4.6E+07,0.0,8,8.2E+07,0.0,10,1.0E+08,0.0,1.5
+183,Ureters,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,7,1.8E+07,0.0,15,3.9E+07,0.0,16,4.1E+07,0.0,2.0
+184,Urethra,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,3,7.7E+06,0.0,3,7.7E+06,0.0,10,2.6E+07,0.0,2.0
+185,Urinary bladder,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,25,6.4E+07,0.0,40,1.0E+08,0.0,50,1.3E+08,0.0,2.0
+186,Uterus,T cells,0.0,internal epithelial,Others,extrapolation,2.6E+06,2.0,199,1.0,0,0.0E+00,0.0,80,2.1E+08,0.0,0,0.0E+00,0.0,2.0
+187,Yellow marrow,T cells,0.0,adipose tissue,Others,extrapolation,8.6E+04,1.7,199,1.0,630,5.4E+07,0.0,1800,1.6E+08,0.0,2480,2.1E+08,0.0,1.7
+190,Blood,Basophils,0.1,blood,Blood,human,3.5E+04,1.2,381,1.2,2616,9.1E+07,0.0,4251,1.5E+08,0.1,5500,1.9E+08,0.1,1.2
+216,Red marrow,Basophils,0.6,marrow,Bone Marrow,human,1.3E+06,2.4,381,1.2,630,8.1E+08,0.3,900,1.2E+09,0.5,1170,1.5E+09,0.6,2.5
+237,Blood,Eosinophils,0.3,blood,Blood,human,1.8E+05,1.2,295,1.1,2616,4.6E+08,0.1,4251,7.5E+08,0.2,5500,9.7E+08,0.3,1.2
+242,Colon,Eosinophils,0.1,barrier epithelial,GI,human,7.6E+05,2.4,295,1.1,210,1.6E+08,0.1,360,2.7E+08,0.1,370,2.8E+08,0.1,2.4
+253,Lungs,Eosinophils,0.4,barrier epithelial,Lungs,human,1.2E+06,1.7,295,1.1,487,5.6E+08,0.2,925,1.1E+09,0.3,1170,1.3E+09,0.4,1.7
+263,Red marrow,Eosinophils,9.1,marrow,Bone Marrow,human,2.5E+07,1.6,295,1.1,630,1.6E+10,4.9,900,2.2E+10,7.0,1170,2.9E+10,9.1,1.6
+264,SI,Eosinophils,0.1,barrier epithelial,GI,human,4.8E+05,1.8,295,1.1,369,1.8E+08,0.1,601,2.9E+08,0.1,649,3.1E+08,0.1,1.8
+269,Spleen,Eosinophils,0.7,lymphatic system,Lymph system,human,1.5E+07,1.4,295,1.1,80,1.2E+09,0.4,130,2.0E+09,0.6,150,2.3E+09,0.7,1.4
+270,Stomach,Eosinophils,0.0,barrier epithelial,GI,human,1.5E+05,2.3,295,1.1,84,1.3E+07,0.0,141,2.2E+07,0.0,150,2.3E+07,0.0,2.3
+272,Thymus,Eosinophils,0.0,lymphatic system,Lymph system,human,3.0E+06,1.1,295,1.1,40,1.2E+08,0.0,25,7.5E+07,0.0,20,6.0E+07,0.0,1.1
+282,Adipose tissue,Mast cells,0.3,adipose tissue,Others,human,1.7E+04,1.9,1009,1.4,7500,1.3E+08,0.1,19000,3.3E+08,0.4,14500,2.5E+08,0.3,2.0
+287,Bronchial tree,Mast cells,0.4,barrier epithelial,Lungs,human,1.3E+07,1.5,1009,1.4,13.15,1.7E+08,0.2,24.66,3.2E+08,0.3,30,3.9E+08,0.4,1.7
+288,Cartilage ,Mast cells,5.4,connective,Others,extrapolation,4.6E+06,1.5,1009,1.4,820,3.8E+09,4.1,900,4.1E+09,4.4,1100,5.0E+09,5.4,1.7
+289,Colon,Mast cells,1.4,barrier epithelial,GI,human,3.4E+06,1.6,1009,1.4,210,7.1E+08,0.8,360,1.2E+09,1.3,370,1.3E+09,1.4,1.8
+290,Connective tissue,Mast cells,7.9,connective,Others,human,4.6E+06,1.5,1009,1.4,701.37,3.2E+09,3.5,1315.07,6.0E+09,6.5,1600,7.3E+09,7.9,1.7
+292,Esophagus,Mast cells,0.4,barrier epithelial,GI,extrapolation,8.6E+06,1.7,1009,1.4,18,1.5E+08,0.2,35,3.0E+08,0.3,40,3.4E+08,0.4,1.9
+296,Heart,Mast cells,0.2,striated muscle,Others,human,4.3E+05,2.1,1009,1.4,140,6.0E+07,0.1,250,1.1E+08,0.1,330,1.4E+08,0.2,2.3
+298,Larynx,Mast cells,0.3,barrier epithelial,Lungs,extrapolation,8.6E+06,1.7,1009,1.4,12,1.0E+08,0.1,19,1.6E+08,0.2,28,2.4E+08,0.3,1.9
+300,Lungs,Mast cells,22.8,barrier epithelial,Lungs,human,1.8E+07,1.8,1009,1.4,487,8.8E+09,9.5,925,1.7E+10,18.0,1170,2.1E+10,22.8,1.9
+306,Periarticular tissue,Mast cells,4.4,connective,Others,extrapolation,4.6E+06,1.5,1009,1.4,394.52,1.8E+09,1.9,739.73,3.4E+09,3.7,900,4.1E+09,4.4,1.7
+310,Red marrow,Mast cells,0.9,marrow,Bone Marrow,human,7.4E+05,2.4,1009,1.4,630,4.7E+08,0.5,900,6.7E+08,0.7,1170,8.6E+08,0.9,2.5
+311,SI,Mast cells,5.2,barrier epithelial,GI,human,7.5E+06,1.4,1009,1.4,369,2.8E+09,3.0,601,4.5E+09,4.9,649,4.9E+09,5.2,1.6
+313,Skeletal Muscles,Mast cells,13.2,striated muscle,Others,extrapolation,4.3E+05,2.1,1009,1.4,11000,4.7E+09,5.1,17500,7.5E+09,8.1,28500,1.2E+10,13.2,2.3
+314,Skin,Mast cells,30.6,barrier epithelial,Skin,extrapolation,8.6E+06,1.7,1009,1.4,820,7.0E+09,7.6,2300,2.0E+10,21.3,3300,2.8E+10,30.6,1.9
+317,Stomach,Mast cells,2.7,barrier epithelial,GI,human,1.7E+07,1.0,1009,1.4,84,1.4E+09,1.5,141,2.4E+09,2.5,150,2.5E+09,2.7,1.4
+321,Tongue,Mast cells,0.0,striated muscle,Others,extrapolation,4.3E+05,2.1,1009,1.4,32,1.4E+07,0.0,60,2.6E+07,0.0,73,3.1E+07,0.0,2.3
+323,Trachea,Mast cells,0.0,barrier epithelial,Lungs,human,4.1E+06,2.5,1009,1.4,4.5,1.8E+07,0.0,8,3.3E+07,0.0,10,4.1E+07,0.0,2.6
+328,Yellow marrow,Mast cells,0.0,adipose tissue,Others,extrapolation,1.7E+04,1.9,1009,1.4,630,1.1E+07,0.0,1800,3.1E+07,0.0,2480,4.3E+07,0.0,2.0
+331,Blood,Neutrophils,7.0,blood,Blood,human,4.0E+06,1.0,295,1.1,2616,1.0E+10,3.3,4251,1.7E+10,5.4,5500,2.2E+10,7.0,1.1
+334,Bronchial tree,Neutrophils,0.0,barrier epithelial,Lungs,extrapolation,5.7E+05,4.2,295,1.1,13.15,7.5E+06,0.0,24.66,1.4E+07,0.0,30,1.7E+07,0.0,4.2
+336,Colon,Neutrophils,0.0,barrier epithelial,GI,human,1.8E+05,2.5,295,1.1,210,3.7E+07,0.0,360,6.4E+07,0.0,370,6.6E+07,0.0,2.5
+339,Esophagus,Neutrophils,0.0,barrier epithelial,GI,extrapolation,5.7E+05,4.2,295,1.1,18,1.0E+07,0.0,35,2.0E+07,0.0,40,2.3E+07,0.0,4.2
+343,Heart,Neutrophils,0.0,striated muscle,Others,extrapolation,9.7E+02,1.3,295,1.1,140,1.4E+05,0.0,250,2.4E+05,0.0,330,3.2E+05,0.0,1.3
+345,Larynx,Neutrophils,0.0,barrier epithelial,Lungs,extrapolation,5.7E+05,4.2,295,1.1,12,6.8E+06,0.0,19,1.1E+07,0.0,28,1.6E+07,0.0,4.2
+347,Lungs,Neutrophils,0.7,barrier epithelial,Lungs,human,1.8E+06,2.1,295,1.1,487,8.8E+08,0.3,925,1.7E+09,0.5,1170,2.1E+09,0.7,2.1
+348,Lymph nodes,Neutrophils,0.3,lymphatic system,Lymph system,human,4.6E+06,2.0,295,1.1,99,4.6E+08,0.1,185,8.6E+08,0.3,225,1.0E+09,0.3,2.0
+357,Red marrow,Neutrophils,187.0,marrow,Bone Marrow,human,5.1E+08,1.1,295,1.1,630,3.2E+11,100.7,900,4.6E+11,143.8,1170,5.9E+11,187.0,1.2
+358,SI,Neutrophils,0.1,barrier epithelial,GI,extrapolation,5.7E+05,4.2,295,1.1,369,2.1E+08,0.1,601,3.4E+08,0.1,649,3.7E+08,0.1,4.2
+360,Skeletal Muscles,Neutrophils,0.0,striated muscle,Others,human,9.7E+02,1.3,295,1.1,11000,1.1E+07,0.0,17500,1.7E+07,0.0,28500,2.8E+07,0.0,1.3
+361,Skin,Neutrophils,0.6,barrier epithelial,Skin,extrapolation,5.7E+05,4.2,295,1.1,820,4.6E+08,0.1,2300,1.3E+09,0.4,3300,1.9E+09,0.6,4.2
+363,Spleen,Neutrophils,13.9,lymphatic system,Lymph system,human,2.9E+08,1.2,295,1.1,80,2.4E+10,7.4,130,3.8E+10,12.1,150,4.4E+10,13.9,1.2
+364,Stomach,Neutrophils,0.0,barrier epithelial,GI,extrapolation,5.7E+05,4.2,295,1.1,84,4.8E+07,0.0,141,8.0E+07,0.0,150,8.5E+07,0.0,4.2
+366,Thymus,Neutrophils,0.2,lymphatic system,Lymph system,extrapolation,3.7E+07,8.3,295,1.1,40,1.5E+09,0.5,25,9.2E+08,0.3,20,7.4E+08,0.2,8.4
+368,Tongue,Neutrophils,0.0,striated muscle,Others,extrapolation,9.7E+02,1.3,295,1.1,32,3.1E+04,0.0,60,5.8E+04,0.0,73,7.1E+04,0.0,1.3
+369,Tonsils,Neutrophils,0.0,lymphatic system,Lymph system,extrapolation,3.7E+07,8.3,295,1.1,3,1.1E+08,0.0,3,1.1E+08,0.0,3,1.1E+08,0.0,8.4
+370,Trachea,Neutrophils,0.0,barrier epithelial,Lungs,extrapolation,5.7E+05,4.2,295,1.1,4.5,2.5E+06,0.0,8,4.5E+06,0.0,10,5.7E+06,0.0,4.2
+376,Adipose tissue,Macrophages,10.0,adipose tissue,Others,human,2.5E+05,2.0,2608,1.5,7500,1.8E+09,5.2,19000,4.7E+09,13.1,14500,3.6E+09,10.0,2.2
+377,Adrenal glands,Macrophages,0.3,internal epithelial,Others,mouse,7.9E+06,2.2,2608,1.5,7,5.5E+07,0.2,13,1.0E+08,0.3,14,1.1E+08,0.3,2.4
+378,Brain,Macrophages,13.5,CNS,Others,human,8.0E+06,1.1,1090,1.5,1300,1.0E+10,12.1,1300,1.0E+10,12.1,1450,1.2E+10,13.5,1.5
+379,Breasts,Macrophages,0.5,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,15,1.1E+08,0.3,500,3.7E+09,10.2,25,1.8E+08,0.5,2.4
+380,Bronchial tree,Macrophages,0.3,barrier epithelial,Lungs,extrapolation,3.8E+06,2.1,2608,1.5,13.15,4.9E+07,0.1,24.66,9.3E+07,0.3,30,1.1E+08,0.3,2.3
+381,Cartilage ,Macrophages,6.1,connective,Others,extrapolation,2.0E+06,1.2,2608,1.5,820,1.6E+09,4.5,900,1.8E+09,5.0,1100,2.2E+09,6.1,1.6
+382,Colon,Macrophages,3.8,barrier epithelial,GI,human,8.8E+06,1.9,1097,1.3,210,1.8E+09,2.2,360,3.2E+09,3.7,370,3.3E+09,3.8,2.0
+383,Connective tissue,Macrophages,3.6,connective,Others,human,2.0E+06,1.2,1060,1.1,701.37,1.4E+09,1.6,1315.07,2.6E+09,2.9,1600,3.2E+09,3.6,1.2
+384,Epididymes,Macrophages,0.3,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,1.6,1.2E+07,0.0,0,0.0E+00,0.0,17,1.2E+08,0.3,2.4
+385,Esophagus,Macrophages,0.4,barrier epithelial,GI,extrapolation,3.8E+06,2.1,2608,1.5,18,6.8E+07,0.2,35,1.3E+08,0.4,40,1.5E+08,0.4,2.3
+386,Eyes ,Macrophages,0.3,CNS,Others,extrapolation,8.0E+06,1.1,2608,1.5,12,9.6E+07,0.3,15,1.2E+08,0.3,15,1.2E+08,0.3,1.5
+387,Fallopian tubes,Macrophages,0.0,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,0,0.0E+00,0.0,2.1,1.5E+07,0.0,0,0.0E+00,0.0,2.4
+388,Gallbladder,Macrophages,0.2,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,4.4,3.2E+07,0.1,8,5.9E+07,0.2,10,7.3E+07,0.2,2.4
+389,Heart,Macrophages,0.6,striated muscle,Others,human,6.8E+05,1.9,2608,1.5,140,9.5E+07,0.3,250,1.7E+08,0.5,330,2.2E+08,0.6,2.1
+390,Kidneys,Macrophages,1.8,internal epithelial,Others,human,2.1E+06,1.1,2608,1.5,180,3.8E+08,1.0,275,5.7E+08,1.6,310,6.5E+08,1.8,1.5
+391,Larynx,Macrophages,0.3,barrier epithelial,Lungs,extrapolation,3.8E+06,2.1,2608,1.5,12,4.5E+07,0.1,19,7.1E+07,0.2,28,1.1E+08,0.3,2.3
+392,Liver,Macrophages,108.0,internal epithelial,Liver,human,2.0E+07,1.0,2806,1.2,830,1.7E+10,49.8,1400,2.8E+10,84.0,1800,3.6E+10,108.0,1.2
+393,Lungs,Macrophages,87.1,barrier epithelial,Lungs,human,2.4E+07,2.3,2868,1.4,487,1.2E+10,36.2,925,2.2E+10,68.8,1170,2.8E+10,87.1,2.4
+394,Lymph nodes,Macrophages,20.8,lymphatic system,Lymph system,multiplex,3.3E+07,1.8,2608,1.5,99,3.3E+09,9.2,185,6.1E+09,17.1,225,7.5E+09,20.8,2.1
+395,Lymph vessels,Macrophages,2.8,connective,Lymph system,extrapolation,2.0E+06,1.2,2608,1.5,221,4.4E+08,1.2,415,8.2E+08,2.3,505,1.0E+09,2.8,1.6
+396,Ovaries,Macrophages,0.0,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,0,0.0E+00,0.0,11,8.1E+07,0.2,0,0.0E+00,0.0,2.4
+397,Pancreas,Macrophages,2.9,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,60,4.4E+08,1.2,120,8.8E+08,2.5,140,1.0E+09,2.9,2.4
+398,Parathyroid glands,Macrophages,0.0,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,0.08,5.9E+05,0.0,0.15,1.1E+06,0.0,0.18,1.3E+06,0.0,2.4
+399,Periarticular tissue,Macrophages,5.0,connective,Others,extrapolation,2.0E+06,1.2,2608,1.5,394.52,7.8E+08,2.2,739.73,1.5E+09,4.1,900,1.8E+09,5.0,1.6
+400,Pineal gland,Macrophages,0.0,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,0.08,5.9E+05,0.0,0.15,1.1E+06,0.0,0.18,1.3E+06,0.0,2.4
+401,Pituitary gland,Macrophages,0.0,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,0.35,2.6E+06,0.0,0.6,4.4E+06,0.0,0.6,4.4E+06,0.0,2.4
+402,Prostate gland,Macrophages,0.3,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,1.6,1.2E+07,0.0,0,0.0E+00,0.0,17,1.2E+08,0.3,2.4
+403,Red marrow,Macrophages,135.7,marrow,Bone Marrow,human,4.2E+07,1.9,2608,1.5,630,2.6E+10,73.1,900,3.7E+10,104.4,1170,4.9E+10,135.7,2.1
+404,SI,Macrophages,1.2,barrier epithelial,GI,human,1.6E+06,1.6,1097,1.3,369,6.0E+08,0.7,601,9.8E+08,1.1,649,1.1E+09,1.2,1.7
+405,Salivary glands,Macrophages,1.7,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,44,3.2E+08,0.9,70,5.1E+08,1.4,85,6.2E+08,1.7,2.4
+406,Skeletal Muscles,Macrophages,56.6,striated muscle,Others,human,7.1E+05,1.3,2608,1.5,11000,7.8E+09,21.9,17500,1.2E+10,34.8,28500,2.0E+10,56.6,1.6
+407,Skin,Macrophages,17.4,barrier epithelial,Skin,human,3.6E+06,1.3,1353,1.7,820,3.0E+09,4.3,2300,8.4E+09,12.1,3300,1.2E+10,17.4,1.8
+408,Spinal cord,Macrophages,0.7,CNS,Others,extrapolation,8.0E+06,1.1,2608,1.5,13,1.0E+08,0.3,25,2.0E+08,0.6,30,2.4E+08,0.7,1.5
+409,Spleen,Macrophages,67.0,lymphatic system,Lymph system,multiplex,1.1E+08,1.4,3689,1.7,80,9.0E+09,35.7,130,1.5E+10,58.0,150,1.7E+10,67.0,1.8
+410,Stomach,Macrophages,0.2,barrier epithelial,GI,human,8.6E+05,2.3,1097,1.3,84,7.2E+07,0.1,141,1.2E+08,0.1,150,1.3E+08,0.2,2.4
+411,Testes,Macrophages,0.8,internal epithelial,Others,mouse,7.9E+06,2.0,2608,1.5,2,1.6E+07,0.0,0,0.0E+00,0.0,35,2.8E+08,0.8,2.2
+412,Thymus,Macrophages,0.6,lymphatic system,Lymph system,multiplex,1.1E+07,1.9,2608,1.5,40,4.4E+08,1.2,25,2.8E+08,0.8,20,2.2E+08,0.6,2.1
+413,Thyroid,Macrophages,0.4,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,7.9,5.8E+07,0.2,17,1.2E+08,0.3,20,1.5E+08,0.4,2.4
+414,Tongue,Macrophages,0.1,striated muscle,Others,extrapolation,7.0E+05,1.6,2608,1.5,32,2.2E+07,0.1,60,4.2E+07,0.1,73,5.1E+07,0.1,1.8
+415,Tonsils,Macrophages,0.2,lymphatic system,Lymph system,multiplex,2.9E+07,1.5,2608,1.5,3,8.8E+07,0.2,3,8.8E+07,0.2,3,8.8E+07,0.2,1.8
+416,Trachea,Macrophages,0.1,barrier epithelial,Lungs,extrapolation,3.8E+06,2.1,2608,1.5,4.5,1.7E+07,0.0,8,3.0E+07,0.1,10,3.8E+07,0.1,2.3
+417,Ureters,Macrophages,0.3,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,7,5.1E+07,0.1,15,1.1E+08,0.3,16,1.2E+08,0.3,2.4
+418,Urethra,Macrophages,0.2,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,3,2.2E+07,0.1,3,2.2E+07,0.1,10,7.3E+07,0.2,2.4
+419,Urinary bladder,Macrophages,0.6,internal epithelial,Others,mouse,4.4E+06,2.0,2608,1.5,25,1.1E+08,0.3,40,1.8E+08,0.5,50,2.2E+08,0.6,2.2
+420,Uterus,Macrophages,0.0,internal epithelial,Others,extrapolation,7.3E+06,2.1,2608,1.5,0,0.0E+00,0.0,80,5.9E+08,1.6,0,0.0E+00,0.0,2.4
+421,Yellow marrow,Macrophages,1.7,adipose tissue,Others,extrapolation,2.5E+05,2.0,2608,1.5,630,1.6E+08,0.4,1800,4.4E+08,1.2,2480,6.1E+08,1.7,2.2
+422,Blood,Dendritic cells,0.2,blood,Blood,human,1.8E+04,2.2,2087,1.5,2616,4.7E+07,0.1,4251,7.6E+07,0.2,5500,9.9E+07,0.2,2.5
+423,Lymph nodes,Dendritic cells,33.2,lymphatic system,Lymph system,multiplex,6.6E+07,1.4,2087,1.5,99,6.5E+09,14.6,185,1.2E+10,27.3,225,1.5E+10,33.2,1.7
+424,Skin,Dendritic cells,21.5,barrier epithelial,Skin,human,2.9E+06,1.9,2087,1.5,820,2.4E+09,5.3,2300,6.7E+09,15.0,3300,9.6E+09,21.5,2.1
+425,Spleen,Dendritic cells,50.6,lymphatic system,Lymph system,multiplex,1.5E+08,1.3,2087,1.5,80,1.2E+10,27.0,130,2.0E+10,43.9,150,2.3E+10,50.6,1.6
+426,Blood,Monocytes,1.2,blood,Blood,human,5.4E+05,1.2,373,1.1,2616,1.4E+09,0.6,4251,2.3E+09,0.9,5500,3.0E+09,1.2,1.2
+427,Lymph nodes,Monocytes,0.3,lymphatic system,Lymph system,human,3.9E+06,1.3,373,1.1,99,3.8E+08,0.2,185,7.2E+08,0.3,225,8.7E+08,0.3,1.3
+428,Red marrow,Monocytes,9.2,marrow,Bone Marrow,human,2.0E+07,1.2,373,1.1,630,1.2E+10,4.9,900,1.8E+10,7.1,1170,2.3E+10,9.2,1.3
+429,Spleen,Monocytes,2.5,lymphatic system,Lymph system,human,4.1E+07,1.2,373,1.1,80,3.3E+09,1.3,130,5.4E+09,2.1,150,6.2E+09,2.5,1.3
+430,Thymus,Dendritic cells,0.1,lymphatic system,Lymph system,multiplex,2.7E+06,1.8,2087,1.5,40,1.1E+08,0.2,25,6.7E+07,0.1,20,5.4E+07,0.1,2.0
+431,Tonsils,Dendritic cells,0.5,lymphatic system,Lymph system,multiplex,7.4E+07,1.5,2087,1.5,3,2.2E+08,0.5,3,2.2E+08,0.5,3,2.2E+08,0.5,1.8
