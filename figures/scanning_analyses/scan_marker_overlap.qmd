@@ -10,7 +10,7 @@ For each target cell type, compares the top-N receptors predicted by each scanni
 - Cell-type defining surface marker annotations (`import_annotation_markers`)
 
 # Parameters
-- `SELEC_SCAN_PATH`: Path to the saved selectivity scan CSV file
+- `WNN_SELEC_SCAN_PATH`: Path to the saved selectivity scan CSV file
 - `KL_EMD_SCAN_PATH`: Path to the saved KL divergence and EMD scan CSV file
 - `TOP_N_VALUES`: List of top-N cutoffs at which receptor–marker overlap is evaluated
 - `SIGNAL_RECEPTOR`: Name of the artificial prototype signal receptor excluded from selectivity rankings
@@ -35,7 +35,8 @@ path_here = Path(__file__).parent.parent.parent
 
 
 # --- Parameters ---
-SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+WNN_SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+RNA_SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260624_selec_scan_RNA-annot_full.csv" # TODO: implement
 KL_EMD_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
 MARKERS_CSV_FILE = "Hao_annotation_surface_markers.csv"
 TOP_N_VALUES = [5, 10, 20, 50, 100]
@@ -47,8 +48,11 @@ SIGNAL_RECEPTOR = (
 cell_type_markers = import_annotation_markers()
 
 # Load scan results
-opt_selec, _, _, selec_receptors, selec_cell_types = load_selec_scan_results(
-    SELEC_SCAN_PATH
+opt_selec_WNN, _, _, selec_receptors_WNN, selec_cell_types_WNN = load_selec_scan_results(
+    WNN_SELEC_SCAN_PATH
+)
+opt_selec_RNA, _, _, selec_receptors_RNA, selec_cell_types_RNA = load_selec_scan_results(
+    RNA_SELEC_SCAN_PATH
 )
 KL_results, EMD_results, kl_receptors, kl_cell_types = load_KL_EMD_scan_results(
     KL_EMD_SCAN_PATH
@@ -122,10 +126,18 @@ def compute_overlap_table(
     return pd.DataFrame(rows)
 
 
-selec_overlap = compute_overlap_table(
-    opt_selec,
-    selec_receptors,
-    selec_cell_types,
+selec_overlap_WNN = compute_overlap_table(
+    opt_selec_WNN,
+    selec_receptors_WNN,
+    selec_cell_types_WNN,
+    cell_type_markers,
+    TOP_N_VALUES,
+    exclude={SIGNAL_RECEPTOR},
+)
+selec_overlap_RNA = compute_overlap_table(
+    opt_selec_RNA,
+    selec_receptors_RNA,
+    selec_cell_types_RNA,
     cell_type_markers,
     TOP_N_VALUES,
     exclude={SIGNAL_RECEPTOR},
@@ -154,7 +166,8 @@ import pandas as pd
 import seaborn as sns
 
 all_cell_types = sorted(
-    set(selec_overlap["cell_type"])
+    set(selec_overlap_WNN["cell_type"])
+    | set(selec_overlap_RNA["cell_type"])
     | set(kl_overlap["cell_type"])
     | set(emd_overlap["cell_type"])
 )
@@ -184,10 +197,11 @@ def _make_annot(df, cell_types_ordered, top_n_values):
     return annot
 
 
-fig, axes = plt.subplots(1, 3, figsize=(20, 10), sharey=True)
+fig, axes = plt.subplots(1, 4, figsize=(20, 10), sharey=True)
 
 metric_specs = [
-    ("Selectivity", selec_overlap),
+    ("Selectivity (WNN)", selec_overlap_WNN),
+    ("Selectivity (RNA)", selec_overlap_RNA),
     ("KL Divergence", kl_overlap),
     ("EMD", emd_overlap),
 ]
@@ -224,13 +238,14 @@ for ax, (title, df) in zip(axes, metric_specs, strict=False):
     ax.set_xlabel("Top-N Predicted Receptors", fontsize=12)
     ax.tick_params(axis="x", labelsize=11)
     ax.tick_params(axis="y", labelsize=10, rotation=0)
+    ax.set_ylabel("")
 
 axes[0].set_ylabel("Cell Type", fontsize=12)
 
 # Shared colorbar
 pos0 = axes[0].get_position()
-pos2 = axes[2].get_position()
-cbar_ax = fig.add_axes([pos2.x1 + 0.01, pos0.y0, 0.015, pos0.height])
+pos3 = axes[3].get_position()
+cbar_ax = fig.add_axes([pos3.x1 + 0.01, pos0.y0, 0.015, pos0.height])
 norm = plt.Normalize(vmin=0, vmax=1)
 sm = plt.cm.ScalarMappable(cmap="Blues", norm=norm)
 sm.set_array([])
