@@ -1,5 +1,5 @@
 ---
-title: "Defining Marker Overlap With Single-Receptor Target Scans"
+title: "Defining Marker Overlap With Single-Receptor Target Selectivity Predictions"
 ---
 
 # Summary
@@ -10,8 +10,7 @@ Inline 1D scan comparing single-receptor predictions against cell-type defining 
 - Receptor sampling and filtering functions (`sample_receptor_abundances`, `filter_receptor_abundances`)
 - 1D distance metric calculation functions (`KL_EMD_1D`)
 - Selectivity optimization function (`optimize_affs`)
-- Cell-type defining surface marker annotations (`CITE-seq_defining_surface_markers.csv`)
-- Visualization libraries (matplotlib, seaborn, numpy)
+- Cell-type defining surface marker annotations (`import_annotation_markers`)
 
 # Parameters
 - `CELL_CATEGORIZATION`: CITE-seq column used for cell type labels
@@ -22,7 +21,6 @@ Inline 1D scan comparing single-receptor predictions against cell-type defining 
 
 # Outputs
 - **Recall Heatmap**: Three-panel figure (Selectivity | KL Divergence | EMD) showing the fraction of each cell type's defining markers recovered in the top-N predicted receptors, annotated with raw overlap counts
-- **Summary Table**: Per-cell-type overlap counts at top-20 for all three metrics, with the defining markers present after filtering listed
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -34,6 +32,21 @@ from bicytok.imports import (
     import_annotation_markers,
     importCITE,
 )
+
+import numpy as np
+import pandas as pd
+
+import time
+import warnings
+
+import numpy as np
+
+from bicytok.distance_metric_funcs import KL_EMD_1D
+from bicytok.imports import (
+    filter_receptor_abundances,
+    sample_receptor_abundances,
+)
+from bicytok.selectivity_funcs import optimize_affs
 
 path_here = Path(__file__).parent.parent.parent
 
@@ -51,37 +64,18 @@ MARKERS_CSV_FILE = "CITE-seq_defining_surface_markers.csv"
 cell_type_markers = import_annotation_markers()
 
 # Load CITE-seq data; restrict to cell types that have defining markers.
-# Keep only receptor columns + cell type; other metadata columns would cause
-# filter_receptor_abundances to fail when it computes column means.
-CITE_DF = importCITE()
-exclude_cols = {"Cell", "CellType1", "CellType2", "CellType3"}
-receptor_cols = [c for c in CITE_DF.columns if c not in exclude_cols]
-epitopes_df = CITE_DF[receptor_cols + [CELL_CATEGORIZATION]].rename(
-    columns={CELL_CATEGORIZATION: "Cell Type"}
-)
-cite_cell_types = set(epitopes_df["Cell Type"].unique())
-targ_cell_types = sorted(cite_cell_types & set(cell_type_markers.keys()))
+CITE_df, cell_types = importCITE(CELL_CATEGORIZATION)
+CITE_df["Cell Type"] = cell_types
+
+cite_cell_types = cell_types.unique()
+targ_cell_types = sorted(set(cite_cell_types) & set(cell_type_markers.keys()))
 
 print(f"Cell types to analyze ({len(targ_cell_types)}): {targ_cell_types}")
-```
 
-```{python}
 # --- 1D inline scan ---
 # For each cell type: sample (with mock signal receptor) → filter receptors →
 # compute selectivity and KL/EMD. "sim_signal" is whitelisted so it always
 # survives filtering, then separated out before metric computation.
-
-import time
-import warnings
-
-import numpy as np
-
-from bicytok.distance_metric_funcs import KL_EMD_1D
-from bicytok.imports import (
-    filter_receptor_abundances,
-    sample_receptor_abundances,
-)
-from bicytok.selectivity_funcs import optimize_affs
 
 scan_results: dict[str, dict] = {}
 
@@ -89,7 +83,7 @@ for ct in targ_cell_types:
     t0 = time.time()
 
     sample_df = sample_receptor_abundances(
-        epitopes_df, numCells=SAMPLE_SIZE, targCellType=ct, insert_mock_signal_rec=True
+        CITE_df, numCells=SAMPLE_SIZE, targCellType=ct, insert_mock_signal_rec=True
     )
     sample_receptor_cols = set(sample_df.columns) - {"Cell Type", "sim_signal"}
     ct_whitelist = sorted(
@@ -143,14 +137,8 @@ for ct in targ_cell_types:
     print(f"  {ct}: {len(target_receptors)} receptors in {time.time() - t0:.1f} s")
 
 print("Scan complete.")
-```
 
-```{python}
 # --- Overlap analysis ---
-
-import numpy as np
-import pandas as pd
-
 
 def compute_overlap_table_1D(
     scan_results: dict,
@@ -195,7 +183,6 @@ def compute_overlap_table_1D(
                 }
             )
     return pd.DataFrame(rows)
-
 
 selec_overlap = compute_overlap_table_1D(
     scan_results, cell_type_markers, "selectivity", TOP_N_VALUES
@@ -307,46 +294,4 @@ fig.suptitle(
     y=1.01,
 )
 plt.show()
-```
-
-```{python}
-# --- Summary table at top-20 ---
-
-import numpy as np
-
-N_SUMMARY = 20
-
-print(
-    f"{'Cell Type':<22} {'N def (filt)':<14} {'Selec':<8} {'KL':<8} {'EMD':<8}  Defining markers after filtering"
-)
-print("-" * 110)
-
-for ct in all_cell_types:
-    data = scan_results.get(ct)
-    if data is None:
-        continue
-    defining = cell_type_markers.get(ct, set())
-    defining_in_scan = defining & set(data["receptors"])
-    if not defining_in_scan:
-        continue
-
-    def top_n(data, metric):
-        scores = data[metric]
-        ranked = sorted(
-            zip(data["receptors"], scores, strict=False),
-            key=lambda x: x[1] if not np.isnan(x[1]) else -np.inf,
-            reverse=True,
-        )
-        return {r for r, _ in ranked[:N_SUMMARY]}
-
-    r_selec = (
-        f"{len(top_n(data, 'selectivity') & defining_in_scan)}/{len(defining_in_scan)}"
-    )
-    r_kl = f"{len(top_n(data, 'KL') & defining_in_scan)}/{len(defining_in_scan)}"
-    r_emd = f"{len(top_n(data, 'EMD') & defining_in_scan)}/{len(defining_in_scan)}"
-
-    markers_str = ", ".join(sorted(defining_in_scan))
-    print(
-        f"{ct:<22} {len(defining_in_scan):<14} {r_selec:<8} {r_kl:<8} {r_emd:<8}  {markers_str}"
-    )
 ```
