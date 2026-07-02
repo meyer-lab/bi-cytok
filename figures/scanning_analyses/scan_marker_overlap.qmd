@@ -25,9 +25,7 @@ For each target cell type, compares the top-N receptors predicted by each scanni
 %config InlineBackend.figure_formats = ['svg']
 from pathlib import Path
 
-import pandas as pd
-
-from bicytok.imports import importCITE
+from bicytok.imports import import_annotation_markers, importCITE
 from figures.scanning_analyses.scan_runners import (
     load_KL_EMD_scan_results,
     load_selec_scan_results,
@@ -39,7 +37,7 @@ path_here = Path(__file__).parent.parent.parent
 # --- Parameters ---
 SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
 KL_EMD_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
-MARKERS_CSV_FILE = "CITE-seq_defining_surface_markers.csv"
+MARKERS_CSV_FILE = "Hao_annotation_surface_markers.csv"
 TOP_N_VALUES = [5, 10, 20, 50, 100]
 SIGNAL_RECEPTOR = (
     "Prototype_Signal_Receptor"  # Artificial; excluded from selectivity rankings
@@ -49,14 +47,7 @@ CHECK_MARKER_PRESENCE = (
 )
 
 # Build cell type → defining marker set from CSV.
-# A marker may define multiple cell types; both cell_type_main columns are used.
-markers_df = pd.read_csv(path_here / "data" / MARKERS_CSV_FILE)
-cell_type_markers: dict[str, set[str]] = {}
-for _, row in markers_df.iterrows():
-    for col in ["cell_type_main_1", "cell_type_main_2"]:
-        ct = str(row[col]).strip()
-        if ct and ct != "nan":
-            cell_type_markers.setdefault(ct, set()).add(row["surface_marker"])
+cell_type_markers = import_annotation_markers()
 
 # Load scan results
 opt_selec, _, _, selec_receptors, selec_cell_types = load_selec_scan_results(
@@ -184,7 +175,6 @@ emd_overlap = compute_overlap_table(
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-
 
 all_cell_types = sorted(
     set(selec_overlap["cell_type"])

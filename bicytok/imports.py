@@ -73,6 +73,28 @@ def import_cell_densities(tissue: str = None) -> pd.DataFrame:
     return density_df
 
 
+def import_annotation_markers() -> dict[str, set[str]]:
+    """
+    Loads surface markers used to define cell types by Hao et al. during WNN.
+    See data/README.md for details on the source and meaning of the data.
+    Returns:
+        cell_type_markers: dictionary mapping cell type names to sets of defining
+            surface markers.
+    """
+    markers_df = pd.read_csv(
+        path_here / "data" / "Hao_annotation_surface_markers.csv", encoding="utf-8-sig"
+    )
+
+    cell_type_markers: dict[str, set[str]] = {}
+    for _, row in markers_df.iterrows():
+        for col in ["cell_type_main_1", "cell_type_main_2"]:
+            ct = str(row[col]).strip()
+            if ct and ct != "nan":
+                cell_type_markers.setdefault(ct, set()).add(row["surface_marker"])
+
+    return cell_type_markers
+
+
 def sample_receptor_abundances(
     CITE_DF: pd.DataFrame,
     numCells: int,
