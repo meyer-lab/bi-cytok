@@ -22,13 +22,14 @@ For each target cell type, compares the top-N receptors predicted by each scanni
 %config InlineBackend.figure_formats = ['svg']
 from pathlib import Path
 
-from bicytok.imports import import_annotation_markers, importCITE
+import numpy as np
+import pandas as pd
+
+from bicytok.imports import import_annotation_markers
 from figures.scanning_analyses.scan_runners import (
     load_KL_EMD_scan_results,
     load_selec_scan_results,
 )
-import numpy as np
-import pandas as pd
 
 path_here = Path(__file__).parent.parent.parent
 
@@ -53,6 +54,7 @@ KL_results, EMD_results, kl_receptors, kl_cell_types = load_KL_EMD_scan_results(
     KL_EMD_SCAN_PATH
 )
 
+
 # Compare markers with scan hits
 def _rank_receptors(
     metric_3d: np.ndarray,
@@ -76,6 +78,7 @@ def _rank_receptors(
         if not np.isnan(best[j]) and receptors[j] not in exclude
     ]
     return sorted(pairs, key=lambda x: x[1], reverse=True)
+
 
 def compute_overlap_table(
     metric_3d: np.ndarray,
@@ -117,6 +120,7 @@ def compute_overlap_table(
                 }
             )
     return pd.DataFrame(rows)
+
 
 selec_overlap = compute_overlap_table(
     opt_selec,
