@@ -3,7 +3,7 @@ title: "Defining Marker Overlap With Single-Receptor Target Selectivity Predicti
 ---
 
 # Summary
-Inline 1D scan comparing single-receptor predictions against cell-type defining markers (extraceted from Hao et al.). For each cell type, receptors are filtered to those with sufficient expression and higher mean abundance in target than off-target cells; defining markers for each cell type are whitelisted so they are always included. Three metrics are computed per receptor: binding model selectivity (prototype signal + 1 target receptor), KL divergence, and EMD. Recall is the fraction of a cell type's defining markers (present after filtering) that appear in the top-N predictions.
+Inline 1D scan comparing single-receptor predictions against cell-type defining markers (extracted from Hao et al.). For each cell type, receptors are filtered to those with sufficient expression and higher mean abundance in target than off-target cells; defining markers for each cell type are whitelisted so they are always included. Three metrics are computed per receptor: binding model selectivity (prototype signal + 1 target receptor), KL divergence, and EMD. Recall is the fraction of a cell type's defining markers (present after filtering) that appear in the top-N predictions.
 
 # Imports
 - CITE-seq surface marker expression data (`importCITE`)
@@ -40,8 +40,6 @@ from bicytok.imports import (
 )
 from bicytok.selectivity_funcs import optimize_affs
 
-path_here = Path(__file__).parent.parent.parent
-
 
 # --- Parameters ---
 CELL_CATEGORIZATION = "CellType2"
@@ -50,7 +48,6 @@ DOSE = 1e-10
 VALENCY = np.array([[1, 1]])  # sim_signal (×1) + single target receptor (×1)
 INIT = np.array([6.0, 7.0, -9.0])  # aff_signal, aff_target, log10_Kx_star
 TOP_N_VALUES = [1, 5, 10, 20, 30]
-MARKERS_CSV_FILE = "CITE-seq_defining_surface_markers.csv"
 
 # Build cell type → defining marker set from CSV
 cell_type_markers = import_annotation_markers()

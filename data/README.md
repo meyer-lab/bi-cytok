@@ -85,5 +85,5 @@ CITE-seq ADT types used by Hao et al to annotate cells during WNN.
 - **Used in:**
   `figures/scanning_analyses/scan_marker_overlap.qmd` to compare the overlap between
   the top hits of each selectivity predictor and the cell-type-defining markers.
-- **Source / citation:** Hao et al., Cell 2021, extracted fromFigures 4 and S4
+- **Source / citation:** Hao et al., Cell 2021, extracted from Figures 4 and S4
   DOI: 10.1016/j.cell.2021.04.048.

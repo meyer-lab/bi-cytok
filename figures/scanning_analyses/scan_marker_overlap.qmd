@@ -16,7 +16,7 @@ For each target cell type, compares the top-N receptors predicted by each scanni
 - `SIGNAL_RECEPTOR`: Name of the artificial prototype signal receptor excluded from selectivity rankings
 
 # Outputs
-- **Recall Heatmap**: Three-panel figure (Selectivity | KL Divergence | EMD) showing the fraction of each cell type's defining markers recovered in the top-N predicted receptors, annotated with raw overlap counts
+- **Recall Heatmap**: Four-panel figure (Selectivity (WNN) | Selectivity (RNA) | KL Divergence | EMD) showing the fraction of each cell type's defining markers recovered in the top-N predicted receptors, annotated with raw overlap counts
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -31,14 +31,11 @@ from figures.scanning_analyses.scan_runners import (
     load_selec_scan_results,
 )
 
-path_here = Path(__file__).parent.parent.parent
-
 
 # --- Parameters ---
 WNN_SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
-RNA_SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260624_selec_scan_RNA-annot_full.csv" # TODO: implement
+RNA_SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260624_selec_scan_RNA-annot_full.csv"
 KL_EMD_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
-MARKERS_CSV_FILE = "Hao_annotation_surface_markers.csv"
 TOP_N_VALUES = [5, 10, 20, 50, 100]
 SIGNAL_RECEPTOR = (
     "Prototype_Signal_Receptor"  # Artificial; excluded from selectivity rankings
