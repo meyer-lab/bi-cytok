@@ -20,8 +20,6 @@ For each target cell type, compares the top-N receptors predicted by each scanni
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 
@@ -31,10 +29,11 @@ from figures.scanning_analyses.scan_runners import (
     load_selec_scan_results,
 )
 
-
 # --- Parameters ---
 WNN_SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
-RNA_SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260624_selec_scan_RNA-annot_full.csv"
+RNA_SELEC_SCAN_PATH = (
+    "/home/sama/receptor_sweep_data/20260624_selec_scan_RNA-annot_full.csv"
+)
 KL_EMD_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
 TOP_N_VALUES = [5, 10, 20, 50, 100]
 SIGNAL_RECEPTOR = (
@@ -45,11 +44,11 @@ SIGNAL_RECEPTOR = (
 cell_type_markers = import_annotation_markers()
 
 # Load scan results
-opt_selec_WNN, _, _, selec_receptors_WNN, selec_cell_types_WNN = load_selec_scan_results(
-    WNN_SELEC_SCAN_PATH
+opt_selec_WNN, _, _, selec_receptors_WNN, selec_cell_types_WNN = (
+    load_selec_scan_results(WNN_SELEC_SCAN_PATH)
 )
-opt_selec_RNA, _, _, selec_receptors_RNA, selec_cell_types_RNA = load_selec_scan_results(
-    RNA_SELEC_SCAN_PATH
+opt_selec_RNA, _, _, selec_receptors_RNA, selec_cell_types_RNA = (
+    load_selec_scan_results(RNA_SELEC_SCAN_PATH)
 )
 KL_results, EMD_results, kl_receptors, kl_cell_types = load_KL_EMD_scan_results(
     KL_EMD_SCAN_PATH

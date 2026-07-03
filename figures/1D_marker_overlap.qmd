@@ -26,7 +26,6 @@ Inline 1D scan comparing single-receptor predictions against cell-type defining 
 %config InlineBackend.figure_formats = ['svg']
 import time
 import warnings
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -39,7 +38,6 @@ from bicytok.imports import (
     sample_receptor_abundances,
 )
 from bicytok.selectivity_funcs import optimize_affs
-
 
 # --- Parameters ---
 CELL_CATEGORIZATION = "CellType2"
