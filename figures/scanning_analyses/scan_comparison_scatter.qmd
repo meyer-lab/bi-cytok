@@ -1,29 +1,33 @@
 ---
-title: "Receptor Scan Comparison Scatter Plot"
+title: "Receptor Scan Metric Comparison Scatter Plots"
 ---
 
 # Summary
-Overlays receptor scan results for multiple target cell types on a single metric
-scatter plot. Each receptor pair appears once per cell type as a point colored by
-cell type, with no thresholding or labeling. Useful for visually assessing whether
-the metric landscape shifts across cell types and which pairs score consistently
-high or are cell-type-specific.
+Compares the three selectivity predictors — binding-model selectivity, EMD, and KL
+divergence — against one another across target cell types. Following the pattern in
+`scan_marker_overlap.qmd`, one binding-model scan and one distance-metric scan are
+supplied up front; the relevant metric columns are pulled from each based on their
+`.yaml` scan type. Three panels are produced, one per pairwise comparison:
+KL vs EMD, KL vs selectivity, and EMD vs selectivity. In each panel every receptor
+pair appears once per cell type as a point colored by cell type, with the
+top-scoring pair per axis highlighted with a star.
 
 # Inputs
-- Two CSV files produced by `run_selectivity_scan` or `run_KL_EMD_scan`
-  (may be the same file to compare two metrics within it); matching `.yaml` files must exist
-- `SCAN_PATH_1`, `SCAN_PATH_2`: paths to those CSVs
-- `KL_METRIC_1`, `KL_METRIC_2`: for KL/EMD scans, selects which method to use per path — `"KL_Divergence"` or `"EMD"`; metrics for selectivity scans are derived automatically
-- `AXIS_1_LABEL`, `AXIS_2_LABEL`: human-readable axis labels; set to `None` to auto-derive from the metric name
-- `TARG_CELL_TYPES`: list of target cell types to extract and overlay
+- `SELEC_SCAN_PATH`: CSV from `run_selectivity_scan` (binding-model selectivity)
+- `KL_EMD_SCAN_PATH`: CSV from `run_KL_EMD_scan` (KL divergence and EMD)
+  Both must have matching `.yaml` files describing the scan type.
+- `TARG_CELL_TYPES`: list of target cell types to extract and overlay; `None` to use
+  the intersection of cell types present in both scans
 
 # Outputs
-- Scatter plot: x = metric 1, y = metric 2
-  - One color per cell type; all receptor pairs plotted as equal-sized points
+- **`fig-scan-comp-kl-emd`**: KL divergence vs EMD
+- **`fig-scan-comp-kl-selec`**: KL divergence vs binding-model selectivity
+- **`fig-scan-comp-emd-selec`**: EMD vs binding-model selectivity
+
+Each panel: x = metric 1, y = metric 2, one color per cell type; all receptor pairs
+plotted as equal-sized points with the top pair per axis starred.
 
 ```{python}
-#| label: fig-scan-comp
-#| fig-cap: "Scatter plot comparing two receptor scan metrics across multiple target cell types. Each point represents a receptor pair for a given cell type, colored by cell type. Top-selectivity pairs are highlighted with stars."
 %config InlineBackend.figure_formats = ['svg']
 import os
 
@@ -31,55 +35,47 @@ import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import pandas as pd
 import yaml
+from scipy.stats import spearmanr
 
 # ── Parameters ────────────────────────────────────────────────────────────────
-SCAN_PATH_1 = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
-SCAN_PATH_2 = "/home/sama/receptor_sweep_data/20260624_selec_scan_RNA-annot_full.csv"
-# SCAN_PATH_1 = (
-#     SCAN_PATH_2  # For comparing two metrics within the same scan, set paths equal.
-# )
-
-# For KL_EMD scans, selects which method to use as the axis metric.
-KL_METRIC_1 = "EMD"  # "KL_Divergence" or "EMD"
-KL_METRIC_2 = "EMD"
-
-# Human-readable axis labels; set to None to auto-derive from the metric name.
-AXIS_1_LABEL = "WNN Annotated"
-AXIS_2_LABEL = "RNA Annotated"
-
-FILTER_SELEC_BASIN = True
-
-
-# ── Derive metrics from YAML ───────────────────────────────────────────────────
-def _scan_metric(scan_path, kl_metric):
-    yaml_path = os.path.splitext(scan_path)[0] + ".yaml"
-    with open(yaml_path) as f:
-        scan_type = yaml.safe_load(f)["scan_type"]
-    return "Selectivity" if scan_type == "selectivity" else kl_metric
-
-
-METRIC_1 = _scan_metric(SCAN_PATH_1, KL_METRIC_1)
-METRIC_2 = _scan_metric(SCAN_PATH_2, KL_METRIC_2)
-AXIS_1_LABEL = AXIS_1_LABEL or METRIC_1.replace("_", " ")
-AXIS_2_LABEL = AXIS_2_LABEL or METRIC_2.replace("_", " ")
+SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+KL_EMD_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
 
 # List of target cell types to overlay; each is plotted in a distinct color.
-TARG_CELL_TYPES: list[str] = [
-    "Treg",
-    "CD4 TEM",
-    "CD4 CTL",
-    "CD4 Naive",
-    "CD8 TEM",
-    "dnT",
-    "ILC",
-    "NK_CD56bright",
-]
-TARG_CELL_TYPES = None
+# Set to None to use the intersection of cell types present in both scans.
+TARG_CELL_TYPES: list[str] | None = None
 
 POINT_SIZE = 12
 POINT_ALPHA = 0.35
 AXIS_NORM = "z-score"  # "none", "z-score", "rank"
 DISP_LEGEND = False
+
+
+# ── Confirm scan types from YAML ───────────────────────────────────────────────
+def _scan_type(scan_path):
+    yaml_path = os.path.splitext(scan_path)[0] + ".yaml"
+    with open(yaml_path) as f:
+        return yaml.safe_load(f)["scan_type"]
+
+
+assert _scan_type(SELEC_SCAN_PATH) == "selectivity", (
+    f"{SELEC_SCAN_PATH} is not a selectivity scan"
+)
+assert _scan_type(KL_EMD_SCAN_PATH) == "KL_EMD", (
+    f"{KL_EMD_SCAN_PATH} is not a KL/EMD scan"
+)
+
+# Each metric: (scan path, CSV column, human-readable label)
+METRIC_SELEC = (SELEC_SCAN_PATH, "Selectivity", "Binding model selectivity")
+METRIC_KL = (KL_EMD_SCAN_PATH, "KL_Divergence", "KL divergence")
+METRIC_EMD = (KL_EMD_SCAN_PATH, "EMD", "EMD")
+
+# The three pairwise comparisons, keyed for embedding.
+COMPARISONS = {
+    "kl_emd": (METRIC_KL, METRIC_EMD),
+    "kl_selec": (METRIC_KL, METRIC_SELEC),
+    "emd_selec": (METRIC_EMD, METRIC_SELEC),
+}
 
 
 # ── Load scans ────────────────────────────────────────────────────────────────
@@ -98,177 +94,175 @@ def load_scan_flat(path, metric_col, cell_type):
 
 # ── Resolve cell types ────────────────────────────────────────────────────────
 if TARG_CELL_TYPES is None:
-    ct1 = set(pd.read_csv(SCAN_PATH_1)["Cell_Type"].unique())
-    ct2 = set(pd.read_csv(SCAN_PATH_2)["Cell_Type"].unique())
+    ct1 = set(pd.read_csv(SELEC_SCAN_PATH)["Cell_Type"].unique())
+    ct2 = set(pd.read_csv(KL_EMD_SCAN_PATH)["Cell_Type"].unique())
     TARG_CELL_TYPES = sorted(ct1 & ct2)
 
-# ── Load all cell-type data ────────────────────────────────────────────────────
-_ct_dfs = {}
-for cell_type in TARG_CELL_TYPES:
-    scan1 = load_scan_flat(SCAN_PATH_1, METRIC_1, cell_type)
-    scan2 = load_scan_flat(SCAN_PATH_2, METRIC_2, cell_type)
-    _merged = (
-        pd.merge(scan1, scan2, on=["rec1", "rec2"], suffixes=("_1", "_2"))
-        .rename(columns={"metric_1": "s1", "metric_2": "s2"})
-        .dropna(subset=["s1", "s2"])
-    )
-    assert len(_merged) > 0, f"No valid receptor pairs found for {cell_type!r}"
-    _merged["cell_type"] = cell_type
-    _ct_dfs[cell_type] = _merged
 
-# ── Apply normalization globally across all cell types ─────────────────────────
-_all = pd.concat(_ct_dfs.values(), ignore_index=True)
-if AXIS_NORM == "z-score":
-    _s1_mean, _s1_std = _all["s1"].mean(), _all["s1"].std() + 1e-9
-    _s2_mean, _s2_std = _all["s2"].mean(), _all["s2"].std() + 1e-9
-    _all["s1"] = (_all["s1"] - _s1_mean) / _s1_std
-    _all["s2"] = (_all["s2"] - _s2_mean) / _s2_std
-elif AXIS_NORM == "rank":
-    _all["s1"] = _all["s1"].rank(method="average")
-    _all["s2"] = _all["s2"].rank(method="average")
+def build_comparison(metric_1, metric_2, cell_types, axis_norm):
+    """Merge two metrics per cell type and apply global axis normalization.
 
-_norm_suffix = {"none": "", "z-score": " (z-score)", "rank": " (rank)"}[AXIS_NORM]
-AXIS_1_LABEL = AXIS_1_LABEL + _norm_suffix
-AXIS_2_LABEL = AXIS_2_LABEL + _norm_suffix
+    Returns (df, axis_1_label, axis_2_label) where df has columns
+    rec1, rec2, s1, s2, cell_type.
+    """
+    path1, col1, label1 = metric_1
+    path2, col2, label2 = metric_2
 
-# ── Plot ──────────────────────────────────────────────────────────────────────
+    ct_dfs = {}
+    for cell_type in cell_types:
+        scan1 = load_scan_flat(path1, col1, cell_type)
+        scan2 = load_scan_flat(path2, col2, cell_type)
+        merged = (
+            pd.merge(scan1, scan2, on=["rec1", "rec2"], suffixes=("_1", "_2"))
+            .rename(columns={"metric_1": "s1", "metric_2": "s2"})
+            .dropna(subset=["s1", "s2"])
+        )
+        assert len(merged) > 0, f"No valid receptor pairs found for {cell_type!r}"
+        merged["cell_type"] = cell_type
+        ct_dfs[cell_type] = merged
+
+    # Normalize globally across all cell types so panels are comparable.
+    all_df = pd.concat(ct_dfs.values(), ignore_index=True)
+    if axis_norm == "z-score":
+        all_df["s1"] = (all_df["s1"] - all_df["s1"].mean()) / (all_df["s1"].std() + 1e-9)
+        all_df["s2"] = (all_df["s2"] - all_df["s2"].mean()) / (all_df["s2"].std() + 1e-9)
+    elif axis_norm == "rank":
+        all_df["s1"] = all_df["s1"].rank(method="average")
+        all_df["s2"] = all_df["s2"].rank(method="average")
+
+    suffix = {"none": "", "z-score": " (z-score)", "rank": " (rank)"}[axis_norm]
+    return all_df, label1 + suffix, label2 + suffix
+
+
+# Precompute all three comparisons up front.
+comparison_data = {
+    key: build_comparison(m1, m2, TARG_CELL_TYPES, AXIS_NORM)
+    for key, (m1, m2) in COMPARISONS.items()
+}
+
+# ── Shared cell-type color map ─────────────────────────────────────────────────
 _cmap = plt.colormaps["tab20"]
 cell_type_colors = {
     ct: _cmap(i / max(len(TARG_CELL_TYPES) - 1, 1))
     for i, ct in enumerate(TARG_CELL_TYPES)
 }
 
-fig, ax = plt.subplots(figsize=(7, 7))
 
-for cell_type in TARG_CELL_TYPES:
-    df = _all[_all["cell_type"] == cell_type]
-    ax.scatter(
-        df["s1"],
-        df["s2"],
-        s=POINT_SIZE,
-        alpha=POINT_ALPHA,
-        color=cell_type_colors[cell_type],
-        linewidths=0,
-        zorder=2,
+def plot_comparison(key):
+    """Scatter one pairwise metric comparison, overlaying all cell types."""
+    all_df, axis_1_label, axis_2_label = comparison_data[key]
+
+    fig, ax = plt.subplots(figsize=(7, 7))
+
+    for cell_type in TARG_CELL_TYPES:
+        df = all_df[all_df["cell_type"] == cell_type]
+        ax.scatter(
+            df["s1"],
+            df["s2"],
+            s=POINT_SIZE,
+            alpha=POINT_ALPHA,
+            color=cell_type_colors[cell_type],
+            linewidths=0,
+            zorder=2,
+        )
+
+    # Highlight the top pair per axis for each cell type.
+    for axis_col in ("s1", "s2"):
+        top_pairs = all_df.loc[all_df.groupby("cell_type")[axis_col].idxmax()]
+        for _, row in top_pairs.iterrows():
+            ax.scatter(
+                row["s1"],
+                row["s2"],
+                s=POINT_SIZE * 10,
+                marker="*",
+                color=cell_type_colors[row["cell_type"]],
+                edgecolors="black",
+                linewidths=0.5,
+                zorder=5,
+            )
+
+    if DISP_LEGEND:
+        handles = [
+            mlines.Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                markerfacecolor=cell_type_colors[ct],
+                markersize=8,
+                label=ct,
+            )
+            for ct in TARG_CELL_TYPES
+        ]
+        handles.append(
+            mlines.Line2D(
+                [0],
+                [0],
+                marker="*",
+                color="w",
+                markerfacecolor="gray",
+                markeredgecolor="black",
+                markeredgewidth=0.5,
+                markersize=12,
+                label="Top pair per axis",
+            )
+        )
+        ax.legend(
+            handles=handles,
+            title="Cell type",
+            fontsize=9,
+            title_fontsize=10,
+            framealpha=0.8,
+        )
+
+    ax.set_xlabel(axis_1_label, fontsize=13)
+    ax.set_ylabel(axis_2_label, fontsize=13)
+    types_str = (
+        ", ".join(TARG_CELL_TYPES)
+        if len(TARG_CELL_TYPES) <= 3
+        else f"{len(TARG_CELL_TYPES)} cell types"
     )
-
-# Highlight the top-selectivity receptor pair for each cell type
-_top_pairs = _all.loc[_all.groupby("cell_type")["s1"].idxmax()]
-for _, row in _top_pairs.iterrows():
-    ax.scatter(
-        row["s1"],
-        row["s2"],
-        s=POINT_SIZE * 10,
-        marker="*",
-        color=cell_type_colors[row["cell_type"]],
-        edgecolors="black",
-        linewidths=0.5,
-        zorder=5,
+    ax.set_title(
+        f"{axis_1_label} vs. {axis_2_label}\nTargets: {types_str}",
+        fontsize=12,
+        pad=12,
     )
+    ax.tick_params(labelsize=11)
+    plt.tight_layout()
+    plt.show()
 
-_top_pairs = _all.loc[_all.groupby("cell_type")["s2"].idxmax()]
-for _, row in _top_pairs.iterrows():
-    ax.scatter(
-        row["s1"],
-        row["s2"],
-        s=POINT_SIZE * 10,
-        marker="*",
-        color=cell_type_colors[row["cell_type"]],
-        edgecolors="black",
-        linewidths=0.5,
-        zorder=5,
+    # Spearman correlation per cell type and overall.
+    rows = []
+    for ct in TARG_CELL_TYPES:
+        sub = all_df[all_df["cell_type"] == ct]
+        r, p = spearmanr(sub["s1"], sub["s2"])
+        rows.append({"Cell Type": ct, "Spearman r": round(r, 4), "p-value": f"{p:.2e}"})
+    overall_r, overall_p = spearmanr(all_df["s1"], all_df["s2"])
+    rows.append(
+        {
+            "Cell Type": "Overall",
+            "Spearman r": round(overall_r, 4),
+            "p-value": f"{overall_p:.2e}",
+        }
     )
-
-handles = [
-    mlines.Line2D(
-        [0],
-        [0],
-        marker="o",
-        color="w",
-        markerfacecolor=cell_type_colors[ct],
-        markersize=8,
-        label=ct,
-    )
-    for ct in TARG_CELL_TYPES
-]
-handles.append(
-    mlines.Line2D(
-        [0],
-        [0],
-        marker="*",
-        color="w",
-        markerfacecolor="gray",
-        markeredgecolor="black",
-        markeredgewidth=0.5,
-        markersize=12,
-        label="Top selectivity pair",
-    )
-)
-
-if DISP_LEGEND:
-    ax.legend(
-        handles=handles,
-        title="Cell type",
-        fontsize=9,
-        title_fontsize=10,
-        framealpha=0.8,
-    )
-
-if METRIC_1 == "Selectivity" and METRIC_2 == "Selectivity" and FILTER_SELEC_BASIN:
-    if AXIS_NORM == "none":
-        low_val_1 = _all["s1"][_all["s1"] < 0.55].median() + 0.005
-        low_val_2 = _all["s2"][_all["s2"] < 0.55].median() + 0.005
-
-        _all = _all[(_all["s1"] > low_val_1) & (_all["s2"] > low_val_2)]
-    elif AXIS_NORM == "z-score":
-        low_val_1 = _all["s1"][_all["s1"] < 0.0].median() + 0.01
-        low_val_2 = _all["s2"][_all["s2"] < 0.0].median() + 0.01
-
-        _all = _all[(_all["s1"] > low_val_1) & (_all["s2"] > low_val_2)]
-
-    line_y = plt.axhline(y=low_val_2, color="red", linestyle="--", linewidth=0.5)
-    line_x = plt.axvline(x=low_val_1, color="blue", linestyle="--", linewidth=0.5)
-
-    ax.legend(
-        handles=[line_x, line_y], labels=["Spearman Cutoff (x)", "Spearman Cutoff (y)"]
-    )
-
-ax.set_xlabel(AXIS_1_LABEL, fontsize=13)
-ax.set_ylabel(AXIS_2_LABEL, fontsize=13)
-types_str = (
-    ", ".join(TARG_CELL_TYPES)
-    if len(TARG_CELL_TYPES) <= 3
-    else f"{len(TARG_CELL_TYPES)} cell types"
-)
-ax.set_title(
-    f"{AXIS_1_LABEL} vs. {AXIS_2_LABEL}\nTargets: {types_str}",
-    fontsize=12,
-    pad=12,
-)
-ax.tick_params(labelsize=11)
-plt.tight_layout()
-plt.show()
+    print(f"Spearman correlation: {axis_1_label} vs. {axis_2_label}\n")
+    print(pd.DataFrame(rows).to_string(index=False))
 ```
 
 ```{python}
-from scipy.stats import spearmanr
+#| label: fig-scan-comp-kl-emd
+#| fig-cap: "KL divergence vs. EMD across target cell types. Each point is a receptor pair for a given cell type; the top pair per axis is starred."
+plot_comparison("kl_emd")
+```
 
-rows = []
-for ct in TARG_CELL_TYPES:
-    sub = _all[_all["cell_type"] == ct]
-    r, p = spearmanr(sub["s1"], sub["s2"])
-    rows.append({"Cell Type": ct, "Spearman r": round(r, 4), "p-value": f"{p:.2e}"})
+```{python}
+#| label: fig-scan-comp-kl-selec
+#| fig-cap: "KL divergence vs. binding-model selectivity across target cell types. Each point is a receptor pair for a given cell type; the top pair per axis is starred."
+plot_comparison("kl_selec")
+```
 
-overall_r, overall_p = spearmanr(_all["s1"], _all["s2"])
-rows.append(
-    {
-        "Cell Type": "Overall",
-        "Spearman r": round(overall_r, 4),
-        "p-value": f"{overall_p:.2e}",
-    }
-)
-
-corr_df = pd.DataFrame(rows)
-print(f"Spearman correlation: {AXIS_1_LABEL} vs. {AXIS_2_LABEL}\n")
-print(corr_df.to_string(index=False))
+```{python}
+#| label: fig-scan-comp-emd-selec
+#| fig-cap: "EMD vs. binding-model selectivity across target cell types. Each point is a receptor pair for a given cell type; the top pair per axis is starred."
+plot_comparison("emd_selec")
 ```

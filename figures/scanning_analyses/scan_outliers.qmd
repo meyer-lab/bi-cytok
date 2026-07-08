@@ -4,27 +4,31 @@ title: "Receptor Scan Outlier Analysis"
 
 # Summary
 Compares two receptor scan metrics across all receptor pairs for a chosen target cell
-type. Each receptor pair is plotted as a point with x = metric from scan 1 and
-y = metric from scan 2. Useful for comparing selectivity vs. EMD/KL divergence,
-two binding model scans with different valencies, or any other pair of scan outputs.
+type, identifying and labeling the pairs that are outliers relative to the overall
+metric-vs-metric trend. A user-defined list of `CONDITIONS` (each a target cell type
+plus a pair of metrics to compare) is swept: one labeled outlier scatter is generated
+per condition and laid out as panels of a single supplemental figure. The subsequent
+receptor-feature and representative-distribution analyses drill into the **first**
+condition only.
 
 # Inputs
-- Two CSV files produced by `run_selectivity_scan` or `run_KL_EMD_scan`
-  (may be the same file to compare two metrics within it); matching `.yaml` files must exist
-- `SCAN_PATH_1`, `SCAN_PATH_2`: paths to those CSVs
-- `KL_METRIC_1`, `KL_METRIC_2`: for KL/EMD scans, selects which method to use per path — `"KL_Divergence"` or `"EMD"`; metrics for selectivity scans are derived automatically
-- `AXIS_1_LABEL`, `AXIS_2_LABEL`: human-readable axis labels; set to `None` to auto-derive from the metric name
-- `TARG_CELL_TYPE`: target cell type to extract from both scans
+- `SELEC_SCAN_PATH`: CSV from `run_selectivity_scan` (binding-model selectivity)
+- `KL_EMD_SCAN_PATH`: CSV from `run_KL_EMD_scan` (KL divergence and EMD)
+  Both must have matching `.yaml` files describing the scan type.
+- `CONDITIONS`: list of dicts, each with a `targ_cell_type` and two metric specs
+  (`metric_1`, `metric_2`), where a metric spec is `(scan_path, csv_column, label)`
 
 # Outputs
-- Scatter plot: x = metric 1, y = metric 2
+- **`suppfig-scan-outliers`**: one labeled outlier scatter panel per condition
   - Gray: neither metric is high
   - Blue: residual below lower threshold (metric 1 higher than expected given metric 2)
   - Orange: residual above upper threshold (metric 2 higher than expected given metric 1)
-  - Red: high on both axes independently; point size scales with Euclidean distance from the origin
-    (computed on z-score-normalized axes), and a reference arc marks the labeling cutoff
+  - Red: high on both axes independently; point size scales with Euclidean distance
+    from the origin (z-score-normalized), with a reference arc at the labeling cutoff
   - Gold stars (★): global top-N pairs by individual-axis metric
   - Purple diamonds (◆): user-specified pairs of interest, always labeled
+- Receptor-feature violin plots and representative pair distributions for the first
+  condition (diagnostics; not embedded)
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -36,62 +40,54 @@ import numpy as np
 import pandas as pd
 import yaml
 
-# ── Parameters ────────────────────────────────────────────────────────────────
-# SCAN_PATH_1 = "/home/sama/receptor_sweep_data/20260609_selec_scan_full_sigCD28.csv"
-SCAN_PATH_1 = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
-SCAN_PATH_2 = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
+# ── Scan paths ────────────────────────────────────────────────────────────────
+SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+KL_EMD_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
 
-# For KL_EMD scans, selects which method to use as the axis metric.
-KL_METRIC_1 = "KL_Divergence"  # "KL_Divergence" or "EMD"
-KL_METRIC_2 = "EMD"
+# Each metric spec: (scan path, CSV column, human-readable label)
+METRIC_SELEC = (SELEC_SCAN_PATH, "Selectivity", "Binding model selectivity")
+METRIC_KL = (KL_EMD_SCAN_PATH, "KL_Divergence", "KL divergence")
+METRIC_EMD = (KL_EMD_SCAN_PATH, "EMD", "EMD")
 
-# Human-readable axis labels; set to None to auto-derive from the metric name.
-AXIS_1_LABEL = "Binding model selectivity (signal generic)"
-AXIS_2_LABEL = None
+# ── Conditions to sweep ───────────────────────────────────────────────────────
+# One outlier scatter is produced per condition. The first condition also drives
+# the downstream feature and distribution diagnostics.
+CONDITIONS = [
+    {
+        "targ_cell_type": "Treg",
+        "metric_1": METRIC_SELEC,
+        "metric_2": METRIC_KL,
+        "axis_norm": "none",
+    },
+    {
+        "targ_cell_type": "CD8 TCM",
+        "metric_1": METRIC_SELEC,
+        "metric_2": METRIC_EMD,
+        "axis_norm": "none",
+    },
+]
 
-TARG_CELL_TYPE = "NK"
-AXIS_NORM = "none"  # "none", "z-score", "rank"
-
-
-# ── Derive metrics and cell categorization from YAML ──────────────────────────
-def _scan_metric(scan_path, kl_metric):
-    yaml_path = os.path.splitext(scan_path)[0] + ".yaml"
-    with open(yaml_path) as f:
-        params = yaml.safe_load(f)
-    metric = "Selectivity" if params["scan_type"] == "selectivity" else kl_metric
-    return metric, params
-
-
-METRIC_1, _params_1 = _scan_metric(SCAN_PATH_1, KL_METRIC_1)
-METRIC_2, _params_2 = _scan_metric(SCAN_PATH_2, KL_METRIC_2)
-AXIS_1_LABEL = AXIS_1_LABEL or METRIC_1.replace("_", " ")
-AXIS_2_LABEL = AXIS_2_LABEL or METRIC_2.replace("_", " ")
-CELL_CATEGORIZATION = _params_1["general"]["annotation_type"]
-
+# ── Shared outlier-detection settings ─────────────────────────────────────────
 # Percentile threshold (0–100) used for the "both" category (both axes independently high)
 HIGH_PERCENTILE = 90
-
 # Percentile threshold (0–100) for the residual-based high_1 / high_2 categories.
-# Points with residual >= RESID_PERCENTILE → high_2 (metric 2 above trend).
-# Points with residual <= (100 - RESID_PERCENTILE) → high_1 (metric 1 above trend).
 RESID_PERCENTILE = 90
-
 # Number of auto-labeled points per category (high_1, high_2, both)
 N_LABEL = 5
-
 # Number of globally top-ranked pairs to highlight with a star per axis
 N_TOP_OVERALL = 1
-
 # User-specified receptor pairs to always label (names must match scan data exactly).
-# Each entry is a (rec1, rec2) tuple; order does not matter.
-HIGHLIGHT_PAIRS: list[tuple[str, str]] = [
-    # ("CD26-2", "CD26-2"),
-    # ("Integrin-7", "CD4-1"),
-    # ("CD4-1", "CD45RO"),
-]
+HIGHLIGHT_PAIRS: list[tuple[str, str]] = []
 
 
 # ── Load scans ────────────────────────────────────────────────────────────────
+def _scan_annotation(scan_path):
+    """Cell type annotation column recorded in the scan's YAML."""
+    yaml_path = os.path.splitext(scan_path)[0] + ".yaml"
+    with open(yaml_path) as f:
+        return yaml.safe_load(f)["general"]["annotation_type"]
+
+
 def load_scan_flat(path, metric_col, cell_type):
     """Return DataFrame with columns rec1, rec2, metric for the given cell type."""
     raw = pd.read_csv(path)
@@ -105,238 +101,264 @@ def load_scan_flat(path, metric_col, cell_type):
     ).reset_index(drop=True)
 
 
-scan1 = load_scan_flat(SCAN_PATH_1, METRIC_1, TARG_CELL_TYPE)
-scan2 = load_scan_flat(SCAN_PATH_2, METRIC_2, TARG_CELL_TYPE)
+def compute_outlier_df(condition):
+    """Merge two metrics for one condition, then fit the trend, compute residuals,
+    and categorize each receptor pair. Returns a result dict consumed by the plot
+    and diagnostic cells."""
+    path1, col1, label1 = condition["metric_1"]
+    path2, col2, label2 = condition["metric_2"]
+    targ_cell_type = condition["targ_cell_type"]
+    axis_norm = condition["axis_norm"]
 
-# ── Align receptor sets ───────────────────────────────────────────────────────
-df = (
-    pd.merge(scan1, scan2, on=["rec1", "rec2"], suffixes=("_1", "_2"))
-    .rename(columns={"metric_1": "s1", "metric_2": "s2"})
-    .dropna(subset=["s1", "s2"])
-    .reset_index(drop=True)
-)
-assert len(df) > 0, "No valid (non-NaN) receptor pairs found in both scans"
-
-# ── Apply axis normalization ───────────────────────────────────────────────────
-if AXIS_NORM == "z-score":
-    _s1_mean, _s1_std = df["s1"].mean(), df["s1"].std() + 1e-9
-    _s2_mean, _s2_std = df["s2"].mean(), df["s2"].std() + 1e-9
-    df["s1"] = (df["s1"] - _s1_mean) / _s1_std
-    df["s2"] = (df["s2"] - _s2_mean) / _s2_std
-elif AXIS_NORM == "rank":
-    df["s1"] = df["s1"].rank(method="average")
-    df["s2"] = df["s2"].rank(method="average")
-
-_norm_suffix = {"none": "", "z-score": " (z-score)", "rank": " (rank)"}[AXIS_NORM]
-AXIS_1_LABEL = AXIS_1_LABEL + _norm_suffix
-AXIS_2_LABEL = AXIS_2_LABEL + _norm_suffix
-
-# ── Fit regression line & compute residuals ───────────────────────────────────
-_slope, _intercept = np.polyfit(df["s1"], df["s2"], 1)
-df["resid"] = df["s2"] - (_slope * df["s1"] + _intercept)
-
-resid_hi = np.nanpercentile(df["resid"], RESID_PERCENTILE)
-resid_lo = np.nanpercentile(df["resid"], 100 - RESID_PERCENTILE)
-
-# ── Categorise points ─────────────────────────────────────────────────────────
-thresh1 = np.nanpercentile(df["s1"], HIGH_PERCENTILE)
-thresh2 = np.nanpercentile(df["s2"], HIGH_PERCENTILE)
-
-high1 = df["s1"] >= thresh1
-high2 = df["s2"] >= thresh2
-
-df["category"] = "neither"
-df.loc[df["resid"] <= resid_lo, "category"] = "high_1"  # metric 1 above trend
-df.loc[df["resid"] >= resid_hi, "category"] = "high_2"  # metric 2 above trend
-df.loc[high1 & high2, "category"] = "both"  # independently high on both
-
-# Euclidean distance on z-score-normalized axes so both metrics contribute equally
-s1_z = (df["s1"] - df["s1"].mean()) / (df["s1"].std() + 1e-9)
-s2_z = (df["s2"] - df["s2"].mean()) / (df["s2"].std() + 1e-9)
-df["r"] = np.sqrt(s1_z**2 + s2_z**2)
-
-
-# ── Select auto-labeled points ────────────────────────────────────────────────
-def top_n_by(sub_df, sort_col, n):
-    return sub_df.nlargest(n, sort_col)
-
-
-auto_label_rows = pd.concat(
-    [
-        df[df["category"] == "high_1"].nsmallest(N_LABEL, "resid"),
-        df[df["category"] == "high_2"].nlargest(N_LABEL, "resid"),
-        top_n_by(df[df["category"] == "both"], "r", N_LABEL),
-    ]
-).drop_duplicates(subset=["rec1", "rec2"])
-
-# ── Global top-N pairs per axis (starred) ─────────────────────────────────────
-top_overall_rows = pd.concat(
-    [
-        df.nlargest(N_TOP_OVERALL, "s1"),
-        df.nlargest(N_TOP_OVERALL, "s2"),
-    ]
-).drop_duplicates(subset=["rec1", "rec2"])
-
-# ── User-specified pairs ──────────────────────────────────────────────────────
-user_rows_list = []
-for req_rec1, req_rec2 in HIGHLIGHT_PAIRS:
-    match = df[
-        ((df["rec1"] == req_rec1) & (df["rec2"] == req_rec2))
-        | ((df["rec1"] == req_rec2) & (df["rec2"] == req_rec1))
-    ]
-    if match.empty:
-        print(f"Warning: requested pair ({req_rec1}, {req_rec2}) not found in data.")
-    else:
-        user_rows_list.append(match.iloc[[0]])
-user_rows = (
-    pd.concat(user_rows_list).drop_duplicates(subset=["rec1", "rec2"])
-    if user_rows_list
-    else pd.DataFrame(columns=df.columns)
-)
-
-# ── Plot ──────────────────────────────────────────────────────────────────────
-fig, ax = plt.subplots(figsize=(7, 7))
-
-for cat, style in {
-    "neither": dict(color="lightgray", zorder=1, alpha=0.6, s=18, label="Neither"),
-    "high_1": dict(
-        color="#3A86FF", zorder=3, alpha=0.85, s=40, label=f"High {AXIS_1_LABEL} only"
-    ),
-    "high_2": dict(
-        color="#FF9F1C", zorder=3, alpha=0.85, s=40, label=f"High {AXIS_2_LABEL} only"
-    ),
-}.items():
-    sub = df[df["category"] == cat]
-    ax.scatter(sub["s1"], sub["s2"], **style)
-
-both_sub = df[df["category"] == "both"].copy()
-if not both_sub.empty:
-    r_min, r_max = both_sub["r"].min(), both_sub["r"].max()
-    sizes_both = (
-        40 + 200 * (both_sub["r"] - r_min) / (r_max - r_min)
-        if r_max > r_min
-        else np.full(len(both_sub), 80)
+    scan1 = load_scan_flat(path1, col1, targ_cell_type)
+    scan2 = load_scan_flat(path2, col2, targ_cell_type)
+    df = (
+        pd.merge(scan1, scan2, on=["rec1", "rec2"], suffixes=("_1", "_2"))
+        .rename(columns={"metric_1": "s1", "metric_2": "s2"})
+        .dropna(subset=["s1", "s2"])
+        .reset_index(drop=True)
     )
-    ax.scatter(
-        both_sub["s1"],
-        both_sub["s2"],
-        s=sizes_both,
-        color="#E63946",
-        zorder=4,
-        alpha=0.95,
-        label="High on both (size ∝ Euclidean dist.)",
+    assert len(df) > 0, "No valid (non-NaN) receptor pairs found in both scans"
+
+    if axis_norm == "z-score":
+        df["s1"] = (df["s1"] - df["s1"].mean()) / (df["s1"].std() + 1e-9)
+        df["s2"] = (df["s2"] - df["s2"].mean()) / (df["s2"].std() + 1e-9)
+    elif axis_norm == "rank":
+        df["s1"] = df["s1"].rank(method="average")
+        df["s2"] = df["s2"].rank(method="average")
+    suffix = {"none": "", "z-score": " (z-score)", "rank": " (rank)"}[axis_norm]
+    axis_1_label = label1 + suffix
+    axis_2_label = label2 + suffix
+
+    # Fit trend line & compute residuals.
+    slope, intercept = np.polyfit(df["s1"], df["s2"], 1)
+    df["resid"] = df["s2"] - (slope * df["s1"] + intercept)
+    resid_hi = np.nanpercentile(df["resid"], RESID_PERCENTILE)
+    resid_lo = np.nanpercentile(df["resid"], 100 - RESID_PERCENTILE)
+
+    # Categorize points.
+    thresh1 = np.nanpercentile(df["s1"], HIGH_PERCENTILE)
+    thresh2 = np.nanpercentile(df["s2"], HIGH_PERCENTILE)
+    high1 = df["s1"] >= thresh1
+    high2 = df["s2"] >= thresh2
+    df["category"] = "neither"
+    df.loc[df["resid"] <= resid_lo, "category"] = "high_1"
+    df.loc[df["resid"] >= resid_hi, "category"] = "high_2"
+    df.loc[high1 & high2, "category"] = "both"
+
+    # Euclidean distance on z-score-normalized axes so both metrics contribute equally.
+    s1_z = (df["s1"] - df["s1"].mean()) / (df["s1"].std() + 1e-9)
+    s2_z = (df["s2"] - df["s2"].mean()) / (df["s2"].std() + 1e-9)
+    df["r"] = np.sqrt(s1_z**2 + s2_z**2)
+
+    # Auto-labeled points per category.
+    auto_label_rows = pd.concat(
+        [
+            df[df["category"] == "high_1"].nsmallest(N_LABEL, "resid"),
+            df[df["category"] == "high_2"].nlargest(N_LABEL, "resid"),
+            df[df["category"] == "both"].nlargest(N_LABEL, "r"),
+        ]
+    ).drop_duplicates(subset=["rec1", "rec2"])
+
+    # Global top-N pairs per axis (starred).
+    top_overall_rows = pd.concat(
+        [df.nlargest(N_TOP_OVERALL, "s1"), df.nlargest(N_TOP_OVERALL, "s2")]
+    ).drop_duplicates(subset=["rec1", "rec2"])
+
+    # User-specified pairs.
+    user_rows_list = []
+    for req_rec1, req_rec2 in HIGHLIGHT_PAIRS:
+        match = df[
+            ((df["rec1"] == req_rec1) & (df["rec2"] == req_rec2))
+            | ((df["rec1"] == req_rec2) & (df["rec2"] == req_rec1))
+        ]
+        if match.empty:
+            print(f"Warning: requested pair ({req_rec1}, {req_rec2}) not found.")
+        else:
+            user_rows_list.append(match.iloc[[0]])
+    user_rows = (
+        pd.concat(user_rows_list).drop_duplicates(subset=["rec1", "rec2"])
+        if user_rows_list
+        else pd.DataFrame(columns=df.columns)
     )
-    labeled_both = both_sub.nlargest(N_LABEL, "r")
-    if len(labeled_both) == N_LABEL:
-        r_ref_z = labeled_both["r"].min()
-        s1_std, s2_std = df["s1"].std() + 1e-9, df["s2"].std() + 1e-9
-        theta_arc = np.linspace(0, np.pi / 2, 200)
-        arc_x = df["s1"].mean() + r_ref_z * s1_std * np.cos(theta_arc)
-        arc_y = df["s2"].mean() + r_ref_z * s2_std * np.sin(theta_arc)
-        x_mask = (arc_x >= ax.get_xlim()[0]) & (arc_y >= ax.get_ylim()[0])
-        ax.plot(
-            arc_x[x_mask],
-            arc_y[x_mask],
+
+    all_label_rows = pd.concat(
+        [auto_label_rows, top_overall_rows, user_rows]
+    ).drop_duplicates(subset=["rec1", "rec2"])
+
+    return {
+        "df": df,
+        "targ_cell_type": targ_cell_type,
+        "axis_1_label": axis_1_label,
+        "axis_2_label": axis_2_label,
+        "cell_categorization": _scan_annotation(path1),
+        "slope": slope,
+        "intercept": intercept,
+        "resid_hi": resid_hi,
+        "resid_lo": resid_lo,
+        "top_overall_rows": top_overall_rows,
+        "user_rows": user_rows,
+        "all_label_rows": all_label_rows,
+    }
+
+
+def plot_outlier_scatter(res, ax):
+    """Draw one condition's labeled outlier scatter onto the given axis."""
+    df = res["df"]
+    axis_1_label, axis_2_label = res["axis_1_label"], res["axis_2_label"]
+    slope, intercept = res["slope"], res["intercept"]
+    resid_hi, resid_lo = res["resid_hi"], res["resid_lo"]
+
+    for cat, style in {
+        "neither": dict(color="lightgray", zorder=1, alpha=0.6, s=18, label="Neither"),
+        "high_1": dict(
+            color="#3A86FF", zorder=3, alpha=0.85, s=40,
+            label=f"High {axis_1_label} only",
+        ),
+        "high_2": dict(
+            color="#FF9F1C", zorder=3, alpha=0.85, s=40,
+            label=f"High {axis_2_label} only",
+        ),
+    }.items():
+        sub = df[df["category"] == cat]
+        ax.scatter(sub["s1"], sub["s2"], **style)
+
+    both_sub = df[df["category"] == "both"].copy()
+    if not both_sub.empty:
+        r_min, r_max = both_sub["r"].min(), both_sub["r"].max()
+        sizes_both = (
+            40 + 200 * (both_sub["r"] - r_min) / (r_max - r_min)
+            if r_max > r_min
+            else np.full(len(both_sub), 80)
+        )
+        ax.scatter(
+            both_sub["s1"],
+            both_sub["s2"],
+            s=sizes_both,
             color="#E63946",
-            linewidth=1.2,
-            linestyle=":",
-            alpha=0.55,
-            zorder=3,
-            label=f"Both: top-{N_LABEL} Euclidean cutoff",
+            zorder=4,
+            alpha=0.95,
+            label="High on both (size ∝ Euclidean dist.)",
+        )
+        labeled_both = both_sub.nlargest(N_LABEL, "r")
+        if len(labeled_both) == N_LABEL:
+            r_ref_z = labeled_both["r"].min()
+            s1_std, s2_std = df["s1"].std() + 1e-9, df["s2"].std() + 1e-9
+            theta_arc = np.linspace(0, np.pi / 2, 200)
+            arc_x = df["s1"].mean() + r_ref_z * s1_std * np.cos(theta_arc)
+            arc_y = df["s2"].mean() + r_ref_z * s2_std * np.sin(theta_arc)
+            x_mask = (arc_x >= ax.get_xlim()[0]) & (arc_y >= ax.get_ylim()[0])
+            ax.plot(
+                arc_x[x_mask],
+                arc_y[x_mask],
+                color="#E63946",
+                linewidth=1.2,
+                linestyle=":",
+                alpha=0.55,
+                zorder=3,
+                label=f"Both: top-{N_LABEL} Euclidean cutoff",
+            )
+
+    if not res["user_rows"].empty:
+        ax.scatter(
+            res["user_rows"]["s1"],
+            res["user_rows"]["s2"],
+            marker="D",
+            s=80,
+            color="#9B5DE5",
+            zorder=6,
+            alpha=1.0,
+            label="User-specified pairs",
         )
 
-if not user_rows.empty:
     ax.scatter(
-        user_rows["s1"],
-        user_rows["s2"],
-        marker="D",
-        s=80,
-        color="#9B5DE5",
-        zorder=6,
+        res["top_overall_rows"]["s1"],
+        res["top_overall_rows"]["s2"],
+        marker="*",
+        s=220,
+        color="#FFD700",
+        edgecolors="#888",
+        linewidths=0.5,
+        zorder=7,
         alpha=1.0,
-        label="User-specified pairs",
+        label=f"Top-{N_TOP_OVERALL} per axis",
     )
 
-ax.scatter(
-    top_overall_rows["s1"],
-    top_overall_rows["s2"],
-    marker="*",
-    s=220,
-    color="#FFD700",
-    edgecolors="#888",
-    linewidths=0.5,
-    zorder=7,
-    alpha=1.0,
-    label=f"Top-{N_TOP_OVERALL} per axis",
-)
+    x_line = np.array([df["s1"].min(), df["s1"].max()])
+    ax.plot(
+        x_line, slope * x_line + intercept, color="dimgray", linewidth=1.0,
+        linestyle="-", alpha=0.45, zorder=2, label="OLS fit",
+    )
+    ax.plot(
+        x_line, slope * x_line + intercept + resid_hi, color="darkorange",
+        linewidth=1.0, linestyle="--", alpha=0.5,
+    )
+    ax.plot(
+        x_line, slope * x_line + intercept + resid_lo, color="steelblue",
+        linewidth=1.0, linestyle="--", alpha=0.5,
+    )
 
-_x_line = np.array([df["s1"].min(), df["s1"].max()])
-ax.plot(
-    _x_line,
-    _slope * _x_line + _intercept,
-    color="dimgray",
-    linewidth=1.0,
-    linestyle="-",
-    alpha=0.45,
-    zorder=2,
-    label="OLS fit",
-)
-ax.plot(
-    _x_line,
-    _slope * _x_line + _intercept + resid_hi,
-    color="darkorange",
-    linewidth=1.0,
-    linestyle="--",
-    alpha=0.5,
-)
-ax.plot(
-    _x_line,
-    _slope * _x_line + _intercept + resid_lo,
-    color="steelblue",
-    linewidth=1.0,
-    linestyle="--",
-    alpha=0.5,
-)
+    for _, row in res["all_label_rows"].iterrows():
+        label = f"({row['rec1']}, {row['rec2']})"
+        txt = ax.text(row["s1"], row["s2"], label, fontsize=7, ha="left", va="bottom")
+        txt.set_path_effects([pe.withStroke(linewidth=2, foreground="white")])
 
-all_label_rows = pd.concat(
-    [auto_label_rows, top_overall_rows, user_rows]
-).drop_duplicates(subset=["rec1", "rec2"])
-for _, row in all_label_rows.iterrows():
-    label = f"({row['rec1']}, {row['rec2']})"
-    txt = ax.text(row["s1"], row["s2"], label, fontsize=7, ha="left", va="bottom")
-    txt.set_path_effects([pe.withStroke(linewidth=2, foreground="white")])
+    ax.set_xlabel(axis_1_label, fontsize=13)
+    ax.set_ylabel(axis_2_label, fontsize=13)
+    ax.set_title(
+        f"{axis_1_label} vs. {axis_2_label}\nTarget: {res['targ_cell_type']}  "
+        f"(threshold = {HIGH_PERCENTILE}th percentile)",
+        fontsize=12,
+        pad=12,
+    )
+    ax.tick_params(labelsize=11)
+    ax.legend(fontsize=6, loc="best", framealpha=0.8)
 
-ax.set_xlabel(AXIS_1_LABEL, fontsize=13)
-ax.set_ylabel(AXIS_2_LABEL, fontsize=13)
-ax.set_title(
-    f"{AXIS_1_LABEL} vs. {AXIS_2_LABEL}\nTarget: {TARG_CELL_TYPE}  "
-    f"(threshold = {HIGH_PERCENTILE}th percentile)",
-    fontsize=12,
-    pad=12,
-)
-ax.tick_params(labelsize=11)
-plt.tight_layout()
-plt.show()
 
-# Tabular summary of all annotated receptor pairs
-summary = all_label_rows[["rec1", "rec2", "s1", "s2", "r", "category"]].copy()
-summary.columns = [
-    "Receptor 1",
-    "Receptor 2",
-    AXIS_1_LABEL,
-    AXIS_2_LABEL,
-    "Euclidean dist. (norm.)",
-    "Category",
-]
-summary = summary.sort_values("Category").reset_index(drop=True)
-summary[[AXIS_1_LABEL, AXIS_2_LABEL, "Euclidean dist. (norm.)"]] = summary[
-    [AXIS_1_LABEL, AXIS_2_LABEL, "Euclidean dist. (norm.)"]
-].round(4)
-print(summary.to_string(index=False))
+# Compute all conditions up front; bind the first condition for the diagnostics.
+outlier_results = [compute_outlier_df(c) for c in CONDITIONS]
+_first = outlier_results[0]
+df = _first["df"]
+TARG_CELL_TYPE = _first["targ_cell_type"]
+AXIS_1_LABEL = _first["axis_1_label"]
+AXIS_2_LABEL = _first["axis_2_label"]
+CELL_CATEGORIZATION = _first["cell_categorization"]
 ```
 
 ```{python}
-# ── Distribution feature analysis by group ────────────────────────────────────
+#| label: suppfig-scan-outliers
+#| fig-cap: "Outlier analysis of binding-model selectivity against distance metrics for Treg targeting. Each point is a receptor pair; residual-based coloring flags pairs that score higher on one metric than the trend predicts, and pairs high on both axes (red) are sized by normalized Euclidean distance from the origin."
+n_cond = len(outlier_results)
+fig, axes = plt.subplots(1, n_cond, figsize=(7.5 * n_cond, 7))
+axes = np.atleast_1d(axes)
+for res, ax in zip(outlier_results, axes, strict=True):
+    plot_outlier_scatter(res, ax)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+# Tabular summary of all annotated receptor pairs, per condition.
+for res in outlier_results:
+    summary = res["all_label_rows"][["rec1", "rec2", "s1", "s2", "r", "category"]].copy()
+    summary.columns = [
+        "Receptor 1",
+        "Receptor 2",
+        res["axis_1_label"],
+        res["axis_2_label"],
+        "Euclidean dist. (norm.)",
+        "Category",
+    ]
+    summary = summary.sort_values("Category").reset_index(drop=True)
+    num_cols = [res["axis_1_label"], res["axis_2_label"], "Euclidean dist. (norm.)"]
+    summary[num_cols] = summary[num_cols].round(4)
+    print(f"\n=== {res['axis_1_label']} vs. {res['axis_2_label']} "
+          f"(target: {res['targ_cell_type']}) ===")
+    print(summary.to_string(index=False))
+```
+
+```{python}
+# ── Distribution feature analysis by group (first condition only) ─────────────
 # For each receptor appearing in the scan, computes simple 1D distribution
 # features comparing target vs. off-target abundance. Each receptor pair is then
 # summarized by aggregating the features of its two constituent receptors. Violin
@@ -557,7 +579,7 @@ plt.show()
 ```
 
 ```{python}
-# ── Representative pair raw distributions ─────────────────────────────────────
+# ── Representative pair raw distributions (first condition only) ──────────────
 # For each scatter-plot category, selects N_REPR representative receptor pairs
 # and shows their joint 2D distribution with 1D marginal histograms. Selection
 # criterion per category:

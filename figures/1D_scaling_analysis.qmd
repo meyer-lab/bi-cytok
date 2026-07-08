@@ -21,16 +21,17 @@ Generates a comprehensive analysis of how scaling factors applied to raw recepto
 - `num_conv_factors`: Integer number of conversion factors to test (logspace from 0.1 to 1e8)
 
 # Outputs
-- **8-Panel Figure**: Comprehensive analysis showing:
-  1. Target receptor binding vs conversion factor (on-target vs off-target)
-  2. Signal receptor binding vs conversion factor (on-target vs off-target)
-  3. Optimal selectivity vs conversion factor
-  4. Optimal target receptor affinity vs conversion factor
-  5. Optimal signal receptor affinity vs conversion factor
-  6. Optimal Kx_star vs conversion factor
-  7. EMD vs conversion factor (log scale)
-  8. KL Divergence vs conversion factor
-- Black dashed vertical line at conversion factor = 1 (no scaling reference)
+Each panel is generated in its own cell so it can be embedded independently. All
+panels share a black dashed vertical line at conversion factor = 1 (no scaling
+reference).
+- **`fig-scale-targ-binding`**: Target receptor binding vs conversion factor (on-target vs off-target)
+- **`fig-scale-sig-binding`**: Signal receptor binding vs conversion factor (on-target vs off-target)
+- **`fig-scale-selectivity`**: Optimal binding-model selectivity vs conversion factor
+- **`fig-scale-target-aff`**: Optimal target receptor affinity vs conversion factor
+- **`fig-scale-signal-aff`**: Optimal signal receptor affinity vs conversion factor
+- **`fig-scale-kx-star`**: Optimal Kx_star vs conversion factor
+- **`fig-scale-emd`**: EMD vs conversion factor (log scale)
+- **`fig-scale-kl`**: KL Divergence vs conversion factor
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -158,71 +159,82 @@ for receptor_valency in receptors_of_interest:
 ```
 
 ```{python}
-#| label: fig-scale-invariance
-#| fig-cap: "Binding model scaling factor analysis showing receptor binding, selectivity, and optimization parameters"
-
-# TODO: Separate out subfigures
-
+# Shared plotting helper: each panel is one metric vs. conversion factor, rendered
+# in its own cell so panels can be embedded independently. Panels with an
+# "off_data_key" also draw the off-target trace (dashed, x-markers).
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-fig, axes = plt.subplots(2, 4, figsize=(24, 10))
-ax = axes.flatten()
-
 palette = sns.color_palette("colorblind", n_colors=len(receptors_of_interest))
 
-# Define plot configurations
-plot_configs = [
-    {
+plot_configs = {
+    "targ_binding": {
         "data_key": "targ_bound_tar_r",
         "off_data_key": "off_targ_bound_tar_r",
         "ylabel": "Average Bound Target Receptors",
         "title": "Target Receptor Binding vs Conversion Factor",
+        "log_y": True,
+        "legend": False,
     },
-    {
+    "sig_binding": {
         "data_key": "targ_bound_sig_r",
         "off_data_key": "off_targ_bound_sig_r",
         "ylabel": "Average Bound Signal Receptors",
         "title": f"Signal Receptor ({signal_receptor}) Binding vs Scaling Factor",
+        "log_y": True,
+        "legend": True,
     },
-    {
+    "selectivity": {
         "data_key": "selectivities",
         "ylabel": "Optimal Selectivity",
         "title": "Selectivity vs Conversion Factor",
+        "log_y": True,
+        "legend": True,
     },
-    {
+    "target_aff": {
         "data_key": "target_affinities",
         "ylabel": "Optimal Affinity (log10 Ka)",
         "title": "Target Receptor Optimal Affinity vs Conversion Factor",
+        "log_y": False,
+        "legend": True,
     },
-    {
+    "signal_aff": {
         "data_key": "signal_affinities",
         "ylabel": "Optimal Affinity (log10 Ka)",
         "title": f"Signal Receptor ({signal_receptor}) Affinity vs Scaling Factor",
+        "log_y": False,
+        "legend": True,
     },
-    {
+    "kx_star": {
         "data_key": "optimal_kx_stars",
         "ylabel": "Optimal Kx_star (log10 M)",
         "title": "Optimal Kx_star vs Conversion Factor",
+        "log_y": False,
+        "legend": True,
     },
-    {
+    "emd": {
         "data_key": "emd_vals",
         "ylabel": "EMD (log scale)",
         "title": "EMD vs Conversion Factor",
+        "log_y": True,
+        "legend": True,
     },
-    {
+    "kl": {
         "data_key": "kl_vals",
         "ylabel": "KL Divergence",
         "title": "KL Divergence vs Conversion Factor",
+        "log_y": False,
+        "legend": True,
     },
-]
+}
 
-for plot_idx, config in enumerate(plot_configs):
+
+def plot_scale_panel(config):
+    fig, ax = plt.subplots(figsize=(6, 5))
     for i, receptor_valency in enumerate(receptors_of_interest):
         receptor = receptor_valency[0]
         valency = receptor_valency[1]
-        # Plot main data
-        ax[plot_idx].plot(
+        ax.plot(
             conversion_factors,
             results[config["data_key"]][i],
             marker="o",
@@ -232,10 +244,8 @@ for plot_idx, config in enumerate(plot_configs):
             else f"{receptor} (Valency: {valency * 2})",
             color=palette[i],
         )
-
-        # Plot off-target data if applicable
         if "off_data_key" in config:
-            ax[plot_idx].plot(
+            ax.plot(
                 conversion_factors,
                 results[config["off_data_key"]][i],
                 marker="x",
@@ -244,26 +254,72 @@ for plot_idx, config in enumerate(plot_configs):
                 color=palette[i],
             )
 
-    # Configure axes
-    ax[plot_idx].axvline(x=10**0, linestyle="--", color="black", alpha=0.5)
-    ax[plot_idx].set_xscale("log")
-    if plot_idx in [0, 1, 2, 6]:  # log y: binding, selectivity, EMD (not log10 params)
-        ax[plot_idx].set_yscale("log")
-    ax[plot_idx].set_xlabel("Conversion Factor", fontsize=15)
-    ax[plot_idx].set_ylabel(config["ylabel"], fontsize=15)
-    ax[plot_idx].set_title(config["title"], fontsize=15)
+    ax.axvline(x=10**0, linestyle="--", color="black", alpha=0.5)
+    ax.set_xscale("log")
+    if config["log_y"]:
+        ax.set_yscale("log")
+    ax.set_xlabel("Conversion Factor", fontsize=15)
+    ax.set_ylabel(config["ylabel"], fontsize=15)
+    ax.set_title(config["title"], fontsize=15)
 
-    # Add legend for specific plots
-    if plot_idx in [1, 2, 3, 4, 5, 6, 7]:
+    if config["legend"]:
         legend_title = (
             "Cell Type: Target Receptor"
             if "off_data_key" in config
             else "Target Receptor"
         )
-        ax[plot_idx].legend(title=legend_title)
+        ax.legend(title=legend_title)
 
-plt.tight_layout()
-plt.show()
+    plt.tight_layout()
+    plt.show()
+```
+
+```{python}
+#| label: fig-scale-targ-binding
+#| fig-cap: "Target receptor binding vs conversion factor (on-target vs off-target)"
+plot_scale_panel(plot_configs["targ_binding"])
+```
+
+```{python}
+#| label: fig-scale-sig-binding
+#| fig-cap: "Signal receptor binding vs conversion factor (on-target vs off-target)"
+plot_scale_panel(plot_configs["sig_binding"])
+```
+
+```{python}
+#| label: fig-scale-selectivity
+#| fig-cap: "Binding model selectivity vs conversion factor"
+plot_scale_panel(plot_configs["selectivity"])
+```
+
+```{python}
+#| label: fig-scale-target-aff
+#| fig-cap: "Optimal target receptor affinity vs conversion factor"
+plot_scale_panel(plot_configs["target_aff"])
+```
+
+```{python}
+#| label: fig-scale-signal-aff
+#| fig-cap: "Optimal signal receptor affinity vs conversion factor"
+plot_scale_panel(plot_configs["signal_aff"])
+```
+
+```{python}
+#| label: fig-scale-kx-star
+#| fig-cap: "Optimal Kx_star vs conversion factor"
+plot_scale_panel(plot_configs["kx_star"])
+```
+
+```{python}
+#| label: fig-scale-emd
+#| fig-cap: "EMD vs conversion factor (log scale)"
+plot_scale_panel(plot_configs["emd"])
+```
+
+```{python}
+#| label: fig-scale-kl
+#| fig-cap: "KL Divergence vs conversion factor"
+plot_scale_panel(plot_configs["kl"])
 ```
 
 ## Parameter Summary

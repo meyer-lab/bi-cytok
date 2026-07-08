@@ -9,9 +9,13 @@
 {{< embed /figures/bootstrap_analyses/target_proportion_analysis.qmd#fig-targ-prop-emd >}}
 {{< embed /figures/bootstrap_analyses/target_proportion_analysis.qmd#fig-targ-prop-selec >}}
 
-{{< embed /figures/1D_scaling_analysis.qmd#fig-scale-invariance >}}
+{{< embed /figures/1D_scaling_analysis.qmd#fig-scale-selectivity >}}
+{{< embed /figures/1D_scaling_analysis.qmd#fig-scale-emd >}}
+{{< embed /figures/1D_scaling_analysis.qmd#fig-scale-kl >}}
 
-{{< embed /figures/scanning_analyses/scan_comparison_scatter.qmd#fig-scan-comp >}}
+{{< embed /figures/scanning_analyses/scan_comparison_scatter.qmd#fig-scan-comp-kl-emd >}}
+{{< embed /figures/scanning_analyses/scan_comparison_scatter.qmd#fig-scan-comp-kl-selec >}}
+{{< embed /figures/scanning_analyses/scan_comparison_scatter.qmd#fig-scan-comp-emd-selec >}}
 :::
 
 * Challenges:
@@ -22,11 +26,11 @@
   + Need Invariance with respect to cell sampling
   + Need scalability into multiple dimensions
 * Distribution shape metrics are effective for screening low dimensional targets (strong correlation with EMD, binding model) but are not applicable to target pairs/triads (@suppfig-distribution-features)
-* EMD and KL are scale invariant (@fig-scale-invariance), but are highly dependent on the relative size of target and off-target populations (@fig-targ-prop-kldiv and @fig-targ-prop-emd) and cell sample size (@fig-bootstrap-kldiv and @fig-bootstrap-emd).
-* Binding model is more consistent across cell subsamples (@fig-bootstrap-selec), more flexible (@fig-figure-1), and is invariant with respect to relative size of target and off-target populations (@fig-targ-prop-selec), but is not scale invariant (in >1D) (@suppfig-2d-scale-invariance).
-* Binding model selectivity is not perfectly correlated with W or KL (@fig-scan-comp).
-  + KL outliers are driven by singular outliers in target receptor expression
-  + EMD outlier pairs capture simple single-receptor differences
+* EMD and KL are scale invariant (@fig-scale-emd and @fig-scale-kl), but are highly dependent on the relative size of target and off-target populations (@fig-targ-prop-kldiv and @fig-targ-prop-emd) and cell sample size (@fig-bootstrap-kldiv and @fig-bootstrap-emd).
+* Binding model is more consistent across cell subsamples (@fig-bootstrap-selec), more flexible (@fig-figure-1), is invariant with respect to relative size of target and off-target populations (@fig-targ-prop-selec), and is scale invariant in 1D (@fig-scale-selectivity), but not in 2D (@suppfig-2d-scale-invariance).
+* Binding model selectivity is not perfectly correlated with W (@fig-scan-comp-emd-selec) or KL (@fig-scan-comp-kl-selec).
+  + KL outliers are driven by singular outliers in target receptor expression (@suppfig-scan-outliers)
+  + EMD outlier pairs capture simple single-receptor differences (@suppfig-scan-outliers)
   + Binding model outliers are infrequent and don’t obscure top hits
 * Binding model predictions align with validated multi-specific targeting schemes?
 * Binding model is more robust in terms of the challenges of the problem, is more robust in terms of outliers, and holds more biological relevance/interpretability
