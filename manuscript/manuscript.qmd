@@ -1,0 +1,48 @@
+---
+title: "A mechanistic guide for multispecific cell-type selectivity"
+author:
+  - name:
+      given: Samuel
+      family: Amidon
+      literal: Samuel M. Amidon
+    orcid: "0009-0008-6878-8689"
+    roles:
+      - methodology
+      - software
+      - writing – original draft
+      - writing – review & editing
+    affiliations:
+      - ref: ucla
+  - name:
+      given: Aaron
+      family: Meyer
+      literal: Aaron S. Meyer
+    orcid: "0000-0003-4513-1840"
+    attributes:
+      corresponding: true
+    roles: 
+      - conceptualization
+      - methodology
+      - software
+      - supervision
+      - funding acquisition
+      - writing – review & editing
+    affiliations:
+      - ref: ucla
+affiliations:
+  - id: ucla
+    name: University of California, Los Angeles
+    city: Los Angeles
+    state: CA
+date: today
+bibliography: bibliography.bib
+csl: nature.csl
+---
+
+{{< include _introduction.qmd >}}
+
+{{< include _results.qmd >}}
+
+{{< include _discussion.qmd >}}
+
+{{< include _methods.qmd >}}
