@@ -76,6 +76,8 @@ csl: nature.csl
 
 {{< include _methods.qmd >}}
 
+# References
+
 ::: {#refs}
 :::
 
