@@ -52,3 +52,6 @@ csl: nature.csl
 {{< include _discussion.qmd >}}
 
 {{< include _methods.qmd >}}
+
+::: {#refs}
+:::

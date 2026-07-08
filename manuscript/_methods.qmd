@@ -1,2 +1,3 @@
 # Methods
 
+We used a previously published model of multivalent binding [@tan2021].
