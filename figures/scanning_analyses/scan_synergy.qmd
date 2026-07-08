@@ -235,6 +235,8 @@ print(all_synergy_df.head(15).to_string(index=False))
 
 
 ```{python}
+#| label: suppfig-synergy-vshape
+#| fig-cap: "1D → 2D selectivity trajectories (V-shape slopegraphs). Each synergistic receptor pair is drawn as two lines converging from its two monospecific (1D) selectivities to the bispecific (2D) pair selectivity; warm color and opacity scale with synergy gain, while blue marks non-synergistic reference pairs whose stronger arm cannot be beaten. Panels show representative target cell types followed by a global top-pairs summary."
 # ── V-shape slopegraphs (1D → 2D trajectory per pair) ─────────────────────────
 # Each synergistic pair (A, B) is drawn as a V-shape: two lines converging from
 # (0, mono_A) and (0, mono_B) to (1, pair_metric). When both arms slope upward
@@ -720,8 +722,14 @@ for ct in PLOT_CELL_TYPES:
     )
     plt.tight_layout()
     plt.show()
+```
 
-# Summary: all cell types combined
+```{python}
+#| label: fig-synergy-scatter
+#| fig-cap: "Monospecific vs. bispecific selectivity across all target cell types. Each point is a synergistic receptor pair positioned at (the larger of its two monospecific selectivities, the bispecific pair selectivity), so every synergistic pair lies above the y = x diagonal; color encodes synergy gain. Non-synergistic receptors, shown at their best pair, fall on or below the diagonal."
+# ── Summary: all cell types combined (main Figure 3a) ─────────────────────────
+OPT1_N_LABEL = 10
+OPT1_N_NONSYN = 200
 if not all_synergy_df.empty:
     max_gain_s = all_synergy_df["synergy_gain"].max()
     gain_norm_s = Normalize(vmin=0, vmax=max_gain_s)

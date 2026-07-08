@@ -201,7 +201,8 @@ print(
 ```
 
 ```{python}
-#| fig-cap: "Scatter: max 1D vs max 2D metric per cell type"
+#| label: fig-top-hits-1d-2d
+#| fig-cap: "Maximum achievable selectivity from a single target receptor (1D) versus the best receptor pair (2D), per target cell type. Points on the dashed diagonal gain nothing from pairing; nearly all cell types lie on or near it, so their optimal target is a single receptor. Blue = pairing helps (2D ≥ 1D), red = 2D < 1D."
 # Blue points (2D ≥ 1D) are always labeled. Red points are labeled only when
 # 2D/1D ratio falls below SCATTER_LABEL_DECLINE_THRESHOLD.
 
@@ -348,7 +349,8 @@ plt.show()
 ```
 
 ```{python}
-#| fig-cap: "log₂ gain: log₂(2D/1D) per cell type, sorted by value"
+#| label: suppfig-top-hits-gain
+#| fig-cap: "log₂ selectivity gain from receptor pairing, log₂(2D/1D), per target cell type, sorted by value. Positive (blue) means the best pair beats the best single receptor; the raw 2D/1D ratio is annotated on each bar. The log₂ scale resolves the small gains that appear flat on a linear ratio."
 # Positive = pairing improves; negative = pairing hurts. Reference line at 0 (= 1× change).
 # log₂ scale resolves small differences that appear flat on a linear ratio plot:
 # log₂(0.95) ≈ -0.074 and log₂(1.05) ≈ +0.070 spread visibly around zero.

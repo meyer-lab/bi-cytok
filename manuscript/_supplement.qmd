@@ -5,3 +5,7 @@
 {{< embed /figures/2D_scaling_analysis.qmd#suppfig-2d-scale-invariance >}}
 
 {{< embed /figures/scanning_analyses/scan_outliers.qmd#suppfig-scan-outliers >}}
+
+{{< embed /figures/scanning_analyses/scan_synergy.qmd#suppfig-synergy-vshape >}}
+
+{{< embed /figures/scanning_analyses/scan_top_hits_1Dvs2D.qmd#suppfig-top-hits-gain >}}
