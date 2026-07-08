@@ -1,2 +1,13 @@
 # Results
 
+::: {#fig-raw-hist layout-ncol="2"}
+{{< embed /figures/raw_distribution_figures/raw_1D-hist.qmd#fig-raw-1d-hist >}}
+
+{{< embed /figures/raw_distribution_figures/raw_2D-hist.qmd#fig-raw-2d-hist >}}
+
+{{< embed /figures/raw_distribution_figures/off_targ_breakdown.qmd#fig-raw-celltype-hist >}}
+
+Distribution of receptor abundances for target and off-target cells.
+:::
+
+We showed that raw distributions are predictive of cell-type selectivity (@fig-raw-hist, @fig-raw-1d-hist, @fig-raw-2d-hist, @fig-raw-celltype-hist).

@@ -106,6 +106,7 @@ for cell_type in plot_cell_types:
 ```
 
 ```{python}
+#| label: fig-raw-1d-hist
 #| fig-cap: "1D distribution of receptor with histogram and KDE overlay"
 import seaborn as sns
 
