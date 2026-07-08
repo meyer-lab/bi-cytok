@@ -82,4 +82,3 @@ csl: nature.csl
 :::
 
 {{< include _supplement.qmd >}}
-

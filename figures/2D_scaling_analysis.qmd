@@ -201,6 +201,7 @@ plt.show()
 
 ## 2D Heatmaps
 ```{python}
+#| label: suppfig-2d-scale-invariance
 #| fig-cap: "2D heatmaps with scale1 on the y-axis and scale2 on the x-axis. Color encodes the metric value; EMD uses a log color scale. Dashed white lines mark the unscaled reference (scale = 1)."
 import matplotlib.colors as mcolors
 
