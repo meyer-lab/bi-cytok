@@ -1,5 +1,5 @@
 # Supplemental Figures
 
-{{< embed /figures/distribution_feature_analysis.qmd#suppfig-distribution-feature-correlation >}}
+{{< embed /figures/distribution_feature_analysis.qmd#suppfig-distribution-features >}}
 
 {{< embed /figures/2D_scaling_analysis.qmd#suppfig-2d-scale-invariance >}}

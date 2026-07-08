@@ -158,7 +158,11 @@ for receptor_valency in receptors_of_interest:
 ```
 
 ```{python}
+#| label: fig-scale-invariance
 #| fig-cap: "Binding model scaling factor analysis showing receptor binding, selectivity, and optimization parameters"
+
+# TODO: Separate out subfigures
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 

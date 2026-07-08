@@ -22,6 +22,8 @@ high or are cell-type-specific.
   - One color per cell type; all receptor pairs plotted as equal-sized points
 
 ```{python}
+#| label: fig-scan-comp
+#| fig-cap: "Scatter plot comparing two receptor scan metrics across multiple target cell types. Each point represents a receptor pair for a given cell type, colored by cell type. Top-selectivity pairs are highlighted with stars."
 %config InlineBackend.figure_formats = ['svg']
 import os
 

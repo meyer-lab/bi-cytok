@@ -1,5 +1,13 @@
-# Figure 2 Results
+::: {#fig-figure-2 layout-ncol="3"}
+{{< embed /figures/bootstrap_analyses/metric_variation_analysis.qmd#fig-bootstrap-kldiv >}}
+{{< embed /figures/bootstrap_analyses/metric_variation_analysis.qmd#fig-bootstrap-emd >}}
+{{< embed /figures/bootstrap_analyses/metric_variation_analysis.qmd#fig-bootstrap-selec >}}
 
-::: {#fig-figure-2}
+{{< embed /figures/bootstrap_analyses/target_proportion_analysis.qmd#fig-targ-prop-kldiv >}}
+{{< embed /figures/bootstrap_analyses/target_proportion_analysis.qmd#fig-targ-prop-emd >}}
+{{< embed /figures/bootstrap_analyses/target_proportion_analysis.qmd#fig-targ-prop-selec >}}
 
+{{< embed /figures/1D_scaling_analysis.qmd#fig-scale-invariance >}}
+
+{{< embed /figures/scanning_analyses/scan_comparison_scatter.qmd#fig-scan-comp >}}
 :::
