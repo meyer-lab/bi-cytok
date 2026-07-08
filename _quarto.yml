@@ -11,6 +11,12 @@ format:
     monofont: "Times New Roman"
 jupyter: python3
 
+crossref:
+  custom:
+    - kind: float
+      key: suppfig
+      reference-prefix: "Figure S"
+
 execute:
   echo: false
   warning: true

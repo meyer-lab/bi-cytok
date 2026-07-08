@@ -45,6 +45,26 @@ bibliography: bibliography.bib
 csl: nature.csl
 ---
 
+```{=typst}
+// Supplemental figures render as "Figure S1" (no space) in both captions and refs.
+#let suppfig-kind = "quarto-float-suppfig"
+#let suppfig-num(loc) = "S" + numbering("1", ..counter(figure.where(kind: suppfig-kind)).at(loc))
+// Caption label: "Figure S1: ..."
+#show figure.where(kind: suppfig-kind): it => {
+  show figure.caption: cap => [Figure #suppfig-num(it.location())#cap.separator#cap.body]
+  it
+}
+// Cross-references: "Figure S1"
+#show ref: it => {
+  let el = it.element
+  if el != none and el.func() == figure and el.kind == suppfig-kind {
+    link(el.location())[Figure #suppfig-num(el.location())]
+  } else {
+    it
+  }
+}
+```
+
 {{< include _introduction.qmd >}}
 
 {{< include _results_fig1.qmd >}}
@@ -58,4 +78,6 @@ csl: nature.csl
 
 ::: {#refs}
 :::
+
+{{< include _supplement.qmd >}}
 

@@ -1,6 +1,3 @@
 # Supplemental Figures
 
-::: {#fig-figure-S1}
-{{< embed /figures/distribution_feature_analysis.qmd#fig-distribution-feature-correlation >}}
-    
-:::
+{{< embed /figures/distribution_feature_analysis.qmd#suppfig-distribution-feature-correlation >}}
