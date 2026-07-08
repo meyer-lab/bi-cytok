@@ -47,7 +47,10 @@ csl: nature.csl
 
 {{< include _introduction.qmd >}}
 
-{{< include _results.qmd >}}
+{{< include _results_fig1.qmd >}}
+{{< include _results_fig2.qmd >}}
+{{< include _results_fig3.qmd >}}
+{{< include _results_fig4.qmd >}}
 
 {{< include _discussion.qmd >}}
 
@@ -55,3 +58,4 @@ csl: nature.csl
 
 ::: {#refs}
 :::
+
