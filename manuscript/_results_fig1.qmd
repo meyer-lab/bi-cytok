@@ -2,6 +2,7 @@
 
 ::: {#fig-figure-1}
 
+Overview of the multispecific cell-type-selectivity problem and the experimental and computational framework used to evaluate candidate receptor targets.
 :::
 
 * Number of combinations to consider is huge: pairs/triads of receptors, all cell populations

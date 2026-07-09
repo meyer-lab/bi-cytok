@@ -251,18 +251,15 @@ def plot_comparison(key):
 
 ```{python}
 #| label: fig-scan-comp-kl-emd
-#| fig-cap: "KL divergence vs. EMD across target cell types. Each point is a receptor pair for a given cell type; the top pair per axis is starred."
 plot_comparison("kl_emd")
 ```
 
 ```{python}
 #| label: fig-scan-comp-kl-selec
-#| fig-cap: "KL divergence vs. binding-model selectivity across target cell types. Each point is a receptor pair for a given cell type; the top pair per axis is starred."
 plot_comparison("kl_selec")
 ```
 
 ```{python}
 #| label: fig-scan-comp-emd-selec
-#| fig-cap: "EMD vs. binding-model selectivity across target cell types. Each point is a receptor pair for a given cell type; the top pair per axis is starred."
 plot_comparison("emd_selec")
 ```

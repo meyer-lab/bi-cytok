@@ -288,7 +288,6 @@ plot_scale_panel(plot_configs["sig_binding"])
 
 ```{python}
 #| label: fig-scale-selectivity
-#| fig-cap: "Binding model selectivity vs conversion factor"
 plot_scale_panel(plot_configs["selectivity"])
 ```
 
@@ -312,13 +311,11 @@ plot_scale_panel(plot_configs["kx_star"])
 
 ```{python}
 #| label: fig-scale-emd
-#| fig-cap: "EMD vs conversion factor (log scale)"
 plot_scale_panel(plot_configs["emd"])
 ```
 
 ```{python}
 #| label: fig-scale-kl
-#| fig-cap: "KL Divergence vs conversion factor"
 plot_scale_panel(plot_configs["kl"])
 ```
 

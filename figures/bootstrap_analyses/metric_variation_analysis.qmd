@@ -134,7 +134,6 @@ affinities_melted = affinities_df.melt(
 
 ```{python}
 #| label: fig-bootstrap-kldiv
-#| fig-cap: "Bootstrap variation in KL Divergence across sample sizes"
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -146,7 +145,6 @@ plt.show()
 
 ```{python}
 #| label: fig-bootstrap-emd
-#| fig-cap: "Bootstrap variation in EMD across sample sizes"
 sns.boxplot(x="sample_size", y="EMD", data=metrics_df)
 plt.xlabel("Sample Size", fontsize=15)
 plt.ylabel("EMD", fontsize=15)
@@ -155,7 +153,6 @@ plt.show()
 
 ```{python}
 #| label: fig-bootstrap-selec
-#| fig-cap: "Bootstrap variation in selectivity across sample sizes"
 sns.boxplot(x="sample_size", y="selectivity", data=metrics_df)
 plt.xlabel("Sample Size", fontsize=15)
 plt.ylabel("Selectivity", fontsize=15)

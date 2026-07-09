@@ -239,8 +239,7 @@ combined_df = pd.concat(
 ```
 
 ```{python}
-#| label: suppfig-distribution-features
-#| fig-cap: "Spearman correlation between distribution features and selectivity metrics (all cell types pooled)"
+#| label: distribution-features
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 

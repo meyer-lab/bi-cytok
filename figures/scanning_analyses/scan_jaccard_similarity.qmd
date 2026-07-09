@@ -525,13 +525,11 @@ res_metric = compute_jaccard(**SCENARIOS["metric_agreement"])
 
 ```{python}
 #| label: fig-jaccard-valency
-#| fig-cap: "Agreement (Jaccard index) between the top-ranked receptor pairs of selectivity scans run at different valencies, across target cell types and top-N thresholds. Low overlap indicates that the optimal multi-receptor hits shift as valency changes."
 plot_jaccard_box(res_valency)
 ```
 
 ```{python}
-#| label: suppfig-jaccard-signal
-#| fig-cap: "Agreement (Jaccard index) between top-ranked receptor pairs of selectivity scans under different signal-receptor definitions (generic, CD122, CD28) and the distribution metrics (EMD, KL divergence), across target cell types and top-N thresholds."
+#| label: jaccard-signal
 plot_jaccard_box(res_signal)
 ```
 

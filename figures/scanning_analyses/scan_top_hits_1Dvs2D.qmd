@@ -358,13 +358,11 @@ df_high, labels_high = top_hits_df(HIGHVAL_SCAN)
 
 ```{python}
 #| label: fig-top-hits-1d-2d-lowval
-#| fig-cap: "Low valency (fixed bivalent): maximum achievable selectivity from a single target receptor (1D) versus the best receptor pair (2D), per target cell type. Points on the dashed diagonal gain nothing from pairing; nearly all cell types lie on or near it, so their optimal target is a single receptor. Blue = pairing helps (2D ≥ 1D), red = 2D < 1D."
 plot_scatter(df_low, labels_low)
 ```
 
 ```{python}
 #| label: fig-top-hits-1d-2d-highval
-#| fig-cap: "High, asymmetric valency (mixed tetravalent): maximum achievable selectivity from a single target receptor (1D) versus the best receptor pair (2D), per target cell type. Unlike the low-valency case, many cell types rise well above the diagonal — the best receptor pair substantially beats the best single receptor. Blue = pairing helps (2D ≥ 1D), red = 2D < 1D."
 plot_scatter(df_high, labels_high)
 ```
 
@@ -375,13 +373,11 @@ plot_slope(df_high, labels_high)
 ```
 
 ```{python}
-#| label: suppfig-top-hits-gain-lowval
-#| fig-cap: "Low valency (fixed bivalent): log₂ selectivity gain from receptor pairing, log₂(2D/1D), per target cell type, sorted by value. Positive (blue) means the best pair beats the best single receptor; the raw 2D/1D ratio is annotated on each bar. Gains are small, consistent with single receptors being near-optimal at low valency."
+#| label: top-hits-gain-lowval
 plot_gain_bars(df_low, labels_low)
 ```
 
 ```{python}
-#| label: suppfig-top-hits-gain-highval
-#| fig-cap: "High, asymmetric valency (mixed tetravalent): log₂ selectivity gain from receptor pairing, log₂(2D/1D), per target cell type, sorted by value. Positive (blue) means the best pair beats the best single receptor; the raw 2D/1D ratio is annotated on each bar. Gains are substantially larger than at low valency."
+#| label: top-hits-gain-highval
 plot_gain_bars(df_high, labels_high)
 ```

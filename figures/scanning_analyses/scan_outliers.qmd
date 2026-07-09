@@ -326,8 +326,7 @@ CELL_CATEGORIZATION = _first["cell_categorization"]
 ```
 
 ```{python}
-#| label: suppfig-scan-outliers
-#| fig-cap: "Outlier analysis of binding-model selectivity against distance metrics for Treg targeting. Each point is a receptor pair; residual-based coloring flags pairs that score higher on one metric than the trend predicts, and pairs high on both axes (red) are sized by normalized Euclidean distance from the origin."
+#| label: scan-outliers-plot
 n_cond = len(outlier_results)
 fig, axes = plt.subplots(1, n_cond, figsize=(7.5 * n_cond, 7))
 axes = np.atleast_1d(axes)
