@@ -1,6 +1,8 @@
 # Figure 4: High, asymmetric valency boosts multispecific selectivity beyond single-receptor targeting
 
 ::: {#fig-figure-4}
+{{< embed /figures/scanning_analyses/scan_jaccard_similarity.qmd#fig-jaccard-valency >}}
+
 {{< embed /figures/scanning_analyses/scan_top_hits_1Dvs2D.qmd#fig-top-hits-1d-2d-highval >}}
 :::
 
@@ -8,7 +10,7 @@
   + Different signal receptors
   +	Higher valency
   +	Asymmetric target ligand valencies
-* Top hits are consistent across signal receptor definitions (generic or specific)
-* Top hits are variable with changes in valency (magnitude and asymmetry)
+* Top hits are consistent across signal receptor definitions (generic or specific) (@suppfig-jaccard-signal)
+* Top hits are variable with changes in valency (magnitude and asymmetry) (@fig-jaccard-valency)
 * Increasing valency increases the utility of optimal multispecificity (@fig-top-hits-1d-2d-highval, @suppfig-top-hits-gain-highval)
 * Asymmetric valency of paired targets further improves multi-receptor selectivity?

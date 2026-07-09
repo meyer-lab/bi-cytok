@@ -68,11 +68,11 @@ SCENARIOS = {
             ("Fixed Bivalent", "Mixed Tetravalent"),
             ("Fixed Tetravalent", "Mixed Tetravalent"),
         ],
-        top_n_values=[5, 10, 50, 100, 500, 1000],
+        top_n_values=[5, 10, 50, 100],
         min_valid_pairs_pct=0,
         scale_dot_size=False,
     ),
-    # Selectivity under different signal receptors vs. distribution metrics.
+    # Selectivity under different signal receptors
     "signal": dict(
         metrics={
             "Generic signal": {
@@ -87,26 +87,15 @@ SCENARIOS = {
                 "path": f"{_DATA}/20260609_selec_scan_full_sigCD28.csv",
                 "column": "Selectivity",
             },
-            "EMD": {
-                "path": f"{_DATA}/20260520_dist_scan_full_filt.csv",
-                "column": "EMD",
-            },
-            "KL Divergence": {
-                "path": f"{_DATA}/20260520_dist_scan_full_filt.csv",
-                "column": "KL_Divergence",
-            },
         },
         comparisons=[
-            ("Generic signal", "EMD"),
-            ("CD122 signal", "EMD"),
-            ("CD28 signal", "EMD"),
-            ("Generic signal", "KL Divergence"),
-            ("CD122 signal", "KL Divergence"),
-            ("CD28 signal", "KL Divergence"),
+            ("Generic signal", "CD122 signal"),
+            ("Generic signal", "CD28 signal"),
+            ("CD122 signal", "CD28 signal")
         ],
         top_n_values=[5, 10, 50, 100],
-        min_valid_pairs_pct=10,
-        scale_dot_size=True,
+        min_valid_pairs_pct=0,
+        scale_dot_size=False,
     ),
     # Selectivity vs. distribution metrics (+ KL vs. EMD).
     "metric_agreement": dict(
@@ -541,7 +530,7 @@ plot_jaccard_box(res_valency)
 ```
 
 ```{python}
-#| label: fig-jaccard-signal
+#| label: suppfig-jaccard-signal
 #| fig-cap: "Agreement (Jaccard index) between top-ranked receptor pairs of selectivity scans under different signal-receptor definitions (generic, CD122, CD28) and the distribution metrics (EMD, KL divergence), across target cell types and top-N thresholds."
 plot_jaccard_box(res_signal)
 ```

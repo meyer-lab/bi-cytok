@@ -11,3 +11,5 @@
 {{< embed /figures/scanning_analyses/scan_top_hits_1Dvs2D.qmd#suppfig-top-hits-gain-lowval >}}
 
 {{< embed /figures/scanning_analyses/scan_top_hits_1Dvs2D.qmd#suppfig-top-hits-gain-highval >}}
+
+{{< embed /figures/scanning_analyses/scan_jaccard_similarity.qmd#suppfig-jaccard-signal >}}
