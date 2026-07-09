@@ -1,7 +1,7 @@
 # Figure 4: High, asymmetric valency boosts multispecific selectivity beyond single-receptor targeting
 
 ::: {#fig-figure-4}
-
+{{< embed /figures/scanning_analyses/scan_top_hits_1Dvs2D.qmd#fig-top-hits-1d-2d-highval >}}
 :::
 
 * Intuition tells us that some changes in binding model optimization problems may lead to multi-receptor prioritization:
@@ -10,5 +10,5 @@
   +	Asymmetric target ligand valencies
 * Top hits are consistent across signal receptor definitions (generic or specific)
 * Top hits are variable with changes in valency (magnitude and asymmetry)
-* Increasing valency increases the utility of optimal multispecificity
+* Increasing valency increases the utility of optimal multispecificity (@fig-top-hits-1d-2d-highval, @suppfig-top-hits-gain-highval)
 * Asymmetric valency of paired targets further improves multi-receptor selectivity?

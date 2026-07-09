@@ -2,8 +2,8 @@
 
 ::: {#fig-figure-3}
 {{< embed /figures/scanning_analyses/scan_synergy.qmd#fig-synergy-scatter >}}
-{{< embed /figures/scanning_analyses/scan_top_hits_1Dvs2D.qmd#fig-top-hits-1d-2d >}}
+{{< embed /figures/scanning_analyses/scan_top_hits_1Dvs2D.qmd#fig-top-hits-1d-2d-lowval >}}
 :::
 
 * Most targets exhibit synergy in selectivity---nearly every receptor has higher selectivity when paired with some other target than when either is targeted alone (@fig-synergy-scatter, @suppfig-synergy-vshape).
-* However, at low valency, most optimal targets involve a single cell type marker (@fig-top-hits-1d-2d, @suppfig-top-hits-gain).
+* However, at low valency, most optimal targets involve a single cell type marker (@fig-top-hits-1d-2d-lowval, @suppfig-top-hits-gain-lowval).
