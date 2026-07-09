@@ -231,7 +231,10 @@ def plot_comparison(key):
     plt.tight_layout()
     plt.show()
 
-    # Spearman correlation per cell type and overall.
+
+def print_spearman(key):
+    """Print Spearman correlation per cell type and overall for one comparison."""
+    all_df, axis_1_label, axis_2_label = comparison_data[key]
     rows = []
     for ct in TARG_CELL_TYPES:
         sub = all_df[all_df["cell_type"] == ct]
@@ -255,11 +258,23 @@ plot_comparison("kl_emd")
 ```
 
 ```{python}
+print_spearman("kl_emd")
+```
+
+```{python}
 #| label: fig-scan-comp-kl-selec
 plot_comparison("kl_selec")
 ```
 
 ```{python}
+print_spearman("kl_selec")
+```
+
+```{python}
 #| label: fig-scan-comp-emd-selec
 plot_comparison("emd_selec")
+```
+
+```{python}
+print_spearman("emd_selec")
 ```
