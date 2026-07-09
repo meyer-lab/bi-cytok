@@ -616,8 +616,7 @@ OPT1_N_NONSYN = 200
 OPT1_FIGSIZE = (5.5, 5.5)
 
 
-def _opt1_scatter(ax, syn_df, nonsyn_recs, mono_map, bpim, title, n_label=OPT1_N_LABEL):
-
+def _opt1_scatter(ax, syn_df, nonsyn_recs, mono_map, bpim, n_label=OPT1_N_LABEL):
     max_gain = syn_df["synergy_gain"].max()
     gain_norm = Normalize(vmin=0, vmax=max_gain)
 
@@ -705,7 +704,6 @@ for ct in PLOT_CELL_TYPES:
         res["non_synergistic_recs"],
         res["rec_mono_map"],
         best_pair_info_maps[ct],
-        f"1D max vs. 2D pair — target: {ct}\n"
         f"({len(res['synergy_df'])} synergistic pairs above diagonal)",
     )
     plt.tight_layout()

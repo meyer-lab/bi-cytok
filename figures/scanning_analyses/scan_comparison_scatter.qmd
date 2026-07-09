@@ -124,8 +124,12 @@ def build_comparison(metric_1, metric_2, cell_types, axis_norm):
     # Normalize globally across all cell types so panels are comparable.
     all_df = pd.concat(ct_dfs.values(), ignore_index=True)
     if axis_norm == "z-score":
-        all_df["s1"] = (all_df["s1"] - all_df["s1"].mean()) / (all_df["s1"].std() + 1e-9)
-        all_df["s2"] = (all_df["s2"] - all_df["s2"].mean()) / (all_df["s2"].std() + 1e-9)
+        all_df["s1"] = (all_df["s1"] - all_df["s1"].mean()) / (
+            all_df["s1"].std() + 1e-9
+        )
+        all_df["s2"] = (all_df["s2"] - all_df["s2"].mean()) / (
+            all_df["s2"].std() + 1e-9
+        )
     elif axis_norm == "rank":
         all_df["s1"] = all_df["s1"].rank(method="average")
         all_df["s2"] = all_df["s2"].rank(method="average")
@@ -217,11 +221,6 @@ def plot_comparison(key):
 
     ax.set_xlabel(axis_1_label, fontsize=13)
     ax.set_ylabel(axis_2_label, fontsize=13)
-    types_str = (
-        ", ".join(TARG_CELL_TYPES)
-        if len(TARG_CELL_TYPES) <= 3
-        else f"{len(TARG_CELL_TYPES)} cell types"
-    )
     ax.tick_params(labelsize=11)
     plt.tight_layout()
     plt.show()

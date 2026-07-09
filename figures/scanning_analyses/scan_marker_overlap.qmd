@@ -202,7 +202,7 @@ metric_specs = [
     ("EMD", emd_overlap),
 ]
 
-for ax, (title, df) in zip(axes, metric_specs, strict=False):
+for ax, (_, df) in zip(axes, metric_specs, strict=False):
     pivot = _make_pivot(df, all_cell_types, TOP_N_VALUES)
     annot = _make_annot(df, all_cell_types, TOP_N_VALUES)
     mask = pivot.isna()

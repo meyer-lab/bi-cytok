@@ -91,7 +91,7 @@ SCENARIOS = {
         comparisons=[
             ("Generic signal", "CD122 signal"),
             ("Generic signal", "CD28 signal"),
-            ("CD122 signal", "CD28 signal")
+            ("CD122 signal", "CD28 signal"),
         ],
         top_n_values=[5, 10, 50, 100],
         min_valid_pairs_pct=0,
@@ -207,7 +207,9 @@ def compute_jaccard(
 
     if global_pair_intersection:
         # Cell types present in every metric; pairs valid in every metric.
-        all_cts = sorted(set.intersection(*[set(metric_series[lbl]) for lbl in metrics]))
+        all_cts = sorted(
+            set.intersection(*[set(metric_series[lbl]) for lbl in metrics])
+        )
         global_pool = {}
         for ct in all_cts:
             common = set.intersection(
@@ -384,28 +386,44 @@ def plot_jaccard_box(res):
 
     comp_handles = [
         Patch(
-            facecolor=comp_colors[lbl], alpha=0.55, edgecolor=comp_colors[lbl], label=lbl
+            facecolor=comp_colors[lbl],
+            alpha=0.55,
+            edgecolor=comp_colors[lbl],
+            label=lbl,
         )
         for lbl in comp_labels
     ]
     comp_legend = ax.legend(
-        handles=comp_handles, fontsize=10, framealpha=0.9, loc="upper left",
+        handles=comp_handles,
+        fontsize=10,
+        framealpha=0.9,
+        loc="upper left",
         title="Comparison",
     )
     if scale_dot_size:
         ax.add_artist(comp_legend)
         size_legend_vals = [
-            n_global_min, (n_global_min + n_global_max) // 2, n_global_max
+            n_global_min,
+            (n_global_min + n_global_max) // 2,
+            n_global_max,
         ]
         size_handles = [
             mlines.Line2D(
-                [], [], marker="o", color="gray", linestyle="None",
-                markersize=np.sqrt(pair_count_to_size(n)), label=f"n = {n:,}",
+                [],
+                [],
+                marker="o",
+                color="gray",
+                linestyle="None",
+                markersize=np.sqrt(pair_count_to_size(n)),
+                label=f"n = {n:,}",
             )
             for n in size_legend_vals
         ]
         ax.legend(
-            handles=size_handles, fontsize=9, framealpha=0.9, loc="upper right",
+            handles=size_handles,
+            fontsize=9,
+            framealpha=0.9,
+            loc="upper right",
             title="Valid pairs (n)",
         )
 
@@ -441,7 +459,7 @@ def plot_jaccard_lines(res, scale="log"):
         n_rows, n_cols, figsize=(5.5 * n_cols, 4.5 * n_rows), sharey=True, squeeze=False
     )
 
-    for panel_idx, (comp_label, color) in enumerate(comp_colors.items()):
+    for panel_idx, (comp_label, _) in enumerate(comp_colors.items()):
         ax = axes[panel_idx // n_cols][panel_idx % n_cols]
         comp_data = results[results["comparison"] == comp_label]
 
@@ -455,14 +473,26 @@ def plot_jaccard_lines(res, scale="log"):
             if ct_trace.empty:
                 continue
             ax.plot(
-                ct_trace.index, ct_trace.values, color=ct_color_map[ct], linewidth=1.3,
-                alpha=0.65, marker="o", markersize=4, label=ct,
+                ct_trace.index,
+                ct_trace.values,
+                color=ct_color_map[ct],
+                linewidth=1.3,
+                alpha=0.65,
+                marker="o",
+                markersize=4,
+                label=ct,
             )
 
         means = comp_data.groupby("top_n")["jaccard"].mean().sort_index()
         ax.plot(
-            means.index, means.values, color="black", linewidth=2.5, marker="o",
-            markersize=7, zorder=5, label="Mean",
+            means.index,
+            means.values,
+            color="black",
+            linewidth=2.5,
+            marker="o",
+            markersize=7,
+            zorder=5,
+            label="Mean",
         )
 
         if scale == "log":
@@ -479,8 +509,13 @@ def plot_jaccard_lines(res, scale="log"):
 
     handles, labels_leg = axes[0][0].get_legend_handles_labels()
     fig.legend(
-        handles, labels_leg, loc="lower center", ncol=min(len(ct_list) + 1, 8),
-        fontsize=8.5, framealpha=0.9, bbox_to_anchor=(0.5, -0.12),
+        handles,
+        labels_leg,
+        loc="lower center",
+        ncol=min(len(ct_list) + 1, 8),
+        fontsize=8.5,
+        framealpha=0.9,
+        bbox_to_anchor=(0.5, -0.12),
     )
     plt.tight_layout()
     plt.show()

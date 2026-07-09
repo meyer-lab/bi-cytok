@@ -35,7 +35,6 @@ condition only.
 import os
 
 import matplotlib.patheffects as pe
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import yaml
@@ -212,11 +211,17 @@ def plot_outlier_scatter(res, ax):
     for cat, style in {
         "neither": dict(color="lightgray", zorder=1, alpha=0.6, s=18, label="Neither"),
         "high_1": dict(
-            color="#3A86FF", zorder=3, alpha=0.85, s=40,
+            color="#3A86FF",
+            zorder=3,
+            alpha=0.85,
+            s=40,
             label=f"High {axis_1_label} only",
         ),
         "high_2": dict(
-            color="#FF9F1C", zorder=3, alpha=0.85, s=40,
+            color="#FF9F1C",
+            zorder=3,
+            alpha=0.85,
+            s=40,
             label=f"High {axis_2_label} only",
         ),
     }.items():
@@ -286,16 +291,30 @@ def plot_outlier_scatter(res, ax):
 
     x_line = np.array([df["s1"].min(), df["s1"].max()])
     ax.plot(
-        x_line, slope * x_line + intercept, color="dimgray", linewidth=1.0,
-        linestyle="-", alpha=0.45, zorder=2, label="OLS fit",
+        x_line,
+        slope * x_line + intercept,
+        color="dimgray",
+        linewidth=1.0,
+        linestyle="-",
+        alpha=0.45,
+        zorder=2,
+        label="OLS fit",
     )
     ax.plot(
-        x_line, slope * x_line + intercept + resid_hi, color="darkorange",
-        linewidth=1.0, linestyle="--", alpha=0.5,
+        x_line,
+        slope * x_line + intercept + resid_hi,
+        color="darkorange",
+        linewidth=1.0,
+        linestyle="--",
+        alpha=0.5,
     )
     ax.plot(
-        x_line, slope * x_line + intercept + resid_lo, color="steelblue",
-        linewidth=1.0, linestyle="--", alpha=0.5,
+        x_line,
+        slope * x_line + intercept + resid_lo,
+        color="steelblue",
+        linewidth=1.0,
+        linestyle="--",
+        alpha=0.5,
     )
 
     for _, row in res["all_label_rows"].iterrows():
@@ -333,7 +352,9 @@ plt.show()
 ```{python}
 # Tabular summary of all annotated receptor pairs, per condition.
 for res in outlier_results:
-    summary = res["all_label_rows"][["rec1", "rec2", "s1", "s2", "r", "category"]].copy()
+    summary = res["all_label_rows"][
+        ["rec1", "rec2", "s1", "s2", "r", "category"]
+    ].copy()
     summary.columns = [
         "Receptor 1",
         "Receptor 2",
@@ -345,8 +366,10 @@ for res in outlier_results:
     summary = summary.sort_values("Category").reset_index(drop=True)
     num_cols = [res["axis_1_label"], res["axis_2_label"], "Euclidean dist. (norm.)"]
     summary[num_cols] = summary[num_cols].round(4)
-    print(f"\n=== {res['axis_1_label']} vs. {res['axis_2_label']} "
-          f"(target: {res['targ_cell_type']}) ===")
+    print(
+        f"\n=== {res['axis_1_label']} vs. {res['axis_2_label']} "
+        f"(target: {res['targ_cell_type']}) ==="
+    )
     print(summary.to_string(index=False))
 ```
 

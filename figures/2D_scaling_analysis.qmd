@@ -150,7 +150,7 @@ fig, axes = plt.subplots(
     n_metrics * 2, n_pairs, figsize=(6 * n_pairs, 4 * n_metrics * 2), squeeze=False
 )
 
-for pair_idx, (pair_label, res) in enumerate(all_results.items()):
+for pair_idx, (_, res) in enumerate(all_results.items()):
     rec1, rec2 = res["rec1"], res["rec2"]
     for met_idx, (met_key, met_label) in enumerate(metrics):
         use_log_y = met_key == "emd_vals"
@@ -211,7 +211,7 @@ fig, axes = plt.subplots(
     n_metrics, n_pairs, figsize=(6 * n_pairs, 5 * n_metrics), squeeze=False
 )
 
-for pair_idx, (pair_label, res) in enumerate(all_results.items()):
+for pair_idx, (_, res) in enumerate(all_results.items()):
     rec1, rec2 = res["rec1"], res["rec2"]
     for met_idx, (met_key, met_label) in enumerate(metrics):
         ax = axes[met_idx][pair_idx]
