@@ -172,7 +172,6 @@ plot_configs = {
         "data_key": "targ_bound_tar_r",
         "off_data_key": "off_targ_bound_tar_r",
         "ylabel": "Average Bound Target Receptors",
-        "title": "Target Receptor Binding vs Conversion Factor",
         "log_y": True,
         "legend": False,
     },
@@ -180,49 +179,42 @@ plot_configs = {
         "data_key": "targ_bound_sig_r",
         "off_data_key": "off_targ_bound_sig_r",
         "ylabel": "Average Bound Signal Receptors",
-        "title": f"Signal Receptor ({signal_receptor}) Binding vs Scaling Factor",
         "log_y": True,
         "legend": True,
     },
     "selectivity": {
         "data_key": "selectivities",
         "ylabel": "Optimal Selectivity",
-        "title": "Selectivity vs Conversion Factor",
         "log_y": True,
         "legend": True,
     },
     "target_aff": {
         "data_key": "target_affinities",
         "ylabel": "Optimal Affinity (log10 Ka)",
-        "title": "Target Receptor Optimal Affinity vs Conversion Factor",
         "log_y": False,
         "legend": True,
     },
     "signal_aff": {
         "data_key": "signal_affinities",
         "ylabel": "Optimal Affinity (log10 Ka)",
-        "title": f"Signal Receptor ({signal_receptor}) Affinity vs Scaling Factor",
         "log_y": False,
         "legend": True,
     },
     "kx_star": {
         "data_key": "optimal_kx_stars",
         "ylabel": "Optimal Kx_star (log10 M)",
-        "title": "Optimal Kx_star vs Conversion Factor",
         "log_y": False,
         "legend": True,
     },
     "emd": {
         "data_key": "emd_vals",
         "ylabel": "EMD (log scale)",
-        "title": "EMD vs Conversion Factor",
         "log_y": True,
         "legend": True,
     },
     "kl": {
         "data_key": "kl_vals",
         "ylabel": "KL Divergence",
-        "title": "KL Divergence vs Conversion Factor",
         "log_y": False,
         "legend": True,
     },
@@ -260,7 +252,6 @@ def plot_scale_panel(config):
         ax.set_yscale("log")
     ax.set_xlabel("Conversion Factor", fontsize=15)
     ax.set_ylabel(config["ylabel"], fontsize=15)
-    ax.set_title(config["title"], fontsize=15)
 
     if config["legend"]:
         legend_title = (

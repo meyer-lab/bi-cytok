@@ -230,7 +230,6 @@ for ax, (title, df) in zip(axes, metric_specs, strict=False):
                     plt.Rectangle((j, i), 1, 1, fill=True, color="#d0d0d0", zorder=3)
                 )
 
-    ax.set_title(title, fontsize=14, fontweight="bold", pad=10)
     ax.set_xlabel("Top-N Predicted Receptors", fontsize=12)
     ax.tick_params(axis="x", labelsize=11)
     ax.tick_params(axis="y", labelsize=10, rotation=0)
@@ -249,12 +248,6 @@ cbar = fig.colorbar(sm, cax=cbar_ax)
 cbar.set_label("Recall (overlap / markers in scan)", fontsize=11)
 cbar.ax.tick_params(labelsize=10)
 
-fig.suptitle(
-    "Top-N Predicted Receptors vs. Cell-Type Defining Markers\n"
-    "(Annotation: predicted overlap / defining markers present in scan)",
-    fontsize=13,
-    y=1.01,
-)
 # plt.tight_layout()
 plt.show()
 ```

@@ -1,6 +1,6 @@
 # Figure 4: High, asymmetric valency boosts multispecific selectivity beyond single-receptor targeting
 
-::: {#fig-figure-4}
+::: {#fig-figure-4 layout-ncol="2"}
 {{< embed /figures/scanning_analyses/scan_jaccard_similarity.qmd#fig-jaccard-valency >}}
 
 {{< embed /figures/scanning_analyses/scan_top_hits_1Dvs2D.qmd#fig-top-hits-1d-2d-highval >}}

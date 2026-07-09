@@ -305,12 +305,6 @@ def plot_outlier_scatter(res, ax):
 
     ax.set_xlabel(axis_1_label, fontsize=13)
     ax.set_ylabel(axis_2_label, fontsize=13)
-    ax.set_title(
-        f"{axis_1_label} vs. {axis_2_label}\nTarget: {res['targ_cell_type']}  "
-        f"(threshold = {HIGH_PERCENTILE}th percentile)",
-        fontsize=12,
-        pad=12,
-    )
     ax.tick_params(labelsize=11)
     ax.legend(fontsize=6, loc="best", framealpha=0.8)
 

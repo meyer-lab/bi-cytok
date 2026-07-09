@@ -97,7 +97,6 @@ def top_hits_df(scan_path, kl_emd_metric="EMD"):
             "metric_label_1d": "Max 1D Selectivity (single receptor)",
             "metric_label_2d": "Max 2D Selectivity (receptor pair)",
             "log2_gain_label": "log₂(2D / 1D Selectivity)",
-            "title_suffix": "",
         }
     else:  # KL_EMD
         assert kl_emd_metric in ("EMD", "KL_Divergence"), (
@@ -115,7 +114,6 @@ def top_hits_df(scan_path, kl_emd_metric="EMD"):
             "metric_label_1d": f"Max 1D {kl_emd_metric} (single receptor)",
             "metric_label_2d": f"Max 2D {kl_emd_metric} (receptor pair)",
             "log2_gain_label": f"log₂(2D / 1D {kl_emd_metric})",
-            "title_suffix": f" — {kl_emd_metric}",
         }
 
     # asym_targs (selectivity scans only; KL/EMD always uses the lower triangle).
@@ -240,11 +238,6 @@ def plot_scatter(df, labels, decline_threshold=SCATTER_LABEL_DECLINE_THRESHOLD):
 
     ax.set_xlabel(labels["metric_label_1d"], fontsize=14)
     ax.set_ylabel(labels["metric_label_2d"], fontsize=14)
-    ax.set_title(
-        f"Single Receptor vs Receptor Pair:\n"
-        f"Max Achievable {labels['metric_name']} per Cell Type{labels['title_suffix']}",
-        fontsize=16,
-    )
     improved_handle = mlines.Line2D(
         [], [], color="#2274A5", marker="o", linestyle="None", markersize=7,
         label="2D ≥ 1D (pairing helps)",
@@ -289,10 +282,6 @@ def plot_slope(df, labels):
     ax.set_xticklabels(["1D\n(single receptor)", "2D\n(receptor pair)"], fontsize=14)
     ax.set_xlim(-0.45, 1.45)
     ax.set_ylabel(f"Max {labels['metric_name']}", fontsize=16)
-    ax.set_title(
-        f"Direction of Change:\nSingle Receptor → Receptor Pair{labels['title_suffix']}",
-        fontsize=16,
-    )
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["bottom"].set_visible(False)
@@ -338,11 +327,6 @@ def plot_gain_bars(df, labels):
     )
 
     ax.set_ylabel(labels["log2_gain_label"], fontsize=16)
-    ax.set_title(
-        f"Selectivity Gain from Receptor Pairing{labels['title_suffix']}\n"
-        f"(positive = pairing improves {labels['metric_name']})",
-        fontsize=16,
-    )
     ax.set_xticklabels(df_log["Cell Type"], rotation=35, ha="right", fontsize=12)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)

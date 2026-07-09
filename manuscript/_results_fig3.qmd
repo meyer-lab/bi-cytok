@@ -1,6 +1,6 @@
 # Figure 3: Despite frequent synergy, optimal binding selectivity is almost always derived from the most differential receptor
 
-::: {#fig-figure-3}
+::: {#fig-figure-3 layout-ncol="2"}
 {{< embed /figures/scanning_analyses/scan_synergy.qmd#fig-synergy-scatter >}}
 
 {{< embed /figures/scanning_analyses/scan_top_hits_1Dvs2D.qmd#fig-top-hits-1d-2d-lowval >}}

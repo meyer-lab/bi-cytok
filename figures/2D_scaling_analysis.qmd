@@ -172,7 +172,6 @@ for pair_idx, (pair_label, res) in enumerate(all_results.items()):
         ax_top.axvline(x=1.0, linestyle="--", color="black", alpha=0.4)
         ax_top.set_xlabel(f"{rec1} scale factor")
         ax_top.set_ylabel(met_label)
-        ax_top.set_title(f"{pair_label}: vary {rec1} scale")
         ax_top.legend(title=f"{rec2} scale", fontsize=7, title_fontsize=7)
 
         # Bottom row: vary rec2 scale; each line = fixed rec1 scale
@@ -192,7 +191,6 @@ for pair_idx, (pair_label, res) in enumerate(all_results.items()):
         ax_bot.axvline(x=1.0, linestyle="--", color="black", alpha=0.4)
         ax_bot.set_xlabel(f"{rec2} scale factor")
         ax_bot.set_ylabel(met_label)
-        ax_bot.set_title(f"{pair_label}: vary {rec2} scale")
         ax_bot.legend(title=f"{rec1} scale", fontsize=7, title_fontsize=7)
 
 plt.tight_layout()
@@ -229,7 +227,6 @@ for pair_idx, (pair_label, res) in enumerate(all_results.items()):
         ax.set_yticklabels(scale_tick_labels)
         ax.set_xlabel(f"{rec2} scale factor")
         ax.set_ylabel(f"{rec1} scale factor")
-        ax.set_title(f"{pair_label}: {met_label}")
 
         ref_idx = np.argmin(np.abs(scale_factors - 1.0))
         ax.axhline(y=ref_idx, linestyle="--", color="white", alpha=0.6, linewidth=1.5)

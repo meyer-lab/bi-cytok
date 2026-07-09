@@ -409,19 +409,10 @@ def plot_jaccard_box(res):
             title="Valid pairs (n)",
         )
 
-    subtitle = (
-        "(each point = one target cell type; size ∝ valid pair count)"
-        if scale_dot_size
-        else "(each point = one target cell type)"
-    )
     ax.set_xticks(range(n_thresh))
     ax.set_xticklabels([f"Top {n}" for n in top_n_values])
     ax.set_xlabel("Top N receptor pairs", fontsize=13)
     ax.set_ylabel("Jaccard Index", fontsize=13)
-    ax.set_title(
-        f"Agreement between top-ranked receptor pairs across scan metrics\n{subtitle}",
-        fontsize=11,
-    )
     ax.set_ylim(0, 1)
     ax.grid(True, axis="y", linestyle="--", alpha=0.35)
     plt.tight_layout()
@@ -477,7 +468,6 @@ def plot_jaccard_lines(res, scale="log"):
         if scale == "log":
             ax.set_xscale("log")
         ax.set_xlabel("Top N receptor pairs", fontsize=11)
-        ax.set_title(comp_label, fontsize=11, color=color)
         ax.set_xticks(top_n_values)
         ax.set_ylim(0, 1)
         ax.grid(True, linestyle="--", alpha=0.35)
@@ -491,10 +481,6 @@ def plot_jaccard_lines(res, scale="log"):
     fig.legend(
         handles, labels_leg, loc="lower center", ncol=min(len(ct_list) + 1, 8),
         fontsize=8.5, framealpha=0.9, bbox_to_anchor=(0.5, -0.12),
-    )
-    plt.suptitle(
-        "Scan metric agreement by target cell type across top N receptor pairs",
-        fontsize=12, fontweight="bold",
     )
     plt.tight_layout()
     plt.show()

@@ -94,7 +94,6 @@ for ax, cell_type in zip(axes, cell_types, strict=False):
             fontsize=9,
             rotation=90,
         )
-    ax.set_title(cell_type)
     ax.set_xticks(range(TOP_N))
     ax.set_xticklabels([f"#{k + 1}" for k in range(TOP_N)])
 axes[0].set_ylabel(f"Optimal {metric_name}")

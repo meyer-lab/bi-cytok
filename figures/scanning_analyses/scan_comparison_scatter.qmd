@@ -222,11 +222,6 @@ def plot_comparison(key):
         if len(TARG_CELL_TYPES) <= 3
         else f"{len(TARG_CELL_TYPES)} cell types"
     )
-    ax.set_title(
-        f"{axis_1_label} vs. {axis_2_label}\nTargets: {types_str}",
-        fontsize=12,
-        pad=12,
-    )
     ax.tick_params(labelsize=11)
     plt.tight_layout()
     plt.show()
