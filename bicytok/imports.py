@@ -272,6 +272,38 @@ def filter_receptor_abundances(
     return abundance_df
 
 
+def match_receptor_abundances(
+    rec_abundances: np.ndarray, method: str | None, target: float
+) -> np.ndarray:
+    """
+    Scales each receptor's abundances (columns) to match a common reference level,
+        removing per-receptor multiplicative scale differences.
+    Args:
+        rec_abundances: receptor abundances (rows: cells, columns: receptors)
+        method: divisor statistic used for matching. One of "mean", "non-zero mean",
+            or None (no matching; rec_abundances is returned unchanged)
+        target: reference abundance level that each receptor is scaled to match
+    Return:
+        matched receptor abundances, same shape as rec_abundances
+    """
+
+    if method is None:
+        return rec_abundances
+
+    matched = np.array(rec_abundances, dtype=float, copy=True)
+    for i in range(matched.shape[1]):
+        rec_col = matched[:, i]
+        if method == "mean":
+            divisor = rec_col.mean()
+        elif method == "non-zero mean":
+            divisor = rec_col[rec_col != 0].mean()
+        else:
+            raise ValueError(f"Invalid expr_match method: {method}")
+        matched[:, i] = rec_col * target / divisor
+
+    return matched
+
+
 def sample_test_data(n_obs=100, n_var=10):
     """
     Creates synthetic receptor abundance data for binding model and distribution metric

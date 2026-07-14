@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from bicytok.imports import importCITE
+from bicytok.imports import importCITE, match_receptor_abundances
 from bicytok.scanning_funcs import sample_cells, scan_KL_EMD, scan_selectivity
 
 
@@ -54,7 +54,8 @@ def run_selectivity_scan():
         None  # Target cell types for selectivity calculation; list or None for all
     )
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
-    expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
+    expr_match = "non-zero mean"  # Divisor statistic for expression matching: "mean", "non-zero mean", or None (no matching)
+    expr_match_target = 1000  # Reference abundance level (C) that receptors are matched to
 
     # Binding model parameters
     dose = 1e-10
@@ -103,18 +104,11 @@ def run_selectivity_scan():
     if cell_types is not None and exclude_cell_types:
         epitopes_df = epitopes_df[epitopes_df["Cell Type"].isin(cell_types)]
 
-    # Match receptor abundance averages
+    # Match receptor abundances (including the signal receptor) to a common reference level
     rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
-    if expr_matching is not None:
-        for i in range(len(receptors)):
-            if (
-                i == signal_ind and signal == "prototype"
-            ):  # Don't scale the signal receptor if it is the prototype
-                pass
-            else:
-                rec_abundances[:, i] = (
-                    rec_abundances[:, i] * expr_matching / np.mean(rec_abundances[:, i])
-                )
+    rec_abundances = match_receptor_abundances(
+        rec_abundances, expr_match, expr_match_target
+    )
 
     # Define cell type labels if not pre-specified
     cell_type_labels = epitopes_df["Cell Type"].tolist()
@@ -181,7 +175,8 @@ def run_selectivity_scan():
             "min_expression_threshold": min_avg_count,
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
-            "expr_matching": expr_matching,
+            "expr_match": expr_match,
+            "expr_match_target": expr_match_target,
         },
         "binding_model": {
             "dose": float(dose),
@@ -239,7 +234,8 @@ def run_KL_EMD_scan():
         None  # Target cell types for selectivity calculation; list or None for all
     )
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
-    expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
+    expr_match = "non-zero mean"  # Divisor statistic for expression matching: "mean", "non-zero mean", or None (no matching)
+    expr_match_target = 1000  # Reference abundance level (C) that receptors are matched to
 
     # Distance metric scan parameters
     filter_by_target_expr = (
@@ -264,13 +260,11 @@ def run_KL_EMD_scan():
     if cell_types is not None and exclude_cell_types:
         epitopes_df = epitopes_df[epitopes_df["Cell Type"].isin(cell_types)]
 
-    # Match receptor abundance averages
+    # Match receptor abundances to a common reference level
     rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
-    if expr_matching is not None:
-        for i in range(len(receptors)):
-            rec_abundances[:, i] = (
-                rec_abundances[:, i] * expr_matching / np.mean(rec_abundances[:, i])
-            )
+    rec_abundances = match_receptor_abundances(
+        rec_abundances, expr_match, expr_match_target
+    )
 
     # Define cell type labels if not pre-specified
     cell_type_labels = epitopes_df["Cell Type"].tolist()
@@ -329,7 +323,8 @@ def run_KL_EMD_scan():
             "min_expression_threshold": min_avg_count,
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
-            "expr_matching": expr_matching,
+            "expr_match": expr_match,
+            "expr_match_target": expr_match_target,
         },
         "distance_metric": {
             "filter_by_target_expr": filter_by_target_expr,

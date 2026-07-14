@@ -9,7 +9,7 @@ A scale-correction comparison figure decomposes the independent per-receptor sca
 
 These two directions are slices of the 2D selectivity heatmap sampled at finer resolution: the global direction (`s1 = s2`) is the heatmap's main diagonal, and the relative direction (`s1 · s2 = 1`) is its anti-diagonal through the unscaled point (`s = 1`). The comparison figure adds value by sampling these slices more densely (and centered on `s = 1`) and by overlaying all three correction schemes, whereas the heatmap shows only the single scheme set by `scaling`. Note that the relative slice coincides with the heatmap's corner-to-corner anti-diagonal only when `scale_range` is symmetric about 1; the current range is asymmetric, so the relative direction runs parallel to, but not exactly along, that grid anti-diagonal.
 
-A final expression-matching figure takes a different form: because expression matching is scale-invariant by construction, its only free parameter is the abundance level it matches to. Both targets of each pair are set to a common mean, that mean is swept over a set of reference values, and the resulting selectivity is shown per pair — putting the pairs on a common footing so they can be compared directly at each matched level.
+A final expression-matching figure takes a different form: because expression matching is scale-invariant by construction, its only free parameter is the abundance level it matches to. The signal receptor and both targets of each pair are matched to a common reference level (using `expr_match`: "mean" or "non-zero mean" of each receptor's per-cell counts), that level is swept over a set of reference values, and the resulting selectivity is shown per pair — putting the pairs on a common footing so they can be compared directly at each matched level.
 
 # Imports
 - CITE-seq surface marker expression data (`importCITE`, `sample_receptor_abundances`)
@@ -21,7 +21,7 @@ A final expression-matching figure takes a different form: because expression ma
 - `sample_size`: Number of cells sampled from CITE-seq data
 - `cell_categorization`: Column name for cell type classification
 - `dose`: Ligand concentration for the binding model
-- `signal_receptor`: Signal delivery receptor (included in binding model only; not scaled)
+- `signal_receptor`: Signal delivery receptor (included in binding model only; not scaled in the 2D grid scan or scale-correction comparison, but matched via `expr_match` in the expression-matching figure)
 - `signal_valency`: Valency of the signal receptor arm
 - `receptor_pairs`: List of `(receptor1, receptor2, shared_valency)` tuples to analyze
 - `affinity_bounds`: Optimization bounds for affinities (log10 Ka)
@@ -30,7 +30,8 @@ A final expression-matching figure takes a different form: because expression ma
 - `scale_range`: Log10 bounds for the 2D grid scaling factors
 - `scaling`: Scale-correction scheme applied within the 2D grid scan (None, `"per-rec 1d kx"`, or `"global 1d kx"`)
 - `diag_scales`: Log-spaced scale factors swept along the global and relative directions for the scale-correction comparison
-- `expr_match_scales`: Reference mean abundances that both targets are matched to in the expression-matching figure
+- `expr_match_scales`: Reference abundance levels that the signal receptor and both targets are matched to in the expression-matching figure
+- `expr_match`: Divisor statistic used for expression matching: "mean" or "non-zero mean"
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -39,8 +40,12 @@ import time
 import numpy as np
 
 from bicytok.distance_metric_funcs import calculate_KL_EMD
-from bicytok.imports import importCITE, sample_receptor_abundances
-from bicytok.selectivity_funcs import get_Kx_scale, optimize_affs
+from bicytok.imports import (
+    importCITE,
+    match_receptor_abundances,
+    sample_receptor_abundances,
+)
+from bicytok.selectivity_funcs import optimize_affs
 
 # Parameters
 targ_cell = "Treg"
@@ -67,8 +72,12 @@ scale_factors = np.logspace(scale_range[0], scale_range[1], num=num_scale_factor
 # Scale factors swept along the global / relative directions for the correction comparison
 diag_scales = np.logspace(-3.0, 3.0, num=9)
 
-# Reference mean abundances both targets are matched to in the expression-matching figure
+# Reference abundance levels swept in the expression-matching figure; signal and both
+# targets are matched to each level
 expr_match_scales = np.logspace(1, 4, num=9)
+
+# Divisor statistic for expression matching: "mean" or "non-zero mean"
+expr_match = "mean"
 
 CITE_DF, cell_types = importCITE(cell_categorization)
 CITE_DF["Cell Type"] = cell_types
@@ -326,28 +335,28 @@ for rec1, rec2, valency in receptor_pairs:
 
     diag_results[pair_label] = {k: np.array(v) for k, v in curves.items()}
 
-# Expression-matching analysis: set both targets of each pair to a common mean and sweep
-# that matched abundance level, recording selectivity. Expression matching is scale-
-# invariant by construction, so the matched level is the only free parameter, and setting
-# both targets to it puts the pairs on a common footing for direct comparison.
+# Expression-matching analysis: match the signal receptor and both targets of each pair
+# to a common reference level (via expr_match) and sweep that level, recording
+# selectivity. Expression matching is scale-invariant by construction, so the matched
+# level is the only free parameter, and matching all receptors to it puts the pairs on a
+# common footing for direct comparison.
 print(f" \n\n Expression-matching analysis...")
 expr_results = {}
 for rec1, rec2, valency in receptor_pairs:
     pair_label = f"{rec1} + {rec2}"
     model_valencies = np.array([[signal_valency, valency, valency]])
 
-    base_sig = sample_df[signal_receptor].to_numpy()
-    base_rec1 = sample_df[rec1].to_numpy()
-    base_rec2 = sample_df[rec2].to_numpy()
+    base_rec_mat = sample_df[[signal_receptor, rec1, rec2]].to_numpy()
 
     selec = []
     for match_mean in expr_match_scales:
         print(f"Pair: {pair_label}, match_mean={match_mean:.1e}")
-        norm_rec1 = base_rec1 / base_rec1.mean() * match_mean
-        norm_rec2 = base_rec2 / base_rec2.mean() * match_mean
+        norm_sig, norm_rec1, norm_rec2 = match_receptor_abundances(
+            base_rec_mat, expr_match, match_mean
+        ).T
         try:
             selec.append(
-                    diag_selectivity(base_sig, norm_rec1, norm_rec2, model_valencies, "raw", rec1, rec2)
+                    diag_selectivity(norm_sig, norm_rec1, norm_rec2, model_valencies, "raw", rec1, rec2)
                 )
         except Exception as e:
             print(f"Expression matching failed for {pair_label}, match_mean={match_mean}: {e}")
@@ -452,7 +461,7 @@ plt.show()
 
 ## Expression Matching
 ```{python}
-#| fig-cap: "Selectivity under expression matching, where both target receptors of a pair are normalized to a common mean and that matched abundance level is swept along the x-axis. Expression matching is scale-invariant by construction, so the matched level is the only free parameter; because both targets and both pairs share the same normalization frame, the pairs are directly comparable at each level. One line per receptor pair."
+#| fig-cap: "Selectivity under expression matching, where the signal receptor and both target receptors of a pair are matched (via `expr_match`) to a common reference level that is swept along the x-axis. Expression matching is scale-invariant by construction, so the matched level is the only free parameter; because all receptors and both pairs share the same normalization frame, the pairs are directly comparable at each level. One line per receptor pair."
 import seaborn as sns
 
 fig, ax = plt.subplots(figsize=(7, 5))
@@ -469,7 +478,7 @@ for idx, (pair_label, selec) in enumerate(expr_results.items()):
     )
 
 ax.set_xscale("log")
-ax.set_xlabel("Matched reference mean (both targets)")
+ax.set_xlabel("Matched reference level (signal + both targets)")
 ax.set_ylabel("Optimal selectivity")
 ax.set_title("Expression matching: selectivity vs. matched abundance")
 ax.legend(title="Receptor pair")
