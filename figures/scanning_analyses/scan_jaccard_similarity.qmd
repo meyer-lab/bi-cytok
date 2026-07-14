@@ -38,45 +38,53 @@ import pandas as pd
 
 # ── Parameters ────────────────────────────────────────────────────────────────
 
-# Example 1 — selectivity scan vs. selectivity scan (Raw vs. Normalized)
-# METRICS = {
-#     "Raw counts": {
-#         "path": "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv",
-#         "column": "Selectivity",
-#     },
-#     "Normalized counts": {
-#         "path": "/home/sama/receptor_sweep_data/20260529_selec_scan_full_expr-matched.csv",
-#         "column": "Selectivity",
-#     },
-# }
-# COMPARISONS = [("Raw counts", "Normalized counts")]
-# TOP_N_VALUES = [5, 10, 50, 100, 500, 1000]
-# MIN_VALID_PAIRS_PCT = 0    # 0–100, percentage of maximum number of valid pairs required
-# SCALE_DOT_SIZE = False   # True = dot size ∝ valid pair count; False = fixed size (use when pair counts are similar across comparisons)
-
-# Example 2 — selectivity scan vs. selectivity scan (varying valencies)
+# Example 1 — selectivity raw counts vs expression-matched counts vs non-zero matched counts
 METRICS = {
-    "Fixed Bivalent": {
+    "Raw": {
         "path": "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv",
         "column": "Selectivity",
     },
-    "Fixed Tetravalent": {
-        "path": "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv",
+    "Expression-Matched": {
+        "path": "/home/sama/receptor_sweep_data/20260529_selec_scan_full_expr-matched.csv",
         "column": "Selectivity",
     },
-    "Mixed Tetravalent": {
-        "path": "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv",
+    "Non-Zero Matched": {
+        "path": "/home/sama/receptor_sweep_data/20260714_selec_scan_full_non-zero-match.csv",
         "column": "Selectivity",
     },
 }
 COMPARISONS = [
-    ("Fixed Bivalent", "Fixed Tetravalent"),
-    ("Fixed Bivalent", "Mixed Tetravalent"),
-    ("Fixed Tetravalent", "Mixed Tetravalent"),
+    ("Raw", "Expression-Matched"),
+    ("Raw", "Non-Zero Matched"),
+    ("Expression-Matched", "Non-Zero Matched"),
 ]
 TOP_N_VALUES = [5, 10, 50, 100, 500, 1000]
-MIN_VALID_PAIRS_PCT = 0  # 0–100, percentage of maximum number of valid pairs required
-SCALE_DOT_SIZE = False  # True = dot size ∝ valid pair count; False = fixed size (use when pair counts are similar across comparisons)
+MIN_VALID_PAIRS_PCT = 0    # 0–100, percentage of maximum number of valid pairs required
+SCALE_DOT_SIZE = False   # True = dot size ∝ valid pair count; False = fixed size (use when pair counts are similar across comparisons)
+
+# Example 2 — selectivity scan vs. selectivity scan (varying valencies)
+# METRICS = {
+#     "Fixed Bivalent": {
+#         "path": "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv",
+#         "column": "Selectivity",
+#     },
+#     "Fixed Tetravalent": {
+#         "path": "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv",
+#         "column": "Selectivity",
+#     },
+#     "Mixed Tetravalent": {
+#         "path": "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv",
+#         "column": "Selectivity",
+#     },
+# }
+# COMPARISONS = [
+#     ("Fixed Bivalent", "Fixed Tetravalent"),
+#     ("Fixed Bivalent", "Mixed Tetravalent"),
+#     ("Fixed Tetravalent", "Mixed Tetravalent"),
+# ]
+# TOP_N_VALUES = [5, 10, 50, 100, 500, 1000]
+# MIN_VALID_PAIRS_PCT = 0  # 0–100, percentage of maximum number of valid pairs required
+# SCALE_DOT_SIZE = False  # True = dot size ∝ valid pair count; False = fixed size (use when pair counts are similar across comparisons)
 
 # Example 3 — selectivity vs. distribution metrics (+ KL vs. EMD)
 # METRICS = {
@@ -136,6 +144,7 @@ SCALE_DOT_SIZE = False  # True = dot size ∝ valid pair count; False = fixed si
 # TOP_N_VALUES = [5, 10, 50, 100]
 # MIN_VALID_PAIRS_PCT = 10    # 0–100, percentage of maximum number of valid pairs required
 # SCALE_DOT_SIZE = True   # True = dot size ∝ valid pair count; False = fixed size (use when pair counts are similar across comparisons)
+
 
 GLOBAL_PAIR_INTERSECTION = True  # True = same pair pool for all comparisons
 scale = "log"  # None or "log" for line plot x-axis
@@ -367,7 +376,7 @@ comp_legend = ax.legend(
     handles=comp_handles,
     fontsize=10,
     framealpha=0.9,
-    loc="upper left",
+    loc="lower left",
     title="Comparison",
 )
 if SCALE_DOT_SIZE:
@@ -389,7 +398,7 @@ if SCALE_DOT_SIZE:
         handles=size_handles,
         fontsize=9,
         framealpha=0.9,
-        loc="upper right",
+        loc="lower right",
         title="Valid pairs (n)",
     )
 
