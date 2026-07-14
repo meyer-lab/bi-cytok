@@ -760,6 +760,7 @@ if not all_synergy_df.empty:
         alpha=0.5,
         zorder=2,
         linewidths=0,
+        rasterized=True,
     )
     lim_s = max(syn_x_all.max(), syn_y_all.max()) * 1.05
     ax_s.plot([0, lim_s], [0, lim_s], color="dimgray", lw=1.0, ls="--", alpha=0.6)

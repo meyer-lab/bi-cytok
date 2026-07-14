@@ -46,6 +46,8 @@ AXIS_1_LABEL = "WNN Annotated"
 AXIS_2_LABEL = "RNA Annotated"
 
 FILTER_SELEC_BASIN = True
+AXIS_NORM = "rank"  # "none", "z-score", "rank"
+DISP_LEGEND = False
 
 
 # ── Derive metrics from YAML ───────────────────────────────────────────────────
@@ -76,8 +78,6 @@ TARG_CELL_TYPES = None
 
 POINT_SIZE = 12
 POINT_ALPHA = 0.35
-AXIS_NORM = "z-score"  # "none", "z-score", "rank"
-DISP_LEGEND = False
 
 
 # ── Load scans ────────────────────────────────────────────────────────────────
@@ -148,6 +148,7 @@ for cell_type in TARG_CELL_TYPES:
         color=cell_type_colors[cell_type],
         linewidths=0,
         zorder=2,
+        rasterized=True,
     )
 
 # Highlight the top-selectivity receptor pair for each cell type
@@ -162,6 +163,7 @@ for _, row in _top_pairs.iterrows():
         edgecolors="black",
         linewidths=0.5,
         zorder=5,
+        rasterized=True,
     )
 
 _top_pairs = _all.loc[_all.groupby("cell_type")["s2"].idxmax()]
@@ -175,6 +177,7 @@ for _, row in _top_pairs.iterrows():
         edgecolors="black",
         linewidths=0.5,
         zorder=5,
+        rasterized=True,
     )
 
 handles = [
