@@ -32,6 +32,7 @@ A final expression-matching figure takes a different form: because expression ma
 - `diag_scales`: Log-spaced scale factors swept along the global and relative directions for the scale-correction comparison
 - `expr_match_scales`: Reference abundance levels that the signal receptor and both targets are matched to in the expression-matching figure
 - `expr_match`: Divisor statistic used for expression matching: "mean" or "non-zero mean"
+- `expr_match_clip_quantile`: Quantile at which each receptor's nonzero values are winsorized before matching, or None to disable
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -78,6 +79,9 @@ expr_match_scales = np.logspace(1, 4, num=9)
 
 # Divisor statistic for expression matching: "mean" or "non-zero mean"
 expr_match = "mean"
+
+# Winsorize each receptor's nonzero values at this quantile before matching, or None to disable
+expr_match_clip_quantile = 0.99
 
 CITE_DF, cell_types = importCITE(cell_categorization)
 CITE_DF["Cell Type"] = cell_types
@@ -352,7 +356,7 @@ for rec1, rec2, valency in receptor_pairs:
     for match_mean in expr_match_scales:
         print(f"Pair: {pair_label}, match_mean={match_mean:.1e}")
         norm_sig, norm_rec1, norm_rec2 = match_receptor_abundances(
-            base_rec_mat, expr_match, match_mean
+            base_rec_mat, expr_match, match_mean, expr_match_clip_quantile
         ).T
         try:
             selec.append(

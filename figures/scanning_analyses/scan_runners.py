@@ -57,10 +57,11 @@ def run_selectivity_scan():
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
     expr_match = "non-zero mean"  # Divisor statistic for expression matching: "mean", "non-zero mean", or None (no matching)
     expr_match_target = 1000  # Reference abundance level (C) that receptors are matched to
+    expr_match_clip_quantile = 0.99  # Winsorize each receptor's nonzero values at this quantile before matching, or None to disable
 
     # Binding model parameters
     dose = 1e-10
-    valency = np.array([[1, 1, 1]])
+    valency = np.array([[1, 2, 2]])
     init = [6.0, 7.0, 7.0, -9.0]  # Initial optimization values
     signal = "prototype"  # Define signal receptor; "prototype" or receptor name
     asym_targs = False  # Calculates both symmetric cases (rec1, rec2) and (rec2, rec1)
@@ -111,7 +112,7 @@ def run_selectivity_scan():
     # Match receptor abundances (including the signal receptor) to a common reference level
     rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
     rec_abundances = match_receptor_abundances(
-        rec_abundances, expr_match, expr_match_target
+        rec_abundances, expr_match, expr_match_target, expr_match_clip_quantile
     )
 
     # Define cell type labels if not pre-specified
@@ -182,6 +183,7 @@ def run_selectivity_scan():
             "dim": 2,
             "expr_match": expr_match,
             "expr_match_target": expr_match_target,
+            "expr_match_clip_quantile": expr_match_clip_quantile,
         },
         "binding_model": {
             "dose": float(dose),
@@ -242,6 +244,7 @@ def run_KL_EMD_scan():
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
     expr_match = "non-zero mean"  # Divisor statistic for expression matching: "mean", "non-zero mean", or None (no matching)
     expr_match_target = 1000  # Reference abundance level (C) that receptors are matched to
+    expr_match_clip_quantile = 0.99  # Winsorize each receptor's nonzero values at this quantile before matching, or None to disable
 
     # Distance metric scan parameters
     filter_by_target_expr = (
@@ -272,7 +275,7 @@ def run_KL_EMD_scan():
     # Match receptor abundances to a common reference level
     rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
     rec_abundances = match_receptor_abundances(
-        rec_abundances, expr_match, expr_match_target
+        rec_abundances, expr_match, expr_match_target, expr_match_clip_quantile
     )
 
     # Define cell type labels if not pre-specified
@@ -335,6 +338,7 @@ def run_KL_EMD_scan():
             "dim": 2,
             "expr_match": expr_match,
             "expr_match_target": expr_match_target,
+            "expr_match_clip_quantile": expr_match_clip_quantile,
         },
         "distance_metric": {
             "filter_by_target_expr": filter_by_target_expr,
