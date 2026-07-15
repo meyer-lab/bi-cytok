@@ -47,7 +47,8 @@ def run_selectivity_scan():
     # General parameters (match distribution metric scans)
     annotation_type = "CellType2"  # CITE-seq cell type annotation column; e.g. "CellType2" (WNN) or "CellType2_RNA" (transcript-based)
     sample_size = 1000
-    min_avg_count = 5  # Expression threshold
+    min_avg_count = 10  # Expression threshold
+    min_nonzero_cells = 0  # Minimum number of nonzero cells required per receptor, so the non-zero mean divisor isn't estimated from too few samples
     receptors = None  # Receptors to analyze; list or None for all
     cell_types = None  # Cell types to analyze; list or None for all
     targ_cell_types = (
@@ -73,9 +74,12 @@ def run_selectivity_scan():
         f"Signal receptor '{signal}' not found in receptors list"
     )
 
-    # Filter lowly expressed receptors
+    # Filter lowly expressed and too-sparse receptors
     mean_expr = CITE_DF[receptors].mean(axis=0)
-    selected_receptors = mean_expr[mean_expr >= min_avg_count].index.tolist()
+    nonzero_counts = (CITE_DF[receptors] != 0).sum(axis=0)
+    selected_receptors = mean_expr[
+        (mean_expr >= min_avg_count) & (nonzero_counts >= min_nonzero_cells)
+    ].index.tolist()
     assert len(selected_receptors) > 0, "No receptors pass the expression threshold"
     assert signal == "prototype" or signal in selected_receptors, (
         f"Signal receptor '{signal}' not found in selected receptors after filtering"
@@ -173,6 +177,7 @@ def run_selectivity_scan():
             "annotation_type": annotation_type,
             "sample_size": sample_size,
             "min_expression_threshold": min_avg_count,
+            "min_nonzero_cells": min_nonzero_cells,
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
             "expr_match": expr_match,
@@ -228,6 +233,7 @@ def run_KL_EMD_scan():
     annotation_type = "CellType2"  # CITE-seq cell type annotation column; e.g. "CellType2" (WNN) or "CellType2_RNA" (transcript-based)
     sample_size = 1000
     min_avg_count = 5  # Expression threshold
+    min_nonzero_cells = 100  # Minimum number of nonzero cells required per receptor, so the non-zero mean divisor isn't estimated from too few samples
     receptors = None  # Receptors to analyze; list or None for all
     cell_types = None  # Cell types to analyze; list or None for all
     targ_cell_types = (
@@ -248,9 +254,12 @@ def run_KL_EMD_scan():
     if receptors is None:
         receptors = list(epitopes)
 
-    # Filter lowly expressed receptors
+    # Filter lowly expressed and too-sparse receptors
     mean_expr = CITE_DF[receptors].mean(axis=0)
-    selected_receptors = mean_expr[mean_expr >= min_avg_count].index.tolist()
+    nonzero_counts = (CITE_DF[receptors] != 0).sum(axis=0)
+    selected_receptors = mean_expr[
+        (mean_expr >= min_avg_count) & (nonzero_counts >= min_nonzero_cells)
+    ].index.tolist()
     assert len(selected_receptors) > 0, "No receptors pass the expression threshold"
     epitopes_df = CITE_DF[selected_receptors].copy()
     epitopes_df["Cell Type"] = cite_labels
@@ -321,6 +330,7 @@ def run_KL_EMD_scan():
             "annotation_type": annotation_type,
             "sample_size": sample_size,
             "min_expression_threshold": min_avg_count,
+            "min_nonzero_cells": min_nonzero_cells,
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
             "expr_match": expr_match,
@@ -483,6 +493,7 @@ def filter_scan_by_target_expr():
     sample_size = scan_params["general"]["sample_size"]
     targ_cell_types = scan_params["target_cell_types"]
     min_avg_count = scan_params["general"]["min_expression_threshold"]
+    min_nonzero_cells = scan_params["general"]["min_nonzero_cells"]
 
     scan_data = pd.read_csv(results_path)
 
@@ -500,7 +511,10 @@ def filter_scan_by_target_expr():
     CITE_DF, cite_labels = importCITE(annotation_type)
     cite_receptors = list(CITE_DF.columns)
     mean_expr = CITE_DF[cite_receptors].mean(axis=0)
-    cite_receptors = mean_expr[mean_expr >= min_avg_count].index.tolist()
+    nonzero_counts = (CITE_DF[cite_receptors] != 0).sum(axis=0)
+    cite_receptors = mean_expr[
+        (mean_expr >= min_avg_count) & (nonzero_counts >= min_nonzero_cells)
+    ].index.tolist()
 
     epitopes_df = CITE_DF[cite_receptors].copy()
     epitopes_df["Cell Type"] = cite_labels
