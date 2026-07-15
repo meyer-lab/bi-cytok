@@ -8,6 +8,8 @@
 High, asymmetric valency boosts multispecific selectivity beyond single-receptor targeting. **(a)** Agreement (Jaccard index) between the top-ranked receptor pairs of selectivity scans run at different valencies, across target cell types and top-N thresholds; low overlap indicates that the optimal multi-receptor hits shift as valency changes. **(b)** High, asymmetric valency (mixed tetravalent): maximum achievable selectivity from a single target receptor (1D) versus the best receptor pair (2D), per target cell type; unlike the low-valency case, many cell types rise well above the diagonal, so the best receptor pair substantially beats the best single receptor (blue = pairing helps, 2D ≥ 1D; red = 2D < 1D).
 :::
 
+## Outline
+
 * Intuition tells us that some changes in binding model optimization problems may lead to multi-receptor prioritization:
   + Different signal receptors
   +	Higher valency

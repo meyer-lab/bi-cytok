@@ -28,6 +28,8 @@
 A mechanistic model is necessary to evaluate the binding selectivity space. **(a)** Bootstrap variation in KL divergence across sample sizes. **(b)** Bootstrap variation in EMD across sample sizes. **(c)** Bootstrap variation in selectivity across sample sizes. **(d)** Bootstrap variation in KL divergence across target cell proportions. **(e)** Bootstrap variation in EMD across target cell proportions. **(f)** Bootstrap variation in selectivity across target cell proportions. **(g)** Binding-model selectivity versus conversion factor. **(h)** EMD versus conversion factor (log scale). **(i)** KL divergence versus conversion factor. **(j)** KL divergence versus EMD across target cell types; each point is a receptor pair for a given cell type, and the top pair per axis is starred. **(k)** KL divergence versus binding-model selectivity across target cell types; each point is a receptor pair for a given cell type, and the top pair per axis is starred. **(l)** EMD versus binding-model selectivity across target cell types; each point is a receptor pair for a given cell type, and the top pair per axis is starred.
 :::
 
+## Outline
+
 * Challenges:
   + Selectivity needs to be scale invariant
   + Need to avoid circularity in the definition of cell populations
