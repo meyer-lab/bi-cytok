@@ -59,8 +59,8 @@ COMPARISONS = [
     ("Expression-Matched", "Non-Zero Matched"),
 ]
 TOP_N_VALUES = [5, 10, 50, 100, 500, 1000]
-MIN_VALID_PAIRS_PCT = 0    # 0–100, percentage of maximum number of valid pairs required
-SCALE_DOT_SIZE = False   # True = dot size ∝ valid pair count; False = fixed size (use when pair counts are similar across comparisons)
+MIN_VALID_PAIRS_PCT = 0  # 0–100, percentage of maximum number of valid pairs required
+SCALE_DOT_SIZE = False  # True = dot size ∝ valid pair count; False = fixed size (use when pair counts are similar across comparisons)
 
 # Example 2 — selectivity scan vs. selectivity scan (varying valencies)
 # METRICS = {

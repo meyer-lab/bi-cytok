@@ -201,8 +201,9 @@ def global_kx_factors(base_sig, tar1, tar2, rec1, rec2):
     kx_ref = np.exp(np.mean(np.log(all_kx)))  # geometric mean reference
     return 10**kx1 / kx_ref, 10**kx2 / kx_ref
 
+
 # 2D grid scan: independently scale each target receptor and record selectivity, EMD, KL
-print(f" \n\n 2D grid scan...")
+print(" \n\n 2D grid scan...")
 all_results = {}
 
 for rec1, rec2, valency in receptor_pairs:
@@ -290,7 +291,7 @@ for rec1, rec2, valency in receptor_pairs:
 
 # Scale-correction comparison: sweep the global (common-mode) and relative
 # (differential-mode) directions, evaluating selectivity under each correction scheme
-print(f" \n\n Global vs. relative scaling comparison...")
+print(" \n\n Global vs. relative scaling comparison...")
 correction_schemes = [
     ("raw", "Raw (Kx* only)"),
     ("per_rec_kx", "Per-receptor Kx* scaling"),
@@ -322,17 +323,25 @@ for rec1, rec2, valency in receptor_pairs:
         for scheme, _ in correction_schemes:
             try:
                 curves[("global", scheme)].append(
-                    diag_selectivity(base_sig, g1, g2, model_valencies, scheme, rec1, rec2)
+                    diag_selectivity(
+                        base_sig, g1, g2, model_valencies, scheme, rec1, rec2
+                    )
                 )
             except Exception as e:
-                print(f"Global scaling failed for {pair_label}, s={s:.1e}, scheme={scheme}: {e}")
+                print(
+                    f"Global scaling failed for {pair_label}, s={s:.1e}, scheme={scheme}: {e}"
+                )
                 curves[("global", scheme)].append(np.nan)
             try:
                 curves[("relative", scheme)].append(
-                    diag_selectivity(base_sig, r1, r2, model_valencies, scheme, rec1, rec2)
+                    diag_selectivity(
+                        base_sig, r1, r2, model_valencies, scheme, rec1, rec2
+                    )
                 )
             except Exception as e:
-                print(f"Relative scaling failed for {pair_label}, s={s:.1e}, scheme={scheme}: {e}")
+                print(
+                    f"Relative scaling failed for {pair_label}, s={s:.1e}, scheme={scheme}: {e}"
+                )
                 curves[("relative", scheme)].append(np.nan)
 
         print(f"Pair: {pair_label}, s={s:.1e}, Time: {time.time() - time_start:.2f}s")
@@ -344,7 +353,7 @@ for rec1, rec2, valency in receptor_pairs:
 # selectivity. Expression matching is scale-invariant by construction, so the matched
 # level is the only free parameter, and matching all receptors to it puts the pairs on a
 # common footing for direct comparison.
-print(f" \n\n Expression-matching analysis...")
+print(" \n\n Expression-matching analysis...")
 expr_results = {}
 for rec1, rec2, valency in receptor_pairs:
     pair_label = f"{rec1} + {rec2}"
@@ -360,10 +369,14 @@ for rec1, rec2, valency in receptor_pairs:
         ).T
         try:
             selec.append(
-                    diag_selectivity(norm_sig, norm_rec1, norm_rec2, model_valencies, "raw", rec1, rec2)
+                diag_selectivity(
+                    norm_sig, norm_rec1, norm_rec2, model_valencies, "raw", rec1, rec2
                 )
+            )
         except Exception as e:
-            print(f"Expression matching failed for {pair_label}, match_mean={match_mean}: {e}")
+            print(
+                f"Expression matching failed for {pair_label}, match_mean={match_mean}: {e}"
+            )
             selec.append(np.nan)
 
     expr_results[pair_label] = np.array(selec)

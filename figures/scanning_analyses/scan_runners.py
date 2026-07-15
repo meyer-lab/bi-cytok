@@ -56,7 +56,9 @@ def run_selectivity_scan():
     )
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
     expr_match = "non-zero mean"  # Divisor statistic for expression matching: "mean", "non-zero mean", or None (no matching)
-    expr_match_target = 1000  # Reference abundance level (C) that receptors are matched to
+    expr_match_target = (
+        1000  # Reference abundance level (C) that receptors are matched to
+    )
     expr_match_clip_quantile = 0.99  # Winsorize each receptor's nonzero values at this quantile before matching, or None to disable
 
     # Binding model parameters
@@ -243,7 +245,9 @@ def run_KL_EMD_scan():
     )
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
     expr_match = "non-zero mean"  # Divisor statistic for expression matching: "mean", "non-zero mean", or None (no matching)
-    expr_match_target = 1000  # Reference abundance level (C) that receptors are matched to
+    expr_match_target = (
+        1000  # Reference abundance level (C) that receptors are matched to
+    )
     expr_match_clip_quantile = 0.99  # Winsorize each receptor's nonzero values at this quantile before matching, or None to disable
 
     # Distance metric scan parameters
