@@ -2,12 +2,14 @@
 
 ## Outline
 
-* P1: Surface receptors are key therapeutic targets but present the burden of pleiotropy and shared expression.
+* P1: Immunomodulatory receptors are key therapeutic targets but generate limiting off-target effects.
     + Molecules that interact with surface receptors are the largest class of therapeutics.
-    + Therapeutics comprised of immunomodulatory proteins are rarely adopted because of severe adverse effects.
+    + Immunomodulatory receptors often dictate immune cell function and are thus involved in a broad range of immune-mediated diseases.
+    + Two properties of immune receptors:
         * Shared receptor expression across cells of different functions leads to off-target binding
         * Cellular pleiotropy leads to counteractive signals in off-target cells
     + Combined, these features lead to off-target binding which produces signals that counteract the desired effect (at best) and generate severe adverse effects (at worst)
+    + Immunomodulatory ligands are rarely adopted because of severe adverse effects that arise from off-target binding.
 * P2: Protein engineering efforts have reduced off-target binding through avidity-dependent targeting.
     + The promise of immunomodulatory molecules has spurred extensive protein engineering efforts aimed at reducing off-target binding
     + Chief among these are multivalent, affinity-engineered cytokine muteins fused to targeted antibody scaffolds (targeted, multispecific cytokine fusions) 
@@ -25,4 +27,11 @@
     + This complexity has left the field of multispecificity unguided and siloed.
     + Even systematic explorations neglect to comprehensively evaluate the selectivity of the large space of possible targets, especially across different target cell types
 * P5: Here, we use a high-throughput computational platform to systematically explore the multi-receptor targeting space and identify key properties of multispecificity.
-    
+
+## Body
+
+Immunomodulatory receptors dictate cellular activity by binding their cognate ligands. In concert, these interactions drive most immune functions, making immune receptors key therapeutic targets for a number of disease indications. However, attempts to control immune function by administering immunomodulatory proteins have broadly resulted in dose-limiting toxicities as a result of two phenomena. First, immune receptors are seldom solely expressed on cells of a single function---distinct cell types often express similar amounts and types of immune receptors. Second, the signal generated upon binding these receptors is heavily influenced by cellular context. In combination, these properties expose the observed limitation: upon administration, a protein will bind its cognate receptor expressed on target and off-target cells and elicit distinct, often counterproductive, responses from each cell type. The key challenge with immunomodulatory proteins is therefore enforcing cell-type selectivity, or the propensity to preferentially bind target cells over off-target populations.
+
+Significant progress has been made to this end by way of protein engineering. Three arms of engineering have proven especially fruitful in the niche of immunomodulation and immunotherapy: (1) affinity engineering, (2) valency engineering, and (3) antibody fusion.
+
+Chief among these advances are multivalent, affinity-engineered cytokine muteins fused to targeted antibody scaffolds (targeted, multispecific cytokine fusions).
