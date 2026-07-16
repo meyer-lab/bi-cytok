@@ -1,0 +1,28 @@
+# Introduction
+
+## Outline
+
+* P1: Surface receptors are key therapeutic targets but present the burden of pleiotropy and shared expression.
+    + Molecules that interact with surface receptors are the largest class of therapeutics.
+    + Therapeutics comprised of immunomodulatory proteins are rarely adopted because of severe adverse effects.
+        * Shared receptor expression across cells of different functions leads to off-target binding
+        * Cellular pleiotropy leads to counteractive signals in off-target cells
+    + Combined, these features lead to off-target binding which produces signals that counteract the desired effect (at best) and generate severe adverse effects (at worst)
+* P2: Protein engineering efforts have reduced off-target binding through avidity-dependent targeting.
+    + The promise of immunomodulatory molecules has spurred extensive protein engineering efforts aimed at reducing off-target binding
+    + Chief among these are multivalent, affinity-engineered cytokine muteins fused to targeted antibody scaffolds (targeted, multispecific cytokine fusions) 
+    + Coordinated changes in affinity and valency allow these molecules to preferentially bind target cells despite modest differences in receptor expression between target and off-target populations.
+    + These molecules owe this so-called cell-type selectivity to avidity effects wherein low-affinity, multivalent molecules require high receptor density to bind effectively
+* P3: Often, binding is all that matters.
+    + Multispecific molecules with decoupled signaling and targeting domains have been shown to further enhance cell-type selectivity
+    + In these cases, high-affinity and/or high-valency targeting subunits direct signal domain binding toward target cells, while low-affinity signal domains are unable to bind off-target cells despite high signal receptor density
+    + Similarly, antibody-drug conjugates use targeting domains to direct cytotoxic payloads based on surface protein expression
+    + Considering only the targeting function of surface proteins reveals a vast number of potential surface targets which might be exploited alone or in combination.
+* P4: Combinatorial complexity has left the development of multispecific, targeted therapeutics unguided.
+    + Evolution has granted us with thousands of unique surface proteins
+    + These proteins may, in some combination, facilitate perfectly selective delivery of signal to any given cell type
+    + However, the number of possible combinations of surface proteins is combinatorially large
+    + This complexity has left the field of multispecificity unguided and siloed.
+    + Even systematic explorations neglect to comprehensively evaluate the selectivity of the large space of possible targets, especially across different target cell types
+* P5: Here, we use a high-throughput computational platform to systematically explore the multi-receptor targeting space and identify key properties of multispecificity.
+    

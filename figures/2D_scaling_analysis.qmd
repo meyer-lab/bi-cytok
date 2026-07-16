@@ -384,7 +384,7 @@ for rec1, rec2, valency in receptor_pairs:
 
 ## 2D Heatmaps
 ```{python}
-#| fig-cap: "2D heatmaps with scale1 on the y-axis and scale2 on the x-axis. Color encodes the metric value; EMD uses a log color scale. Dashed white lines mark the unscaled reference (scale = 1)."
+#| label: 2d-scale-invariance
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 
@@ -405,7 +405,7 @@ fig, axes = plt.subplots(
     n_metrics, n_pairs, figsize=(6 * n_pairs, 5 * n_metrics), squeeze=False
 )
 
-for pair_idx, (pair_label, res) in enumerate(all_results.items()):
+for pair_idx, (_, res) in enumerate(all_results.items()):
     rec1, rec2 = res["rec1"], res["rec2"]
     for met_idx, (met_key, met_label) in enumerate(metrics):
         ax = axes[met_idx][pair_idx]
@@ -421,7 +421,6 @@ for pair_idx, (pair_label, res) in enumerate(all_results.items()):
         ax.set_yticklabels(scale_tick_labels)
         ax.set_xlabel(f"{rec2} scale factor")
         ax.set_ylabel(f"{rec1} scale factor")
-        ax.set_title(f"{pair_label}: {met_label}")
 
         ref_idx = np.argmin(np.abs(scale_factors - 1.0))
         ax.axhline(y=ref_idx, linestyle="--", color="white", alpha=0.6, linewidth=1.5)

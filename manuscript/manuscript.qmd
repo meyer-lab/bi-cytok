@@ -1,0 +1,84 @@
+---
+title: "A mechanistic guide for multispecific cell-type selectivity"
+date: today
+author:
+  - name:
+      given: Samuel
+      family: Amidon
+      literal: Samuel M. Amidon
+    orcid: 0009-0008-6878-8689
+    corresponding: false
+    email: samidon@g.ucla.edu
+    roles:
+      - methodology
+      - software
+      - writing – original draft
+      - writing – review & editing
+    affiliations:
+      - ref: ucla
+  - name:
+      given: Aaron
+      family: Meyer
+      literal: Aaron S. Meyer
+    orcid: 0000-0003-4513-1840
+    corresponding: true
+    email: ameyer@asmlab.org
+    roles: 
+      - conceptualization
+      - methodology
+      - software
+      - supervision
+      - funding acquisition
+      - writing – review & editing
+    affiliations:
+      - ref: ucla
+affiliations:
+  - id: ucla
+    name: University of California, Los Angeles
+    department: Bioengineering
+    city: Los Angeles
+    state: CA
+abstract: |
+  Placeholder abstract text.
+Funding: "This work was supported by NIAID"
+bibliography: bibliography.bib
+csl: nature.csl
+---
+
+```{=typst}
+// Supplemental figures render as "Figure S1" (no space) in both captions and refs.
+#let suppfig-kind = "quarto-float-suppfig"
+#let suppfig-num(loc) = "S" + numbering("1", ..counter(figure.where(kind: suppfig-kind)).at(loc))
+// Caption label: "Figure S1: ..."
+#show figure.where(kind: suppfig-kind): it => {
+  show figure.caption: cap => [Figure #suppfig-num(it.location())#cap.separator#cap.body]
+  it
+}
+// Cross-references: "Figure S1"
+#show ref: it => {
+  let el = it.element
+  if el != none and el.func() == figure and el.kind == suppfig-kind {
+    link(el.location())[Figure #suppfig-num(el.location())]
+  } else {
+    it
+  }
+}
+```
+
+{{< include _introduction.qmd >}}
+
+{{< include _results_fig1.qmd >}}
+{{< include _results_fig2.qmd >}}
+{{< include _results_fig3.qmd >}}
+{{< include _results_fig4.qmd >}}
+
+{{< include _discussion.qmd >}}
+
+{{< include _methods.qmd >}}
+
+# References
+
+::: {#refs}
+:::
+
+{{< include _supplement.qmd >}}

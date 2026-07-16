@@ -230,7 +230,7 @@ metric_specs = [
     ("EMD\n(1D)", emd_overlap),
 ]
 
-for ax, (title, df) in zip(axes, metric_specs, strict=False):
+for ax, (_, df) in zip(axes, metric_specs, strict=False):
     pivot = _make_pivot(df, all_cell_types, TOP_N_VALUES)
     annot = _make_annot(df, all_cell_types, TOP_N_VALUES)
     mask = pivot.isna()
@@ -257,7 +257,6 @@ for ax, (title, df) in zip(axes, metric_specs, strict=False):
                     plt.Rectangle((j, i), 1, 1, fill=True, color="#d0d0d0", zorder=3)
                 )
 
-    ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
     ax.set_xlabel("Top-N Predicted Receptors", fontsize=20)
     ax.tick_params(axis="x", labelsize=15)
     ax.tick_params(axis="y", labelsize=15, rotation=0)
@@ -276,11 +275,5 @@ cbar = fig.colorbar(sm, cax=cbar_ax)
 cbar.set_label("Recall (overlap / markers after filtering)", fontsize=15)
 cbar.ax.tick_params(labelsize=15)
 
-fig.suptitle(
-    "Top-N 1D-Predicted Receptors vs. Cell-Type Defining Markers\n"
-    "(Annotation: predicted overlap / defining markers present after filtering)",
-    fontsize=13,
-    y=1.01,
-)
 plt.show()
 ```

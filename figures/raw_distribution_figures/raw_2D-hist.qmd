@@ -227,6 +227,7 @@ x_min = y_min = 0
 ```
 
 ```{python}
+#| label: fig-raw-2d-hist
 #| fig-cap: "2D distribution with marginal 1D projections showing axis projections"
 import matplotlib.gridspec as gridspec
 import seaborn as sns

@@ -1,0 +1,48 @@
+# Figure 2: A mechanistic model is necessary to evaluate the binding selectivity space
+
+::: {#fig-figure-2 layout-ncol="3"}
+{{< embed /figures/bootstrap_analyses/metric_variation_analysis.qmd#fig-bootstrap-kldiv >}}
+
+{{< embed /figures/bootstrap_analyses/metric_variation_analysis.qmd#fig-bootstrap-emd >}}
+
+{{< embed /figures/bootstrap_analyses/metric_variation_analysis.qmd#fig-bootstrap-selec >}}
+
+{{< embed /figures/bootstrap_analyses/target_proportion_analysis.qmd#fig-targ-prop-kldiv >}}
+
+{{< embed /figures/bootstrap_analyses/target_proportion_analysis.qmd#fig-targ-prop-emd >}}
+
+{{< embed /figures/bootstrap_analyses/target_proportion_analysis.qmd#fig-targ-prop-selec >}}
+
+{{< embed /figures/1D_scaling_analysis.qmd#fig-scale-selectivity >}}
+
+{{< embed /figures/1D_scaling_analysis.qmd#fig-scale-emd >}}
+
+{{< embed /figures/1D_scaling_analysis.qmd#fig-scale-kl >}}
+
+{{< embed /figures/scanning_analyses/scan_comparison_scatter.qmd#fig-scan-comp-kl-emd >}}
+
+{{< embed /figures/scanning_analyses/scan_comparison_scatter.qmd#fig-scan-comp-kl-selec >}}
+
+{{< embed /figures/scanning_analyses/scan_comparison_scatter.qmd#fig-scan-comp-emd-selec >}}
+
+A mechanistic model is necessary to evaluate the binding selectivity space. **(a)** Bootstrap variation in KL divergence across sample sizes. **(b)** Bootstrap variation in EMD across sample sizes. **(c)** Bootstrap variation in selectivity across sample sizes. **(d)** Bootstrap variation in KL divergence across target cell proportions. **(e)** Bootstrap variation in EMD across target cell proportions. **(f)** Bootstrap variation in selectivity across target cell proportions. **(g)** Binding-model selectivity versus conversion factor. **(h)** EMD versus conversion factor (log scale). **(i)** KL divergence versus conversion factor. **(j)** KL divergence versus EMD across target cell types; each point is a receptor pair for a given cell type, and the top pair per axis is starred. **(k)** KL divergence versus binding-model selectivity across target cell types; each point is a receptor pair for a given cell type, and the top pair per axis is starred. **(l)** EMD versus binding-model selectivity across target cell types; each point is a receptor pair for a given cell type, and the top pair per axis is starred.
+:::
+
+## Outline
+
+* Challenges:
+  + Selectivity needs to be scale invariant
+  + Need to avoid circularity in the definition of cell populations
+  + Need a sufficiently flexible model to consider many possible ligand designs
+  + Need to account for differences in sample sizes across cell types
+  + Need Invariance with respect to cell sampling
+  + Need scalability into multiple dimensions
+* Distribution shape metrics are effective for screening low dimensional targets (strong correlation with EMD, binding model) but are not applicable to target pairs/triads (@suppfig-distribution-features)
+* EMD and KL are scale invariant (@fig-scale-emd and @fig-scale-kl), but are highly dependent on the relative size of target and off-target populations (@fig-targ-prop-kldiv and @fig-targ-prop-emd) and cell sample size (@fig-bootstrap-kldiv and @fig-bootstrap-emd).
+* Binding model is more consistent across cell subsamples (@fig-bootstrap-selec), more flexible (@fig-figure-1), is invariant with respect to relative size of target and off-target populations (@fig-targ-prop-selec), and is scale invariant in 1D (@fig-scale-selectivity), but not in 2D (@suppfig-2d-scale-invariance).
+* Binding model selectivity is not perfectly correlated with W (@fig-scan-comp-emd-selec) or KL (@fig-scan-comp-kl-selec).
+  + KL outliers are driven by singular outliers in target receptor expression (@suppfig-scan-outliers)
+  + EMD outlier pairs capture simple single-receptor differences (@suppfig-scan-outliers)
+  + Binding model outliers are infrequent and don’t obscure top hits
+* Binding model predictions align with validated multi-specific targeting schemes?
+* Binding model is more robust in terms of the challenges of the problem, is more robust in terms of outliers, and holds more biological relevance/interpretability

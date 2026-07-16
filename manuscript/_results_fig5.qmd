@@ -1,0 +1,14 @@
+# Figure 5: ???
+
+::: {#fig-figure-5}
+
+Placeholder Figure 5 caption.
+:::
+
+## Outline
+
+* Count normalization abolishes synergistic avidity?
+* Mutually exclusive binders further enhance selectivity?
+    + CD127 binding precludes CD25 binding and vice versa, improving Treg selectivity
+* Hit list for each cell population?
+    + Unreliability of CITE-seq absolute counts complicates this
