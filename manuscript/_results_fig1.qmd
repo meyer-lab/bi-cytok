@@ -1,0 +1,20 @@
+# Figure 1: Defining the problem
+
+::: {#fig-figure-1}
+
+Overview of the multispecific cell-type-selectivity problem and the experimental and computational framework used to evaluate candidate receptor targets.
+:::
+
+## Outline
+
+* Number of combinations to consider is huge: pairs/triads of receptors, all cell populations
+* Methods of increasing complexity and computational cost:
+  + Target/off-target distribution shape
+  + KL divergence
+  + W distance
+  + The binding model.
+* The experimental framework:
+  + CITE-seq approximates surface protein expression at single-cell resolution
+  + We define a set of possible surface targets pairs and target cell types
+  + Some surface proteins are lowly expressed and have higher expression in off-target cells than target cells. These are filtered on a per-target-cell-type basis
+  + For every target pair/target cell type combination, we evaluate selectivity based on EMD, KL divergence, and binding model

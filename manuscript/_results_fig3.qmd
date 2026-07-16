@@ -1,0 +1,14 @@
+# Figure 3: Despite frequent synergy, optimal binding selectivity is almost always derived from the most differential receptor
+
+::: {#fig-figure-3 layout-ncol="2"}
+{{< embed /figures/scanning_analyses/scan_synergy.qmd#fig-synergy-scatter >}}
+
+{{< embed /figures/scanning_analyses/scan_top_hits_1Dvs2D.qmd#fig-top-hits-1d-2d-lowval >}}
+
+Despite frequent synergy, optimal binding selectivity is almost always derived from the most differential receptor. **(a)** Monospecific versus bispecific selectivity across all target cell types; each point is a synergistic receptor pair positioned at (the larger of its two monospecific selectivities, the bispecific pair selectivity), so every synergistic pair lies above the y = x diagonal, with color encoding synergy gain; non-synergistic receptors, shown at their best pair, fall on or below the diagonal. **(b)** Low valency (fixed bivalent): maximum achievable selectivity from a single target receptor (1D) versus the best receptor pair (2D), per target cell type; points on the dashed diagonal gain nothing from pairing, and nearly all cell types lie on or near it, so their optimal target is a single receptor (blue = pairing helps, 2D ≥ 1D; red = 2D < 1D).
+:::
+
+## Outline
+
+* Most targets exhibit synergy in selectivity---nearly every receptor has higher selectivity when paired with some other target than when either is targeted alone (@fig-synergy-scatter, @suppfig-synergy-vshape).
+* However, at low valency, most optimal targets involve a single cell type marker (@fig-top-hits-1d-2d-lowval, @suppfig-top-hits-gain-lowval).

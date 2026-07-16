@@ -9,7 +9,16 @@ format:
   typst:
     mainfont: "Times New Roman"
     monofont: "Times New Roman"
+    citeproc: true
+    include-in-header:
+      - manuscript/_subfig-caption-override.typ
 jupyter: python3
+
+crossref:
+  custom:
+    - kind: float
+      key: suppfig
+      reference-prefix: "Figure S"
 
 execute:
   echo: false

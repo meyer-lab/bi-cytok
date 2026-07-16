@@ -120,7 +120,7 @@ affinities_melted = affinities_df.melt(
 ```
 
 ```{python}
-#| fig-cap: "Bootstrap variation in KL Divergence across target cell proportions"
+#| label: fig-targ-prop-kldiv
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -131,7 +131,7 @@ plt.show()
 ```
 
 ```{python}
-#| fig-cap: "Bootstrap variation in EMD across target cell proportions"
+#| label: fig-targ-prop-emd
 sns.boxplot(x="target_proportion", y="EMD", data=metrics_df)
 plt.xlabel("Target Cell Proportion")
 plt.ylabel("EMD")
@@ -139,7 +139,7 @@ plt.show()
 ```
 
 ```{python}
-#| fig-cap: "Bootstrap variation in selectivity across target cell proportions"
+#| label: fig-targ-prop-selec
 sns.boxplot(x="target_proportion", y="selectivity", data=metrics_df)
 plt.xlabel("Target Cell Proportion")
 plt.ylabel("Selectivity")

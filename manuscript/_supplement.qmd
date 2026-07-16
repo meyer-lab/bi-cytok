@@ -1,0 +1,50 @@
+# Supplemental Figures
+
+<!-- Figure S1 -->
+::: {#suppfig-distribution-features}
+{{< embed /figures/distribution_feature_analysis.qmd#distribution-features >}}
+
+Spearman correlation between distribution features and selectivity metrics (all cell types pooled).
+:::
+
+<!-- Figure S2 -->
+::: {#suppfig-2d-scale-invariance}
+{{< embed /figures/2D_scaling_analysis.qmd#2d-scale-invariance >}}
+
+2D heatmaps with scale1 on the y-axis and scale2 on the x-axis. Color encodes the metric value; EMD uses a log color scale. Dashed white lines mark the unscaled reference (scale = 1).
+:::
+
+<!-- Figure S3 -->
+::: {#suppfig-scan-outliers}
+{{< embed /figures/scanning_analyses/scan_outliers.qmd#scan-outliers-plot >}}
+
+Outlier analysis of binding-model selectivity against distance metrics for Treg targeting. Each point is a receptor pair; residual-based coloring flags pairs that score higher on one metric than the trend predicts, and pairs high on both axes (red) are sized by normalized Euclidean distance from the origin.
+:::
+
+<!-- Figure S4 -->
+::: {#suppfig-synergy-vshape layout-ncol="3"}
+{{< embed /figures/scanning_analyses/scan_synergy.qmd#synergy-vshape >}}
+
+1D → 2D selectivity trajectories (V-shape slopegraphs). Each synergistic receptor pair is drawn as two lines converging from its two monospecific (1D) selectivities to the bispecific (2D) pair selectivity; warm color and opacity scale with synergy gain, while blue marks non-synergistic reference pairs whose stronger arm cannot be beaten. Panels show representative target cell types followed by a global top-pairs summary.
+:::
+
+<!-- Figure S5 -->
+::: {#suppfig-top-hits-gain-lowval}
+{{< embed /figures/scanning_analyses/scan_top_hits_1Dvs2D.qmd#top-hits-gain-lowval >}}
+
+Low valency (fixed bivalent): log₂ selectivity gain from receptor pairing, log₂(2D/1D), per target cell type, sorted by value. Positive (blue) means the best pair beats the best single receptor; the raw 2D/1D ratio is annotated on each bar. Gains are small, consistent with single receptors being near-optimal at low valency.
+:::
+
+<!-- Figure S6 -->
+::: {#suppfig-top-hits-gain-highval}
+{{< embed /figures/scanning_analyses/scan_top_hits_1Dvs2D.qmd#top-hits-gain-highval >}}
+
+High, asymmetric valency (mixed tetravalent): log₂ selectivity gain from receptor pairing, log₂(2D/1D), per target cell type, sorted by value. Positive (blue) means the best pair beats the best single receptor; the raw 2D/1D ratio is annotated on each bar. Gains are substantially larger than at low valency.
+:::
+
+<!-- Figure S7 -->
+::: {#suppfig-jaccard-signal}
+{{< embed /figures/scanning_analyses/scan_jaccard_similarity.qmd#jaccard-signal >}}
+
+Agreement (Jaccard index) between top-ranked receptor pairs of selectivity scans under different signal-receptor definitions (generic, CD122, CD28) and the distribution metrics (EMD, KL divergence), across target cell types and top-N thresholds.
+:::

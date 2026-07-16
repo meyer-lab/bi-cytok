@@ -121,11 +121,6 @@ for (i, j), cts in position_to_cell_types.items():
     ax.text(
         j + 0.5, i + 0.5, label, ha="center", va="center", fontsize=10, color="black"
     )
-ax.set_title(
-    f"Cell Types at Their Optimal Receptor Pair Positions\n(Color = {metric_label} Value)",
-    fontsize=14,
-    pad=20,
-)
 if asym_scan:
     ax.set_xlabel(f"Receptor 2, Valency {scan_valencies[0][2]}", fontsize=18)
     ax.set_ylabel(f"Receptor 1, Valency {scan_valencies[0][1]}", fontsize=18)

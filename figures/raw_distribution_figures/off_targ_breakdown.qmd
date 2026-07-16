@@ -156,6 +156,7 @@ plt.show()
 ## 2D Distribution with Marginal Projections
 
 ```{python}
+#| label: fig-raw-celltype-hist
 #| fig-cap: "2D distribution with marginal projections colored by off-target population"
 %config InlineBackend.figure_formats = ['svg']
 import matplotlib
