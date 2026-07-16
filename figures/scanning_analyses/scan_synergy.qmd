@@ -616,7 +616,9 @@ OPT1_N_NONSYN = 200
 OPT1_FIGSIZE = (5.5, 5.5)
 
 
-def _opt1_scatter(ax, syn_df, nonsyn_recs, mono_map, bpim, title=None, n_label=OPT1_N_LABEL):
+def _opt1_scatter(
+    ax, syn_df, nonsyn_recs, mono_map, bpim, title=None, n_label=OPT1_N_LABEL
+):
     max_gain = syn_df["synergy_gain"].max()
     gain_norm = Normalize(vmin=0, vmax=max_gain)
 
