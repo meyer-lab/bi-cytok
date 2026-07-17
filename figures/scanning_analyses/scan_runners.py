@@ -47,7 +47,7 @@ def run_selectivity_scan():
     # General parameters (match distribution metric scans)
     annotation_type = "CellType2"  # CITE-seq cell type annotation column; e.g. "CellType2" (WNN) or "CellType2_RNA" (transcript-based)
     sample_size = 1000
-    min_avg_count = 10  # Expression threshold
+    min_avg_count = 5  # Expression threshold
     min_nonzero_cells = 0  # Minimum number of nonzero cells required per receptor, so the non-zero mean divisor isn't estimated from too few samples
     receptors = None  # Receptors to analyze; list or None for all
     cell_types = None  # Cell types to analyze; list or None for all
@@ -59,7 +59,7 @@ def run_selectivity_scan():
     expr_match_target = (
         1000  # Reference abundance level (C) that receptors are matched to
     )
-    expr_match_clip_quantile = 0.99  # Winsorize each receptor's nonzero values at this quantile before matching, or None to disable
+    expr_match_clip_quantile = None  # Winsorize each receptor's nonzero values at this quantile before matching, or None to disable
 
     # Binding model parameters
     dose = 1e-10
