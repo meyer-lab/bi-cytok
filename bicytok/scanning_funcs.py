@@ -164,7 +164,7 @@ def scan_selectivity(
     signal_col: int = 0,
     init_method: np.ndarray | str | int = 42,
     asym_targs: bool = False,
-    filter_by_target_expr: bool = False,
+    off_targ_ratio_threshold: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Optimize binding selectivity for all receptor combinations across target cell
@@ -189,10 +189,14 @@ def scan_selectivity(
         asym_targs: whether to independently optimize selectivity for (rec1, rec2) and
             (rec2, rec1) when dim=2. Only useful when valencies are asymmetric,
             otherwise (rec1, rec2) and (rec2, rec1) will yield the same selectivity.
-        filter_by_target_expr: if True, restrict scan to receptors with higher mean
-            expression in target cells than off-target cells. Filtering is applied
-            per cell type after sampling, so valid receptors may differ across cell
-            types. Receptors that fail the filter are left as NaN in the outputs.
+        off_targ_ratio_threshold: if not None, restrict scan to receptors with
+            mean_off_targ / mean_targ < this value (receptors with mean_targ <= 0
+            always have an undefined/infinite ratio and are excluded). 1.0 reproduces
+            the strict "higher target than off-target expression" filter; higher
+            values relax it to only exclude receptors with a disproportionately high
+            off-target:target ratio. None disables filtering. Filtering is applied per
+            cell type after sampling, so valid receptors may differ across cell types.
+            Receptors that fail the filter are left as NaN in the outputs.
 
     Outputs:
         selec_vals_scan: optimized selectivity values for all receptor combinations
@@ -243,17 +247,23 @@ def scan_selectivity(
         targ_mask = sampled_cell_type_labels == cell_type
         off_targ_mask = ~targ_mask
 
-        # Filters out receptors with higher mean expression in off-target cells.
-        # Off-target populations with higher mean expression than target populations
-        #    are poor selectivity targets and are also disproportionately likely to
-        #    cause slow/non-converging affinity optimizations.
-        if filter_by_target_expr:
+        # Filters out receptors with a disproportionately high off-target:target mean
+        # expression ratio. Such receptors are poor selectivity targets and are also
+        # disproportionately likely to cause slow/non-converging affinity
+        # optimizations.
+        if off_targ_ratio_threshold is not None:
             mean_targ = sampled_rec_abundances[targ_mask, :].mean(axis=0)
             mean_off_targ = sampled_rec_abundances[off_targ_mask, :].mean(axis=0)
-            valid_indices = set(np.where(mean_targ > mean_off_targ)[0].tolist())
+            with np.errstate(divide="ignore", invalid="ignore"):
+                off_targ_ratio = np.where(
+                    mean_targ > 0, mean_off_targ / mean_targ, np.inf
+                )
+            valid_indices = set(
+                np.where(off_targ_ratio < off_targ_ratio_threshold)[0].tolist()
+            )
             print(
                 f"Filtered to {len(valid_indices)} / {n_receptors} receptors with "
-                f"higher target expression for {cell_type}."
+                f"off_targ_ratio_threshold={off_targ_ratio_threshold} for {cell_type}."
             )
         else:
             valid_indices = None
@@ -263,7 +273,7 @@ def scan_selectivity(
 
         if dim == 1:
             for j in range(sampled_rec_abundances.shape[1]):
-                if filter_by_target_expr and j not in valid_indices:
+                if off_targ_ratio_threshold is not None and j not in valid_indices:
                     continue
 
                 rec_abun_pruned = np.reshape(sampled_rec_abundances[:, j], (-1, 1))
@@ -310,7 +320,7 @@ def scan_selectivity(
                         )
                     time_init = time.time()
 
-                if filter_by_target_expr and (
+                if off_targ_ratio_threshold is not None and (
                     rec1_ind not in valid_indices or rec2_ind not in valid_indices
                 ):
                     continue

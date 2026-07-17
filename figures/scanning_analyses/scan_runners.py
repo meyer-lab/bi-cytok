@@ -67,7 +67,7 @@ def run_selectivity_scan():
     init = [6.0, 7.0, 7.0, -9.0]  # Initial optimization values
     signal = "prototype"  # Define signal receptor; "prototype" or receptor name
     asym_targs = False  # Calculates both symmetric cases (rec1, rec2) and (rec2, rec1)
-    filter_by_target_expr = False  # Boolean to filter out receptors with higher off-target expression
+    off_targ_ratio_threshold = 3.0  # Off-target:target mean expression ratio above which a receptor is filtered out, or None for no filtering; 1.0 matches strict "higher target than off-target" filtering
 
     # Load and define receptor set
     CITE_DF, cite_labels = importCITE(annotation_type)
@@ -147,7 +147,7 @@ def run_selectivity_scan():
         signal_col=signal_ind,
         init_method=init,
         asym_targs=asym_targs,
-        filter_by_target_expr=filter_by_target_expr,
+        off_targ_ratio_threshold=off_targ_ratio_threshold,
     )
 
     # Save flattened results
@@ -195,7 +195,7 @@ def run_selectivity_scan():
             "initial_affinities": init,
             "signal_receptor": signal,
             "asym_targs": asym_targs,
-            "filter_by_target_expr": filter_by_target_expr,
+            "off_targ_ratio_threshold": off_targ_ratio_threshold,
         },
         "receptors_used_before_filtering": receptors,
         "n_receptors": len(receptors),
@@ -466,20 +466,30 @@ def load_KL_EMD_scan_results(results_path):
 def filter_scan_by_target_expr():
     """
     Post-hoc filter scan results to remove receptor pairs where either receptor has
-    higher mean expression in off-target cells than in target cells.
+    an off-target:target mean expression ratio exceeding off_targ_ratio_threshold.
 
-    Replicates the filter_by_target_expr step using the sampling parameters stored in
-    the corresponding YAML file. Metric values for filtered-out pairs are set to NaN.
+    Replicates the off_targ_ratio_threshold filtering step (see scan_selectivity) using
+    the sampling parameters stored in the corresponding YAML file. Metric values for
+    filtered-out pairs are set to NaN.
     Receptors not present in the CITE data (e.g., Prototype_Signal_Receptor) are
     always treated as valid.
 
-    Called with "uv run filt_scan --results-path <path> --filter-id <filter_id>".
+    Called with "uv run filt_scan --results-path <path> --filter-id <filter_id>
+    --off-targ-ratio-threshold <ratio>".
 
     Args:
         results_path (str): Path to the scan CSV file. Must have matching YAML file
             with scan parameters in the same directory.
             E.g., "/home/sama/receptor_sweep_data/tmp_selec_scan.csv"
         filter_id (str): Suffix appended before the file extension in the output path.
+        off_targ_ratio_threshold (float): A receptor is filtered out if
+            mean_off_targ / mean_targ >= this value. Defaults to 1.0, which reproduces
+            the strict "mean_targ > mean_off_targ" filter (equivalent to
+            scan_selectivity's off_targ_ratio_threshold=1.0). Values > 1.0 relax the
+            filter to only remove receptors with a
+            disproportionately high off-target:target ratio. Receptors with
+            mean_targ <= 0 always have an undefined (infinite) ratio and are filtered
+            regardless of threshold, since they have no target-cell expression at all.
 
     Returns:
         str: Path to the saved filtered CSV file.
@@ -488,9 +498,11 @@ def filter_scan_by_target_expr():
     parser = argparse.ArgumentParser()
     parser.add_argument("--results-path", required=True)
     parser.add_argument("--filter-id", default="filt")
+    parser.add_argument("--off-targ-ratio-threshold", type=float, default=1.0)
     args = parser.parse_args()
     results_path = args.results_path
     filter_id = args.filter_id
+    off_targ_ratio_threshold = args.off_targ_ratio_threshold
 
     yaml_path = os.path.splitext(results_path)[0] + ".yaml"
     assert os.path.exists(yaml_path), (
@@ -553,12 +565,15 @@ def filter_scan_by_target_expr():
         mean_targ = sampled_rec_abundances[targ_mask, :].mean(axis=0)
         mean_off_targ = sampled_rec_abundances[off_targ_mask, :].mean(axis=0)
 
+        # Receptors with no target-cell expression have an undefined (infinite) ratio
+        # and are always filtered, regardless of threshold.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            off_targ_ratio = np.where(mean_targ > 0, mean_off_targ / mean_targ, np.inf)
+
         valid_receptors = {
             rec
-            for rec, mt, mo in zip(
-                cite_receptors, mean_targ, mean_off_targ, strict=False
-            )
-            if mt > mo
+            for rec, ratio in zip(cite_receptors, off_targ_ratio, strict=False)
+            if ratio < off_targ_ratio_threshold
         } | non_cite_receptors
 
         ct_mask = scan_data["Cell_Type"] == cell_type
@@ -569,7 +584,8 @@ def filter_scan_by_target_expr():
         scan_data.loc[invalid_mask, metric_cols] = np.nan
         print(
             f"Filtered {invalid_mask.sum()} / {ct_mask.sum()} pairs for {cell_type} "
-            f"({len(valid_receptors)} / {len(cite_receptors) + len(non_cite_receptors)} valid receptors)."
+            f"({len(valid_receptors)} / {len(cite_receptors) + len(non_cite_receptors)} "
+            f"valid receptors, off_targ_ratio_threshold={off_targ_ratio_threshold})."
         )
 
     base, ext = os.path.splitext(results_path)
