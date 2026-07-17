@@ -155,8 +155,16 @@ SCENARIOS = {
                 "path": f"{_DATA}/20260714_selec_scan_full_non-zero-match_filt.csv",
                 "column": "Selectivity",
             },
+            "Mean filtered 2": {
+                "path": f"{_DATA}/20260714_selec_scan_full_non-zero-match_filt_2.csv",
+                "column": "Selectivity",
+            },
+            "Mean filtered 5": {
+                "path": f"{_DATA}/20260714_selec_scan_full_non-zero-match_filt_5.csv",
+                "column": "Selectivity",
+            },
         },
-        comparisons=[("All receptors", "Mean filtered")],
+        comparisons=[("All receptors", "Mean filtered"), ("All receptors", "Mean filtered 2"), ("All receptors", "Mean filtered 5")],
         top_n_values=[5, 10, 50, 100, 500, 1000],
         min_valid_pairs_pct=0,
         scale_dot_size=False,
