@@ -67,6 +67,7 @@ def run_selectivity_scan():
     init = [6.0, 7.0, 7.0, -9.0]  # Initial optimization values
     signal = "prototype"  # Define signal receptor; "prototype" or receptor name
     asym_targs = False  # Calculates both symmetric cases (rec1, rec2) and (rec2, rec1)
+    filter_by_target_expr = False  # Boolean to filter out receptors with higher off-target expression
 
     # Load and define receptor set
     CITE_DF, cite_labels = importCITE(annotation_type)
@@ -146,6 +147,7 @@ def run_selectivity_scan():
         signal_col=signal_ind,
         init_method=init,
         asym_targs=asym_targs,
+        filter_by_target_expr=filter_by_target_expr,
     )
 
     # Save flattened results
@@ -193,6 +195,7 @@ def run_selectivity_scan():
             "initial_affinities": init,
             "signal_receptor": signal,
             "asym_targs": asym_targs,
+            "filter_by_target_expr": filter_by_target_expr,
         },
         "receptors_used_before_filtering": receptors,
         "n_receptors": len(receptors),

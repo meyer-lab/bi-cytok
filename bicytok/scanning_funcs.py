@@ -164,6 +164,7 @@ def scan_selectivity(
     signal_col: int = 0,
     init_method: np.ndarray | str | int = 42,
     asym_targs: bool = False,
+    filter_by_target_expr: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Optimize binding selectivity for all receptor combinations across target cell
@@ -188,6 +189,10 @@ def scan_selectivity(
         asym_targs: whether to independently optimize selectivity for (rec1, rec2) and
             (rec2, rec1) when dim=2. Only useful when valencies are asymmetric,
             otherwise (rec1, rec2) and (rec2, rec1) will yield the same selectivity.
+        filter_by_target_expr: if True, restrict scan to receptors with higher mean
+            expression in target cells than off-target cells. Filtering is applied
+            per cell type after sampling, so valid receptors may differ across cell
+            types. Receptors that fail the filter are left as NaN in the outputs.
 
     Outputs:
         selec_vals_scan: optimized selectivity values for all receptor combinations
@@ -238,11 +243,29 @@ def scan_selectivity(
         targ_mask = sampled_cell_type_labels == cell_type
         off_targ_mask = ~targ_mask
 
+        # Filters out receptors with higher mean expression in off-target cells.
+        # Off-target populations with higher mean expression than target populations
+        #    are poor selectivity targets and are also disproportionately likely to
+        #    cause slow/non-converging affinity optimizations.
+        if filter_by_target_expr:
+            mean_targ = sampled_rec_abundances[targ_mask, :].mean(axis=0)
+            mean_off_targ = sampled_rec_abundances[off_targ_mask, :].mean(axis=0)
+            valid_indices = set(np.where(mean_targ > mean_off_targ)[0].tolist())
+            print(
+                f"Filtered to {len(valid_indices)} / {n_receptors} receptors with "
+                f"higher target expression for {cell_type}."
+            )
+        else:
+            valid_indices = None
+
         # Signal receptor is the same regardless of dimensionality
         signal_rec_abun = np.reshape(sampled_rec_abundances[:, signal_col], (-1, 1))
 
         if dim == 1:
             for j in range(sampled_rec_abundances.shape[1]):
+                if filter_by_target_expr and j not in valid_indices:
+                    continue
+
                 rec_abun_pruned = np.reshape(sampled_rec_abundances[:, j], (-1, 1))
                 rec_abun_pruned = np.hstack((signal_rec_abun, rec_abun_pruned))
                 targ_recs = rec_abun_pruned[targ_mask, :]
@@ -265,6 +288,33 @@ def scan_selectivity(
             k = n - 1 if asym_targs else 0  # 'k' close to 'n' yields whole matrix space
             row, col = np.tril_indices(n, k=k)
             for count, (rec1_ind, rec2_ind) in enumerate(zip(row, col, strict=False)):
+                # Progress logging:
+                if count % 500 == 0:
+                    if count == 0:
+                        print(
+                            f"Compilation time for {cell_type}: {time.time() - time_start:.2f} seconds."
+                        )
+                    else:
+                        intervals.append(time.time() - time_init)
+                        print(
+                            f"Completed last 500 of {count} out of {len(row)} combinations in {intervals[-1]:.2f} s."
+                        )
+                        average_interval_per_combo = (
+                            sum(intervals) / len(intervals) / 500
+                        )
+                        estimated_time_remaining = average_interval_per_combo * (
+                            len(row) - count
+                        )
+                        print(
+                            f"Estimated time remaining for {cell_type}: {estimated_time_remaining:.2f} seconds."
+                        )
+                    time_init = time.time()
+
+                if filter_by_target_expr and (
+                    rec1_ind not in valid_indices or rec2_ind not in valid_indices
+                ):
+                    continue
+
                 rec_abun_pruned = sampled_rec_abundances[:, [rec1_ind, rec2_ind]]
 
                 # When target receptors are the same, they should be modeled as a single
@@ -304,28 +354,6 @@ def scan_selectivity(
 
                 opt_affs_scan[rec1_ind, rec2_ind, i, :] = opt_aff_vals
                 opt_Kx_star_scan[rec1_ind, rec2_ind, i] = opt_Kx_star
-
-                # Progress logging:
-                if count % 500 == 0:
-                    if count == 0:
-                        print(
-                            f"Compilation time for {cell_type}: {time.time() - time_start:.2f} seconds."
-                        )
-                    else:
-                        intervals.append(time.time() - time_init)
-                        print(
-                            f"Completed last 500 of {count} out of {len(row)} combinations in {intervals[-1]:.2f} s."
-                        )
-                        average_interval_per_combo = (
-                            sum(intervals) / len(intervals) / 500
-                        )
-                        estimated_time_remaining = average_interval_per_combo * (
-                            len(row) - count
-                        )
-                        print(
-                            f"Estimated time remaining for {cell_type}: {estimated_time_remaining:.2f} seconds."
-                        )
-                    time_init = time.time()
 
         print(
             f"Completed selectivity scan for {cell_type} in {time.time() - time_start:.2f} seconds."
