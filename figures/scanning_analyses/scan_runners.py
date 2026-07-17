@@ -504,7 +504,8 @@ def filter_scan_by_target_expr():
     sample_size = scan_params["general"]["sample_size"]
     targ_cell_types = scan_params["target_cell_types"]
     min_avg_count = scan_params["general"]["min_expression_threshold"]
-    min_nonzero_cells = scan_params["general"]["min_nonzero_cells"]
+    # Older YAMLs predate this key; those scans used no nonzero-count filtering.
+    min_nonzero_cells = scan_params["general"].get("min_nonzero_cells", 0)
 
     scan_data = pd.read_csv(results_path)
 
