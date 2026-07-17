@@ -139,6 +139,28 @@ SCENARIOS = {
         min_valid_pairs_pct=0,
         scale_dot_size=False,
     ),
+    # Mean filtered vs. not filtered, both derived from the same underlying scan
+    # (post-hoc NaN-masking via filt_scan, not a separate re-run), so the two sides
+    # share identical selectivity values for every retained pair — no confound from
+    # different expression thresholds/clipping between runs. Computed via
+    # compute_raw_topn_overlap (not compute_jaccard) so filtered-out top hits actually
+    # show up as lost top-N pairs rather than being excluded from both sides.
+    "filt_posthoc": dict(
+        metrics={
+            "All receptors": {
+                "path": f"{_DATA}/20260714_selec_scan_full_non-zero-match.csv",
+                "column": "Selectivity",
+            },
+            "Mean filtered": {
+                "path": f"{_DATA}/20260714_selec_scan_full_non-zero-match_filt.csv",
+                "column": "Selectivity",
+            },
+        },
+        comparisons=[("All receptors", "Mean filtered")],
+        top_n_values=[5, 10, 50, 100, 500, 1000],
+        min_valid_pairs_pct=0,
+        scale_dot_size=False,
+    ),
 }
 
 
@@ -297,6 +319,93 @@ def compute_jaccard(
     if not results.empty:
         print(
             f"Valid pairs range (retained): "
+            f"{results['n_pairs'].min()}–{results['n_pairs'].max()}"
+        )
+
+    return {
+        "results": results,
+        "comp_labels": comp_labels,
+        "top_n_values": top_n_values,
+        "scale_dot_size": scale_dot_size,
+    }
+
+
+def compute_raw_topn_overlap(
+    metrics,
+    comparisons,
+    top_n_values,
+    min_valid_pairs_pct=0,
+    scale_dot_size=False,
+):
+    """Compute Jaccard agreement of top-N pairs, ranking each metric over its own full
+    valid-pair pool rather than a pool shared across both metrics.
+
+    Unlike `compute_jaccard` (which always restricts both sides to their intersection of
+    valid pairs before ranking, regardless of `global_pair_intersection`), this treats a
+    pair that fails one metric's filter as simply absent from that metric's candidate
+    pool: it can still be a top-N hit on the other side. Meant for comparing a scan
+    against a post-hoc `filter_by_target_expr` filtering of that same scan, so that
+    top hits removed by the filter show up as reduced Jaccard instead of being hidden by
+    a shared pool.
+    """
+    assert all(m in metrics for pair in comparisons for m in pair), (
+        "All comparison labels must appear in metrics."
+    )
+
+    metric_series = {}
+    for label, info in metrics.items():
+        df = _read_csv_cached(info["path"])
+        col = info["column"]
+        ct_map = {}
+        for ct in df["Cell_Type"].unique():
+            s = (
+                df[df["Cell_Type"] == ct][["Receptor_1", "Receptor_2", col]]
+                .dropna()
+                .pipe(_add_norm_pair)
+                .groupby("pair", as_index=False)[col]
+                .max()
+                .set_index("pair")[col]
+            )
+            if len(s) > 0:
+                ct_map[ct] = s
+        metric_series[label] = ct_map
+
+    comp_labels = [f"{a} vs. {b}" for a, b in comparisons]
+    records = []
+    for (metric_a, metric_b), comp_label in zip(comparisons, comp_labels, strict=False):
+        cts = sorted(set(metric_series[metric_a]) & set(metric_series[metric_b]))
+        ct_sizes = {
+            ct: min(len(metric_series[metric_a][ct]), len(metric_series[metric_b][ct]))
+            for ct in cts
+        }
+        if ct_sizes:
+            n_max = max(ct_sizes.values())
+            min_pairs = n_max * min_valid_pairs_pct / 100
+            cts = [ct for ct in cts if ct_sizes[ct] >= min_pairs]
+        for ct in cts:
+            s_a = metric_series[metric_a][ct]
+            s_b = metric_series[metric_b][ct]
+            for top_n in top_n_values:
+                # Both sides need >= top_n candidates for a genuine top-N comparison.
+                if top_n > len(s_a) or top_n > len(s_b):
+                    continue
+                records.append(
+                    {
+                        "cell_type": ct,
+                        "top_n": top_n,
+                        "comparison": comp_label,
+                        "jaccard": _jaccard(
+                            set(s_a.nlargest(top_n).index),
+                            set(s_b.nlargest(top_n).index),
+                        ),
+                        "n_pairs": ct_sizes[ct],
+                    }
+                )
+
+    results = pd.DataFrame(records)
+    if not results.empty:
+        print(
+            f"Valid pairs range (smaller side, retained): "
             f"{results['n_pairs'].min()}–{results['n_pairs'].max()}"
         )
 
@@ -542,6 +651,7 @@ def jaccard_summary(res):
 res_valency = compute_jaccard(**SCENARIOS["valency"])
 res_signal = compute_jaccard(**SCENARIOS["signal"])
 res_metric = compute_jaccard(**SCENARIOS["metric_agreement"])
+res_filt_posthoc = compute_raw_topn_overlap(**SCENARIOS["filt_posthoc"])
 ```
 
 ```{python}
@@ -558,6 +668,11 @@ plot_jaccard_box(res_signal)
 #| label: fig-jaccard-metric-agreement
 #| fig-cap: "Agreement (Jaccard index) between the top-ranked receptor pairs of binding-model selectivity, EMD, and KL divergence, across target cell types and top-N thresholds."
 plot_jaccard_box(res_metric)
+```
+
+```{python}
+#| label: fig-jaccard-filt
+plot_jaccard_box(res_filt_posthoc)
 ```
 
 ```{python}
