@@ -20,6 +20,7 @@ def sample_cells(
     targ_cell_type: str,
     sample_size: int = 100,
     balance: bool = True,
+    rand_state: int = 42,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Sample cells from receptor abundance data.
@@ -32,6 +33,7 @@ def sample_cells(
             off-target populations
         balance: whether to balance number of cells in target and off-target
             populations
+        rand_state: random seed for sampling cells from the CITE-seq data
 
     Outputs:
         sampled_rec_abundances: subset of rec_abundances after sampling
@@ -48,6 +50,7 @@ def sample_cells(
         numCells=sample_size,
         targCellType=targ_cell_type,
         balance=balance,
+        rand_state=rand_state,
     )
     sampled_cell_type_labels = sampled_abun_DF["Cell Type"].to_numpy(dtype=str)
     sampled_rec_abundances = sampled_abun_DF.drop(columns=["Cell Type"]).to_numpy(
@@ -63,6 +66,7 @@ def scan_KL_EMD(
     targ_cell_types: list[str],
     dim: int,
     sample_size: int = 100,
+    rand_state: int = 42,
     filter_by_target_expr: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
@@ -77,6 +81,7 @@ def scan_KL_EMD(
         targ_cell_types: list of target cell types to evaluate
         dim: dimensionality of receptor combinations (1, 2, or 3)
         sample_size: target cell count for subsampling
+        rand_state: random seed for sampling cells from the CITE-seq data
         filter_by_target_expr: if True, restrict scan to receptors with higher mean
             expression in target cells than off-target cells. Filtering is applied
             per cell type after sampling, so valid receptors may differ across cell
@@ -161,6 +166,7 @@ def scan_selectivity(
     dose: float,
     valencies: np.ndarray,
     sample_size: int = 100,
+    rand_state: int = 42,
     signal_col: int = 0,
     init_method: np.ndarray | str | int = 42,
     asym_targs: bool = False,
@@ -180,6 +186,7 @@ def scan_selectivity(
         valencies: array of valencies for each distinct ligand in the ligand complex.
             Assumes symmetric target receptor valencies for dim > 1.
         sample_size: number of cells to sample per cell type
+        rand_state: random seed for sampling cells from the CITE-seq data
         signal_col: column index of designated signal receptor to include in all
             combinations, defaults to first receptor.
         init_method: method for initializing optimization (integer seed for random

@@ -55,6 +55,7 @@ def run_selectivity_scan():
     )
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
     expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
+    rand_state = 42  # Random seed for sampling cells from the CITE-seq data
 
     # Binding model parameters
     dose = 1e-10
@@ -142,6 +143,7 @@ def run_selectivity_scan():
         dose=dose,
         valencies=valency,
         sample_size=sample_size,
+        rand_state=rand_state,
         signal_col=signal_ind,
         init_method=init,
         asym_targs=asym_targs,
@@ -182,6 +184,7 @@ def run_selectivity_scan():
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
             "expr_matching": expr_matching,
+            "rand_state": rand_state,
         },
         "binding_model": {
             "dose": float(dose),
@@ -240,6 +243,7 @@ def run_KL_EMD_scan():
     )
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
     expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
+    rand_state = 42  # Random seed for sampling cells from the CITE-seq data
 
     # Distance metric scan parameters
     filter_by_target_expr = (
@@ -296,6 +300,7 @@ def run_KL_EMD_scan():
         targ_cell_types,
         dim=2,
         sample_size=sample_size,
+        rand_state=rand_state,
         filter_by_target_expr=filter_by_target_expr,
     )
 
@@ -330,6 +335,7 @@ def run_KL_EMD_scan():
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
             "expr_matching": expr_matching,
+            "rand_state": rand_state,
         },
         "distance_metric": {
             "filter_by_target_expr": filter_by_target_expr,
