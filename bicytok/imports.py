@@ -101,6 +101,7 @@ def sample_receptor_abundances(
     targCellType: str,
     offTargCellTypes: list[str] = None,
     rand_state: int = 42,
+    rand_state_prototype: int = 42,
     balance: bool = False,
     insert_mock_signal_rec: bool = False,
     silent: bool = True,
@@ -119,7 +120,8 @@ def sample_receptor_abundances(
             off targer sampling
         offTargCellTypes: list of cell types that are distinct from target cells.
             If None, all cell types except targCellType will be used.
-        rand_state: random seed for reproducibility
+        rand_state: random seed for sampling cells from the CITE-seq data
+        rand_state_prototype: random seed for generating a prototypical signal receptor
         balance: if True, forces sampling of an equal number of target and off-target
             cells
         insert_mock_signal_rec: if True, inserts a prototypical signal receptor with
@@ -200,7 +202,7 @@ def sample_receptor_abundances(
     sampleDF = pd.concat([sampled_target_cells, sampled_off_target_cells])
 
     if insert_mock_signal_rec:
-        rng = np.random.default_rng(rand_state)
+        rng = np.random.default_rng(rand_state_prototype)
         mock_signal_rec = rng.normal(loc=50, scale=5, size=(sampleDF.shape[0],))
         mock_signal_rec = np.clip(mock_signal_rec, a_min=0, a_max=None)
         sampleDF.insert(0, column="sim_signal", value=mock_signal_rec)
