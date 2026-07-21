@@ -38,10 +38,14 @@ cell_zero_frac = (cell_counts == 0).mean(axis=1)
 ## Per-receptor zero-fraction vs. mean count
 ```{python}
 #| fig-cap: "Per-receptor zero-fraction vs. per-receptor mean count, one point per receptor. Dashed line is the Poisson dropout null (exp(-mean))."
+
+from scipy.stats import spearmanr
+
 rho, pval = spearmanr(rec_mean, rec_zero_frac)
 
 plt.figure(figsize=(5, 4))
 plt.scatter(rec_mean, rec_zero_frac, alpha=0.6, edgecolor="black", linewidth=0.3)
+plt.axvline(x=5, color="orange", linestyle="--", label="Filter threshold: mean count > 5")
 
 x_ref = np.logspace(
     np.log10(rec_mean[rec_mean > 0].min()), np.log10(rec_mean.max()), 100
