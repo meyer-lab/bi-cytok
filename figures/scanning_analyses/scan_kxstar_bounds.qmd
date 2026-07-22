@@ -35,7 +35,6 @@ A co-pinning flow panel (`fig-copinning`) labels each pair by whether it is pinn
 %config InlineBackend.figure_formats = ['svg']
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import yaml
@@ -105,7 +104,14 @@ def load_scan_outputs(scan):
             "optimized there."
         )
 
-    cols = ["Cell_Type", "Receptor_1", "Receptor_2", "Selectivity", "Kx_star", *AFF_COLS]
+    cols = [
+        "Cell_Type",
+        "Receptor_1",
+        "Receptor_2",
+        "Selectivity",
+        "Kx_star",
+        *AFF_COLS,
+    ]
     return pd.read_csv(scan["path"], usecols=cols).dropna(subset=["Selectivity"])
 
 
@@ -129,7 +135,9 @@ def compute_pair_gains(df):
     mono_map = df[df["Receptor_1"] == df["Receptor_2"]].set_index(
         ["Cell_Type", "Receptor_1"]
     )["Selectivity"]
-    assert mono_map.index.is_unique, "Duplicate monospecific (cell type, receptor) entries."
+    assert mono_map.index.is_unique, (
+        "Duplicate monospecific (cell type, receptor) entries."
+    )
 
     pairs = df[
         (df["Receptor_1"] != df["Receptor_2"])
@@ -160,7 +168,12 @@ def pair_key(df):
 
 # ── Shared overlaid-histogram helper ──────────────────────────────────────────
 def overlay_hist(
-    ax, data_by_scan, bins, scan_bounds=None, annotate_pinned=False, ref_lines=(),
+    ax,
+    data_by_scan,
+    bins,
+    scan_bounds=None,
+    annotate_pinned=False,
+    ref_lines=(),
     logy=False,
 ):
     """Overlay per-scan density histograms of one output on ax.
@@ -173,8 +186,12 @@ def overlay_hist(
     """
     for scan in SCANS:
         ax.hist(
-            data_by_scan[scan["label"]], bins=bins, density=True, alpha=0.55,
-            color=scan["color"], label=scan["label"],
+            data_by_scan[scan["label"]],
+            bins=bins,
+            density=True,
+            alpha=0.55,
+            color=scan["color"],
+            label=scan["label"],
         )
     if logy:
         ax.set_yscale("log")
@@ -192,9 +209,13 @@ def overlay_hist(
                 frac = np.mean(np.abs(data_by_scan[scan["label"]] - bound) < PIN_TOL)
                 near_right = bound > x_lo + 0.8 * (x_hi - x_lo)
                 ax.text(
-                    bound + (-0.1 if near_right else 0.1), y_top * 0.92,
-                    f"{frac:.0%} at bound", color=scan["color"], fontsize=FS_ANNOT,
-                    ha="right" if near_right else "left", va="top",
+                    bound + (-0.1 if near_right else 0.1),
+                    y_top * 0.92,
+                    f"{frac:.0%} at bound",
+                    color=scan["color"],
+                    fontsize=FS_ANNOT,
+                    ha="right" if near_right else "left",
+                    va="top",
                 )
     ax.tick_params(labelsize=FS_TICK)
 ```
@@ -207,6 +228,8 @@ def overlay_hist(
 # When a scan's bound sits below where many pairs would otherwise optimize, those pairs
 # stack against the wall, forming a spike at the bound.
 
+import matplotlib.pyplot as plt
+
 kx_by_scan = {lbl: df["Kx_star"].to_numpy() for lbl, df in scan_dfs.items()}
 
 all_kx = np.concatenate(list(kx_by_scan.values()))
@@ -214,7 +237,9 @@ bins = np.arange(np.floor(all_kx.min()), np.ceil(all_kx.max()) + 0.2, 0.2)
 
 fig, ax = plt.subplots(figsize=(8, 5.5))
 overlay_hist(
-    ax, kx_by_scan, bins,
+    ax,
+    kx_by_scan,
+    bins,
     scan_bounds={scan["label"]: scan["kx_upper"] for scan in SCANS},
     annotate_pinned=True,
 )
@@ -239,7 +264,9 @@ off_diag_dfs = {
 }
 aff_bins = np.arange(AFFINITY_BOUNDS[0], AFFINITY_BOUNDS[1] + 0.2, 0.2)
 
-fig, axes = plt.subplots(1, len(AFF_COLS), figsize=(5 * len(AFF_COLS), 4.8), sharey=True)
+fig, axes = plt.subplots(
+    1, len(AFF_COLS), figsize=(5 * len(AFF_COLS), 4.8), sharey=True
+)
 for ax, (col, title) in zip(axes, AFF_COLS.items(), strict=True):
     data = {lbl: df[col].to_numpy() for lbl, df in off_diag_dfs.items()}
     overlay_hist(ax, data, aff_bins, ref_lines=AFFINITY_BOUNDS)
@@ -313,8 +340,8 @@ plt.show()
 
 from matplotlib.colors import Normalize
 
-SELEC_FLOOR = 0.505       # pair selectivity at/below this is effectively no selectivity
-GAIN_COLOR_MAX = 0.15     # log2 gain at which the synergy color saturates
+SELEC_FLOOR = 0.505  # pair selectivity at/below this is effectively no selectivity
+GAIN_COLOR_MAX = 0.15  # log2 gain at which the synergy color saturates
 KX_XLABEL = "Optimal log10(Kx*)"
 GAIN_YLABEL = "log2 selectivity gain"
 PANEL_W, PANEL_H = 4.3, 3.0
@@ -322,8 +349,10 @@ PANEL_W, PANEL_H = 4.3, 3.0
 
 def _vs_kxstar(ykey):
     """Comparison getter: an output on y against optimal log10(Kx*) on x."""
+
     def get(sd, cvals):
         return sd["kx"], sd[ykey], cvals
+
     return get
 
 
@@ -333,31 +362,82 @@ def _gain_vs(xkey):
     The pooled target-affinity comparison stacks both target arms, tiling y and the color
     values to match the doubled x.
     """
+
     def get(sd, cvals):
         if xkey == "targ_aff":
             x = np.concatenate([sd["aff1"], sd["aff2"]])
             return x, np.tile(sd["log2_gain"], 2), np.concatenate([cvals, cvals])
         return sd[xkey], sd["log2_gain"], cvals
+
     return get
 
 
 # One dict per comparison (grid row). xrefs/yrefs are gray reference lines; kx_vline draws each
 # scan's Kx* upper bound; ylim fixes the display range (affinity panels use padded bounds).
 COMPARISONS = [
-    dict(get=_vs_kxstar("sel"), xlabel=KX_XLABEL, ylabel="Selectivity",
-         ylim=None, xrefs=(), yrefs=(0.5,), kx_vline=True),
-    dict(get=_vs_kxstar("aff0"), xlabel=KX_XLABEL, ylabel="Signal aff, log10(M)",
-         ylim=AFFINITY_BOUNDS, xrefs=(), yrefs=(), kx_vline=True),
-    dict(get=_vs_kxstar("aff1"), xlabel=KX_XLABEL, ylabel="Target 1 aff, log10(M)",
-         ylim=AFFINITY_BOUNDS, xrefs=(), yrefs=(), kx_vline=True),
-    dict(get=_vs_kxstar("aff2"), xlabel=KX_XLABEL, ylabel="Target 2 aff, log10(M)",
-         ylim=AFFINITY_BOUNDS, xrefs=(), yrefs=(), kx_vline=True),
-    dict(get=_gain_vs("sel"), xlabel="Pair selectivity", ylabel=GAIN_YLABEL,
-         ylim=None, xrefs=(SELEC_FLOOR,), yrefs=(0.0,), kx_vline=False),
-    dict(get=_gain_vs("aff0"), xlabel="Signal receptor affinity, log10(M)", ylabel=GAIN_YLABEL,
-         ylim=None, xrefs=(), yrefs=(0.0,), kx_vline=False),
-    dict(get=_gain_vs("targ_aff"), xlabel="Target receptor affinity, log10(M)",
-         ylabel=GAIN_YLABEL, ylim=None, xrefs=(), yrefs=(0.0,), kx_vline=False),
+    dict(
+        get=_vs_kxstar("sel"),
+        xlabel=KX_XLABEL,
+        ylabel="Selectivity",
+        ylim=None,
+        xrefs=(),
+        yrefs=(0.5,),
+        kx_vline=True,
+    ),
+    dict(
+        get=_vs_kxstar("aff0"),
+        xlabel=KX_XLABEL,
+        ylabel="Signal aff, log10(M)",
+        ylim=AFFINITY_BOUNDS,
+        xrefs=(),
+        yrefs=(),
+        kx_vline=True,
+    ),
+    dict(
+        get=_vs_kxstar("aff1"),
+        xlabel=KX_XLABEL,
+        ylabel="Target 1 aff, log10(M)",
+        ylim=AFFINITY_BOUNDS,
+        xrefs=(),
+        yrefs=(),
+        kx_vline=True,
+    ),
+    dict(
+        get=_vs_kxstar("aff2"),
+        xlabel=KX_XLABEL,
+        ylabel="Target 2 aff, log10(M)",
+        ylim=AFFINITY_BOUNDS,
+        xrefs=(),
+        yrefs=(),
+        kx_vline=True,
+    ),
+    dict(
+        get=_gain_vs("sel"),
+        xlabel="Pair selectivity",
+        ylabel=GAIN_YLABEL,
+        ylim=None,
+        xrefs=(SELEC_FLOOR,),
+        yrefs=(0.0,),
+        kx_vline=False,
+    ),
+    dict(
+        get=_gain_vs("aff0"),
+        xlabel="Signal receptor affinity, log10(M)",
+        ylabel=GAIN_YLABEL,
+        ylim=None,
+        xrefs=(),
+        yrefs=(0.0,),
+        kx_vline=False,
+    ),
+    dict(
+        get=_gain_vs("targ_aff"),
+        xlabel="Target receptor affinity, log10(M)",
+        ylabel=GAIN_YLABEL,
+        ylim=None,
+        xrefs=(),
+        yrefs=(0.0,),
+        kx_vline=False,
+    ),
 ]
 
 
@@ -365,7 +445,8 @@ def scan_base_arrays(scan):
     """Per-pair binding-model outputs for one scan, as plain arrays keyed by short name."""
     df = pair_dfs[scan["label"]]
     return {
-        "kx": df["Kx_star"].to_numpy(), "sel": df["Selectivity"].to_numpy(),
+        "kx": df["Kx_star"].to_numpy(),
+        "sel": df["Selectivity"].to_numpy(),
         "aff0": df["Affinity_Receptor_0"].to_numpy(),
         "aff1": df["Affinity_Receptor_1"].to_numpy(),
         "aff2": df["Affinity_Receptor_2"].to_numpy(),
@@ -388,12 +469,14 @@ def build_comparison_grid(scan_colors, draw_points):
     """Draw the comparison grid (rows = comparisons, cols = scans).
 
     scan_colors: {scan label: per-point color value aligned to pair_dfs[label]}.
-    draw_points: fn(ax, x, y, color_values, scan) -> optional mappable (captured for a colorbar).
+    draw_points: fn(ax, x, y, color_values) -> optional mappable (captured for a colorbar).
     """
     fig, axes = plt.subplots(
-        len(COMPARISONS), len(SCANS),
+        len(COMPARISONS),
+        len(SCANS),
         figsize=(PANEL_W * len(SCANS), PANEL_H * len(COMPARISONS)),
-        squeeze=False, layout="constrained",
+        squeeze=False,
+        layout="constrained",
     )
     mappable = None
     for c, scan in enumerate(SCANS):
@@ -402,7 +485,7 @@ def build_comparison_grid(scan_colors, draw_points):
         for r, comp in enumerate(COMPARISONS):
             ax = axes[r, c]
             x, y, cvals = comp["get"](sd, cbase)
-            drawn = draw_points(ax, x, y, cvals, scan)
+            drawn = draw_points(ax, x, y, cvals)
             if drawn is not None:
                 mappable = drawn
             for xv in comp["xrefs"]:
@@ -410,7 +493,9 @@ def build_comparison_grid(scan_colors, draw_points):
             for yv in comp["yrefs"]:
                 ax.axhline(yv, color="0.45", ls=":", lw=1.0, zorder=3)
             if comp["kx_vline"] and scan["kx_upper"] is not None:
-                ax.axvline(scan["kx_upper"], color="0.3", ls="--", lw=1.0, zorder=3, alpha=0.5)
+                ax.axvline(
+                    scan["kx_upper"], color="0.3", ls="--", lw=1.0, zorder=3, alpha=0.5
+                )
             if comp["ylim"] is not None:
                 ax.set_ylim(*comp["ylim"])
             ax.tick_params(labelsize=FS_TICK - 2)
@@ -444,21 +529,36 @@ for scan in SCANS:
 gain_norm = Normalize(vmin=0, vmax=GAIN_COLOR_MAX)
 
 
-def draw_gain_points(ax, x, y, cvals, scan):
+def draw_gain_points(ax, x, y, cvals):
     """Gray context cloud plus a Reds overlay of the pairs synergistic in the reference scan."""
-    ax.scatter(x, y, s=3, alpha=0.4, color="0.82", linewidths=0, rasterized=True, zorder=1)
-    synergistic = cvals > 0  # NaN (unmatched) is False here, so those stay in the gray cloud
+    ax.scatter(
+        x, y, s=3, alpha=0.4, color="0.82", linewidths=0, rasterized=True, zorder=1
+    )
+    synergistic = (
+        cvals > 0
+    )  # NaN (unmatched) is False here, so those stay in the gray cloud
     order = np.argsort(cvals[synergistic])  # strongest synergy drawn last
     return ax.scatter(
-        x[synergistic][order], y[synergistic][order], c=cvals[synergistic][order],
-        cmap="Reds", norm=gain_norm, s=5, alpha=0.9, linewidths=0, rasterized=True, zorder=2,
+        x[synergistic][order],
+        y[synergistic][order],
+        c=cvals[synergistic][order],
+        cmap="Reds",
+        norm=gain_norm,
+        s=5,
+        alpha=0.9,
+        linewidths=0,
+        rasterized=True,
+        zorder=2,
     )
 
 
 fig, axes, mappable = build_comparison_grid(scan_colors_gain, draw_gain_points)
 fig.colorbar(
-    mappable, ax=axes.ravel().tolist(),
-    label="log2 selectivity gain, reference scan  (gray = none)", fraction=0.03, pad=0.02,
+    mappable,
+    ax=axes.ravel().tolist(),
+    label="log2 selectivity gain, reference scan  (gray = none)",
+    fraction=0.03,
+    pad=0.02,
 )
 plt.show()
 ```
@@ -489,11 +589,16 @@ scan_colors_ct = {
 _ct_rng = np.random.default_rng(0)
 
 
-def draw_celltype_points(ax, x, y, codes, scan):
+def draw_celltype_points(ax, x, y, codes):
     """Scatter every pair colored by its cell type, draw order shuffled so no type dominates."""
     perm = _ct_rng.permutation(len(x))
     ax.scatter(
-        x[perm], y[perm], c=CT_COLOR_ARRAY[codes[perm]], s=3, alpha=0.5, linewidths=0,
+        x[perm],
+        y[perm],
+        c=CT_COLOR_ARRAY[codes[perm]],
+        s=3,
+        alpha=0.5,
+        linewidths=0,
         rasterized=True,
     )
     return None
@@ -501,9 +606,16 @@ def draw_celltype_points(ax, x, y, codes, scan):
 
 fig, axes, _ = build_comparison_grid(scan_colors_ct, draw_celltype_points)
 fig.legend(
-    handles=[Patch(facecolor=CT_COLORS[i], label=CELL_TYPES[i]) for i in range(len(CELL_TYPES))],
-    loc="center left", bbox_to_anchor=(1.0, 0.5), ncol=1, fontsize=FS_LEGEND - 2,
-    frameon=False, title="Cell type",
+    handles=[
+        Patch(facecolor=CT_COLORS[i], label=CELL_TYPES[i])
+        for i in range(len(CELL_TYPES))
+    ],
+    loc="center left",
+    bbox_to_anchor=(1.0, 0.5),
+    ncol=1,
+    fontsize=FS_LEGEND - 2,
+    frameon=False,
+    title="Cell type",
 )
 plt.show()
 ```
@@ -537,7 +649,10 @@ def classify_copinning(df, kx_upper):
         > AFFINITY_OPT_BOUNDS[1] - AFF_CEIL_EPS
     ).to_numpy()
     return pd.DataFrame(
-        {"key": pair_key(df), "cat": 2 * kx_pinned.astype(int) + aff_ceiling.astype(int)}
+        {
+            "key": pair_key(df),
+            "cat": 2 * kx_pinned.astype(int) + aff_ceiling.astype(int),
+        }
     )
 
 
@@ -563,11 +678,29 @@ def draw_category_flow(ax, trans, colors, gap=0.015, bar_w=0.03):
 
     left_edges, right_edges = block_edges(size_left), block_edges(size_right)
     for cat, (top, bot) in enumerate(left_edges):
-        ax.add_patch(Rectangle((-bar_w, bot), bar_w, top - bot, color=colors[cat],
-                               ec="white", lw=0.5, zorder=3))
+        ax.add_patch(
+            Rectangle(
+                (-bar_w, bot),
+                bar_w,
+                top - bot,
+                color=colors[cat],
+                ec="white",
+                lw=0.5,
+                zorder=3,
+            )
+        )
     for cat, (top, bot) in enumerate(right_edges):
-        ax.add_patch(Rectangle((1.0, bot), bar_w, top - bot, color=colors[cat],
-                               ec="white", lw=0.5, zorder=3))
+        ax.add_patch(
+            Rectangle(
+                (1.0, bot),
+                bar_w,
+                top - bot,
+                color=colors[cat],
+                ec="white",
+                lw=0.5,
+                zorder=3,
+            )
+        )
 
     left_cursor = [top for top, _ in left_edges]
     right_cursor = [top for top, _ in right_edges]
@@ -582,17 +715,30 @@ def draw_category_flow(ax, trans, colors, gap=0.015, bar_w=0.03):
             r_top, r_bot = right_cursor[b], right_cursor[b] - height
             left_cursor[a], right_cursor[b] = l_bot, r_bot
             ax.fill_between(
-                xs, l_bot + (r_bot - l_bot) * ease, l_top + (r_top - l_top) * ease,
-                color=colors[a], alpha=0.45, lw=0, zorder=1,
+                xs,
+                l_bot + (r_bot - l_bot) * ease,
+                l_top + (r_top - l_top) * ease,
+                color=colors[a],
+                alpha=0.45,
+                lw=0,
+                zorder=1,
             )
 
-    for edges, dx, ha in [(left_edges, -bar_w - 0.015, "right"),
-                          (right_edges, 1.0 + bar_w + 0.015, "left")]:
+    for edges, dx, ha in [
+        (left_edges, -bar_w - 0.015, "right"),
+        (right_edges, 1.0 + bar_w + 0.015, "left"),
+    ]:
         sizes = size_left if ha == "right" else size_right
         for cat, (top, bot) in enumerate(edges):
             if sizes[cat] / total > 0.01:
-                ax.text(dx, (top + bot) / 2, f"{sizes[cat] / total * 100:.0f}%",
-                        ha=ha, va="center", fontsize=FS_ANNOT)
+                ax.text(
+                    dx,
+                    (top + bot) / 2,
+                    f"{sizes[cat] / total * 100:.0f}%",
+                    ha=ha,
+                    va="center",
+                    fontsize=FS_ANNOT,
+                )
     ax.set_xlim(-0.22, 1.22)
     ax.set_ylim(-0.02, 1.09)
     ax.axis("off")
@@ -610,12 +756,34 @@ for a in range(len(CAT_NAMES)):
 
 fig, ax = plt.subplots(figsize=(9, 7))
 draw_category_flow(ax, trans, CAT_COLORS)
-ax.text(0, 1.07, scan_a["label"], ha="center", va="bottom", fontsize=FS_LABEL, fontweight="bold")
-ax.text(1, 1.07, scan_b["label"], ha="center", va="bottom", fontsize=FS_LABEL, fontweight="bold")
+ax.text(
+    0,
+    1.07,
+    scan_a["label"],
+    ha="center",
+    va="bottom",
+    fontsize=FS_LABEL,
+    fontweight="bold",
+)
+ax.text(
+    1,
+    1.07,
+    scan_b["label"],
+    ha="center",
+    va="bottom",
+    fontsize=FS_LABEL,
+    fontweight="bold",
+)
 ax.legend(
-    handles=[Patch(facecolor=CAT_COLORS[i], label=CAT_NAMES[i]) for i in range(len(CAT_NAMES))],
-    loc="lower center", bbox_to_anchor=(0.5, -0.06), ncol=len(CAT_NAMES),
-    fontsize=FS_LEGEND, frameon=False,
+    handles=[
+        Patch(facecolor=CAT_COLORS[i], label=CAT_NAMES[i])
+        for i in range(len(CAT_NAMES))
+    ],
+    loc="lower center",
+    bbox_to_anchor=(0.5, -0.06),
+    ncol=len(CAT_NAMES),
+    fontsize=FS_LEGEND,
+    frameon=False,
 )
 plt.tight_layout()
 plt.show()
