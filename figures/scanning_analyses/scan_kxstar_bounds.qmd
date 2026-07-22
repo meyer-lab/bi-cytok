@@ -59,6 +59,20 @@ SCANS = [
         "color": "#CF4D6F",
         "gain_ref": "Kx* upper bound 1e-5",
     },
+    {
+        "path": "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv",
+        "label": "Bivalent Kx* upper bound 1e-5",
+        "kx_upper": -5.0,
+        "color": "#4E9A06",
+        "gain_ref": "Bivalent Kx* upper bound 1e-5",
+    },
+    {
+        "path": "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv",
+        "label": "Mixed Valency Kx* upper bound 1e-5",
+        "kx_upper": -5.0,
+        "color": "#FF7F00",
+        "gain_ref": "Mixed Valency Kx* upper bound 1e-5",
+    },
 ]
 
 # True affinity optimization bounds, log10(M), used for pin/ceiling logic. AFFINITY_BOUNDS pads
@@ -509,22 +523,26 @@ def build_comparison_grid(scan_colors, draw_points):
     return fig, axes, mappable
 
 
-# Color every point by the gain of the scan named in that scan's "gain_ref": its own gain, or
-# another scan's gain mapped onto these coordinates by pair key. Pointing the tight scan at the
-# loose scan shows where the loose-bound-synergistic pairs land once Kx* is capped (unmatched
-# pairs get NaN -> gray).
-gain_by_scan_key = {
-    lbl: pd.Series(df["log2_gain"].to_numpy(), index=pair_key(df))
-    for lbl, df in pair_dfs.items()
-}
-for lbl, series in gain_by_scan_key.items():
-    assert series.index.is_unique, f"Duplicate pair keys in scan {lbl!r}."
+# Color every point by the gain of the scan named in that scan's "gain_ref": its own gain used
+# directly, or another scan's gain mapped onto these coordinates by pair key (unmatched pairs get
+# NaN -> gray). Pointing the tight scan at the loose scan shows where the loose-bound-synergistic
+# pairs land once Kx* is capped. The direct self-reference path matters for asymmetric-valency
+# scans, which optimize both receptor orderings per pair (two distinct designs): pair_key sorts the
+# receptors, so routing such a scan's own gain through the key would collapse those orderings onto
+# one key. Cross-scan mapping still requires the reference scan's keys to be unique.
 scan_colors_gain = {}
 for scan in SCANS:
-    ref_gain = gain_by_scan_key[scan["gain_ref"]]
-    scan_colors_gain[scan["label"]] = ref_gain.reindex(
-        pair_key(pair_dfs[scan["label"]])
-    ).to_numpy()
+    label, ref = scan["label"], scan["gain_ref"]
+    if ref == label:
+        scan_colors_gain[label] = pair_dfs[label]["log2_gain"].to_numpy()
+        continue
+    ref_gain = pd.Series(
+        pair_dfs[ref]["log2_gain"].to_numpy(), index=pair_key(pair_dfs[ref])
+    )
+    assert ref_gain.index.is_unique, (
+        f"Duplicate pair keys in reference scan {ref!r}; cannot map its gain across scans."
+    )
+    scan_colors_gain[label] = ref_gain.reindex(pair_key(pair_dfs[label])).to_numpy()
 
 gain_norm = Normalize(vmin=0, vmax=GAIN_COLOR_MAX)
 
@@ -744,8 +762,8 @@ def draw_category_flow(ax, trans, colors, gap=0.015, bar_w=0.03):
     ax.axis("off")
 
 
-# Flow from the first (loosest) to the last (tightest) scan.
-scan_a, scan_b = SCANS[0], SCANS[-1]
+# Flow from the first (loosest) to the second (tightest) scan.
+scan_a, scan_b = SCANS[0], SCANS[1]
 cats_a = classify_copinning(pair_dfs[scan_a["label"]], scan_a["kx_upper"])
 cats_b = classify_copinning(pair_dfs[scan_b["label"]], scan_b["kx_upper"])
 matched = cats_a.merge(cats_b, on="key", suffixes=("_a", "_b"))
