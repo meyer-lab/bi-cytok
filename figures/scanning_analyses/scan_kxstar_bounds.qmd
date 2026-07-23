@@ -72,7 +72,14 @@ SCANS = [
         "label": "Mixed Valency Kx* upper bound 1e-5",
         "kx_upper": -5.0,
         "color": "#FF7F00",
-        "gain_ref": "Mixed Valency Kx* upper bound 1e-5",
+        "gain_ref": "Mixed ValencyKx* upper bound 1e-5",
+    },
+    {
+        "path": "/home/sama/receptor_sweep_data/20260604_selec_scan_full_sigCD122.csv",
+        "label": "Signal CD122 Kx* upper bound 1e-5",
+        "kx_upper": -5.0,
+        "color": "#A020F0",
+        "gain_ref": "Signal CD122 Kx* upper bound 1e-5",
     },
 ]
 
