@@ -81,6 +81,20 @@ SCANS = [
         "color": "#A020F0",
         "gain_ref": "Signal CD122 Kx* upper bound 1e-5",
     },
+    {
+        "path": "/home/sama/receptor_sweep_data/old_scan_results/old_tight_kx_bound/20260714_selec_scan_full_norm.csv",
+        "label": "Normalized Kx* upper bound 1e-9",
+        "kx_upper": -9.0,
+        "color": "#4B0082",
+        "gain_ref": "Normalized Kx* upper bound 1e-9",
+    },
+    {
+        "path": "/home/sama/receptor_sweep_data/old_scan_results/20260520_selec_scan_full_filt.csv",
+        "label": "Filtered Kx* upper bound 1e-5",
+        "kx_upper": -5.0,
+        "color": "#4B0082",
+        "gain_ref": "Filtered Kx* upper bound 1e-5",
+    },
 ]
 
 # True affinity optimization bounds, log10(M), used for pin/ceiling logic. AFFINITY_BOUNDS pads
