@@ -224,7 +224,7 @@ def overlay_hist(
         ax.hist(
             data_by_scan[scan["label"]],
             bins=bins,
-            density=True,
+            density=False,
             alpha=0.55,
             color=scan["color"],
             label=scan["label"],
@@ -291,7 +291,7 @@ overlay_figure(
     kx_by_scan,
     bins,
     "Optimal log10(Kx*)",
-    "Density",
+    "Number of pairs",
     "upper left",
     scan_bounds={scan["label"]: scan["kx_upper"] for scan in SCANS},
     annotate_pinned=True,
@@ -320,7 +320,7 @@ for ax, (col, title) in zip(axes, AFF_COLS.items(), strict=True):
     ax.set_title(title, fontsize=FS_LABEL)
     ax.set_xlim(*AFFINITY_BOUNDS)
     ax.set_xlabel("Optimal affinity, log10(M)", fontsize=FS_LABEL)
-axes[0].set_ylabel("Density", fontsize=FS_LABEL)
+axes[0].set_ylabel("Number of pairs", fontsize=FS_LABEL)
 axes[0].legend(fontsize=FS_LEGEND, loc="upper right")
 plt.tight_layout()
 plt.show()
@@ -342,7 +342,7 @@ overlay_figure(
     sel_by_scan,
     sel_bins,
     "Optimal selectivity, targ / (targ + off-targ)",
-    "Density (log scale)",
+    "Number of pairs (log scale)",
     "upper right",
     xlim=(sel_bins[0], 1.0),
     ref_lines=(0.5,),
@@ -367,7 +367,7 @@ overlay_figure(
     gain_by_scan,
     gain_bins,
     "log2 selectivity gain (pair / max monospecific)",
-    "Density (log scale)",
+    "Number of pairs (log scale)",
     "upper left",
     ref_lines=(0.0,),
     logy=True,
