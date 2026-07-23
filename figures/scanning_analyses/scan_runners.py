@@ -60,14 +60,15 @@ def run_selectivity_scan():
         1000  # Reference abundance level (C) that receptors are matched to
     )
     expr_match_clip_quantile = None  # Winsorize each receptor's nonzero values at this quantile before matching, or None to disable
+    notes = "Non-zero count normalization with loosened Kx* bounds (-15, -5)"
 
     # Binding model parameters
     dose = 1e-10
-    valency = np.array([[1, 2, 2]])
+    valency = np.array([[1, 1, 1]])
     init = [6.0, 7.0, 7.0, -9.0]  # Initial optimization values
     signal = "prototype"  # Define signal receptor; "prototype" or receptor name
     asym_targs = False  # Calculates both symmetric cases (rec1, rec2) and (rec2, rec1)
-    off_targ_ratio_threshold = 3.0  # Off-target:target mean expression ratio above which a receptor is filtered out, or None for no filtering; 1.0 matches strict "higher target than off-target" filtering
+    off_targ_ratio_threshold = 1.0  # Off-target:target mean expression ratio above which a receptor is filtered out, or None for no filtering; 1.0 matches strict "higher target than off-target" filtering
 
     # Load and define receptor set
     CITE_DF, cite_labels = importCITE(annotation_type)
@@ -176,6 +177,7 @@ def run_selectivity_scan():
 
     yaml_path = os.path.splitext(output_path)[0] + ".yaml"
     scan_params = {
+        "notes": notes,
         "scan_type": "selectivity",
         "output_csv": output_path,
         "general": {
