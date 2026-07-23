@@ -377,9 +377,11 @@ overlay_figure(
 from matplotlib.colors import Normalize
 
 SELEC_FLOOR = 0.505  # pair selectivity at/below this is effectively no selectivity
+SELEC_BOUNDS = (0.47, 1.02)
 GAIN_COLOR_MAX = 0.15  # log2 gain at which the synergy color saturates
 KX_XLABEL = "Optimal log10(Kx*)"
 GAIN_YLABEL = "log2 selectivity gain"
+SELECTIVITY_XLABEL = "Pair selectivity"
 PANEL_W, PANEL_H = 4.3, 3.0
 
 
@@ -407,15 +409,24 @@ def _gain_vs(xkey):
 
     return get
 
+def _vs_selectivity(ykey):
+    """Comparison getter: an output on y against selectivity on x."""
+
+    def get(sd, cvals):
+        return sd["sel"], sd[ykey], cvals
+
+    return get
+
 
 # One row per comparison. xrefs/yrefs are gray reference lines; kx_vline draws each scan's Kx*
 # upper bound; ylim fixes the display range (affinity panels use padded bounds). _row supplies the
 # shared defaults so each entry states only what differs.
-def _row(get, xlabel, ylabel, *, ylim=None, xrefs=(), yrefs=(), kx_vline=False):
+def _row(get, xlabel, ylabel, *, xlim=None, ylim=None, xrefs=(), yrefs=(), kx_vline=False):
     return dict(
         get=get,
         xlabel=xlabel,
         ylabel=ylabel,
+        xlim=xlim,
         ylim=ylim,
         xrefs=xrefs,
         yrefs=yrefs,
@@ -448,23 +459,39 @@ COMPARISONS = [
     ),
     _row(
         _gain_vs("sel"),
-        "Pair selectivity",
+        SELECTIVITY_XLABEL,
         GAIN_YLABEL,
         xrefs=(SELEC_FLOOR,),
         yrefs=(0.0,),
     ),
     _row(
-        _gain_vs("aff0"),
-        "Signal receptor affinity, log10(M)",
-        GAIN_YLABEL,
-        yrefs=(0.0,),
+        _vs_selectivity("aff0"),
+        SELECTIVITY_XLABEL,
+        "Signal aff, log10(M)",
+        xrefs=(SELEC_FLOOR,),
+        xlim=SELEC_BOUNDS,
+        ylim=AFFINITY_BOUNDS,
+        kx_vline=True,
     ),
     _row(
-        _gain_vs("targ_aff"),
-        "Target receptor affinity, log10(M)",
-        GAIN_YLABEL,
-        yrefs=(0.0,),
+        _vs_selectivity("aff1"),
+        SELECTIVITY_XLABEL,
+        "Target 1 aff, log10(M)",
+        xrefs=(SELEC_FLOOR,),
+        xlim=SELEC_BOUNDS,
+        ylim=AFFINITY_BOUNDS,
+        kx_vline=True,
     ),
+    _row(
+        _vs_selectivity("aff2"),
+        SELECTIVITY_XLABEL,
+        "Target 2 aff, log10(M)",
+        xrefs=(SELEC_FLOOR,),
+        xlim=SELEC_BOUNDS,
+        ylim=AFFINITY_BOUNDS,
+        kx_vline=True,
+    ),
+
 ]
 
 
@@ -523,6 +550,8 @@ def build_comparison_grid(scan_colors, draw_points):
                 ax.axvline(
                     scan["kx_upper"], color="0.3", ls="--", lw=1.0, zorder=3, alpha=0.5
                 )
+            if comp["xlim"] is not None:
+                ax.set_xlim(*comp["xlim"])
             if comp["ylim"] is not None:
                 ax.set_ylim(*comp["ylim"])
             ax.tick_params(labelsize=FS_TICK - 2)
