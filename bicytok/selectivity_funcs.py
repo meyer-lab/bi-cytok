@@ -175,7 +175,7 @@ def optimize_affs(
     valencies: np.ndarray,
     init_vals: np.ndarray | str | int = 42,
     affinity_bounds: tuple[float, float] = (6.0, 12.0),
-    Kx_star_bounds: tuple[float, float] = (-15, -9),
+    Kx_star_bounds: tuple[float, float] = (-15, -5),
     max_iter: int = 1000,
     tol: float = 1e-5,
 ) -> tuple[float, list, float]:
