@@ -114,6 +114,7 @@ def scan_KL_EMD(
             targ_cell_type=cell_type,
             sample_size=sample_size,
             balance=True,
+            rand_state=rand_state,
         )
 
         targ_mask = sampled_cell_type_labels == cell_type
@@ -240,6 +241,7 @@ def scan_selectivity(
             targ_cell_type=cell_type,
             sample_size=sample_size,
             balance=False,  # Binding model is not biased by cell type proportions
+            rand_state=rand_state,
         )
 
         targ_mask = sampled_cell_type_labels == cell_type
