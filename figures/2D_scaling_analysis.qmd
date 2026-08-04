@@ -3,7 +3,7 @@ title: "2D receptor scaling analysis: Selectivity, EMD, and KL Divergence"
 ---
 
 # Summary
-Extends the 1D binding model scaling analysis to examine how independently scaling two target receptor distributions affects three metrics: selectivity (binding model), EMD, and KL divergence. A 2D grid of scale factors is swept, applying `scale1` to receptor 1 and `scale2` to receptor 2 for each cell. Results are shown as 2D heatmaps.
+Extends the 1D binding model scaling analysis to examine how independently scaling two target receptor distributions affects three metrics: selectivity (binding model), EMD, and KL divergence. A 2D grid of scale factors is swept, applying `scale1` to receptor 1 and `scale2` to receptor 2 for each cell.
 
 A scale-correction comparison figure decomposes the independent per-receptor scaling into two orthogonal directions to isolate what the shared `Kx_star` optimization can and cannot correct: a **global (common-mode)** direction where both targets are scaled together (`s1 = s2 = s`), which a single shared `Kx_star` can largely absorb, and a **relative (differential-mode)** direction where the targets are scaled oppositely (`s1 = s`, `s2 = 1/s`), which it cannot — the failure mode behind the 2D scale variance. Along each direction, selectivity is compared under three schemes: the raw model (affinities and `Kx_star` only), per-receptor 1D-Kx scaling (per-pair reference; see `get_Kx_scale`), and global geometric-mean `Kx_star` scaling (shared reference; see `global_kx_factors`).
 
@@ -32,7 +32,6 @@ A final expression-matching figure takes a different form: because expression ma
 - `diag_scales`: Log-spaced scale factors swept along the global and relative directions for the scale-correction comparison
 - `expr_match_scales`: Reference abundance levels that the signal receptor and both targets are matched to in the expression-matching figure
 - `expr_match`: Divisor statistic used for expression matching: "mean" or "non-zero mean"
-- `expr_match_clip_quantile`: Quantile at which each receptor's nonzero values are winsorized before matching, or None to disable
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -79,9 +78,6 @@ expr_match_scales = np.logspace(1, 4, num=9)
 
 # Divisor statistic for expression matching: "mean" or "non-zero mean"
 expr_match = "mean"
-
-# Winsorize each receptor's nonzero values at this quantile before matching, or None to disable
-expr_match_clip_quantile = 0.99
 
 CITE_DF, cell_types = importCITE(cell_categorization)
 CITE_DF["Cell Type"] = cell_types
@@ -210,7 +206,7 @@ for rec1, rec2, valency in receptor_pairs:
     pair_label = f"{rec1} + {rec2}"
 
     # Binding model valencies: [signal_receptor, receptor1, receptor2]
-    model_valencies = np.array([[(signal_valency), (valency), (valency)]])
+    model_valencies = np.array([[signal_valency, valency, valency]])
 
     n = num_scale_factors
     selectivities = np.full((n, n), np.nan)
@@ -365,7 +361,7 @@ for rec1, rec2, valency in receptor_pairs:
     for match_mean in expr_match_scales:
         print(f"Pair: {pair_label}, match_mean={match_mean:.1e}")
         norm_sig, norm_rec1, norm_rec2 = match_receptor_abundances(
-            base_rec_mat, expr_match, match_mean, expr_match_clip_quantile
+            base_rec_mat, expr_match, match_mean
         ).T
         try:
             selec.append(

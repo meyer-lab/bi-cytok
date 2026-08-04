@@ -276,7 +276,6 @@ def match_receptor_abundances(
     rec_abundances: np.ndarray,
     method: str | None,
     target: float,
-    clip_quantile: float | None = None,
 ) -> np.ndarray:
     """
     Scales each receptor's abundances (columns) to match a common reference level,
@@ -286,11 +285,6 @@ def match_receptor_abundances(
         method: divisor statistic used for matching. One of "mean", "non-zero mean",
             or None (no matching; rec_abundances is returned unchanged)
         target: reference abundance level that each receptor is scaled to match
-        clip_quantile: if not None, winsorizes each receptor's nonzero values at its
-            own upper quantile (e.g. 0.99) before the divisor is computed, so a
-            handful of extreme cells don't dominate the divisor or the matched scale.
-            Clipping at a receptor's own quantile scales with that receptor's raw
-            abundance, so it does not reintroduce per-receptor scale sensitivity.
     Return:
         matched receptor abundances, same shape as rec_abundances
     """
@@ -301,11 +295,6 @@ def match_receptor_abundances(
     matched = np.array(rec_abundances, dtype=float, copy=True)
     for i in range(matched.shape[1]):
         rec_col = matched[:, i]
-        if clip_quantile is not None:
-            nonzero_vals = rec_col[rec_col != 0]
-            if nonzero_vals.size > 0:
-                clip_val = np.quantile(nonzero_vals, clip_quantile)
-                rec_col = np.minimum(rec_col, clip_val)
         if method == "mean":
             divisor = rec_col.mean()
         elif method == "non-zero mean":

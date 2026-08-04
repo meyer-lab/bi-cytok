@@ -63,7 +63,7 @@ def scan_KL_EMD(
     targ_cell_types: list[str],
     dim: int,
     sample_size: int = 100,
-    filter_by_target_expr: bool = False,
+    off_targ_ratio_threshold: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculate KL divergence and EMD for all receptor combinations across target cell
@@ -77,10 +77,13 @@ def scan_KL_EMD(
         targ_cell_types: list of target cell types to evaluate
         dim: dimensionality of receptor combinations (1, 2, or 3)
         sample_size: target cell count for subsampling
-        filter_by_target_expr: if True, restrict scan to receptors with higher mean
-            expression in target cells than off-target cells. Filtering is applied
-            per cell type after sampling, so valid receptors may differ across cell
-            types.
+        off_targ_ratio_threshold: if not None, restrict scan to receptors with
+            mean_off_targ / mean_targ < this value (receptors with mean_targ <= 0
+            always have an undefined/infinite ratio and are excluded). 1.0 reproduces
+            the strict "higher target than off-target expression" filter; higher
+            values relax it to only exclude receptors with a disproportionately high
+            off-target:target ratio. None disables filtering. Filtering is applied per
+            cell type after sampling, so valid receptors may differ across cell types.
 
     Outputs:
         KL_div_vals_scan: KL divergence values for all receptor combinations and cell types
@@ -114,17 +117,21 @@ def scan_KL_EMD(
         targ_mask = sampled_cell_type_labels == cell_type
         off_targ_mask = ~targ_mask
 
-        # Filters out receptors with higher mean expression in off-target cells.
-        # Off-target populations with higher mean expression than target populations
-        #    yield high EMD and KL div., but are poor selectivity targets.
-        if filter_by_target_expr:
+        # Filters out receptors with a disproportionately high off-target:target mean
+        # expression ratio. Off-target-skewed receptors yield high EMD and KL div.,
+        # but are poor selectivity targets.
+        if off_targ_ratio_threshold is not None:
             mean_targ = sampled_rec_abundances[targ_mask, :].mean(axis=0)
             mean_off_targ = sampled_rec_abundances[off_targ_mask, :].mean(axis=0)
-            valid_indices = np.where(mean_targ > mean_off_targ)[0]
+            with np.errstate(divide="ignore", invalid="ignore"):
+                off_targ_ratio = np.where(
+                    mean_targ > 0, mean_off_targ / mean_targ, np.inf
+                )
+            valid_indices = np.where(off_targ_ratio < off_targ_ratio_threshold)[0]
             filtered_abundances = sampled_rec_abundances[:, valid_indices]
             print(
                 f"Filtered to {len(valid_indices)} / {n_receptors} receptors with "
-                f"higher target expression for {cell_type}."
+                f"off_targ_ratio_threshold={off_targ_ratio_threshold} for {cell_type}."
             )
         else:
             valid_indices = np.arange(n_receptors)

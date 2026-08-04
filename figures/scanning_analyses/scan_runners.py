@@ -59,8 +59,7 @@ def run_selectivity_scan():
     expr_match_target = (
         1000  # Reference abundance level (C) that receptors are matched to
     )
-    expr_match_clip_quantile = None  # Winsorize each receptor's nonzero values at this quantile before matching, or None to disable
-    notes = "Non-zero count normalization with loosened Kx* bounds (-15, -5)"
+    notes = ""  # Free-text description of this scan's configuration, saved to the YAML
 
     # Binding model parameters
     dose = 1e-10
@@ -116,7 +115,7 @@ def run_selectivity_scan():
     # Match receptor abundances (including the signal receptor) to a common reference level
     rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
     rec_abundances = match_receptor_abundances(
-        rec_abundances, expr_match, expr_match_target, expr_match_clip_quantile
+        rec_abundances, expr_match, expr_match_target
     )
 
     # Define cell type labels if not pre-specified
@@ -189,7 +188,6 @@ def run_selectivity_scan():
             "dim": 2,
             "expr_match": expr_match,
             "expr_match_target": expr_match_target,
-            "expr_match_clip_quantile": expr_match_clip_quantile,
         },
         "binding_model": {
             "dose": float(dose),
@@ -253,12 +251,9 @@ def run_KL_EMD_scan():
     expr_match_target = (
         1000  # Reference abundance level (C) that receptors are matched to
     )
-    expr_match_clip_quantile = 0.99  # Winsorize each receptor's nonzero values at this quantile before matching, or None to disable
 
     # Distance metric scan parameters
-    filter_by_target_expr = (
-        False  # Boolean to filter out receptors with higher off-target expression
-    )
+    off_targ_ratio_threshold = None  # Off-target:target mean expression ratio above which a receptor is filtered out, or None for no filtering; 1.0 matches strict "higher target than off-target" filtering
 
     # Load and define receptor set
     CITE_DF, cite_labels = importCITE(annotation_type)
@@ -284,7 +279,7 @@ def run_KL_EMD_scan():
     # Match receptor abundances to a common reference level
     rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
     rec_abundances = match_receptor_abundances(
-        rec_abundances, expr_match, expr_match_target, expr_match_clip_quantile
+        rec_abundances, expr_match, expr_match_target
     )
 
     # Define cell type labels if not pre-specified
@@ -311,7 +306,7 @@ def run_KL_EMD_scan():
         targ_cell_types,
         dim=2,
         sample_size=sample_size,
-        filter_by_target_expr=filter_by_target_expr,
+        off_targ_ratio_threshold=off_targ_ratio_threshold,
     )
 
     # Save flattened results
@@ -347,10 +342,9 @@ def run_KL_EMD_scan():
             "dim": 2,
             "expr_match": expr_match,
             "expr_match_target": expr_match_target,
-            "expr_match_clip_quantile": expr_match_clip_quantile,
         },
         "distance_metric": {
-            "filter_by_target_expr": filter_by_target_expr,
+            "off_targ_ratio_threshold": off_targ_ratio_threshold,
         },
         "receptors_used_before_filtering": receptors,
         "n_receptors": len(receptors),
