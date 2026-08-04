@@ -142,7 +142,7 @@ def sample_receptor_abundances(
             The final column should be the cell types of each cell.
         numCells: number of cells to sample
         targCellType: the cell type that will be used to split target and
-            off targer sampling
+            off target sampling
         offTargCellTypes: list of cell types that are distinct from target cells.
             If None, all cell types except targCellType will be used.
         rand_state: random seed for sampling cells from the CITE-seq data

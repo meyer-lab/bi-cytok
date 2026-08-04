@@ -56,7 +56,9 @@ def run_selectivity_scan():
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
     expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
     rand_state = 42  # Random seed for sampling cells from the CITE-seq data
-    rand_state_prototype = 42  # Random seed for generating a prototypical signal receptor
+    rand_state_prototype = (
+        42  # Random seed for generating a prototypical signal receptor
+    )
 
     # Binding model parameters
     dose = 1e-10
