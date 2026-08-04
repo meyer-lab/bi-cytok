@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from bicytok.imports import importCITE
+from bicytok.imports import importCITE, sample_prototype_signal_receptor
 from bicytok.scanning_funcs import sample_cells, scan_KL_EMD, scan_selectivity
 
 
@@ -56,6 +56,7 @@ def run_selectivity_scan():
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
     expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
     rand_state = 42  # Random seed for sampling cells from the CITE-seq data
+    rand_state_prototype = 42  # Random seed for generating a prototypical signal receptor
 
     # Binding model parameters
     dose = 1e-10
@@ -86,13 +87,8 @@ def run_selectivity_scan():
 
     # Define signal receptor for binding model selectivity ratio
     if signal == "prototype":
-        # Insert prototype signal receptor with normally distributed expression values
-        rng = np.random.default_rng()
-        prototype_signal_receptor = rng.normal(
-            loc=50, scale=5, size=(epitopes_df.shape[0],)
-        )
-        prototype_signal_receptor = np.clip(
-            prototype_signal_receptor, a_min=0, a_max=None
+        prototype_signal_receptor = sample_prototype_signal_receptor(
+            epitopes_df.shape[0], rand_state=rand_state_prototype
         )
         epitopes_df.insert(0, "Prototype_Signal_Receptor", prototype_signal_receptor)
         receptors = ["Prototype_Signal_Receptor"] + receptors
@@ -185,6 +181,7 @@ def run_selectivity_scan():
             "dim": 2,
             "expr_matching": expr_matching,
             "rand_state": rand_state,
+            "rand_state_prototype": rand_state_prototype,
         },
         "binding_model": {
             "dose": float(dose),

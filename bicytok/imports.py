@@ -95,6 +95,31 @@ def import_annotation_markers() -> dict[str, set[str]]:
     return cell_type_markers
 
 
+def sample_prototype_signal_receptor(
+    n_cells: int,
+    loc: float = 50,
+    scale: float = 5,
+    rand_state: int = 42,
+) -> np.ndarray:
+    """
+    Generates a prototypical signal receptor abundance distribution by sampling
+    from a normal distribution and clipping negative values to zero.
+
+    Args:
+        n_cells: number of cells (values) to generate.
+        loc: mean of the normal distribution.
+        scale: standard deviation of the normal distribution.
+        rand_state: random seed for reproducibility.
+    Returns:
+        prototype_signal_receptor: array of non-negative prototype signal
+            receptor abundance values, one per cell.
+    """
+    rng = np.random.default_rng(rand_state)
+    prototype_signal_receptor = rng.normal(loc=loc, scale=scale, size=(n_cells,))
+    prototype_signal_receptor = np.clip(prototype_signal_receptor, a_min=0, a_max=None)
+    return prototype_signal_receptor
+
+
 def sample_receptor_abundances(
     CITE_DF: pd.DataFrame,
     numCells: int,
@@ -202,9 +227,9 @@ def sample_receptor_abundances(
     sampleDF = pd.concat([sampled_target_cells, sampled_off_target_cells])
 
     if insert_mock_signal_rec:
-        rng = np.random.default_rng(rand_state_prototype)
-        mock_signal_rec = rng.normal(loc=50, scale=5, size=(sampleDF.shape[0],))
-        mock_signal_rec = np.clip(mock_signal_rec, a_min=0, a_max=None)
+        mock_signal_rec = sample_prototype_signal_receptor(
+            sampleDF.shape[0], rand_state=rand_state_prototype
+        )
         sampleDF.insert(0, column="sim_signal", value=mock_signal_rec)
 
     return sampleDF
