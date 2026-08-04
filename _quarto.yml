@@ -12,8 +12,8 @@ format:
     citeproc: true
     columns: 2
     include-in-header:
-      - manuscript/_subfig-caption-override.typ
-      - manuscript/_math-style-override.typ
+      - manuscript/styles/_subfig-caption-override.typ
+      - manuscript/styles/_math-style-override.typ
 jupyter: python3
 
 crossref:

@@ -42,7 +42,7 @@ abstract: |
   Placeholder abstract text.
 Funding: "This work was supported by NIAID"
 bibliography: bibliography.bib
-csl: nature.csl
+csl: styles/nature.csl
 ---
 
 ```{=typst}
