@@ -65,6 +65,9 @@ csl: nature.csl
 }
 ```
 
+## Pre-publication to-dos:
+- [ ] Migrate scan results to /opt directory
+
 {{< include _introduction.qmd >}}
 
 {{< include _results_fig1.qmd >}}
