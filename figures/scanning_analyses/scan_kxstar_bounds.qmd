@@ -99,10 +99,17 @@ SCANS = [
     # },
     # {
     #     "path": "/home/sama/receptor_sweep_data/20260723_selec_scan_full_norm_filt_kxup.csv",
-    #     "label": "Normalized Kx* upper bound 1e-5",
+    #     "label": "Normalized 1000 Kx* upper bound 1e-5",
     #     "kx_upper": -5.0,
-    #     "color": "#4B0082",
-    #     "gain_ref": "Normalized Kx* upper bound 1e-5",
+    #     "color": "#FF7F00",
+    #     "gain_ref": "Normalized 1000 Kx* upper bound 1e-5",
+    # },
+    # {
+    #     "path": "/home/sama/receptor_sweep_data/20260804_selec_scan_full_norm_filt_100.csv",
+    #     "label": "Normalized 100 Kx* upper bound 1e-5",
+    #     "kx_upper": -5.0,
+    #     "color": "#4E9A06",
+    #     "gain_ref": "Normalized 100 Kx* upper bound 1e-5",
     # },
 
     # # Variable filter-strength scans
