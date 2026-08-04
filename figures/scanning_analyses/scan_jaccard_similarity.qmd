@@ -148,23 +148,27 @@ SCENARIOS = {
     "filt_posthoc": dict(
         metrics={
             "All receptors": {
-                "path": f"{_DATA}/20260714_selec_scan_full_non-zero-match.csv",
+                "path": f"{_DATA}/20260520_selec_scan_full.csv",
                 "column": "Selectivity",
             },
-            "Mean filtered": {
-                "path": f"{_DATA}/20260714_selec_scan_full_non-zero-match_filt.csv",
+            "Mean filtered 1.5": {
+                "path": f"{_DATA}/post-hoc_filt_results/20260520_selec_scan_full_filt1-5.csv",
                 "column": "Selectivity",
             },
-            "Mean filtered 2": {
-                "path": f"{_DATA}/20260714_selec_scan_full_non-zero-match_filt_2.csv",
+                        "Mean filtered 2.0": {
+                "path": f"{_DATA}/post-hoc_filt_results/20260520_selec_scan_full_filt2.csv",
                 "column": "Selectivity",
             },
-            "Mean filtered 5": {
-                "path": f"{_DATA}/20260714_selec_scan_full_non-zero-match_filt_5.csv",
+            "Mean filtered 3.0": {
+                "path": f"{_DATA}/post-hoc_filt_results/20260520_selec_scan_full_filt3.csv",
                 "column": "Selectivity",
             },
         },
-        comparisons=[("All receptors", "Mean filtered"), ("All receptors", "Mean filtered 2"), ("All receptors", "Mean filtered 5")],
+        comparisons=[
+            ("All receptors", "Mean filtered 1.5"),
+            ("All receptors", "Mean filtered 2.0"),
+            ("All receptors", "Mean filtered 3.0"),
+        ],
         top_n_values=[5, 10, 50, 100, 500, 1000],
         min_valid_pairs_pct=0,
         scale_dot_size=False,
