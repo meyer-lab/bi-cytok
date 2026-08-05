@@ -11,9 +11,9 @@ import pandas as pd
 import yaml
 
 from bicytok.imports import (
-  importCITE,
-  sample_prototype_signal_receptor,
-  match_receptor_abundances,
+    importCITE,
+    match_receptor_abundances,
+    sample_prototype_signal_receptor,
 )
 from bicytok.scanning_funcs import sample_cells, scan_KL_EMD, scan_selectivity
 
@@ -68,7 +68,6 @@ def run_selectivity_scan():
         42  # Random seed for generating a prototypical signal receptor
     )
     notes = ""  # Free-text description of this scan's configuration, saved to the YAML
-
 
     # Binding model parameters
     dose = 1e-10

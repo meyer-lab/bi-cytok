@@ -155,7 +155,7 @@ SCENARIOS = {
                 "path": f"{_DATA}/post-hoc_filt_results/20260520_selec_scan_full_filt1-5.csv",
                 "column": "Selectivity",
             },
-                        "Mean filtered 2.0": {
+            "Mean filtered 2.0": {
                 "path": f"{_DATA}/post-hoc_filt_results/20260520_selec_scan_full_filt2.csv",
                 "column": "Selectivity",
             },
@@ -169,15 +169,19 @@ SCENARIOS = {
             ("All receptors", "Mean filtered 2.0"),
             ("All receptors", "Mean filtered 3.0"),
         ],
+        top_n_values=[5, 10, 50, 100, 500, 1000],
+        min_valid_pairs_pct=0,
+        scale_dot_size=False,
+    ),
     # Randomization seeds
     "randomization": dict(
         metrics={
             "Replicate 1": {
-                "path": f"{_DATA}/20260720_selec_scan_rand42.csv",
+                "path": f"{_DATA}/20260520_selec_scan_full.csv",
                 "column": "Selectivity",
             },
             "Replicate 2": {
-                "path": f"{_DATA}/20260720_selec_scan_rand41.csv",
+                "path": f"{_DATA}/20260804_selec_scan_full_rand41.csv",
                 "column": "Selectivity",
             },
         },
