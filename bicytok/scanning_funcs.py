@@ -20,6 +20,7 @@ def sample_cells(
     targ_cell_type: str,
     sample_size: int = 100,
     balance: bool = True,
+    rand_state: int = 42,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Sample cells from receptor abundance data.
@@ -32,6 +33,7 @@ def sample_cells(
             off-target populations
         balance: whether to balance number of cells in target and off-target
             populations
+        rand_state: random seed for sampling cells from the CITE-seq data
 
     Outputs:
         sampled_rec_abundances: subset of rec_abundances after sampling
@@ -48,6 +50,7 @@ def sample_cells(
         numCells=sample_size,
         targCellType=targ_cell_type,
         balance=balance,
+        rand_state=rand_state,
     )
     sampled_cell_type_labels = sampled_abun_DF["Cell Type"].to_numpy(dtype=str)
     sampled_rec_abundances = sampled_abun_DF.drop(columns=["Cell Type"]).to_numpy(
@@ -64,6 +67,7 @@ def scan_KL_EMD(
     dim: int,
     sample_size: int = 100,
     off_targ_ratio_threshold: float | None = None,
+    rand_state: int = 42,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculate KL divergence and EMD for all receptor combinations across target cell
@@ -84,6 +88,7 @@ def scan_KL_EMD(
             values relax it to only exclude receptors with a disproportionately high
             off-target:target ratio. None disables filtering. Filtering is applied per
             cell type after sampling, so valid receptors may differ across cell types.
+        rand_state: random seed for sampling cells from the CITE-seq data
 
     Outputs:
         KL_div_vals_scan: KL divergence values for all receptor combinations and cell types
@@ -112,6 +117,7 @@ def scan_KL_EMD(
             targ_cell_type=cell_type,
             sample_size=sample_size,
             balance=True,
+            rand_state=rand_state,
         )
 
         targ_mask = sampled_cell_type_labels == cell_type
@@ -168,6 +174,7 @@ def scan_selectivity(
     dose: float,
     valencies: np.ndarray,
     sample_size: int = 100,
+    rand_state: int = 42,
     signal_col: int = 0,
     init_method: np.ndarray | str | int = 42,
     asym_targs: bool = False,
@@ -188,6 +195,7 @@ def scan_selectivity(
         valencies: array of valencies for each distinct ligand in the ligand complex.
             Assumes symmetric target receptor valencies for dim > 1.
         sample_size: number of cells to sample per cell type
+        rand_state: random seed for sampling cells from the CITE-seq data
         signal_col: column index of designated signal receptor to include in all
             combinations, defaults to first receptor.
         init_method: method for initializing optimization (integer seed for random
@@ -249,6 +257,7 @@ def scan_selectivity(
             targ_cell_type=cell_type,
             sample_size=sample_size,
             balance=False,  # Binding model is not biased by cell type proportions
+            rand_state=rand_state,
         )
 
         targ_mask = sampled_cell_type_labels == cell_type
