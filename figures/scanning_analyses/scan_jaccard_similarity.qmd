@@ -139,6 +139,23 @@ SCENARIOS = {
         min_valid_pairs_pct=0,
         scale_dot_size=False,
     ),
+    # Randomization seeds
+    "randomization": dict(
+        metrics={
+            "Replicate 1": {
+                "path": f"{_DATA}/20260720_selec_scan_rand42.csv",
+                "column": "Selectivity",
+            },
+            "Replicate 2": {
+                "path": f"{_DATA}/20260720_selec_scan_rand41.csv",
+                "column": "Selectivity",
+            },
+        },
+        comparisons=[("Replicate 1", "Replicate 2")],
+        top_n_values=[5, 10, 50, 100, 500, 1000],
+        min_valid_pairs_pct=0,
+        scale_dot_size=False,
+    ),
 }
 
 
@@ -542,6 +559,7 @@ def jaccard_summary(res):
 res_valency = compute_jaccard(**SCENARIOS["valency"])
 res_signal = compute_jaccard(**SCENARIOS["signal"])
 res_metric = compute_jaccard(**SCENARIOS["metric_agreement"])
+res_rand = compute_jaccard(**SCENARIOS["randomization"])
 ```
 
 ```{python}
@@ -559,6 +577,11 @@ plot_jaccard_box(res_signal)
 #| fig-cap: "Agreement (Jaccard index) between the top-ranked receptor pairs of binding-model selectivity, EMD, and KL divergence, across target cell types and top-N thresholds."
 plot_jaccard_box(res_metric)
 ```
+```{python}
+#| label: fig-jaccard-randomization
+#| fig-cap: "Jaccard index of randomizations across target cell types and top-N thresholds."
+plot_jaccard_box(res_rand)
+```
 
 ```{python}
 # Line plots + summary tables (diagnostic; not embedded).
@@ -570,4 +593,7 @@ jaccard_summary(res_signal)
 
 plot_jaccard_lines(res_metric)
 jaccard_summary(res_metric)
+
+plot_jaccard_lines(res_rand)
+jaccard_summary(res_rand)
 ```
