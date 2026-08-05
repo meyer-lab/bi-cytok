@@ -616,7 +616,9 @@ OPT1_N_NONSYN = 200
 OPT1_FIGSIZE = (5.5, 5.5)
 
 
-def _opt1_scatter(ax, syn_df, nonsyn_recs, mono_map, bpim, n_label=OPT1_N_LABEL):
+def _opt1_scatter(
+    ax, syn_df, nonsyn_recs, mono_map, bpim, title=None, n_label=OPT1_N_LABEL
+):
     max_gain = syn_df["synergy_gain"].max()
     gain_norm = Normalize(vmin=0, vmax=max_gain)
 
@@ -692,6 +694,8 @@ def _opt1_scatter(ax, syn_df, nonsyn_recs, mono_map, bpim, n_label=OPT1_N_LABEL)
     ax.set_ylabel(f"Pair {metric_label}", fontsize=FS_LABEL)
     ax.legend(fontsize=FS_LEGEND, loc="upper left")
     ax.grid(alpha=0.25, ls="--")
+    if title:
+        ax.set_title(title, fontsize=FS_LABEL)
 
 
 # Per-cell-type
@@ -704,7 +708,7 @@ for ct in PLOT_CELL_TYPES:
         res["non_synergistic_recs"],
         res["rec_mono_map"],
         best_pair_info_maps[ct],
-        f"({len(res['synergy_df'])} synergistic pairs above diagonal)",
+        title=f"{ct} ({len(res['synergy_df'])} synergistic pairs above diagonal)",
     )
     plt.tight_layout()
     plt.show()
@@ -753,6 +757,7 @@ if not all_synergy_df.empty:
         alpha=0.5,
         zorder=2,
         linewidths=0,
+        rasterized=True,
     )
     lim_s = max(syn_x_all.max(), syn_y_all.max()) * 1.05
     ax_s.plot([0, lim_s], [0, lim_s], color="dimgray", lw=1.0, ls="--", alpha=0.6)

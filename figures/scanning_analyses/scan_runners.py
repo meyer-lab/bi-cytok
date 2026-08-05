@@ -10,7 +10,11 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from bicytok.imports import importCITE, sample_prototype_signal_receptor
+from bicytok.imports import (
+    importCITE,
+    match_receptor_abundances,
+    sample_prototype_signal_receptor,
+)
 from bicytok.scanning_funcs import sample_cells, scan_KL_EMD, scan_selectivity
 
 
@@ -48,17 +52,22 @@ def run_selectivity_scan():
     annotation_type = "CellType2"  # CITE-seq cell type annotation column; e.g. "CellType2" (WNN) or "CellType2_RNA" (transcript-based)
     sample_size = 1000
     min_avg_count = 5  # Expression threshold
+    min_nonzero_cells = 0  # Minimum number of nonzero cells required per receptor, so the non-zero mean divisor isn't estimated from too few samples
     receptors = None  # Receptors to analyze; list or None for all
     cell_types = None  # Cell types to analyze; list or None for all
     targ_cell_types = (
         None  # Target cell types for selectivity calculation; list or None for all
     )
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
-    expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
+    expr_match = "non-zero mean"  # Divisor statistic for expression matching: "mean", "non-zero mean", or None (no matching)
+    expr_match_target = (
+        1000  # Reference abundance level (C) that receptors are matched to
+    )
     rand_state = 42  # Random seed for sampling cells from the CITE-seq data
     rand_state_prototype = (
         42  # Random seed for generating a prototypical signal receptor
     )
+    notes = ""  # Free-text description of this scan's configuration, saved to the YAML
 
     # Binding model parameters
     dose = 1e-10
@@ -66,6 +75,7 @@ def run_selectivity_scan():
     init = [6.0, 7.0, 7.0, -9.0]  # Initial optimization values
     signal = "prototype"  # Define signal receptor; "prototype" or receptor name
     asym_targs = False  # Calculates both symmetric cases (rec1, rec2) and (rec2, rec1)
+    off_targ_ratio_threshold = 1.0  # Off-target:target mean expression ratio above which a receptor is filtered out, or None for no filtering; 1.0 matches strict "higher target than off-target" filtering
 
     # Load and define receptor set
     CITE_DF, cite_labels = importCITE(annotation_type)
@@ -76,9 +86,12 @@ def run_selectivity_scan():
         f"Signal receptor '{signal}' not found in receptors list"
     )
 
-    # Filter lowly expressed receptors
+    # Filter lowly expressed and too-sparse receptors
     mean_expr = CITE_DF[receptors].mean(axis=0)
-    selected_receptors = mean_expr[mean_expr >= min_avg_count].index.tolist()
+    nonzero_counts = (CITE_DF[receptors] != 0).sum(axis=0)
+    selected_receptors = mean_expr[
+        (mean_expr >= min_avg_count) & (nonzero_counts >= min_nonzero_cells)
+    ].index.tolist()
     assert len(selected_receptors) > 0, "No receptors pass the expression threshold"
     assert signal == "prototype" or signal in selected_receptors, (
         f"Signal receptor '{signal}' not found in selected receptors after filtering"
@@ -102,18 +115,11 @@ def run_selectivity_scan():
     if cell_types is not None and exclude_cell_types:
         epitopes_df = epitopes_df[epitopes_df["Cell Type"].isin(cell_types)]
 
-    # Match receptor abundance averages
+    # Match receptor abundances (including the signal receptor) to a common reference level
     rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
-    if expr_matching is not None:
-        for i in range(len(receptors)):
-            if (
-                i == signal_ind and signal == "prototype"
-            ):  # Don't scale the signal receptor if it is the prototype
-                pass
-            else:
-                rec_abundances[:, i] = (
-                    rec_abundances[:, i] * expr_matching / np.mean(rec_abundances[:, i])
-                )
+    rec_abundances = match_receptor_abundances(
+        rec_abundances, expr_match, expr_match_target
+    )
 
     # Define cell type labels if not pre-specified
     cell_type_labels = epitopes_df["Cell Type"].tolist()
@@ -145,6 +151,7 @@ def run_selectivity_scan():
         signal_col=signal_ind,
         init_method=init,
         asym_targs=asym_targs,
+        off_targ_ratio_threshold=off_targ_ratio_threshold,
     )
 
     # Save flattened results
@@ -173,15 +180,18 @@ def run_selectivity_scan():
 
     yaml_path = os.path.splitext(output_path)[0] + ".yaml"
     scan_params = {
+        "notes": notes,
         "scan_type": "selectivity",
         "output_csv": output_path,
         "general": {
             "annotation_type": annotation_type,
             "sample_size": sample_size,
             "min_expression_threshold": min_avg_count,
+            "min_nonzero_cells": min_nonzero_cells,
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
-            "expr_matching": expr_matching,
+            "expr_match": expr_match,
+            "expr_match_target": expr_match_target,
             "rand_state": rand_state,
             "rand_state_prototype": rand_state_prototype,
         },
@@ -191,6 +201,7 @@ def run_selectivity_scan():
             "initial_affinities": init,
             "signal_receptor": signal,
             "asym_targs": asym_targs,
+            "off_targ_ratio_threshold": off_targ_ratio_threshold,
         },
         "receptors_used_before_filtering": receptors,
         "n_receptors": len(receptors),
@@ -235,19 +246,21 @@ def run_KL_EMD_scan():
     annotation_type = "CellType2"  # CITE-seq cell type annotation column; e.g. "CellType2" (WNN) or "CellType2_RNA" (transcript-based)
     sample_size = 1000
     min_avg_count = 5  # Expression threshold
+    min_nonzero_cells = 100  # Minimum number of nonzero cells required per receptor, so the non-zero mean divisor isn't estimated from too few samples
     receptors = None  # Receptors to analyze; list or None for all
     cell_types = None  # Cell types to analyze; list or None for all
     targ_cell_types = (
         None  # Target cell types for selectivity calculation; list or None for all
     )
     exclude_cell_types = False  # Boolean to exclude cell types not in cell_types list
-    expr_matching = None  # If not None, scales receptor expression values to match this average across all cell types
+    expr_match = "non-zero mean"  # Divisor statistic for expression matching: "mean", "non-zero mean", or None (no matching)
+    expr_match_target = (
+        1000  # Reference abundance level (C) that receptors are matched to
+    )
     rand_state = 42  # Random seed for sampling cells from the CITE-seq data
 
     # Distance metric scan parameters
-    filter_by_target_expr = (
-        False  # Boolean to filter out receptors with higher off-target expression
-    )
+    off_targ_ratio_threshold = None  # Off-target:target mean expression ratio above which a receptor is filtered out, or None for no filtering; 1.0 matches strict "higher target than off-target" filtering
 
     # Load and define receptor set
     CITE_DF, cite_labels = importCITE(annotation_type)
@@ -255,9 +268,12 @@ def run_KL_EMD_scan():
     if receptors is None:
         receptors = list(epitopes)
 
-    # Filter lowly expressed receptors
+    # Filter lowly expressed and too-sparse receptors
     mean_expr = CITE_DF[receptors].mean(axis=0)
-    selected_receptors = mean_expr[mean_expr >= min_avg_count].index.tolist()
+    nonzero_counts = (CITE_DF[receptors] != 0).sum(axis=0)
+    selected_receptors = mean_expr[
+        (mean_expr >= min_avg_count) & (nonzero_counts >= min_nonzero_cells)
+    ].index.tolist()
     assert len(selected_receptors) > 0, "No receptors pass the expression threshold"
     epitopes_df = CITE_DF[selected_receptors].copy()
     epitopes_df["Cell Type"] = cite_labels
@@ -267,13 +283,11 @@ def run_KL_EMD_scan():
     if cell_types is not None and exclude_cell_types:
         epitopes_df = epitopes_df[epitopes_df["Cell Type"].isin(cell_types)]
 
-    # Match receptor abundance averages
+    # Match receptor abundances to a common reference level
     rec_abundances = epitopes_df.drop(columns=["Cell Type"]).to_numpy()
-    if expr_matching is not None:
-        for i in range(len(receptors)):
-            rec_abundances[:, i] = (
-                rec_abundances[:, i] * expr_matching / np.mean(rec_abundances[:, i])
-            )
+    rec_abundances = match_receptor_abundances(
+        rec_abundances, expr_match, expr_match_target
+    )
 
     # Define cell type labels if not pre-specified
     cell_type_labels = epitopes_df["Cell Type"].tolist()
@@ -299,8 +313,8 @@ def run_KL_EMD_scan():
         targ_cell_types,
         dim=2,
         sample_size=sample_size,
+        off_targ_ratio_threshold=off_targ_ratio_threshold,
         rand_state=rand_state,
-        filter_by_target_expr=filter_by_target_expr,
     )
 
     # Save flattened results
@@ -331,13 +345,15 @@ def run_KL_EMD_scan():
             "annotation_type": annotation_type,
             "sample_size": sample_size,
             "min_expression_threshold": min_avg_count,
+            "min_nonzero_cells": min_nonzero_cells,
             "exclude_unused_cell_types": exclude_cell_types,
             "dim": 2,
-            "expr_matching": expr_matching,
+            "expr_match": expr_match,
+            "expr_match_target": expr_match_target,
             "rand_state": rand_state,
         },
         "distance_metric": {
-            "filter_by_target_expr": filter_by_target_expr,
+            "off_targ_ratio_threshold": off_targ_ratio_threshold,
         },
         "receptors_used_before_filtering": receptors,
         "n_receptors": len(receptors),
@@ -455,20 +471,30 @@ def load_KL_EMD_scan_results(results_path):
 def filter_scan_by_target_expr():
     """
     Post-hoc filter scan results to remove receptor pairs where either receptor has
-    higher mean expression in off-target cells than in target cells.
+    an off-target:target mean expression ratio exceeding off_targ_ratio_threshold.
 
-    Replicates the filter_by_target_expr step using the sampling parameters stored in
-    the corresponding YAML file. Metric values for filtered-out pairs are set to NaN.
+    Replicates the off_targ_ratio_threshold filtering step (see scan_selectivity) using
+    the sampling parameters stored in the corresponding YAML file. Metric values for
+    filtered-out pairs are set to NaN.
     Receptors not present in the CITE data (e.g., Prototype_Signal_Receptor) are
     always treated as valid.
 
-    Called with "uv run filt_scan --results-path <path> --filter-id <filter_id>".
+    Called with "uv run filt_scan --results-path <path> --filter-id <filter_id>
+    --off-targ-ratio-threshold <ratio>".
 
     Args:
         results_path (str): Path to the scan CSV file. Must have matching YAML file
             with scan parameters in the same directory.
             E.g., "/home/sama/receptor_sweep_data/tmp_selec_scan.csv"
         filter_id (str): Suffix appended before the file extension in the output path.
+        off_targ_ratio_threshold (float): A receptor is filtered out if
+            mean_off_targ / mean_targ >= this value. Defaults to 1.0, which reproduces
+            the strict "mean_targ > mean_off_targ" filter (equivalent to
+            scan_selectivity's off_targ_ratio_threshold=1.0). Values > 1.0 relax the
+            filter to only remove receptors with a
+            disproportionately high off-target:target ratio. Receptors with
+            mean_targ <= 0 always have an undefined (infinite) ratio and are filtered
+            regardless of threshold, since they have no target-cell expression at all.
 
     Returns:
         str: Path to the saved filtered CSV file.
@@ -477,9 +503,11 @@ def filter_scan_by_target_expr():
     parser = argparse.ArgumentParser()
     parser.add_argument("--results-path", required=True)
     parser.add_argument("--filter-id", default="filt")
+    parser.add_argument("--off-targ-ratio-threshold", type=float, default=1.0)
     args = parser.parse_args()
     results_path = args.results_path
     filter_id = args.filter_id
+    off_targ_ratio_threshold = args.off_targ_ratio_threshold
 
     yaml_path = os.path.splitext(results_path)[0] + ".yaml"
     assert os.path.exists(yaml_path), (
@@ -493,6 +521,8 @@ def filter_scan_by_target_expr():
     sample_size = scan_params["general"]["sample_size"]
     targ_cell_types = scan_params["target_cell_types"]
     min_avg_count = scan_params["general"]["min_expression_threshold"]
+    # Older YAMLs predate this key; those scans used no nonzero-count filtering.
+    min_nonzero_cells = scan_params["general"].get("min_nonzero_cells", 0)
 
     scan_data = pd.read_csv(results_path)
 
@@ -510,7 +540,10 @@ def filter_scan_by_target_expr():
     CITE_DF, cite_labels = importCITE(annotation_type)
     cite_receptors = list(CITE_DF.columns)
     mean_expr = CITE_DF[cite_receptors].mean(axis=0)
-    cite_receptors = mean_expr[mean_expr >= min_avg_count].index.tolist()
+    nonzero_counts = (CITE_DF[cite_receptors] != 0).sum(axis=0)
+    cite_receptors = mean_expr[
+        (mean_expr >= min_avg_count) & (nonzero_counts >= min_nonzero_cells)
+    ].index.tolist()
 
     epitopes_df = CITE_DF[cite_receptors].copy()
     epitopes_df["Cell Type"] = cite_labels
@@ -537,12 +570,15 @@ def filter_scan_by_target_expr():
         mean_targ = sampled_rec_abundances[targ_mask, :].mean(axis=0)
         mean_off_targ = sampled_rec_abundances[off_targ_mask, :].mean(axis=0)
 
+        # Receptors with no target-cell expression have an undefined (infinite) ratio
+        # and are always filtered, regardless of threshold.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            off_targ_ratio = np.where(mean_targ > 0, mean_off_targ / mean_targ, np.inf)
+
         valid_receptors = {
             rec
-            for rec, mt, mo in zip(
-                cite_receptors, mean_targ, mean_off_targ, strict=False
-            )
-            if mt > mo
+            for rec, ratio in zip(cite_receptors, off_targ_ratio, strict=False)
+            if ratio < off_targ_ratio_threshold
         } | non_cite_receptors
 
         ct_mask = scan_data["Cell_Type"] == cell_type
@@ -553,7 +589,8 @@ def filter_scan_by_target_expr():
         scan_data.loc[invalid_mask, metric_cols] = np.nan
         print(
             f"Filtered {invalid_mask.sum()} / {ct_mask.sum()} pairs for {cell_type} "
-            f"({len(valid_receptors)} / {len(cite_receptors) + len(non_cite_receptors)} valid receptors)."
+            f"({len(valid_receptors)} / {len(cite_receptors) + len(non_cite_receptors)} "
+            f"valid receptors, off_targ_ratio_threshold={off_targ_ratio_threshold})."
         )
 
     base, ext = os.path.splitext(results_path)
