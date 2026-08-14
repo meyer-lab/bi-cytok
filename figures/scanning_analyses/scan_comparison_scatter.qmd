@@ -37,6 +37,10 @@ import pandas as pd
 import yaml
 from scipy.stats import spearmanr
 
+from bicytok.figure_styles import CMAPS, FIGSIZE, apply_style, categorical_colors
+
+apply_style()
+
 # ── Parameters ────────────────────────────────────────────────────────────────
 
 FILTER_SELEC_BASIN = True
@@ -149,18 +153,20 @@ comparison_data = {
 }
 
 # ── Shared cell-type color map ─────────────────────────────────────────────────
-_cmap = plt.colormaps["tab20"]
-cell_type_colors = {
-    ct: _cmap(i / max(len(TARG_CELL_TYPES) - 1, 1))
-    for i, ct in enumerate(TARG_CELL_TYPES)
-}
+cell_type_colors = dict(
+    zip(
+        TARG_CELL_TYPES,
+        categorical_colors(len(TARG_CELL_TYPES), cmap_name=CMAPS["categorical_large"]),
+        strict=True,
+    )
+)
 
 
 def plot_comparison(key):
     """Scatter one pairwise metric comparison, overlaying all cell types."""
     all_df, axis_1_label, axis_2_label = comparison_data[key]
 
-    fig, ax = plt.subplots(figsize=(7, 7))
+    fig, ax = plt.subplots(figsize=FIGSIZE["square_scatter"])
 
     for cell_type in TARG_CELL_TYPES:
         df = all_df[all_df["cell_type"] == cell_type]
@@ -215,17 +221,10 @@ def plot_comparison(key):
                 label="Top pair per axis",
             )
         )
-        ax.legend(
-            handles=handles,
-            title="Cell type",
-            fontsize=9,
-            title_fontsize=10,
-            framealpha=0.8,
-        )
+        ax.legend(handles=handles, title="Cell type")
 
-    ax.set_xlabel(axis_1_label, fontsize=13)
-    ax.set_ylabel(axis_2_label, fontsize=13)
-    ax.tick_params(labelsize=11)
+    ax.set_xlabel(axis_1_label)
+    ax.set_ylabel(axis_2_label)
     plt.tight_layout()
     plt.show()
 

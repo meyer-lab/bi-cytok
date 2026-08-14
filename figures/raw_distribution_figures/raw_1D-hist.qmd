@@ -29,13 +29,13 @@ Generates a histogram with kernel density estimation (KDE) overlay to visualize 
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
-import matplotlib.pyplot as plt
 import numpy as np
 
 from bicytok.distance_metric_funcs import KL_EMD_1D
+from bicytok.figure_styles import apply_style
 from bicytok.imports import importCITE, sample_receptor_abundances
 
-plt.rcParams["svg.fonttype"] = "none"
+apply_style()
 
 receptor = "CD27"
 sample_size = 5000
@@ -108,12 +108,13 @@ for cell_type in plot_cell_types:
 ```{python}
 #| label: fig-raw-1d-hist
 #| fig-cap: "1D distribution of receptor with histogram and KDE overlay"
+import matplotlib.pyplot as plt
 import seaborn as sns
 
-fig_size = (5, 3)
+from bicytok.figure_styles import COLORS, FIGSIZE
 
-plt.figure(figsize=fig_size)
-colors = ["#CF4D6F", "#2774AE"]
+plt.figure(figsize=FIGSIZE["single_panel"])
+colors = [COLORS["target"], COLORS["off_target"]]
 for i, abundances in enumerate(all_cell_abundances):
     if len(abundances) == 0:
         continue
@@ -128,27 +129,24 @@ for i, abundances in enumerate(all_cell_abundances):
         edgecolor="black",
     )
 
-plt.title(f"{receptor} Distribution\nKL: {kl_val:.2f}, EMD: {emd_val:.2f}", fontsize=10)
+plt.title(f"{receptor} Distribution\nKL: {kl_val:.2f}, EMD: {emd_val:.2f}")
 if normalize:
-    plt.xlabel("Normalized receptor count", fontsize=18)
+    plt.xlabel("Normalized receptor count")
 else:
-    plt.xlabel(f"Number of {receptor} Antibodies", fontsize=18)
+    plt.xlabel(f"Number of {receptor} Antibodies")
 
 if stat == "density":
-    plt.ylabel("Density", fontsize=18)
+    plt.ylabel("Density")
 elif stat == "count":
-    plt.ylabel("Number of Cells", fontsize=18)
+    plt.ylabel("Number of Cells")
 elif stat == "probability":
-    plt.ylabel("Proportion of cells", fontsize=18)
+    plt.ylabel("Proportion of cells")
 
 if x_limit:
     x_max = np.percentile(targ_abundances, 99.5)
     plt.xlim(0, x_max * 0.6)
 
-plt.tick_params(axis="x", labelsize=15)
-plt.tick_params(axis="y", labelsize=15)
-plt.legend(loc="upper right", fontsize=18)
-plt.grid(alpha=0.3, linestyle="--")
+plt.legend(loc="upper right")
 plt.tight_layout()
 plt.show()
 ```
