@@ -129,7 +129,6 @@ for i, abundances in enumerate(all_cell_abundances):
         edgecolor="black",
     )
 
-plt.title(f"{receptor} Distribution\nKL: {kl_val:.2f}, EMD: {emd_val:.2f}")
 if normalize:
     plt.xlabel("Normalized receptor count")
 else:
@@ -149,6 +148,9 @@ if x_limit:
 plt.legend(loc="upper right")
 plt.tight_layout()
 plt.show()
+
+print(f"KL Divergence: {kl_val:.4f}")
+print(f"EMD: {emd_val:.4f}")
 ```
 
 ## Parameter Summary

@@ -308,16 +308,6 @@ for i, cell_type in enumerate(
 ax_top.set_xlim(x_min, x_max)
 ax_top.set_ylabel("Number of Cells", fontsize=16)
 ax_top.tick_params(axis="both", labelsize=18)
-ax_top.text(
-    0.02,
-    0.95,
-    f"X-axis: KL={kl_val_1:.2f}, EMD={emd_val_1:.2f}\nSelectivity ({signal[0]}+{receptor1}): {selectivity_1d_rec1:.2f}",
-    transform=ax_top.transAxes,
-    fontsize=15,
-    verticalalignment="top",
-    horizontalalignment="left",
-    bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
-)
 plt.setp(ax_top.get_xticklabels(), visible=False)
 
 # Right marginal plot (y-axis projection)
@@ -342,27 +332,14 @@ ax_right.set_xlabel("Number of Cells", fontsize=16)
 ax_right.tick_params(axis="both", labelsize=18)
 plt.setp(ax_right.get_yticklabels(), visible=False)
 
-# Add text annotation for y-axis metrics
-ax_right.text(
-    0.95,
-    0.95,
-    f"Y-axis:\nKL={kl_val_2:.2f}\nEMD={emd_val_2:.2f}\nSelectivity ({signal[0]}+{receptor2}): {selectivity_1d_rec2:.2f}",
-    transform=ax_right.transAxes,
-    fontsize=15,
-    verticalalignment="top",
-    horizontalalignment="right",
-    bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
-)
-
-# Add overall title and 2D metrics
-fig.suptitle(
-    f"{receptor1} vs {receptor2} with Marginal Projections\n"
-    f"2D Metrics - KL: {kl_val_2d:.2f}, EMD: {emd_val_2d:.2f}, Selectivity ({signal[0]}+{receptor1}+{receptor2}): {selectivity_2d:.2f}",
-    fontsize=16,
-    y=0.98,
-)
-
 plt.show()
+
+print(f"X-axis ({receptor1}) KL Divergence: {kl_val_1:.4f}")
+print(f"X-axis ({receptor1}) EMD: {emd_val_1:.4f}")
+print(f"Y-axis ({receptor2}) KL Divergence: {kl_val_2:.4f}")
+print(f"Y-axis ({receptor2}) EMD: {emd_val_2:.4f}")
+print(f"2D ({receptor1}+{receptor2}) KL Divergence: {kl_val_2d:.4f}")
+print(f"2D ({receptor1}+{receptor2}) EMD: {emd_val_2d:.4f}")
 ```
 
 ## Parameter Summary

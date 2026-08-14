@@ -45,7 +45,7 @@ cell_categorization = "CellType2"
 stat = "probability"
 normalize = False
 x_lim = True
-hide_aggregate_KDE = False
+hide_aggregate_KDE = True
 Treg_eg = True # Use this if showing expression in Tregs, CD8 TCM, and NK cells
 
 if Treg_eg:
@@ -132,8 +132,6 @@ if not hide_aggregate_KDE:
             ax=ax,
             label="All off-target",
         )
-
-ax.set_title(f"{receptor} Distribution by Cell Type")
 
 if normalize:
     ax.set_xlabel("Normalized receptor count")
@@ -362,12 +360,6 @@ plt.setp(ax_top.get_xticklabels(), visible=False)
 ax_right.set_ylim(y_min, y_max)
 ax_right.set_xlabel("Cells")
 plt.setp(ax_right.get_yticklabels(), visible=False)
-
-fig.suptitle(
-    f"{receptor1} vs {receptor2} — Off-target Population Breakdown",
-    fontsize=FONT_SIZE_TITLE,
-    y=0.98,
-)
 
 plt.show()
 ```
