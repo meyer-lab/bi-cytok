@@ -46,10 +46,16 @@ stat = "probability"
 normalize = False
 x_lim = True
 hide_aggregate_KDE = False
+Treg_eg = True # Use this if showing expression in Tregs, CD8 TCM, and NK cells
 
-# Color scheme: target is fixed, off-target populations get distinct colors
-TARGET_COLOR = COLORS["target"]
-off_targ_colors = categorical_colors(len(off_targ_cell_types))
+if Treg_eg:
+    # Specified color scheme to match illustrative figure colors
+    TARGET_COLOR = COLORS["Treg"]
+    off_targ_colors = list([COLORS["CD8 T"], COLORS["NK"]])
+else:
+    # General color scheme: target is fixed, off-target populations get distinct colors
+    TARGET_COLOR = COLORS["target"]
+    off_targ_colors = categorical_colors(len(off_targ_cell_types))
 
 # Load and prepare data
 CITE_DF, cell_types = importCITE(cell_categorization)

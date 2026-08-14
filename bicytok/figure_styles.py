@@ -23,6 +23,9 @@ COLORS = {
     "aggregate": "darkred",  # summary overlay across a group (e.g. "All off-target")
     "improved": "#2774AE",  # 2D metric >= 1D metric (pairing helps); anchor color
     "declined": "#C0392B",  # 2D metric < 1D metric (pairing hurts)
+    "Treg": "#28aae2",
+    "CD8 T": "#fbb040",
+    "NK": "#f69792",
 }
 
 LINESTYLES = {
