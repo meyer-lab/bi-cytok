@@ -45,6 +45,7 @@ cell_categorization = "CellType2"
 stat = "probability"
 normalize = False
 x_lim = True
+hide_aggregate_KDE = False
 
 # Color scheme: target is fixed, off-target populations get distinct colors
 TARGET_COLOR = COLORS["target"]
@@ -110,20 +111,21 @@ for _, (abundances, color, label) in enumerate(
     )
 
 # Overall off-target KDE overlay (dashed, summarizes all off-target populations combined)
-all_off_targ = np.concatenate([ab for ab in all_cell_abundances[1:] if len(ab) > 0])
-if len(all_off_targ) > 0:
-    sns.histplot(
-        all_off_targ,
-        color=COLORS["aggregate"],
-        alpha=0,
-        edgecolor="none",
-        stat=stat,
-        bins=30,
-        kde=True,
-        kde_kws={"bw_method": "scott"},
-        ax=ax,
-        label="All off-target",
-    )
+if not hide_aggregate_KDE:
+    all_off_targ = np.concatenate([ab for ab in all_cell_abundances[1:] if len(ab) > 0])
+    if len(all_off_targ) > 0:
+        sns.histplot(
+            all_off_targ,
+            color=COLORS["aggregate"],
+            alpha=0,
+            edgecolor="none",
+            stat=stat,
+            bins=30,
+            kde=True,
+            kde_kws={"bw_method": "scott"},
+            ax=ax,
+            label="All off-target",
+        )
 
 ax.set_title(f"{receptor} Distribution by Cell Type")
 
