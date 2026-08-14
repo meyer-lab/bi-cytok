@@ -47,7 +47,7 @@ import pandas as pd
 import yaml
 
 sys.path.insert(0, ".")
-from scan_runners import load_KL_EMD_scan_results, load_selec_scan_results
+from bicytok.scan_runners import load_KL_EMD_scan_results, load_selec_scan_results
 
 # ── Parameters ────────────────────────────────────────────────────────────────
 # --- Paths to scan results ---

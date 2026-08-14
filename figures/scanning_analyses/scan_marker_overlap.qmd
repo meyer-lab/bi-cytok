@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 
 from bicytok.imports import import_annotation_markers
-from figures.scanning_analyses.scan_runners import (
+from bicytok.scan_runners import (
     load_KL_EMD_scan_results,
     load_selec_scan_results,
 )

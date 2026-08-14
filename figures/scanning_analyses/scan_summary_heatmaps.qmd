@@ -25,7 +25,7 @@ import numpy as np
 import seaborn as sns
 import yaml
 
-from figures.scanning_analyses.scan_runners import (
+from bicytok.scan_runners import (
     load_KL_EMD_scan_results,
     load_selec_scan_results,
 )
