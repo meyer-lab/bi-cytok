@@ -1,4 +1,4 @@
-# Figure 1: Defining the problem
+# Figure 1: A computational framework for comprehensively evaluating multispecific cell-type selectivity
 
 ::: {#fig-figure-1}
 
@@ -18,3 +18,9 @@ Overview of the multispecific cell-type-selectivity problem and the experimental
   + We define a set of possible surface targets pairs and target cell types
   + Some surface proteins are lowly expressed and have higher expression in off-target cells than target cells. These are filtered on a per-target-cell-type basis
   + For every target pair/target cell type combination, we evaluate selectivity based on EMD, KL divergence, and binding model
+
+* In order to guide drug design, we needed a faithful predictor of the cell-type selectivity of a given combination of targets.
+* In order to evaluate different predictors, we needed a faithful quantitative description of a large number of candidate target receptors.
+* Given that a molecule's selectivity is largely determined by the distribution in expression of its cognate receptors across target and off-target cells, this description needed to be high resolution and defined across diverse cell types.
+* Based on these criteria, we chose a CITE-seq dataset comprised of 230 unique surface proteins measured across 160,000 PBMCs spanning 30 distinct cell types.
+* After filtering for lowly expressed proteins, we defined a set of 130 surface proteins that, together, comprise over 9,000 unique target pairs or 400,000 unique target triads. We then evaluated the selectivity of each target pair for all 30 cell types, resulting in over 270,000 unique target pair/cell type combinations.
