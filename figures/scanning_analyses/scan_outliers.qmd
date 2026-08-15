@@ -14,8 +14,10 @@ representative-distribution analyses drill into the **first** comparison only.
 - `SELEC_SCAN_PATH`: CSV from `run_selectivity_scan` (binding-model selectivity)
 - `KL_EMD_SCAN_PATH`: CSV from `run_KL_EMD_scan` (KL divergence and EMD)
   Both must have matching `.yaml` files describing the scan type.
-- `COMPARISONS`: dict mapping key -> a dict with a `targ_cell_type` and two metric specs
-  (`metric_1`, `metric_2`), where a metric spec is `(scan_path, csv_column, label)`
+- `COMPARISONS`: dict mapping key -> a dict with a `targ_cell_type`, two metric specs
+  (`metric_1`, `metric_2`, each `(scan_path, csv_column, label)`), an `axis_norm` mode,
+  and a `thresholds` dict of per-axis percentile cutoffs (`high_pct_1`, `high_pct_2`,
+  `resid_pct_1`, `resid_pct_2`) used for outlier categorization
 
 # Outputs
 - **`suppfig-scan-outliers-kl-selec-treg`**: Selectivity vs KL divergence, Treg
@@ -53,6 +55,20 @@ METRIC_SELEC = (SELEC_SCAN_PATH, "Selectivity", "Binding model selectivity")
 METRIC_KL = (KL_EMD_SCAN_PATH, "KL_Divergence", "KL divergence")
 METRIC_EMD = (KL_EMD_SCAN_PATH, "EMD", "EMD")
 
+# ── Per-axis outlier-detection thresholds ─────────────────────────────────────
+# Percentile thresholds (0–100), applied independently per axis so a comparison
+# with no real outliers along one axis doesn't get false ones forced onto it:
+#   high_pct_1 / high_pct_2  — axis 1 / axis 2 cutoff for the "both" category
+#   resid_pct_1 / resid_pct_2 — residual cutoff for the high_1 / high_2 categories
+# Comparisons default to these values; override any subset per comparison, e.g.
+# {**DEFAULT_THRESHOLDS, "resid_pct_2": 99}, to tighten an axis that over-flags.
+DEFAULT_THRESHOLDS = {
+    "high_pct_1": 90,
+    "high_pct_2": 90,
+    "resid_pct_1": 3,
+    "resid_pct_2": 97,
+}
+
 # ── Comparisons to sweep ──────────────────────────────────────────────────────
 # One outlier scatter is produced per comparison. The first comparison also drives
 # the downstream feature and distribution diagnostics.
@@ -62,20 +78,18 @@ COMPARISONS = {
         "metric_1": METRIC_SELEC,
         "metric_2": METRIC_KL,
         "axis_norm": "none",
+        "thresholds": DEFAULT_THRESHOLDS,
     },
     "emd_selec_cd8tcm": {
         "targ_cell_type": "CD8 TCM",
         "metric_1": METRIC_SELEC,
         "metric_2": METRIC_EMD,
         "axis_norm": "none",
+        "thresholds": DEFAULT_THRESHOLDS,
     },
 }
 
 # ── Shared outlier-detection settings ─────────────────────────────────────────
-# Percentile threshold (0–100) used for the "both" category (both axes independently high)
-HIGH_PERCENTILE = 90
-# Percentile threshold (0–100) for the residual-based high_1 / high_2 categories.
-RESID_PERCENTILE = 97
 # Number of auto-labeled points per category (high_1, high_2, both)
 N_LABEL = 5
 # Number of globally top-ranked pairs to highlight with a star per axis
@@ -134,15 +148,17 @@ def compute_outlier_df(comparison):
     axis_1_label = label1 + suffix
     axis_2_label = label2 + suffix
 
+    thresholds = comparison["thresholds"]
+
     # Fit trend line & compute residuals.
     slope, intercept = np.polyfit(df["s1"], df["s2"], 1)
     df["resid"] = df["s2"] - (slope * df["s1"] + intercept)
-    resid_hi = np.nanpercentile(df["resid"], RESID_PERCENTILE)
-    resid_lo = np.nanpercentile(df["resid"], 100 - RESID_PERCENTILE)
+    resid_lo = np.nanpercentile(df["resid"], thresholds["resid_pct_1"])
+    resid_hi = np.nanpercentile(df["resid"], thresholds["resid_pct_2"])
 
     # Categorize points.
-    thresh1 = np.nanpercentile(df["s1"], HIGH_PERCENTILE)
-    thresh2 = np.nanpercentile(df["s2"], HIGH_PERCENTILE)
+    thresh1 = np.nanpercentile(df["s1"], thresholds["high_pct_1"])
+    thresh2 = np.nanpercentile(df["s2"], thresholds["high_pct_2"])
     high1 = df["s1"] >= thresh1
     high2 = df["s2"] >= thresh2
     df["category"] = "neither"
