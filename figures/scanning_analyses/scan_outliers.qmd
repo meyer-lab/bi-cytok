@@ -5,21 +5,21 @@ title: "Receptor Scan Outlier Analysis"
 # Summary
 Compares two receptor scan metrics across all receptor pairs for a chosen target cell
 type, identifying and labeling the pairs that are outliers relative to the overall
-metric-vs-metric trend. A user-defined list of `CONDITIONS` (each a target cell type
-plus a pair of metrics to compare) is swept: one labeled outlier scatter is generated
-per condition and laid out as panels of a single supplemental figure. The subsequent
-receptor-feature and representative-distribution analyses drill into the **first**
-condition only.
+metric-vs-metric trend. A user-defined `COMPARISONS` dict (each a target cell type plus
+a pair of metrics to compare) is swept: one labeled outlier scatter is generated per
+comparison via a thin plotting cell. The subsequent receptor-feature and
+representative-distribution analyses drill into the **first** comparison only.
 
 # Inputs
 - `SELEC_SCAN_PATH`: CSV from `run_selectivity_scan` (binding-model selectivity)
 - `KL_EMD_SCAN_PATH`: CSV from `run_KL_EMD_scan` (KL divergence and EMD)
   Both must have matching `.yaml` files describing the scan type.
-- `CONDITIONS`: list of dicts, each with a `targ_cell_type` and two metric specs
+- `COMPARISONS`: dict mapping key -> a dict with a `targ_cell_type` and two metric specs
   (`metric_1`, `metric_2`), where a metric spec is `(scan_path, csv_column, label)`
 
 # Outputs
-- **`suppfig-scan-outliers`**: one labeled outlier scatter panel per condition
+- **`suppfig-scan-outliers-kl-selec-treg`**: Selectivity vs KL divergence, Treg
+- **`suppfig-scan-outliers-emd-selec-cd8tcm`**: Selectivity vs EMD, CD8 TCM
   - Gray: neither metric is high
   - Blue: residual below lower threshold (metric 1 higher than expected given metric 2)
   - Orange: residual above upper threshold (metric 2 higher than expected given metric 1)
@@ -28,13 +28,14 @@ condition only.
   - Gold stars (★): global top-N pairs by individual-axis metric
   - Purple diamonds (◆): user-specified pairs of interest, always labeled
 - Receptor-feature violin plots and representative pair distributions for the first
-  condition (diagnostics; not embedded)
+  comparison (diagnostics; not embedded)
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
 import os
 
 import matplotlib.patheffects as pe
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import yaml
@@ -48,23 +49,23 @@ METRIC_SELEC = (SELEC_SCAN_PATH, "Selectivity", "Binding model selectivity")
 METRIC_KL = (KL_EMD_SCAN_PATH, "KL_Divergence", "KL divergence")
 METRIC_EMD = (KL_EMD_SCAN_PATH, "EMD", "EMD")
 
-# ── Conditions to sweep ───────────────────────────────────────────────────────
-# One outlier scatter is produced per condition. The first condition also drives
+# ── Comparisons to sweep ──────────────────────────────────────────────────────
+# One outlier scatter is produced per comparison. The first comparison also drives
 # the downstream feature and distribution diagnostics.
-CONDITIONS = [
-    {
+COMPARISONS = {
+    "kl_selec_treg": {
         "targ_cell_type": "Treg",
         "metric_1": METRIC_SELEC,
         "metric_2": METRIC_KL,
         "axis_norm": "none",
     },
-    {
+    "emd_selec_cd8tcm": {
         "targ_cell_type": "CD8 TCM",
         "metric_1": METRIC_SELEC,
         "metric_2": METRIC_EMD,
         "axis_norm": "none",
     },
-]
+}
 
 # ── Shared outlier-detection settings ─────────────────────────────────────────
 # Percentile threshold (0–100) used for the "both" category (both axes independently high)
@@ -100,14 +101,14 @@ def load_scan_flat(path, metric_col, cell_type):
     ).reset_index(drop=True)
 
 
-def compute_outlier_df(condition):
-    """Merge two metrics for one condition, then fit the trend, compute residuals,
+def compute_outlier_df(comparison):
+    """Merge two metrics for one comparison, then fit the trend, compute residuals,
     and categorize each receptor pair. Returns a result dict consumed by the plot
     and diagnostic cells."""
-    path1, col1, label1 = condition["metric_1"]
-    path2, col2, label2 = condition["metric_2"]
-    targ_cell_type = condition["targ_cell_type"]
-    axis_norm = condition["axis_norm"]
+    path1, col1, label1 = comparison["metric_1"]
+    path2, col2, label2 = comparison["metric_2"]
+    targ_cell_type = comparison["targ_cell_type"]
+    axis_norm = comparison["axis_norm"]
 
     scan1 = load_scan_flat(path1, col1, targ_cell_type)
     scan2 = load_scan_flat(path2, col2, targ_cell_type)
@@ -202,7 +203,7 @@ def compute_outlier_df(condition):
 
 
 def plot_outlier_scatter(res, ax):
-    """Draw one condition's labeled outlier scatter onto the given axis."""
+    """Draw one comparison's labeled outlier scatter onto the given axis."""
     df = res["df"]
     axis_1_label, axis_2_label = res["axis_1_label"], res["axis_2_label"]
     slope, intercept = res["slope"], res["intercept"]
@@ -328,9 +329,17 @@ def plot_outlier_scatter(res, ax):
     ax.legend(fontsize=6, loc="best", framealpha=0.8)
 
 
-# Compute all conditions up front; bind the first condition for the diagnostics.
-outlier_results = [compute_outlier_df(c) for c in CONDITIONS]
-_first = outlier_results[0]
+def plot_outlier_comparison(key):
+    """Draw one comparison's labeled outlier scatter as a standalone figure."""
+    fig, ax = plt.subplots(figsize=(7.5, 7))
+    plot_outlier_scatter(outlier_data[key], ax)
+    plt.tight_layout()
+    plt.show()
+
+
+# Compute every comparison up front; bind the first for the downstream diagnostics.
+outlier_data = {key: compute_outlier_df(cfg) for key, cfg in COMPARISONS.items()}
+_first = next(iter(outlier_data.values()))
 df = _first["df"]
 TARG_CELL_TYPE = _first["targ_cell_type"]
 AXIS_1_LABEL = _first["axis_1_label"]
@@ -339,21 +348,18 @@ CELL_CATEGORIZATION = _first["cell_categorization"]
 ```
 
 ```{python}
-#| label: scan-outliers-plot
-import matplotlib.pyplot as plt
-
-n_cond = len(outlier_results)
-fig, axes = plt.subplots(1, n_cond, figsize=(7.5 * n_cond, 7))
-axes = np.atleast_1d(axes)
-for res, ax in zip(outlier_results, axes, strict=True):
-    plot_outlier_scatter(res, ax)
-plt.tight_layout()
-plt.show()
+#| label: suppfig-scan-outliers-kl-selec-treg
+plot_outlier_comparison("kl_selec_treg")
 ```
 
 ```{python}
-# Tabular summary of all annotated receptor pairs, per condition.
-for res in outlier_results:
+#| label: suppfig-scan-outliers-emd-selec-cd8tcm
+plot_outlier_comparison("emd_selec_cd8tcm")
+```
+
+```{python}
+# Tabular summary of all annotated receptor pairs, per comparison.
+for res in outlier_data.values():
     summary = res["all_label_rows"][
         ["rec1", "rec2", "s1", "s2", "r", "category"]
     ].copy()
@@ -376,7 +382,7 @@ for res in outlier_results:
 ```
 
 ```{python}
-# ── Distribution feature analysis by group (first condition only) ─────────────
+# ── Distribution feature analysis by group (first comparison only) ────────────
 # For each receptor appearing in the scan, computes simple 1D distribution
 # features comparing target vs. off-target abundance. Each receptor pair is then
 # summarized by aggregating the features of its two constituent receptors. Violin
@@ -597,7 +603,7 @@ plt.show()
 ```
 
 ```{python}
-# ── Representative pair raw distributions (first condition only) ──────────────
+# ── Representative pair raw distributions (first comparison only) ─────────────
 # For each scatter-plot category, selects N_REPR representative receptor pairs
 # and shows their joint 2D distribution with 1D marginal histograms. Selection
 # criterion per category:
