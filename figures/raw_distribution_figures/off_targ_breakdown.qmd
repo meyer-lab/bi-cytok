@@ -133,10 +133,17 @@ if not hide_aggregate_KDE:
             label="All off-target",
         )
 
+if receptor == "CD122":
+    rec_label = "IL-2Rβ"
+elif receptor == "CD25":
+    rec_label = "IL-2Rα"
+else:
+    rec_label = receptor
+
 if normalize:
     ax.set_xlabel("Normalized receptor count")
 else:
-    ax.set_xlabel(f"Number of {receptor} Antibodies")
+    ax.set_xlabel(f"Number of {rec_label} Antibodies")
 
 if stat == "density":
     ax.set_ylabel("Density")
