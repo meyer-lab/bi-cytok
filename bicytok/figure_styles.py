@@ -13,6 +13,7 @@ LINE_WIDTH = 1.5
 LINE_WIDTH_AGGREGATE = (
     2.5  # emphasizes summary/aggregate overlays (e.g. "All off-target")
 )
+POINT_SIZE_XS = 7 # extra small scatter points (scatters containing entire scan)
 POINT_SIZE_BACKGROUND = 15  # bulk / non-emphasized scatter points
 POINT_SIZE_FOREGROUND = 30  # highlighted points (outliers, top hits, star markers)
 GRID_ALPHA = 0.3
@@ -56,6 +57,18 @@ FIGSIZE = {
     "joint_grid": (5, 4),  # 2D joint distribution + marginal histograms
     "square_heatmap": (8, 8),  # single square heatmap panel with colorbar
 }
+
+# fig.colorbar(mappable, ax=ax) shrinks the given ax to make room for the colorbar rather than
+# growing the canvas, so a panel drawn at FIGSIZE["square_scatter"] with a colorbar attached ends
+# up narrower than intended. Pass these explicitly to fig.colorbar() (fraction=COLORBAR_FRACTION,
+# pad=COLORBAR_PAD) together with FIGSIZE["square_scatter_with_colorbar"], which is derived from
+# square_scatter so the two stay in sync if that base size ever changes.
+COLORBAR_FRACTION = 0.15
+COLORBAR_PAD = 0.05
+FIGSIZE["square_scatter_with_colorbar"] = (
+    FIGSIZE["square_scatter"][0] / (1 - COLORBAR_FRACTION - COLORBAR_PAD),
+    FIGSIZE["square_scatter"][1],
+)
 
 
 def gridspec_marginal_spacing(
