@@ -18,6 +18,11 @@ POINT_SIZE_FOREGROUND = 30  # highlighted points (outliers, top hits, star marke
 GRID_ALPHA = 0.3
 GRID_LINESTYLE = "--"
 LEGEND_FRAMEALPHA = 0.8
+LEGEND_BORDERPAD = 0.3  # padding between legend border and its content (default 0.4)
+LEGEND_LABELSPACING = 0.3  # vertical space between entries (default 0.5)
+LEGEND_HANDLELENGTH = 1.5  # length of the marker/line handle sample (default 2.0)
+LEGEND_HANDLETEXTPAD = 0.5  # space between handle and label text (default 0.8)
+LEGEND_BORDERAXESPAD = 0.3  # space between legend and axes edge (default 0.5)
 
 COLORS = {
     "target": "#CF4D6F",  # as currently used in raw_1D-hist.qmd
@@ -111,6 +116,11 @@ def apply_style() -> None:
             "legend.fontsize": FONT_SIZE_LEGEND,
             "legend.title_fontsize": FONT_SIZE_LEGEND,
             "legend.framealpha": LEGEND_FRAMEALPHA,
+            "legend.borderpad": LEGEND_BORDERPAD,
+            "legend.labelspacing": LEGEND_LABELSPACING,
+            "legend.handlelength": LEGEND_HANDLELENGTH,
+            "legend.handletextpad": LEGEND_HANDLETEXTPAD,
+            "legend.borderaxespad": LEGEND_BORDERAXESPAD,
             "lines.linewidth": LINE_WIDTH,
             "axes.grid": True,
             "grid.alpha": GRID_ALPHA,
