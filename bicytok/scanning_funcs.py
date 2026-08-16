@@ -20,6 +20,7 @@ def sample_cells(
     targ_cell_type: str,
     sample_size: int = 100,
     balance: bool = True,
+    rand_state: int = 42,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Sample cells from receptor abundance data.
@@ -32,6 +33,7 @@ def sample_cells(
             off-target populations
         balance: whether to balance number of cells in target and off-target
             populations
+        rand_state: random seed for sampling cells from the CITE-seq data
 
     Outputs:
         sampled_rec_abundances: subset of rec_abundances after sampling
@@ -48,6 +50,7 @@ def sample_cells(
         numCells=sample_size,
         targCellType=targ_cell_type,
         balance=balance,
+        rand_state=rand_state,
     )
     sampled_cell_type_labels = sampled_abun_DF["Cell Type"].to_numpy(dtype=str)
     sampled_rec_abundances = sampled_abun_DF.drop(columns=["Cell Type"]).to_numpy(
@@ -63,7 +66,8 @@ def scan_KL_EMD(
     targ_cell_types: list[str],
     dim: int,
     sample_size: int = 100,
-    filter_by_target_expr: bool = False,
+    off_targ_ratio_threshold: float | None = None,
+    rand_state: int = 42,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Calculate KL divergence and EMD for all receptor combinations across target cell
@@ -77,10 +81,14 @@ def scan_KL_EMD(
         targ_cell_types: list of target cell types to evaluate
         dim: dimensionality of receptor combinations (1, 2, or 3)
         sample_size: target cell count for subsampling
-        filter_by_target_expr: if True, restrict scan to receptors with higher mean
-            expression in target cells than off-target cells. Filtering is applied
-            per cell type after sampling, so valid receptors may differ across cell
-            types.
+        off_targ_ratio_threshold: if not None, restrict scan to receptors with
+            mean_off_targ / mean_targ < this value (receptors with mean_targ <= 0
+            always have an undefined/infinite ratio and are excluded). 1.0 reproduces
+            the strict "higher target than off-target expression" filter; higher
+            values relax it to only exclude receptors with a disproportionately high
+            off-target:target ratio. None disables filtering. Filtering is applied per
+            cell type after sampling, so valid receptors may differ across cell types.
+        rand_state: random seed for sampling cells from the CITE-seq data
 
     Outputs:
         KL_div_vals_scan: KL divergence values for all receptor combinations and cell types
@@ -109,22 +117,27 @@ def scan_KL_EMD(
             targ_cell_type=cell_type,
             sample_size=sample_size,
             balance=True,
+            rand_state=rand_state,
         )
 
         targ_mask = sampled_cell_type_labels == cell_type
         off_targ_mask = ~targ_mask
 
-        # Filters out receptors with higher mean expression in off-target cells.
-        # Off-target populations with higher mean expression than target populations
-        #    yield high EMD and KL div., but are poor selectivity targets.
-        if filter_by_target_expr:
+        # Filters out receptors with a disproportionately high off-target:target mean
+        # expression ratio. Off-target-skewed receptors yield high EMD and KL div.,
+        # but are poor selectivity targets.
+        if off_targ_ratio_threshold is not None:
             mean_targ = sampled_rec_abundances[targ_mask, :].mean(axis=0)
             mean_off_targ = sampled_rec_abundances[off_targ_mask, :].mean(axis=0)
-            valid_indices = np.where(mean_targ > mean_off_targ)[0]
+            with np.errstate(divide="ignore", invalid="ignore"):
+                off_targ_ratio = np.where(
+                    mean_targ > 0, mean_off_targ / mean_targ, np.inf
+                )
+            valid_indices = np.where(off_targ_ratio < off_targ_ratio_threshold)[0]
             filtered_abundances = sampled_rec_abundances[:, valid_indices]
             print(
                 f"Filtered to {len(valid_indices)} / {n_receptors} receptors with "
-                f"higher target expression for {cell_type}."
+                f"off_targ_ratio_threshold={off_targ_ratio_threshold} for {cell_type}."
             )
         else:
             valid_indices = np.arange(n_receptors)
@@ -161,9 +174,11 @@ def scan_selectivity(
     dose: float,
     valencies: np.ndarray,
     sample_size: int = 100,
+    rand_state: int = 42,
     signal_col: int = 0,
     init_method: np.ndarray | str | int = 42,
     asym_targs: bool = False,
+    off_targ_ratio_threshold: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Optimize binding selectivity for all receptor combinations across target cell
@@ -180,6 +195,7 @@ def scan_selectivity(
         valencies: array of valencies for each distinct ligand in the ligand complex.
             Assumes symmetric target receptor valencies for dim > 1.
         sample_size: number of cells to sample per cell type
+        rand_state: random seed for sampling cells from the CITE-seq data
         signal_col: column index of designated signal receptor to include in all
             combinations, defaults to first receptor.
         init_method: method for initializing optimization (integer seed for random
@@ -188,6 +204,14 @@ def scan_selectivity(
         asym_targs: whether to independently optimize selectivity for (rec1, rec2) and
             (rec2, rec1) when dim=2. Only useful when valencies are asymmetric,
             otherwise (rec1, rec2) and (rec2, rec1) will yield the same selectivity.
+        off_targ_ratio_threshold: if not None, restrict scan to receptors with
+            mean_off_targ / mean_targ < this value (receptors with mean_targ <= 0
+            always have an undefined/infinite ratio and are excluded). 1.0 reproduces
+            the strict "higher target than off-target expression" filter; higher
+            values relax it to only exclude receptors with a disproportionately high
+            off-target:target ratio. None disables filtering. Filtering is applied per
+            cell type after sampling, so valid receptors may differ across cell types.
+            Receptors that fail the filter are left as NaN in the outputs.
 
     Outputs:
         selec_vals_scan: optimized selectivity values for all receptor combinations
@@ -233,16 +257,41 @@ def scan_selectivity(
             targ_cell_type=cell_type,
             sample_size=sample_size,
             balance=False,  # Binding model is not biased by cell type proportions
+            rand_state=rand_state,
         )
 
         targ_mask = sampled_cell_type_labels == cell_type
         off_targ_mask = ~targ_mask
+
+        # Filters out receptors with a disproportionately high off-target:target mean
+        # expression ratio. Such receptors are poor selectivity targets and are also
+        # disproportionately likely to cause slow/non-converging affinity
+        # optimizations.
+        if off_targ_ratio_threshold is not None:
+            mean_targ = sampled_rec_abundances[targ_mask, :].mean(axis=0)
+            mean_off_targ = sampled_rec_abundances[off_targ_mask, :].mean(axis=0)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                off_targ_ratio = np.where(
+                    mean_targ > 0, mean_off_targ / mean_targ, np.inf
+                )
+            valid_indices = set(
+                np.where(off_targ_ratio < off_targ_ratio_threshold)[0].tolist()
+            )
+            print(
+                f"Filtered to {len(valid_indices)} / {n_receptors} receptors with "
+                f"off_targ_ratio_threshold={off_targ_ratio_threshold} for {cell_type}."
+            )
+        else:
+            valid_indices = None
 
         # Signal receptor is the same regardless of dimensionality
         signal_rec_abun = np.reshape(sampled_rec_abundances[:, signal_col], (-1, 1))
 
         if dim == 1:
             for j in range(sampled_rec_abundances.shape[1]):
+                if off_targ_ratio_threshold is not None and j not in valid_indices:
+                    continue
+
                 rec_abun_pruned = np.reshape(sampled_rec_abundances[:, j], (-1, 1))
                 rec_abun_pruned = np.hstack((signal_rec_abun, rec_abun_pruned))
                 targ_recs = rec_abun_pruned[targ_mask, :]
@@ -265,6 +314,33 @@ def scan_selectivity(
             k = n - 1 if asym_targs else 0  # 'k' close to 'n' yields whole matrix space
             row, col = np.tril_indices(n, k=k)
             for count, (rec1_ind, rec2_ind) in enumerate(zip(row, col, strict=False)):
+                # Progress logging:
+                if count % 500 == 0:
+                    if count == 0:
+                        print(
+                            f"Compilation time for {cell_type}: {time.time() - time_start:.2f} seconds."
+                        )
+                    else:
+                        intervals.append(time.time() - time_init)
+                        print(
+                            f"Completed last 500 of {count} out of {len(row)} combinations in {intervals[-1]:.2f} s."
+                        )
+                        average_interval_per_combo = (
+                            sum(intervals) / len(intervals) / 500
+                        )
+                        estimated_time_remaining = average_interval_per_combo * (
+                            len(row) - count
+                        )
+                        print(
+                            f"Estimated time remaining for {cell_type}: {estimated_time_remaining:.2f} seconds."
+                        )
+                    time_init = time.time()
+
+                if off_targ_ratio_threshold is not None and (
+                    rec1_ind not in valid_indices or rec2_ind not in valid_indices
+                ):
+                    continue
+
                 rec_abun_pruned = sampled_rec_abundances[:, [rec1_ind, rec2_ind]]
 
                 # When target receptors are the same, they should be modeled as a single
@@ -304,28 +380,6 @@ def scan_selectivity(
 
                 opt_affs_scan[rec1_ind, rec2_ind, i, :] = opt_aff_vals
                 opt_Kx_star_scan[rec1_ind, rec2_ind, i] = opt_Kx_star
-
-                # Progress logging:
-                if count % 500 == 0:
-                    if count == 0:
-                        print(
-                            f"Compilation time for {cell_type}: {time.time() - time_start:.2f} seconds."
-                        )
-                    else:
-                        intervals.append(time.time() - time_init)
-                        print(
-                            f"Completed last 500 of {count} out of {len(row)} combinations in {intervals[-1]:.2f} s."
-                        )
-                        average_interval_per_combo = (
-                            sum(intervals) / len(intervals) / 500
-                        )
-                        estimated_time_remaining = average_interval_per_combo * (
-                            len(row) - count
-                        )
-                        print(
-                            f"Estimated time remaining for {cell_type}: {estimated_time_remaining:.2f} seconds."
-                        )
-                    time_init = time.time()
 
         print(
             f"Completed selectivity scan for {cell_type} in {time.time() - time_start:.2f} seconds."

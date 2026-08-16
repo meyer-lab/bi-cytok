@@ -95,12 +95,38 @@ def import_annotation_markers() -> dict[str, set[str]]:
     return cell_type_markers
 
 
+def sample_prototype_signal_receptor(
+    n_cells: int,
+    loc: float = 50,
+    scale: float = 5,
+    rand_state: int = 42,
+) -> np.ndarray:
+    """
+    Generates a prototypical signal receptor abundance distribution by sampling
+    from a normal distribution and clipping negative values to zero.
+
+    Args:
+        n_cells: number of cells (values) to generate.
+        loc: mean of the normal distribution.
+        scale: standard deviation of the normal distribution.
+        rand_state: random seed for reproducibility.
+    Returns:
+        prototype_signal_receptor: array of non-negative prototype signal
+            receptor abundance values, one per cell.
+    """
+    rng = np.random.default_rng(rand_state)
+    prototype_signal_receptor = rng.normal(loc=loc, scale=scale, size=(n_cells,))
+    prototype_signal_receptor = np.clip(prototype_signal_receptor, a_min=0, a_max=None)
+    return prototype_signal_receptor
+
+
 def sample_receptor_abundances(
     CITE_DF: pd.DataFrame,
     numCells: int,
     targCellType: str,
     offTargCellTypes: list[str] = None,
     rand_state: int = 42,
+    rand_state_prototype: int = 42,
     balance: bool = False,
     insert_mock_signal_rec: bool = False,
     silent: bool = True,
@@ -116,10 +142,11 @@ def sample_receptor_abundances(
             The final column should be the cell types of each cell.
         numCells: number of cells to sample
         targCellType: the cell type that will be used to split target and
-            off targer sampling
+            off target sampling
         offTargCellTypes: list of cell types that are distinct from target cells.
             If None, all cell types except targCellType will be used.
-        rand_state: random seed for reproducibility
+        rand_state: random seed for sampling cells from the CITE-seq data
+        rand_state_prototype: random seed for generating a prototypical signal receptor
         balance: if True, forces sampling of an equal number of target and off-target
             cells
         insert_mock_signal_rec: if True, inserts a prototypical signal receptor with
@@ -200,9 +227,9 @@ def sample_receptor_abundances(
     sampleDF = pd.concat([sampled_target_cells, sampled_off_target_cells])
 
     if insert_mock_signal_rec:
-        rng = np.random.default_rng(rand_state)
-        mock_signal_rec = rng.normal(loc=50, scale=5, size=(sampleDF.shape[0],))
-        mock_signal_rec = np.clip(mock_signal_rec, a_min=0, a_max=None)
+        mock_signal_rec = sample_prototype_signal_receptor(
+            sampleDF.shape[0], rand_state=rand_state_prototype
+        )
         sampleDF.insert(0, column="sim_signal", value=mock_signal_rec)
 
     return sampleDF
@@ -270,6 +297,40 @@ def filter_receptor_abundances(
     abundance_df = pd.concat([abundance_df, cell_type_df], axis=1)
 
     return abundance_df
+
+
+def match_receptor_abundances(
+    rec_abundances: np.ndarray,
+    method: str | None,
+    target: float,
+) -> np.ndarray:
+    """
+    Scales each receptor's abundances (columns) to match a common reference level,
+        removing per-receptor multiplicative scale differences.
+    Args:
+        rec_abundances: receptor abundances (rows: cells, columns: receptors)
+        method: divisor statistic used for matching. One of "mean", "non-zero mean",
+            or None (no matching; rec_abundances is returned unchanged)
+        target: reference abundance level that each receptor is scaled to match
+    Return:
+        matched receptor abundances, same shape as rec_abundances
+    """
+
+    if method is None:
+        return rec_abundances
+
+    matched = np.array(rec_abundances, dtype=float, copy=True)
+    for i in range(matched.shape[1]):
+        rec_col = matched[:, i]
+        if method == "mean":
+            divisor = rec_col.mean()
+        elif method == "non-zero mean":
+            divisor = rec_col[rec_col != 0].mean()
+        else:
+            raise ValueError(f"Invalid expr_match method: {method}")
+        matched[:, i] = rec_col * target / divisor
+
+    return matched
 
 
 def sample_test_data(n_obs=100, n_var=10):

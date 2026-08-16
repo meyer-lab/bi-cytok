@@ -38,6 +38,12 @@ import yaml
 from scipy.stats import spearmanr
 
 # ── Parameters ────────────────────────────────────────────────────────────────
+
+FILTER_SELEC_BASIN = True
+AXIS_NORM = "rank"  # "none", "z-score", "rank"
+DISP_LEGEND = False
+
+
 SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
 KL_EMD_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
 
@@ -47,8 +53,6 @@ TARG_CELL_TYPES: list[str] | None = None
 
 POINT_SIZE = 12
 POINT_ALPHA = 0.35
-AXIS_NORM = "z-score"  # "none", "z-score", "rank"
-DISP_LEGEND = False
 
 
 # ── Confirm scan types from YAML ───────────────────────────────────────────────

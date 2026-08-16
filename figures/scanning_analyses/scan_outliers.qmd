@@ -340,6 +340,8 @@ CELL_CATEGORIZATION = _first["cell_categorization"]
 
 ```{python}
 #| label: scan-outliers-plot
+import matplotlib.pyplot as plt
+
 n_cond = len(outlier_results)
 fig, axes = plt.subplots(1, n_cond, figsize=(7.5 * n_cond, 7))
 axes = np.atleast_1d(axes)
