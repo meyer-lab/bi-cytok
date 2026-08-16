@@ -4,10 +4,10 @@ FONT_FAMILY = "serif"
 FONT_NAME = "Times New Roman"  # matches manuscript mainfont in _quarto.yml
 
 FONT_SIZE_TITLE = 14
-FONT_SIZE_LABEL = 12
-FONT_SIZE_TICK = 10
-FONT_SIZE_LEGEND = 10
-FONT_SIZE_ANNOT = 10  # in-plot data annotations (heatmap cell labels, point/bar labels)
+FONT_SIZE_LABEL = 18
+FONT_SIZE_TICK = 14
+FONT_SIZE_LEGEND = 14
+FONT_SIZE_ANNOT = 14  # in-plot data annotations (heatmap cell labels, point/bar labels)
 
 LINE_WIDTH = 1.5
 LINE_WIDTH_AGGREGATE = (
@@ -23,9 +23,9 @@ COLORS = {
     "aggregate": "darkred",  # summary overlay across a group (e.g. "All off-target")
     "improved": "#2774AE",  # 2D metric >= 1D metric (pairing helps); anchor color
     "declined": "#C0392B",  # 2D metric < 1D metric (pairing hurts)
-    "Treg": "#28aae2",
-    "CD8 T": "#fbb040",
-    "NK": "#f69792",
+    "Treg": "#1e75bc",
+    "CD8 T": "#f7941d",
+    "NK": "#f0554f",
 }
 
 LINESTYLES = {
@@ -40,7 +40,7 @@ CMAPS = {
 
 FIGSIZE = {
     "single_panel": (5, 3),  # single 1D histogram/line panel
-    "square_scatter": (7, 7),  # single square scatter panel
+    "square_scatter": (5, 5),  # single square scatter panel
     "joint_grid": (10, 8),  # 2D joint distribution + marginal histograms
     "square_heatmap": (8, 8),  # single square heatmap panel with colorbar
 }
