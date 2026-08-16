@@ -45,16 +45,17 @@ from bicytok.selectivity_funcs import optimize_affs
 apply_style()
 
 # Parameters
-receptor1 = "GP130"
-receptor2 = "CD202b"
-targ_cell = "Treg"
+receptor1 = "CD49a"
+receptor2 = "CD103"
+targ_cell = "CD8 TCM"
 off_targ_cell_types = None
 sample_size = 2500
 cell_categorization = "CellType2"
 plot_cell_types = [targ_cell, "other"]
 normalize = False
 calc_selec = False
-limit_axes = False  # Set False to let matplotlib auto-scale axes to the full data range
+limit_axes = True  # Set False to let matplotlib auto-scale axes to the full data range
+log_scale = False  # Set True to symlog-scale the main + marginal panels (highlights outliers). If true omits KDE display and contour lines
 
 # Selectivity parameters
 dose = 1e-10  # ligand concentration in M
@@ -70,7 +71,7 @@ valencies_2d = np.array(
 TARGET_COLOR = COLORS["target"]
 OFF_TARGET_COLOR = COLORS["off_target"]
 colors = [TARGET_COLOR, OFF_TARGET_COLOR]
-cell_type_labels = ["Target", "Off-target"]
+cell_type_labels = [targ_cell, "Off-target"]
 
 # Figure dimensions for marginal plot layout
 DPI = 100
@@ -225,6 +226,10 @@ if limit_axes:
     x_max = np.percentile(plot_df[f"{receptor1}_norm"], 99) * 1.1
     y_max = np.percentile(plot_df[f"{receptor2}_norm"], 99) * 1.1
     x_min = y_min = 0
+else: # pad upper axes to avoid cutting off edge points
+    x_max = max(plot_df[f"{receptor1}_norm"]) * 1.05
+    y_max = max(plot_df[f"{receptor2}_norm"]) * 1.05
+
 ```
 
 ```{python}
@@ -281,18 +286,18 @@ for i, cell_type in enumerate(
         label=cell_type_labels[i],
     )
 
-    sns.kdeplot(
-        x=cell_df[f"{receptor1}_norm"],
-        y=cell_df[f"{receptor2}_norm"],
-        color=colors[i],
-        levels=5,
-        linewidths=1.5,
-        ax=ax_main,
-    )
+    if not log_scale:
+        sns.kdeplot(
+            x=cell_df[f"{receptor1}_norm"],
+            y=cell_df[f"{receptor2}_norm"],
+            color=colors[i],
+            levels=5,
+            linewidths=1.5,
+            ax=ax_main,
+        )
 
-if limit_axes:
-    ax_main.set_xlim(x_min, x_max)
-    ax_main.set_ylim(y_min, y_max)
+ax_main.set_xlim(x_min, x_max)
+ax_main.set_ylim(y_min, y_max)
 
 if normalize:
     ax_main.set_xlabel(f"{receptor1} Normalized Count")
@@ -314,15 +319,14 @@ for i, cell_type in enumerate(
         cell_df[f"{receptor1}_norm"].values,
         color=colors[i],
         alpha=0.5,
-        kde=True,
+        kde=not log_scale,
         kde_kws={"bw_method": "scott"},
         edgecolor="black",
         ax=ax_top,
         label=cell_type_labels[i],
     )
 
-if limit_axes:
-    ax_top.set_xlim(x_min, x_max)
+ax_top.set_xlim(x_min, x_max)
 ax_top.set_ylabel("Number of Cells")
 plt.setp(ax_top.get_xticklabels(), visible=False)
 
@@ -337,16 +341,27 @@ for i, cell_type in enumerate(
         y=cell_df[f"{receptor2}_norm"].values,
         color=colors[i],
         alpha=0.5,
-        kde=True,
+        kde=not log_scale,
         kde_kws={"bw_method": "scott"},
         edgecolor="black",
         ax=ax_right,
     )
 
-if limit_axes:
-    ax_right.set_ylim(y_min, y_max)
+ax_right.set_ylim(y_min, y_max)
 ax_right.set_xlabel("Number of Cells")
 plt.setp(ax_right.get_yticklabels(), visible=False)
+
+# Symlog rather than log: raw receptor counts include exact zeros, which a
+# plain log scale can't display. Counts at or below LOG_LINTHRESH stay linear;
+# larger counts are log-scaled. Applied only now, after all scatter/KDE/
+# histogram calls: seaborn fits KDEs and histogram bins in the axes' *current*
+# scale space, so setting this earlier would compute those against
+# symlog-warped values instead of the raw counts, distorting their shapes.
+# sharex/sharey above propagate the scale to the marginal panels automatically.
+LOG_LINTHRESH = 1
+if log_scale:
+    ax_main.set_xscale("symlog", linthresh=LOG_LINTHRESH)
+    ax_main.set_yscale("symlog", linthresh=LOG_LINTHRESH)
 
 plt.show()
 
