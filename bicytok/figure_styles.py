@@ -193,7 +193,9 @@ CELL_TYPE_COLORS = dict(
 )
 
 
-def standalone_legend_figure(handles: list, labels: list[str], **legend_kwargs):
+def standalone_legend_figure(
+    handles: list, labels: list[str], ncol: int = 1, **legend_kwargs
+):
     """
     Builds a Figure containing only a legend (its Axes hidden, not removed),
     sized to exactly the legend's own rendered extent.
@@ -212,13 +214,18 @@ def standalone_legend_figure(handles: list, labels: list[str], **legend_kwargs):
 
     :param handles: legend handles (e.g. Line2D proxies), one per category
     :param labels: legend label text, matched positionally to handles
-    :param legend_kwargs: forwarded to Axes.legend (e.g. title, ncol)
+    :param ncol: number of columns to arrange entries into (matplotlib fills
+        columns top-to-bottom, so row count follows as ceil(len(handles) / ncol));
+        default 1 keeps the original single-column layout
+    :param legend_kwargs: forwarded to Axes.legend (e.g. title)
     :return: Figure containing only the legend, resized to its content
     """
     fig, ax = plt.subplots()
     ax.set_axis_off()
     ax.set_position([0, 0, 1, 1])
-    legend = ax.legend(handles=handles, labels=labels, loc="center", **legend_kwargs)
+    legend = ax.legend(
+        handles=handles, labels=labels, loc="center", ncol=ncol, **legend_kwargs
+    )
     fig.canvas.draw()  # force a render pass so the legend's extent is known
     bbox = legend.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
     fig.set_size_inches(bbox.width, bbox.height)

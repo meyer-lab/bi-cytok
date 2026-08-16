@@ -705,7 +705,7 @@ _celltype_legend_handles = [
     mlines.Line2D([], [], marker="o", linestyle="None", color=CELL_TYPE_COLORS[ct])
     for ct in ALL_CELL_TYPES
 ]
-standalone_legend_figure(_celltype_legend_handles, ALL_CELL_TYPES, title="Cell type")
+standalone_legend_figure(_celltype_legend_handles, ALL_CELL_TYPES, ncol=2, title="Cell type")
 plt.show()
 ```
 

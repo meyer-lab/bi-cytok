@@ -480,6 +480,6 @@ _legend_handles.append(
 )
 _legend_labels = [*_legend_cell_types, "Top pair per axis"]
 
-standalone_legend_figure(_legend_handles, _legend_labels, title="Cell type")
+standalone_legend_figure(_legend_handles, _legend_labels, ncol=2, title="Cell type")
 plt.show()
 ```
