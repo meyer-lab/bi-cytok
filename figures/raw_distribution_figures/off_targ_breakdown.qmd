@@ -46,7 +46,7 @@ stat = "probability"
 normalize = False
 x_lim = True
 hide_aggregate_KDE = True
-Treg_eg = True # Use this if showing expression in Tregs, CD8 TCM, and NK cells
+Treg_eg = True  # Use this if showing expression in Tregs, CD8 TCM, and NK cells
 
 if Treg_eg:
     # Specified color scheme to match illustrative figure colors
@@ -176,11 +176,11 @@ import seaborn as sns
 from bicytok.figure_styles import (
     COLORS,
     FIGSIZE,
-    FONT_SIZE_TITLE,
     LINE_WIDTH_AGGREGATE,
     LINESTYLES,
     apply_style,
     categorical_colors,
+    gridspec_marginal_spacing,
 )
 from bicytok.imports import importCITE, sample_receptor_abundances
 
@@ -248,17 +248,30 @@ x_max = np.percentile(plot_df[x_col], 99) * 1.1
 y_max = np.percentile(plot_df[y_col], 99) * 1.1
 x_min = y_min = 0
 
+GRID_BOUNDS = (0.125, 0.9, 0.88, 0.1)  # left, right, top, bottom (figure fraction)
+MARGINAL_GAP_IN = 0.25  # physical gap between main panel and each marginal histogram
+
 fig = plt.figure(figsize=FIGSIZE["joint_grid"], dpi=DPI)
+hspace, wspace = gridspec_marginal_spacing(
+    fig_width=FIGSIZE["joint_grid"][0],
+    fig_height=FIGSIZE["joint_grid"][1],
+    grid_bounds=GRID_BOUNDS,
+    n_rows=3,
+    n_cols=3,
+    gap_inches=MARGINAL_GAP_IN,
+)
 gs = gridspec.GridSpec(
     3,
     3,
     figure=fig,
     width_ratios=[1, 4, 1],
     height_ratios=[1, 4, 0.2],
-    hspace=0.15,
-    wspace=0.05,
-    top=0.88,
-    bottom=0.1,
+    hspace=hspace,
+    wspace=wspace,
+    left=GRID_BOUNDS[0],
+    right=GRID_BOUNDS[1],
+    top=GRID_BOUNDS[2],
+    bottom=GRID_BOUNDS[3],
 )
 
 ax_main = fig.add_subplot(gs[1, 1])

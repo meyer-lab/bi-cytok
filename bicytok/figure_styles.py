@@ -46,6 +46,39 @@ FIGSIZE = {
 }
 
 
+def gridspec_marginal_spacing(
+    fig_width: float,
+    fig_height: float,
+    grid_bounds: tuple[float, float, float, float],
+    n_rows: int,
+    n_cols: int,
+    gap_inches: float,
+) -> tuple[float, float]:
+    """
+    Returns (hspace, wspace) for a 2D-joint-plus-marginals GridSpec such that
+    the physical gap between the main panel and each marginal is the same in
+    both directions. Matplotlib's hspace/wspace are fractions of the average
+    row/column size, not of a shared physical unit, so equal hspace/wspace
+    values (or a square figure's worth of intuition) produce visibly unequal
+    gaps whenever the figure or the grid's row/column ratios aren't square.
+
+    :param grid_bounds: (left, right, top, bottom) figure-fraction bounds passed to GridSpec
+    :param gap_inches: desired physical gap between the main panel and each marginal
+    :return: (hspace, wspace) to pass to GridSpec
+    """
+    left, right, top, bottom = grid_bounds
+    tot_width = right - left
+    tot_height = top - bottom
+
+    def space_for_gap(gap: float, fig_dim: float, tot_frac: float, n: int) -> float:
+        gap_frac = gap / fig_dim
+        return gap_frac * n / (tot_frac - gap_frac * (n - 1))
+
+    hspace = space_for_gap(gap_inches, fig_height, tot_height, n_rows)
+    wspace = space_for_gap(gap_inches, fig_width, tot_width, n_cols)
+    return hspace, wspace
+
+
 def categorical_colors(n: int, cmap_name: str = CMAPS["categorical"]) -> list:
     """
     Returns n distinct qualitative colors for identifying arbitrary subgroups
