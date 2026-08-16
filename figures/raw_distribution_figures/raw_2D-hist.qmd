@@ -34,26 +34,27 @@ Generates a combined figure showing the 2D receptor distribution in the center w
 %config InlineBackend.figure_formats = ['svg']
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 from bicytok.distance_metric_funcs import KL_EMD_1D, KL_EMD_2D
+from bicytok.figure_styles import COLORS, apply_style
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
-plt.rcParams["svg.fonttype"] = "none"
+apply_style()
 
 # Parameters
-receptor1 = "CD45RO"
-receptor2 = "Integrin-7"
-targ_cell = "CD4 Naive"
+receptor1 = "GP130"
+receptor2 = "CD202b"
+targ_cell = "Treg"
 off_targ_cell_types = None
 sample_size = 2500
 cell_categorization = "CellType2"
 plot_cell_types = [targ_cell, "other"]
 normalize = False
 calc_selec = False
+limit_axes = False  # Set False to let matplotlib auto-scale axes to the full data range
 
 # Selectivity parameters
 dose = 1e-10  # ligand concentration in M
@@ -66,13 +67,12 @@ valencies_2d = np.array(
 )  # valencies for 2D case (signal + two target receptors)
 
 # Color scheme
-TARGET_COLOR = "#CF4D6F"
-OFF_TARGET_COLOR = "#2774AE"
+TARGET_COLOR = COLORS["target"]
+OFF_TARGET_COLOR = COLORS["off_target"]
 colors = [TARGET_COLOR, OFF_TARGET_COLOR]
 cell_type_labels = ["Target", "Off-target"]
 
 # Figure dimensions for marginal plot layout
-FIGURE_SIZE = (10, 8)
 DPI = 100
 
 # Data loading and processing
@@ -221,19 +221,23 @@ plot_df = pd.DataFrame(
 )
 
 # Calculate consistent axis limits for alignment
-x_max = np.percentile(plot_df[f"{receptor1}_norm"], 99) * 1.1
-y_max = np.percentile(plot_df[f"{receptor2}_norm"], 99) * 1.1
-x_min = y_min = 0
+if limit_axes:
+    x_max = np.percentile(plot_df[f"{receptor1}_norm"], 99) * 1.1
+    y_max = np.percentile(plot_df[f"{receptor2}_norm"], 99) * 1.1
+    x_min = y_min = 0
 ```
 
 ```{python}
 #| label: fig-raw-2d-hist
 #| fig-cap: "2D distribution with marginal 1D projections showing axis projections"
 import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
 import seaborn as sns
 
+from bicytok.figure_styles import FIGSIZE
+
 # Create figure with custom gridspec for marginal plots
-fig = plt.figure(figsize=FIGURE_SIZE, dpi=DPI)
+fig = plt.figure(figsize=FIGSIZE["joint_grid"], dpi=DPI)
 gs = gridspec.GridSpec(
     3,
     3,
@@ -273,19 +277,18 @@ for i, cell_type in enumerate(
         ax=ax_main,
     )
 
-ax_main.set_xlim(x_min, x_max)
-ax_main.set_ylim(y_min, y_max)
-ax_main.grid(alpha=0.3, linestyle="--")
+if limit_axes:
+    ax_main.set_xlim(x_min, x_max)
+    ax_main.set_ylim(y_min, y_max)
 
 if normalize:
-    ax_main.set_xlabel(f"{receptor1} Normalized Count", fontsize=20)
-    ax_main.set_ylabel(f"{receptor2} Normalized Count", fontsize=20)
+    ax_main.set_xlabel(f"{receptor1} Normalized Count")
+    ax_main.set_ylabel(f"{receptor2} Normalized Count")
 else:
-    ax_main.set_xlabel(f"{receptor1} Count", fontsize=20)
-    ax_main.set_ylabel(f"{receptor2} Count", fontsize=20)
+    ax_main.set_xlabel(f"{receptor1} Count")
+    ax_main.set_ylabel(f"{receptor2} Count")
 
-ax_main.tick_params(axis="both", labelsize=18)
-ax_main.legend(fontsize=20)
+ax_main.legend()
 
 # Top marginal plot (x-axis projection)
 ax_top = fig.add_subplot(gs[0, 1], sharex=ax_main)
@@ -305,9 +308,9 @@ for i, cell_type in enumerate(
         label=cell_type_labels[i],
     )
 
-ax_top.set_xlim(x_min, x_max)
-ax_top.set_ylabel("Number of Cells", fontsize=16)
-ax_top.tick_params(axis="both", labelsize=18)
+if limit_axes:
+    ax_top.set_xlim(x_min, x_max)
+ax_top.set_ylabel("Number of Cells")
 plt.setp(ax_top.get_xticklabels(), visible=False)
 
 # Right marginal plot (y-axis projection)
@@ -327,9 +330,9 @@ for i, cell_type in enumerate(
         ax=ax_right,
     )
 
-ax_right.set_ylim(y_min, y_max)
-ax_right.set_xlabel("Number of Cells", fontsize=16)
-ax_right.tick_params(axis="both", labelsize=18)
+if limit_axes:
+    ax_right.set_ylim(y_min, y_max)
+ax_right.set_xlabel("Number of Cells")
 plt.setp(ax_right.get_yticklabels(), visible=False)
 
 plt.show()
