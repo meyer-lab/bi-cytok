@@ -45,7 +45,12 @@ import pandas as pd
 import yaml
 from adjustText import adjust_text
 
-from bicytok.figure_styles import FIGSIZE, apply_style
+from bicytok.figure_styles import (
+    FIGSIZE,
+    POINT_SIZE_BACKGROUND,
+    POINT_SIZE_FOREGROUND,
+    apply_style,
+)
 
 apply_style()
 
@@ -255,19 +260,25 @@ def plot_outlier_scatter(res, ax):
     resid_hi, resid_lo = res["resid_hi"], res["resid_lo"]
 
     for cat, style in {
-        "neither": dict(color="lightgray", zorder=1, alpha=0.6, s=18, label="Neither"),
+        "neither": dict(
+            color="lightgray",
+            zorder=1,
+            alpha=0.6,
+            s=POINT_SIZE_BACKGROUND,
+            label="Neither",
+        ),
         "high_1": dict(
             color="#3A86FF",
             zorder=3,
             alpha=0.85,
-            s=40,
+            s=POINT_SIZE_FOREGROUND,
             label=f"{axis_1_label} outlier",
         ),
         "high_2": dict(
             color="#FF9F1C",
             zorder=3,
             alpha=0.85,
-            s=40,
+            s=POINT_SIZE_FOREGROUND,
             label=f"{axis_2_label} outlier",
         ),
     }.items():
@@ -279,7 +290,7 @@ def plot_outlier_scatter(res, ax):
         ax.scatter(
             both_sub["s1"],
             both_sub["s2"],
-            s=40,
+            s=POINT_SIZE_FOREGROUND,
             color="#E63946",
             zorder=4,
             alpha=0.85,
@@ -309,7 +320,7 @@ def plot_outlier_scatter(res, ax):
             res["user_rows"]["s1"],
             res["user_rows"]["s2"],
             marker="D",
-            s=80,
+            s=POINT_SIZE_FOREGROUND,
             color="#9B5DE5",
             zorder=6,
             alpha=1.0,

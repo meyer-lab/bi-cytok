@@ -13,6 +13,8 @@ LINE_WIDTH = 1.5
 LINE_WIDTH_AGGREGATE = (
     2.5  # emphasizes summary/aggregate overlays (e.g. "All off-target")
 )
+POINT_SIZE_BACKGROUND = 15  # bulk / non-emphasized scatter points
+POINT_SIZE_FOREGROUND = 30  # highlighted points (outliers, top hits, star markers)
 GRID_ALPHA = 0.3
 GRID_LINESTYLE = "--"
 LEGEND_FRAMEALPHA = 0.8
@@ -39,8 +41,8 @@ CMAPS = {
 }
 
 FIGSIZE = {
-    "single_panel": (5, 3),  # single 1D histogram/line panel
-    "square_scatter": (5, 5),  # single square scatter panel
+    "single_panel": (4, 3),  # single 1D histogram/line panel
+    "square_scatter": (4, 4),  # single square scatter panel
     "joint_grid": (10, 8),  # 2D joint distribution + marginal histograms
     "square_heatmap": (8, 8),  # single square heatmap panel with colorbar
 }

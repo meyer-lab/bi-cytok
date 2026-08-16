@@ -229,7 +229,6 @@ if limit_axes:
 else: # pad upper axes to avoid cutting off edge points
     x_max = max(plot_df[f"{receptor1}_norm"]) * 1.05
     y_max = max(plot_df[f"{receptor2}_norm"]) * 1.05
-
 ```
 
 ```{python}
@@ -239,7 +238,11 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from bicytok.figure_styles import FIGSIZE, gridspec_marginal_spacing
+from bicytok.figure_styles import (
+    FIGSIZE,
+    POINT_SIZE_BACKGROUND,
+    gridspec_marginal_spacing,
+)
 
 # Create figure with custom gridspec for marginal plots
 GRID_BOUNDS = (0.125, 0.9, 0.88, 0.1)  # left, right, top, bottom (figure fraction)
@@ -282,7 +285,7 @@ for i, cell_type in enumerate(
         cell_df[f"{receptor2}_norm"],
         alpha=0.3,
         color=colors[i],
-        s=10,
+        s=POINT_SIZE_BACKGROUND,
         label=cell_type_labels[i],
     )
 

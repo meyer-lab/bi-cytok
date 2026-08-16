@@ -178,6 +178,7 @@ from bicytok.figure_styles import (
     FIGSIZE,
     LINE_WIDTH_AGGREGATE,
     LINESTYLES,
+    POINT_SIZE_BACKGROUND,
     apply_style,
     categorical_colors,
     gridspec_marginal_spacing,
@@ -289,7 +290,7 @@ for cell_type, color, label in zip(populations, colors, labels, strict=False):
         cell_df[y_col],
         alpha=0.3,
         color=color,
-        s=8,
+        s=POINT_SIZE_BACKGROUND,
         label=label,
     )
     if len(cell_df) > 10:

@@ -58,7 +58,14 @@ import pandas as pd
 import yaml
 from scipy.stats import spearmanr
 
-from bicytok.figure_styles import CMAPS, FIGSIZE, apply_style, categorical_colors
+from bicytok.figure_styles import (
+    CMAPS,
+    FIGSIZE,
+    POINT_SIZE_BACKGROUND,
+    POINT_SIZE_FOREGROUND,
+    apply_style,
+    categorical_colors,
+)
 
 apply_style()
 
@@ -70,7 +77,6 @@ RASTERIZE_SCATTER = False
 
 DISP_LEGEND = False
 
-POINT_SIZE = 12
 POINT_ALPHA = 0.35
 
 # Exclude the degenerate low-selectivity "basin" from Spearman correlation for any
@@ -269,7 +275,7 @@ def plot_comparison(key):
         ax.scatter(
             df["s1"],
             df["s2"],
-            s=POINT_SIZE,
+            s=POINT_SIZE_BACKGROUND,
             alpha=POINT_ALPHA,
             color=cell_type_colors[cell_type],
             linewidths=0,
@@ -284,7 +290,7 @@ def plot_comparison(key):
             ax.scatter(
                 row["s1"],
                 row["s2"],
-                s=POINT_SIZE * 10,
+                s=POINT_SIZE_FOREGROUND,
                 marker="*",
                 color=cell_type_colors[row["cell_type"]],
                 edgecolors="black",
