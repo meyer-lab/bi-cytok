@@ -214,6 +214,12 @@ NEW_ANALYSES = {
         comparison="gain_vs_sel",
         scan_label="Kx* upper bound 1e-5",
         color_by="gain",
+        log_y=False,
+    ),
+    "gain_vs_sel_loose_log": dict(
+        comparison="gain_vs_sel",
+        scan_label="Kx* upper bound 1e-5",
+        color_by="gain",
         log_y=True,
     ),
     "gain_vs_sel_bivalent": dict(
@@ -311,6 +317,7 @@ def pair_key(df):
 # ── Comparison shapes: x/y axes, reference lines, limits ──────────────────────
 SELEC_FLOOR = 0.505  # pair selectivity at/below this is effectively no selectivity
 GAIN_COLOR_MAX = 0.15  # log2 gain at which the synergy color saturates
+LOG_Y_GAIN_FLOOR = 1e-5  # y-axis lower limit for log_y panels, clipping trailing near-zero-gain points
 KX_XLABEL = r"Optimal log$_{10}$(K$_{x}$*)"
 GAIN_YLABEL = r"log$_{2}$ selectivity gain"
 SELECTIVITY_XLABEL = "Binding model selectivity"
@@ -653,6 +660,7 @@ def plot_new_analysis(key):
 
     if spec.get("log_y"):
         ax.set_yscale("log")
+        ax.set_ylim(bottom=LOG_Y_GAIN_FLOOR)
 
     if color_by == "gain":
         fig.colorbar(
@@ -679,6 +687,11 @@ plot_new_analysis("sel_vs_targ1aff_loose")
 ```{python}
 #| label: fig-gain-vs-sel-loose
 plot_new_analysis("gain_vs_sel_loose")
+```
+
+```{python}
+#| label: fig-gain-vs-sel-loose-log
+plot_new_analysis("gain_vs_sel_loose_log")
 ```
 
 ```{python}
