@@ -33,6 +33,11 @@ COLORS = {
     "Treg": "#1e75bc",
     "CD8 T": "#f7941d",
     "NK": "#f0554f",
+    "outlier_neither": "lightgray",  # scan_outliers.qmd: neither metric is high
+    "outlier_metric1": "#3A86FF",  # scan_outliers.qmd: metric 1 outlier
+    "outlier_metric2": "#FF9F1C",  # scan_outliers.qmd: metric 2 outlier
+    "outlier_both": "#E63946",  # scan_outliers.qmd: high on both metrics
+    "outlier_user": "#9B5DE5",  # scan_outliers.qmd: user-specified pairs
 }
 
 LINESTYLES = {
@@ -48,7 +53,7 @@ CMAPS = {
 FIGSIZE = {
     "single_panel": (4, 3),  # single 1D histogram/line panel
     "square_scatter": (4, 4),  # single square scatter panel
-    "joint_grid": (10, 8),  # 2D joint distribution + marginal histograms
+    "joint_grid": (5, 4),  # 2D joint distribution + marginal histograms
     "square_heatmap": (8, 8),  # single square heatmap panel with colorbar
 }
 
@@ -97,6 +102,39 @@ def categorical_colors(n: int, cmap_name: str = CMAPS["categorical"]) -> list:
     """
     cmap = plt.colormaps.get_cmap(cmap_name).resampled(n)
     return [cmap(i) for i in range(n)]
+
+
+def standalone_legend_figure(handles: list, labels: list[str], **legend_kwargs):
+    """
+    Builds a Figure containing only a legend (its Axes hidden, not removed),
+    sized to exactly the legend's own rendered extent.
+
+    For layouts where one legend is shared across several subpanels rather than
+    repeated in each (so it can be positioned independently, e.g. in Illustrator).
+
+    Two implementation notes, both load-bearing:
+    - The crop is done by resizing the Figure itself, not via
+      `savefig(bbox_inches="tight")`: Quarto/Jupyter's inline display capture only
+      reads `InlineBackend.print_figure_kwargs` once at kernel startup, so a
+      mid-notebook `%config` change to request a tight bbox never takes effect.
+    - The Axes is hidden (`set_axis_off`), not omitted: IPython's figure display
+      silently produces no output at all for a Figure with zero Axes and zero
+      Figure-level lines, so at least one (even if invisible) Axes must remain.
+
+    :param handles: legend handles (e.g. Line2D proxies), one per category
+    :param labels: legend label text, matched positionally to handles
+    :param legend_kwargs: forwarded to Axes.legend (e.g. title, ncol)
+    :return: Figure containing only the legend, resized to its content
+    """
+    fig, ax = plt.subplots()
+    ax.set_axis_off()
+    ax.set_position([0, 0, 1, 1])
+    legend = ax.legend(handles=handles, labels=labels, loc="center", **legend_kwargs)
+    fig.canvas.draw()  # force a render pass so the legend's extent is known
+    bbox = legend.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+    fig.set_size_inches(bbox.width, bbox.height)
+    ax.set_position([0, 0, 1, 1])  # re-fill the resized canvas; recenters the legend
+    return fig
 
 
 def apply_style() -> None:
