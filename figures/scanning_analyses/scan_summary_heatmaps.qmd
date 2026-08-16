@@ -33,7 +33,7 @@ from bicytok.scan_runners import (
 
 apply_style()
 
-scan_data_path = "/home/sama/receptor_sweep_data/20260604_selec_scan_full_sigCD122.csv"
+scan_data_path = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
 # For KL_EMD scans: "KL_Divergence" or "EMD". Does nothing for selectivity scans.
 KL_METRIC = "KL_Divergence"
 
@@ -54,7 +54,7 @@ with open(yaml_path) as f:
 if scan_type == "selectivity":
     opt_selec, _, _, receptors, cell_types = load_selec_scan_results(scan_data_path)
     metric_array = opt_selec
-    metric_label = "Selectivity"
+    metric_label = "Binding model selectivity"
 elif scan_type == "KL_EMD":
     KL_results, EMD_results, receptors, cell_types = load_KL_EMD_scan_results(
         scan_data_path
@@ -132,11 +132,11 @@ for (i, j), cts in position_to_cell_types.items():
         color="black",
     )
 if asym_scan:
-    ax.set_xlabel(f"Receptor 2, Valency {scan_valencies[0][2]}")
-    ax.set_ylabel(f"Receptor 1, Valency {scan_valencies[0][1]}")
+    ax.set_xlabel(f"Target 2, Valency {scan_valencies[0][2]}")
+    ax.set_ylabel(f"Target 1, Valency {scan_valencies[0][1]}")
 else:
-    ax.set_xlabel("Receptor 2")
-    ax.set_ylabel("Receptor 1")
+    ax.set_xlabel("Target 2")
+    ax.set_ylabel("Target 1")
 ax.tick_params(axis="x", rotation=90, width=2, length=6)
 ax.tick_params(axis="y", rotation=0, width=2, length=6)
 plt.tight_layout()
@@ -154,6 +154,6 @@ tick_values = np.linspace(vmin_val, vmax_val, num=6)
 cbar.set_ticks(tick_values)
 cbar.set_ticklabels([f"{val:.2f}" for val in tick_values])
 cbar.ax.tick_params(width=2, length=6)
-cbar.set_label(f"Optimal {metric_label}")
+cbar.set_label(f"{metric_label}")
 plt.show()
 ```
