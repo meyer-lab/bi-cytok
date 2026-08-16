@@ -43,9 +43,13 @@ implementation drives several manuscript figures with different parameters.
 - **`fig-scan-comp-kl-selec-treg`**: KL divergence vs binding-model selectivity, Treg only
 - **`fig-scan-comp-emd-selec-cd8tcm`**: EMD vs binding-model selectivity, CD8 TCM only
 - **`fig-scan-comp-emd-selec-pdc`**: EMD vs binding-model selectivity, pDC only
+- **`fig-scan-comp-celltype-legend`**: the cell-type-to-color legend, detached from the
+  "all cell types" panels above so it can be positioned independently (e.g. in
+  Illustrator) rather than repeated identically in each panel
 
-Each panel: x = metric 1, y = metric 2, one color per cell type; all receptor pairs
-plotted as equal-sized points with the top pair per axis starred.
+Each panel: x = metric 1, y = metric 2, one color per cell type (from the project-wide
+canonical `CELL_TYPE_COLORS`); all receptor pairs plotted as equal-sized points with the
+top pair per axis starred.
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -59,13 +63,11 @@ import yaml
 from scipy.stats import spearmanr
 
 from bicytok.figure_styles import (
-    CMAPS,
+    CELL_TYPE_COLORS,
     FIGSIZE,
-    POINT_SIZE_BACKGROUND,
     POINT_SIZE_FOREGROUND,
     POINT_SIZE_XS,
     apply_style,
-    categorical_colors,
 )
 
 apply_style()
@@ -76,9 +78,12 @@ apply_style()
 AXIS_NORM = "none"  # "none", "z-score", "rank"
 RASTERIZE_SCATTER = False
 
+# Show a legend on each panel. Off by default since every "all cell types" comparison
+# shares the same canonical cell-type coloring; see fig-scan-comp-celltype-legend for
+# the detached, shared legend instead (kept separate for easier Illustrator layout).
 DISP_LEGEND = False
 
-POINT_ALPHA = 0.15
+POINT_ALPHA = 0.35
 
 # Exclude the degenerate low-selectivity "basin" from Spearman correlation for any
 # comparison involving the Selectivity metric (still shown on the plot, with a dashed
@@ -257,13 +262,12 @@ def build_comparison(metric_a, metric_b, cell_types, axis_norm):
         all_df["s2"] = all_df["s2"].rank(method="average")
 
     suffix = {"none": "", "z-score": " (z-score)", "rank": " (rank)"}[axis_norm]
-    cell_type_colors = dict(
-        zip(
-            cell_types,
-            categorical_colors(len(cell_types), cmap_name=CMAPS["categorical_large"]),
-            strict=True,
-        )
-    )
+    # Looked up from the project-wide canonical CELL_TYPE_COLORS (see
+    # bicytok.figure_styles) rather than resampled per comparison, so a given cell
+    # type is always the same color regardless of which/how-many cell types this
+    # particular comparison happens to include (a single-cell-type comparison like
+    # "kl_selec_treg" previously always drew whatever color index 0 was).
+    cell_type_colors = {ct: CELL_TYPE_COLORS[ct] for ct in cell_types}
     return {
         "df": all_df,
         "cell_types": cell_types,
@@ -440,4 +444,42 @@ plot_comparison("selec_selec-highval")
 ```{python}
 #| label: fig-scan-comp-selec-selec-mixval
 plot_comparison("selec_selec-mixval")
+```
+
+```{python}
+#| label: fig-scan-comp-celltype-legend
+#| fig-cap: "Shared legend for the cell-type-colored comparison scatter plots above"
+# Detached legend, mirroring suppfig-scan-outliers-legend and fig-celltype-legend
+# (scan_kxstar_bounds.qmd): every "all cell types" comparison above uses the same
+# canonical CELL_TYPE_COLORS mapping and omits its own legend, so this one legend
+# covers all of them and can be positioned independently (e.g. in Illustrator).
+import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
+
+from bicytok.figure_styles import CELL_TYPE_COLORS, CELL_TYPES, standalone_legend_figure
+
+_legend_cell_types = sorted(
+    set().union(*(res["cell_types"] for res in comparison_data.values())),
+    key=CELL_TYPES.index,
+)
+_legend_handles = [
+    mlines.Line2D([], [], marker="o", linestyle="None", color=CELL_TYPE_COLORS[ct])
+    for ct in _legend_cell_types
+]
+_legend_handles.append(
+    mlines.Line2D(
+        [],
+        [],
+        marker="*",
+        linestyle="None",
+        markerfacecolor="gray",
+        markeredgecolor="black",
+        markeredgewidth=0.5,
+        color="gray",
+    )
+)
+_legend_labels = [*_legend_cell_types, "Top pair per axis"]
+
+standalone_legend_figure(_legend_handles, _legend_labels, title="Cell type")
+plt.show()
 ```

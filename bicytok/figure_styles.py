@@ -13,7 +13,7 @@ LINE_WIDTH = 1.5
 LINE_WIDTH_AGGREGATE = (
     2.5  # emphasizes summary/aggregate overlays (e.g. "All off-target")
 )
-POINT_SIZE_XS = 7 # extra small scatter points (scatters containing entire scan)
+POINT_SIZE_XS = 7  # extra small scatter points (scatters containing entire scan)
 POINT_SIZE_BACKGROUND = 15  # bulk / non-emphasized scatter points
 POINT_SIZE_FOREGROUND = 30  # highlighted points (outliers, top hits, star markers)
 GRID_ALPHA = 0.3
@@ -50,6 +50,49 @@ CMAPS = {
     "categorical": "tab10",  # qualitative palette for <=10 subgroups
     "categorical_large": "tab20",  # qualitative palette for >10 subgroups
 }
+
+# CITE-seq CellType2 annotation values (see bicytok.imports.importCITE), fixed here so a
+# given cell type always gets the same color everywhere it's plotted, regardless of which
+# subset of cell types happens to be present in a particular scan or comparison. Without
+# this, per-plot palettes built from `categorical_colors(len(cell_types_present), ...)`
+# assign colors by *position in the current subset*, so the same cell type can land on a
+# different color in every plot — or, worse, on the exact same color as an unrelated cell
+# type whenever both subsets happen to have length 1 (confirmed happening in practice:
+# Treg / CD8 TCM / pDC's single-cell-type panels in scan_comparison_scatter.qmd all drew
+# the same color, since `categorical_colors(1, ...)` always returns the first sample).
+CELL_TYPES = [
+    "ASDC",
+    "B intermediate",
+    "B memory",
+    "B naive",
+    "CD14 Mono",
+    "CD16 Mono",
+    "CD4 CTL",
+    "CD4 Naive",
+    "CD4 Proliferating",
+    "CD4 TCM",
+    "CD4 TEM",
+    "CD8 Naive",
+    "CD8 Proliferating",
+    "CD8 TCM",
+    "CD8 TEM",
+    "Doublet",
+    "Eryth",
+    "HSPC",
+    "ILC",
+    "MAIT",
+    "NK",
+    "NK Proliferating",
+    "NK_CD56bright",
+    "Plasmablast",
+    "Platelet",
+    "Treg",
+    "cDC1",
+    "cDC2",
+    "dnT",
+    "gdT",
+    "pDC",
+]
 
 FIGSIZE = {
     "single_panel": (4, 3),  # single 1D histogram/line panel
@@ -115,6 +158,39 @@ def categorical_colors(n: int, cmap_name: str = CMAPS["categorical"]) -> list:
     """
     cmap = plt.colormaps.get_cmap(cmap_name).resampled(n)
     return [cmap(i) for i in range(n)]
+
+
+def discrete_categorical_colors(n: int, cmap_names: list[str]) -> list:
+    """
+    Returns n distinct qualitative colors by concatenating the *discrete* entries
+    of one or more qualitative colormaps, without interpolating between entries
+    the way `categorical_colors`' `resampled(n)` does.
+
+    Interpolating a 20-color map down to, say, 12 categories blends adjacent
+    entries into new in-between colors that can look muddier and less distinct
+    than the original discrete set. Concatenating whole discrete palettes (e.g.
+    tab20 + tab20b + tab20c) avoids that, at the cost of needing enough total
+    entries across the given maps to cover n.
+
+    :param n: Number of distinct colors needed
+    :param cmap_names: Qualitative matplotlib colormaps to concatenate, in order
+    :return: List of n RGBA color tuples
+    """
+    colors = [c for name in cmap_names for c in plt.colormaps.get_cmap(name).colors]
+    assert len(colors) >= n, (
+        f"Only {len(colors)} discrete colors available across {cmap_names}, need {n}"
+    )
+    return colors[:n]
+
+
+# Canonical cell-type -> color mapping, built once from the fixed CELL_TYPES list above.
+CELL_TYPE_COLORS = dict(
+    zip(
+        CELL_TYPES,
+        discrete_categorical_colors(len(CELL_TYPES), ["tab20", "tab20b", "tab20c"]),
+        strict=True,
+    )
+)
 
 
 def standalone_legend_figure(handles: list, labels: list[str], **legend_kwargs):

@@ -47,19 +47,16 @@ import numpy as np
 import pandas as pd
 import yaml
 from matplotlib.colors import Normalize
-from matplotlib.patches import Patch
 
 from bicytok.figure_styles import (
-    CMAPS,
+    CELL_TYPE_COLORS,
+    CELL_TYPES,
     COLORBAR_FRACTION,
     COLORBAR_PAD,
     FIGSIZE,
-    FONT_SIZE_ANNOT,
-    FONT_SIZE_TITLE,
-    POINT_SIZE_XS,
     POINT_SIZE_BACKGROUND,
+    POINT_SIZE_XS,
     apply_style,
-    categorical_colors,
 )
 
 apply_style()
@@ -513,20 +510,14 @@ for scan in SCANS:
 
 gain_norm = Normalize(vmin=0, vmax=GAIN_COLOR_MAX)
 
-# Canonical cell-type -> color mapping, shared by every color_by="cell_type" NEW_ANALYSES
-# panel and the standalone fig-celltype-legend cell below, so a given cell type always gets
-# the same color regardless of which scan's panel it appears in (a per-panel local mapping
-# would assign colors by sorted position, which can point to different cell types across
-# panels whose present-cell-type sets differ slightly).
+# Cell types actually present across this file's loaded scans, in the project-wide
+# canonical order (see bicytok.figure_styles.CELL_TYPES): every color_by="cell_type"
+# NEW_ANALYSES panel and the standalone fig-celltype-legend cell below look colors up in
+# the shared CELL_TYPE_COLORS, so a given cell type gets the same color here as it does in
+# scan_comparison_scatter.qmd and any other all-cell-type analysis, not just within this file.
 ALL_CELL_TYPES = sorted(
-    set().union(*(df["Cell_Type"].unique() for df in pair_dfs.values()))
-)
-CELL_TYPE_COLORS = dict(
-    zip(
-        ALL_CELL_TYPES,
-        categorical_colors(len(ALL_CELL_TYPES), cmap_name=CMAPS["categorical_large"]),
-        strict=True,
-    )
+    set().union(*(df["Cell_Type"].unique() for df in pair_dfs.values())),
+    key=CELL_TYPES.index,
 )
 
 
@@ -720,6 +711,9 @@ plt.show()
 
 ```{python}
 # ── Shared overlaid-histogram helper ──────────────────────────────────────────
+from bicytok.figure_styles import FONT_SIZE_ANNOT
+
+
 def overlay_hist(
     ax,
     data_by_scan,
@@ -990,7 +984,9 @@ plot_comparison_grid()
 # under the tight bound. Ribbons are colored by source category, so each destination block's
 # composition reveals where its pairs were pulled from.
 
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Patch, Rectangle
+
+from bicytok.figure_styles import FONT_SIZE_TITLE
 
 CAT_NAMES = ["Both interior", "Aff ceiling only", "Kx* pinned only", "Doubly pinned"]
 CAT_COLORS = ["#B4B4B4", "#E8A33D", "#4DAF9A", "#C0392B"]
