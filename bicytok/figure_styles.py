@@ -98,7 +98,7 @@ FIGSIZE = {
     "single_panel": (4, 3),  # single 1D histogram/line panel
     "square_scatter": (4, 4),  # single square scatter panel
     "joint_grid": (5, 4),  # 2D joint distribution + marginal histograms
-    "square_heatmap": (8, 8),  # single square heatmap panel with colorbar
+    "square_heatmap": (5, 5),  # single square heatmap panel with colorbar
 }
 
 # fig.colorbar(mappable, ax=ax) shrinks the given ax to make room for the colorbar rather than
@@ -106,7 +106,7 @@ FIGSIZE = {
 # up narrower than intended. Pass these explicitly to fig.colorbar() (fraction=COLORBAR_FRACTION,
 # pad=COLORBAR_PAD) together with FIGSIZE["square_scatter_with_colorbar"], which is derived from
 # square_scatter so the two stay in sync if that base size ever changes.
-COLORBAR_FRACTION = 0.15
+COLORBAR_FRACTION = 0.25
 COLORBAR_PAD = 0.05
 FIGSIZE["square_scatter_with_colorbar"] = (
     FIGSIZE["square_scatter"][0] / (1 - COLORBAR_FRACTION - COLORBAR_PAD),
