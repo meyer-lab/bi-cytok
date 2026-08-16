@@ -54,7 +54,7 @@ SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
 KL_EMD_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
 
 # Each metric spec: (scan path, CSV column, human-readable label)
-METRIC_SELEC = (SELEC_SCAN_PATH, "Selectivity", "Binding model selectivity")
+METRIC_SELEC = (SELEC_SCAN_PATH, "Selectivity", "Binding model")
 METRIC_KL = (KL_EMD_SCAN_PATH, "KL_Divergence", "KL divergence")
 METRIC_EMD = (KL_EMD_SCAN_PATH, "EMD", "EMD")
 
@@ -261,14 +261,14 @@ def plot_outlier_scatter(res, ax):
             zorder=3,
             alpha=0.85,
             s=40,
-            label=f"High {axis_1_label} only",
+            label=f"{axis_1_label} outlier",
         ),
         "high_2": dict(
             color="#FF9F1C",
             zorder=3,
             alpha=0.85,
             s=40,
-            label=f"High {axis_2_label} only",
+            label=f"{axis_2_label} outlier",
         ),
     }.items():
         sub = df[df["category"] == cat]
@@ -283,7 +283,7 @@ def plot_outlier_scatter(res, ax):
             color="#E63946",
             zorder=4,
             alpha=0.85,
-            label="High on both",
+            label="Shared target",
         )
         labeled_both = both_sub.nlargest(N_LABEL, "r")
         if SHOW_TREND_LINES and len(labeled_both) == N_LABEL:
