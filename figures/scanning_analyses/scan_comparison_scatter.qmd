@@ -63,6 +63,7 @@ from bicytok.figure_styles import (
     FIGSIZE,
     POINT_SIZE_BACKGROUND,
     POINT_SIZE_FOREGROUND,
+    POINT_SIZE_XS,
     apply_style,
     categorical_colors,
 )
@@ -77,7 +78,7 @@ RASTERIZE_SCATTER = False
 
 DISP_LEGEND = False
 
-POINT_ALPHA = 0.35
+POINT_ALPHA = 0.15
 
 # Exclude the degenerate low-selectivity "basin" from Spearman correlation for any
 # comparison involving the Selectivity metric (still shown on the plot, with a dashed
@@ -88,6 +89,8 @@ SELEC_BASIN_CUTOFF = 0.51
 _DATA = "/home/sama/receptor_sweep_data"
 SELEC_SCAN_PATH = f"{_DATA}/20260520_selec_scan_full.csv"
 KL_EMD_SCAN_PATH = f"{_DATA}/20260520_dist_scan_full_filt.csv"
+SELEC_SCAN_PATH_BIVAL = f"{_DATA}/20260529_selec_scan_full_bival.csv"
+SELEC_SCAN_PATH_MIXVAL = f"{_DATA}/20260608_selec_scan_full_mix-val.csv"
 
 # Each metric: display label -> (scan path, CSV column, human-readable axis label).
 METRICS = {
@@ -102,6 +105,21 @@ METRICS = {
         "column": "Selectivity",
         "label": "Binding model selectivity",
     },
+    "Selectivity monoval": {
+        "path": SELEC_SCAN_PATH,
+        "column": "Selectivity",
+        "label": "Monovalent target selectivity",
+    },
+    "Selectivity bival": {
+        "path": SELEC_SCAN_PATH_BIVAL,
+        "column": "Selectivity",
+        "label": "Bivalent target selectivity",
+    },
+    "Selectivity mix-val": {
+        "path": SELEC_SCAN_PATH_MIXVAL,
+        "column": "Selectivity",
+        "label": "Mixed-valency target selectivity",
+    },
 }
 
 # Each comparison: two metric labels drawn from METRICS, and target cell types
@@ -113,6 +131,12 @@ COMPARISONS = {
     "kl_selec_treg": dict(metrics=("Selectivity", "KL"), cell_types=["Treg"]),
     "emd_selec_cd8tcm": dict(metrics=("Selectivity", "EMD"), cell_types=["CD8 TCM"]),
     "emd_selec_pdc": dict(metrics=("Selectivity", "EMD"), cell_types=["pDC"]),
+    "selec_selec-highval": dict(
+        metrics=("Selectivity monoval", "Selectivity bival"), cell_types="all", rasterize=True, hide_stars=True
+    ),
+    "selec_selec-mixval": dict(
+        metrics=("Selectivity monoval", "Selectivity mix-val"), cell_types="all", rasterize=True, hide_stars=True
+    ),
 }
 
 
@@ -275,7 +299,7 @@ def plot_comparison(key):
         ax.scatter(
             df["s1"],
             df["s2"],
-            s=POINT_SIZE_BACKGROUND,
+            s=POINT_SIZE_XS,
             alpha=POINT_ALPHA,
             color=cell_type_colors[cell_type],
             linewidths=0,
@@ -284,19 +308,20 @@ def plot_comparison(key):
         )
 
     # Highlight the top pair per axis for each cell type.
-    for axis_col in ("s1", "s2"):
-        top_pairs = all_df.loc[all_df.groupby("cell_type")[axis_col].idxmax()]
-        for _, row in top_pairs.iterrows():
-            ax.scatter(
-                row["s1"],
-                row["s2"],
-                s=POINT_SIZE_FOREGROUND,
-                marker="*",
-                color=cell_type_colors[row["cell_type"]],
-                edgecolors="black",
-                linewidths=0.5,
-                zorder=5,
-            )
+    if not COMPARISONS[key].get("hide_stars", False):
+        for axis_col in ("s1", "s2"):
+            top_pairs = all_df.loc[all_df.groupby("cell_type")[axis_col].idxmax()]
+            for _, row in top_pairs.iterrows():
+                ax.scatter(
+                    row["s1"],
+                    row["s2"],
+                    s=POINT_SIZE_FOREGROUND,
+                    marker="*",
+                    color=cell_type_colors[row["cell_type"]],
+                    edgecolors="black",
+                    linewidths=0.5,
+                    zorder=5,
+                )
 
     if DISP_LEGEND:
         handles = [
@@ -397,18 +422,9 @@ print_spearman("kl_selec")
 #| label: fig-scan-comp-kl-selec-treg
 plot_comparison("kl_selec_treg")
 ```
-
-```{python}
-print_spearman("kl_selec_treg")
-```
-
 ```{python}
 #| label: fig-scan-comp-emd-selec-cd8tcm
 plot_comparison("emd_selec_cd8tcm")
-```
-
-```{python}
-print_spearman("emd_selec_cd8tcm")
 ```
 
 ```{python}
@@ -417,5 +433,11 @@ plot_comparison("emd_selec_pdc")
 ```
 
 ```{python}
-print_spearman("emd_selec_pdc")
+#| label: fig-scan-comp-selec-selec-highval
+plot_comparison("selec_selec-highval")
+```
+
+```{python}
+#| label: fig-scan-comp-selec-selec-mixval
+plot_comparison("selec_selec-mixval")
 ```

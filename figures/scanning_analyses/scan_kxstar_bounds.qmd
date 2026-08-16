@@ -217,16 +217,19 @@ NEW_ANALYSES = {
         comparison="gain_vs_sel",
         scan_label="Kx* upper bound 1e-5",
         color_by="gain",
+        log_y=True,
     ),
     "gain_vs_sel_bivalent": dict(
         comparison="gain_vs_sel",
         scan_label="Bivalent Kx* upper bound 1e-5",
         color_by="gain",
+        log_y=True,
     ),
     "gain_vs_sel_mixedval": dict(
         comparison="gain_vs_sel",
         scan_label="Mixed Valency Kx* upper bound 1e-5",
         color_by="gain",
+        log_y=True,
     ),
 }
 
@@ -311,9 +314,9 @@ def pair_key(df):
 # ── Comparison shapes: x/y axes, reference lines, limits ──────────────────────
 SELEC_FLOOR = 0.505  # pair selectivity at/below this is effectively no selectivity
 GAIN_COLOR_MAX = 0.15  # log2 gain at which the synergy color saturates
-KX_XLABEL = "Optimal log10(Kx*)"
-GAIN_YLABEL = "log2 selectivity gain"
-SELECTIVITY_XLABEL = "Pair selectivity"
+KX_XLABEL = r"Optimal log$_{10}$(K$_{x}$*)"
+GAIN_YLABEL = r"log$_{2}$ selectivity gain"
+SELECTIVITY_XLABEL = "Binding model selectivity"
 
 # ~276k points per panel in the bulk grid: far denser than the shared point-size constants
 # assume (tuned for scatter plots with far fewer points), so these panels keep their own
@@ -382,25 +385,25 @@ def _row(get, xlabel, ylabel, *, xlim=None, ylim=None, xrefs=(), yrefs=(), kx_vl
 
 
 COMPARISON_SHAPES = {
-    "sel_vs_kx": _row(_vs_kxstar("sel"), KX_XLABEL, "Selectivity", yrefs=(0.5,), kx_vline=True),
+    "sel_vs_kx": _row(_vs_kxstar("sel"), KX_XLABEL, SELECTIVITY_XLABEL, yrefs=(0.5,), kx_vline=True),
     "sig_aff_vs_kx": _row(
         _vs_kxstar("aff0"),
         KX_XLABEL,
-        "Signal aff, log10(M)",
+        r"Signal receptor K$_{a}$ (log$_{10}$(M))",
         ylim=AFFINITY_BOUNDS,
         kx_vline=True,
     ),
     "targ1_aff_vs_kx": _row(
         _vs_kxstar("aff1"),
         KX_XLABEL,
-        "Target 1 aff, log10(M)",
+        r"Target receptor 1 K$_{a}$ (log$_{10}$(M))",
         ylim=AFFINITY_BOUNDS,
         kx_vline=True,
     ),
     "targ2_aff_vs_kx": _row(
         _vs_kxstar("aff2"),
         KX_XLABEL,
-        "Target 2 aff, log10(M)",
+        r"Target receptor 2 K$_{a}$ (log$_{10}$(M))",
         ylim=AFFINITY_BOUNDS,
         kx_vline=True,
     ),
@@ -414,7 +417,7 @@ COMPARISON_SHAPES = {
     "sig_aff_vs_sel": _row(
         _vs_selectivity("aff0"),
         SELECTIVITY_XLABEL,
-        "Signal aff, log10(M)",
+        r"Signal receptor K$_{a}$ (log$_{10}$(M))",
         xrefs=(SELEC_FLOOR,),
         xlim=SELEC_BOUNDS,
         ylim=AFFINITY_BOUNDS,
@@ -423,7 +426,7 @@ COMPARISON_SHAPES = {
     "targ1_aff_vs_sel": _row(
         _vs_selectivity("aff1"),
         SELECTIVITY_XLABEL,
-        "Target 1 aff, log10(M)",
+        r"Target receptor 1 K$_{a}$ (log$_{10}$(M))",
         xrefs=(SELEC_FLOOR,),
         xlim=SELEC_BOUNDS,
         ylim=AFFINITY_BOUNDS,
@@ -432,7 +435,7 @@ COMPARISON_SHAPES = {
     "targ2_aff_vs_sel": _row(
         _vs_selectivity("aff2"),
         SELECTIVITY_XLABEL,
-        "Target 2 aff, log10(M)",
+        r"Target receptor 2 K$_{a}$ (log$_{10}$(M))",
         xrefs=(SELEC_FLOOR,),
         xlim=SELEC_BOUNDS,
         ylim=AFFINITY_BOUNDS,
@@ -445,15 +448,15 @@ COMPARISON_SHAPES = {
     "sel_vs_kx_loose": _row(
         _vs_kxstar("sel"),
         KX_XLABEL,
-        "Selectivity",
+        SELECTIVITY_XLABEL,
         ylim=SELEC_BOUNDS,
         yrefs=(0.5,),
         kx_vline=True,
     ),
     "sel_vs_targ1_aff": _row(
         _sel_vs("aff1"),
-        "Target 1 aff, log10(M)",
-        "Selectivity",
+        r"Target receptor K$_{a}$ (log$_{10}$(M))",
+        SELECTIVITY_XLABEL,
         xlim=AFFINITY_BOUNDS,
         ylim=SELEC_BOUNDS,
         yrefs=(0.5,),
@@ -657,11 +660,14 @@ def plot_new_analysis(key):
     ax.set_xlabel(comp["xlabel"])
     ax.set_ylabel(comp["ylabel"])
 
+    if spec.get("log_y"):
+        ax.set_yscale("log")
+
     if color_by == "gain":
         fig.colorbar(
             result,
             ax=ax,
-            label="log2 selectivity gain, reference scan  (gray = none)",
+            label=r"log$_{2}$ selectivity gain",
             fraction=COLORBAR_FRACTION,
             pad=COLORBAR_PAD,
         )
