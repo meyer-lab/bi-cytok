@@ -1,13 +1,12 @@
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 FONT_FAMILY = "serif"
 FONT_NAME = "Times New Roman"  # matches manuscript mainfont in _quarto.yml
 
 FONT_SIZE_TITLE = 14
-FONT_SIZE_LABEL = 18
-FONT_SIZE_TICK = 14
-FONT_SIZE_LEGEND = 14
-FONT_SIZE_ANNOT = 14  # in-plot data annotations (heatmap cell labels, point/bar labels)
+
+DEFAULT_N_TICKS = 6  # default tick count per axis; override per-plot via set_tick_count
 
 LINE_WIDTH = 1.5
 LINE_WIDTH_AGGREGATE = (
@@ -145,6 +144,25 @@ def gridspec_marginal_spacing(
     hspace = space_for_gap(gap_inches, fig_height, tot_height, n_rows)
     wspace = space_for_gap(gap_inches, fig_width, tot_width, n_cols)
     return hspace, wspace
+
+
+def set_tick_count(
+    ax,
+    n_x: int | None = DEFAULT_N_TICKS,
+    n_y: int | None = DEFAULT_N_TICKS,
+) -> None:
+    """
+    Caps the number of ticks on each axis via MaxNLocator, which rounds to "nice"
+    values (1, 2, 5, 10, ...) rather than forcing an exact count.
+
+    :param ax: Axes to apply tick locators to
+    :param n_x: Max ticks on the x-axis, or None to leave matplotlib's default
+    :param n_y: Max ticks on the y-axis, or None to leave matplotlib's default
+    """
+    if n_x is not None:
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=n_x))
+    if n_y is not None:
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=n_y))
 
 
 def categorical_colors(n: int, cmap_name: str = CMAPS["categorical"]) -> list:

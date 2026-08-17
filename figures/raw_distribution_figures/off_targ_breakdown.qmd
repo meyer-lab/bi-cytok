@@ -31,7 +31,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-from bicytok.figure_styles import COLORS, FIGSIZE, apply_style, categorical_colors
+from bicytok.figure_styles import (
+    COLORS,
+    FIGSIZE,
+    apply_style,
+    categorical_colors,
+    set_tick_count,
+)
 from bicytok.imports import importCITE, sample_receptor_abundances
 
 apply_style()
@@ -143,18 +149,20 @@ else:
 if normalize:
     ax.set_xlabel("Normalized receptor count")
 else:
-    ax.set_xlabel(f"Number of {rec_label} Antibodies")
+    ax.set_xlabel(f"{rec_label} Count")
 
 if stat == "density":
     ax.set_ylabel("Density")
 elif stat == "count":
     ax.set_ylabel("Number of Cells")
 elif stat == "probability":
-    ax.set_ylabel("Proportion of cells")
+    ax.set_ylabel("Cell Fraction")
 
 if x_lim:
     x_max = np.percentile(rec_abundance, 99) * 1.1
     ax.set_xlim(0, x_max)
+
+set_tick_count(ax, n_x=4, n_y=3)
 
 ax.legend(loc="upper right")
 plt.tight_layout()
