@@ -1,10 +1,15 @@
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
-FONT_FAMILY = "serif"
-FONT_NAME = "Times New Roman"  # matches manuscript mainfont in _quarto.yml
+FONT_FAMILY = "sans-serif"
+FONT_NAME = "Myriad Pro"  # temporary override for comparison; manuscript mainfont in
+# _quarto.yml is still Times New Roman, so figures are out of sync with body text for now
 
 FONT_SIZE_TITLE = 14
+FONT_SIZE_LABEL = 22
+FONT_SIZE_TICK = 20
+FONT_SIZE_LEGEND = 18
+FONT_SIZE_ANNOT = 16  # in-plot data annotations (heatmap cell labels, point/bar labels)
 
 DEFAULT_N_TICKS = 6  # default tick count per axis; override per-plot via set_tick_count
 
@@ -15,7 +20,7 @@ LINE_WIDTH_AGGREGATE = (
 POINT_SIZE_XS = 7  # extra small scatter points (scatters containing entire scan)
 POINT_SIZE_BACKGROUND = 15  # bulk / non-emphasized scatter points
 POINT_SIZE_FOREGROUND = 30  # highlighted points (outliers, top hits, star markers)
-GRID_ALPHA = 0.3
+GRID_ALPHA = 0.4
 GRID_LINESTYLE = "--"
 LEGEND_FRAMEALPHA = 0.8
 LEGEND_BORDERPAD = 0.3  # padding between legend border and its content (default 0.4)
@@ -94,7 +99,7 @@ CELL_TYPES = [
 ]
 
 FIGSIZE = {
-    "single_panel": (4, 3),  # single 1D histogram/line panel
+    "single_panel": (5, 3),  # single 1D histogram/line panel
     "square_scatter": (4, 4),  # single square scatter panel
     "joint_grid": (5, 4),  # 2D joint distribution + marginal histograms
     "square_heatmap": (5, 5),  # single square heatmap panel with colorbar
@@ -259,7 +264,7 @@ def apply_style() -> None:
     plt.rcParams.update(
         {
             "font.family": FONT_FAMILY,
-            "font.serif": [FONT_NAME],
+            f"font.{FONT_FAMILY}": [FONT_NAME],
             "svg.fonttype": "none",
             "axes.titlesize": FONT_SIZE_TITLE,
             "axes.labelsize": FONT_SIZE_LABEL,
