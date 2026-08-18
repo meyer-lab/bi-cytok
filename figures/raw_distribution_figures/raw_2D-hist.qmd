@@ -321,14 +321,14 @@ if receptor1 == "CD122":
 elif receptor1 == "CD25":
     rec_label1 = "IL-2Rα"
 else:
-    rec_label1 = receptor
+    rec_label1 = receptor1
 
 if receptor2 == "CD122":
     rec_label2 = "IL-2Rβ"
 elif receptor2 == "CD25":
     rec_label2 = "IL-2Rα"
 else:
-    rec_label2 = receptor
+    rec_label2 = receptor2
 
 if normalize:
     ax_main.set_xlabel(f"{rec_label1} Normalized Count")

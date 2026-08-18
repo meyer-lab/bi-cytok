@@ -3,11 +3,11 @@ title: "Cross-Scan Receptor-Pair Category Flow"
 ---
 
 # Summary
-Visualizes how individual receptor pairs move between categorical groupings as scan conditions change, via alluvial (flow) diagrams. Each pair is labeled by a category under one scan, matched to the same pair (by cell type + receptor identity) under another scan, and a flow diagram shows how the categories redistribute — revealing which pool each destination category is pulled from. This complements `scan_kxstar_bounds.qmd`, which tracks the distribution of optimal binding-model *parameters* (Kx*, affinities, selectivity, gain) rather than which category a pair falls into.
+Visualizes how individual receptor pairs move between categorical groupings as scan conditions change, via alluvial (flow) diagrams. Each pair is labeled by a category under one scan, matched to the same pair (by cell type + receptor identity) under another scan, and a flow diagram shows how the categories redistribute — revealing which pool each destination category is pulled from.
 
 Two flows are drawn:
 
-1. **Co-pinning flow** (`fig-copinning`): Kx* and target affinity are compensatory avidity sources, so a pair that has maxed both has no headroom left — it is genuinely constrained by the Kx* bound. Each pair is labeled by whether it is pinned at its Kx* upper bound and whether either target arm sits at the affinity ceiling, giving four categories. Pairs are matched between the loose (1e-5) and tight (1e-9) Kx* bound scans, and the alluvial shows how the loose-bound categories redistribute under the tight bound.
+1. **Co-pinning flow** (`fig-copinning`): Each pair is labeled by whether it is pinned at its Kx* upper bound and whether either target arm sits at the affinity ceiling, giving four categories. Pairs are matched between the loose (1e-5) and tight (1e-9) Kx* bound scans, and the alluvial shows how the loose-bound categories redistribute under the tight bound.
 2. **Selectivity/gain flow** (`fig-selgain-flow`): each pair is labeled by selectivity (below/above `SELEC_HIGH_CUTOFF`) crossed with selectivity gain (non-synergistic/synergistic, i.e. `log2_gain <= 0` vs `> 0`), and pairs are matched between the monovalent and bivalent scans to show which quadrant increased valency pulls each pair into — in particular, whether low-selectivity, high-gain pairs move into the high-selectivity, high-gain quadrant.
 
 Both flows share the same rendering machinery (`draw_category_flow`, `plot_flow`): source-scan and destination-scan blocks sit at the top and bottom of the figure, sized by pair count, connected by ribbons flowing top-to-bottom and colored by source category, so each destination block's composition shows where its pairs came from.

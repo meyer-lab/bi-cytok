@@ -60,7 +60,7 @@ from bicytok.figure_styles import (
 
 apply_style()
 
-## Paremeters
+## Parameters
 
 # Each scan's "gain_ref" names the scan (by label) whose per-pair gain colors this scan's points
 # in fig-scatter-grid: its own label uses its own gain; another scan's label maps that scan's gain
@@ -101,8 +101,8 @@ SCANS = [
 ]
 
 # Scans analyzed by the parameter histograms and fig-scatter-grid. SCANS may hold other
-# scans (e.g. the high-valency ones above), loaded and available to SPECIFIC_ANALYSES by
-# scan_label but excluded from these figures.
+# scans loaded and available to SPECIFIC_ANALYSES by scan_label but excluded
+# from these figures.
 ACTIVE_SCAN_LABELS = [
     "Kx* upper bound 1e-5",
     "Kx* upper bound 1e-9",
