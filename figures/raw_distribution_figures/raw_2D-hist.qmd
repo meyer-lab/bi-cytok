@@ -56,6 +56,8 @@ normalize = False
 calc_selec = False
 limit_axes = True  # Set False to let matplotlib auto-scale axes to the full data range
 log_scale = False  # Set True to symlog-scale the main + marginal panels (highlights outliers). If true omits KDE display and contour lines
+show_marginals = False # Set False to show only the main 2D panel, without the top/right marginal histograms
+
 
 # Selectivity parameters
 dose = 1e-10  # ligand concentration in M
@@ -240,39 +242,49 @@ import seaborn as sns
 
 from bicytok.figure_styles import (
     FIGSIZE,
+    FONT_SIZE_LEGEND,
+    LEGEND_BORDERAXESPAD,
+    LEGEND_BORDERPAD,
+    LEGEND_HANDLELENGTH,
+    LEGEND_HANDLETEXTPAD,
+    LEGEND_LABELSPACING,
     POINT_SIZE_BACKGROUND,
     gridspec_marginal_spacing,
+    set_tick_count,
 )
 
-# Create figure with custom gridspec for marginal plots
-GRID_BOUNDS = (0.125, 0.9, 0.88, 0.1)  # left, right, top, bottom (figure fraction)
-MARGINAL_GAP_IN = 0.25  # physical gap between main panel and each marginal histogram
+if show_marginals:
+    # Create figure with custom gridspec for marginal plots
+    GRID_BOUNDS = (0.125, 0.9, 0.88, 0.1)  # left, right, top, bottom (figure fraction)
+    MARGINAL_GAP_IN = 0.25  # physical gap between main panel and each marginal histogram
 
-fig = plt.figure(figsize=FIGSIZE["joint_grid"], dpi=DPI)
-hspace, wspace = gridspec_marginal_spacing(
-    fig_width=FIGSIZE["joint_grid"][0],
-    fig_height=FIGSIZE["joint_grid"][1],
-    grid_bounds=GRID_BOUNDS,
-    n_rows=3,
-    n_cols=3,
-    gap_inches=MARGINAL_GAP_IN,
-)
-gs = gridspec.GridSpec(
-    3,
-    3,
-    figure=fig,
-    width_ratios=[1, 4, 1],
-    height_ratios=[1, 4, 0.2],
-    hspace=hspace,
-    wspace=wspace,
-    left=GRID_BOUNDS[0],
-    right=GRID_BOUNDS[1],
-    top=GRID_BOUNDS[2],
-    bottom=GRID_BOUNDS[3],
-)
-
-# Main 2D plot (center)
-ax_main = fig.add_subplot(gs[1, 1])
+    fig = plt.figure(figsize=FIGSIZE["joint_grid"], dpi=DPI)
+    hspace, wspace = gridspec_marginal_spacing(
+        fig_width=FIGSIZE["joint_grid"][0],
+        fig_height=FIGSIZE["joint_grid"][1],
+        grid_bounds=GRID_BOUNDS,
+        n_rows=3,
+        n_cols=3,
+        gap_inches=MARGINAL_GAP_IN,
+    )
+    gs = gridspec.GridSpec(
+        3,
+        3,
+        figure=fig,
+        width_ratios=[1, 4, 1],
+        height_ratios=[1, 4, 0.2],
+        hspace=hspace,
+        wspace=wspace,
+        left=GRID_BOUNDS[0],
+        right=GRID_BOUNDS[1],
+        top=GRID_BOUNDS[2],
+        bottom=GRID_BOUNDS[3],
+    )
+    ax_main = fig.add_subplot(gs[1, 1])
+    ax_top = fig.add_subplot(gs[0, 1], sharex=ax_main)
+    ax_right = fig.add_subplot(gs[1, 2], sharey=ax_main)
+else:
+    fig, ax_main = plt.subplots(figsize=FIGSIZE["square_scatter"], dpi=DPI)
 
 # Plot 2D data
 for i, cell_type in enumerate(
@@ -309,50 +321,58 @@ else:
     ax_main.set_xlabel(f"{receptor1} Count")
     ax_main.set_ylabel(f"{receptor2} Count")
 
-ax_main.legend()
+# Main panel is small relative to the scatter panels FONT_SIZE_LEGEND was tuned for, so
+# the legend uses a reduced local font size (built from the shared spacing constants) to
+# stay compact while remaining overlaid on the panel rather than a detached standalone legend.
+ax_main.legend(
+    fontsize=FONT_SIZE_LEGEND,
+    markerscale=1.5,
+    borderpad=LEGEND_BORDERPAD,
+    labelspacing=LEGEND_LABELSPACING,
+    handlelength=LEGEND_HANDLELENGTH,
+    handletextpad=LEGEND_HANDLETEXTPAD,
+    borderaxespad=LEGEND_BORDERAXESPAD,
+)
 
-# Top marginal plot (x-axis projection)
-ax_top = fig.add_subplot(gs[0, 1], sharex=ax_main)
+if show_marginals:
+    # Top marginal plot (x-axis projection)
+    for i, cell_type in enumerate(
+        [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
+    ):
+        cell_df = plot_df[plot_df["Cell Type"] == cell_type]
+        sns.histplot(
+            cell_df[f"{receptor1}_norm"].values,
+            color=colors[i],
+            alpha=0.5,
+            kde=not log_scale,
+            kde_kws={"bw_method": "scott"},
+            edgecolor="black",
+            ax=ax_top,
+            label=cell_type_labels[i],
+        )
 
-for i, cell_type in enumerate(
-    [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
-):
-    cell_df = plot_df[plot_df["Cell Type"] == cell_type]
-    sns.histplot(
-        cell_df[f"{receptor1}_norm"].values,
-        color=colors[i],
-        alpha=0.5,
-        kde=not log_scale,
-        kde_kws={"bw_method": "scott"},
-        edgecolor="black",
-        ax=ax_top,
-        label=cell_type_labels[i],
-    )
+    ax_top.set_xlim(x_min, x_max)
+    ax_top.set_ylabel("Number of Cells")
+    plt.setp(ax_top.get_xticklabels(), visible=False)
 
-ax_top.set_xlim(x_min, x_max)
-ax_top.set_ylabel("Number of Cells")
-plt.setp(ax_top.get_xticklabels(), visible=False)
+    # Right marginal plot (y-axis projection)
+    for i, cell_type in enumerate(
+        [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
+    ):
+        cell_df = plot_df[plot_df["Cell Type"] == cell_type]
+        sns.histplot(
+            y=cell_df[f"{receptor2}_norm"].values,
+            color=colors[i],
+            alpha=0.5,
+            kde=not log_scale,
+            kde_kws={"bw_method": "scott"},
+            edgecolor="black",
+            ax=ax_right,
+        )
 
-# Right marginal plot (y-axis projection)
-ax_right = fig.add_subplot(gs[1, 2], sharey=ax_main)
-
-for i, cell_type in enumerate(
-    [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
-):
-    cell_df = plot_df[plot_df["Cell Type"] == cell_type]
-    sns.histplot(
-        y=cell_df[f"{receptor2}_norm"].values,
-        color=colors[i],
-        alpha=0.5,
-        kde=not log_scale,
-        kde_kws={"bw_method": "scott"},
-        edgecolor="black",
-        ax=ax_right,
-    )
-
-ax_right.set_ylim(y_min, y_max)
-ax_right.set_xlabel("Number of Cells")
-plt.setp(ax_right.get_yticklabels(), visible=False)
+    ax_right.set_ylim(y_min, y_max)
+    ax_right.set_xlabel("Number of Cells")
+    plt.setp(ax_right.get_yticklabels(), visible=False)
 
 # Symlog rather than log: raw receptor counts include exact zeros, which a
 # plain log scale can't display. Counts at or below LOG_LINTHRESH stay linear;
@@ -365,6 +385,8 @@ LOG_LINTHRESH = 1
 if log_scale:
     ax_main.set_xscale("symlog", linthresh=LOG_LINTHRESH)
     ax_main.set_yscale("symlog", linthresh=LOG_LINTHRESH)
+
+set_tick_count(ax_main, 3, 3)
 
 plt.show()
 
