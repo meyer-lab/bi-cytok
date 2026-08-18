@@ -54,7 +54,6 @@ from bicytok.figure_styles import (
     FONT_SIZE_ANNOT,
     GRID_ALPHA,
     apply_style,
-    standalone_legend_figure,
 )
 from bicytok.scan_runners import (
     load_KL_EMD_scan_results,

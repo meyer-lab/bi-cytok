@@ -55,6 +55,7 @@ from bicytok.figure_styles import (
     POINT_SIZE_BACKGROUND,
     POINT_SIZE_FOREGROUND,
     apply_style,
+    set_tick_count,
 )
 
 apply_style()
@@ -388,6 +389,8 @@ def plot_outlier_scatter(res, ax):
     ax.set_ylabel(axis_2_label)
     if SHOW_LEGEND_IN_PANEL:
         ax.legend(loc="best")
+
+    set_tick_count(ax, 4, 4)
 
 
 def plot_outlier_comparison(key):
