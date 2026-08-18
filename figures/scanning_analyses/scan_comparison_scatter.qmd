@@ -290,11 +290,7 @@ def build_comparison(metric_a, metric_b, cell_types, axis_norm, stack_order=None
         all_df["s2"] = all_df["s2"].rank(method="average")
 
     suffix = {"none": "", "z-score": " (z-score)", "rank": " (rank)"}[axis_norm]
-    # Looked up from the project-wide canonical CELL_TYPE_COLORS (see
-    # bicytok.figure_styles) rather than resampled per comparison, so a given cell
-    # type is always the same color regardless of which/how-many cell types this
-    # particular comparison happens to include (a single-cell-type comparison like
-    # "kl_selec_treg" previously always drew whatever color index 0 was).
+
     cell_type_colors = {ct: CELL_TYPE_COLORS[ct] for ct in cell_types}
     return {
         "df": all_df,
@@ -426,13 +422,11 @@ def print_spearman(key):
     print(pd.DataFrame(rows).to_string(index=False))
 ```
 
+## Pairwise metric comparisons with Spearman correlation
+
 ```{python}
 #| label: fig-scan-comp-emd-kl
 plot_comparison("emd_kl")
-```
-
-```{python}
-print_spearman("emd_kl")
 ```
 
 ```{python}
@@ -441,22 +435,26 @@ plot_comparison("emd_selec")
 ```
 
 ```{python}
-print_spearman("emd_selec")
-```
-
-```{python}
 #| label: fig-scan-comp-kl-selec
 plot_comparison("kl_selec")
 ```
 
 ```{python}
+print("\nEMD vs KL divergence Spearman correlation:")
+print_spearman("emd_kl")
+print("\nEMD vs selectivity Spearman correlation:")
+print_spearman("emd_selec")
+print("\nKL divergence vs selectivity Spearman correlation:")
 print_spearman("kl_selec")
 ```
+
+## Cell-type--specific comparisons
 
 ```{python}
 #| label: fig-scan-comp-kl-selec-treg
 plot_comparison("kl_selec_treg")
 ```
+
 ```{python}
 #| label: fig-scan-comp-emd-selec-cd8tcm
 plot_comparison("emd_selec_cd8tcm")
@@ -466,6 +464,8 @@ plot_comparison("emd_selec_cd8tcm")
 #| label: fig-scan-comp-emd-selec-pdc
 plot_comparison("emd_selec_pdc")
 ```
+
+## Low--high valency selectivity comparisons and legend
 
 ```{python}
 #| label: fig-scan-comp-selec-selec-highval
@@ -480,10 +480,6 @@ plot_comparison("selec_selec-mixval")
 ```{python}
 #| label: fig-scan-comp-celltype-legend
 #| fig-cap: "Shared legend for the cell-type-colored comparison scatter plots above"
-# Detached legend, mirroring suppfig-scan-outliers-legend and fig-celltype-legend
-# (scan_kxstar_bounds.qmd): every "all cell types" comparison above uses the same
-# canonical CELL_TYPE_COLORS mapping and omits its own legend, so this one legend
-# covers all of them and can be positioned independently (e.g. in Illustrator).
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 

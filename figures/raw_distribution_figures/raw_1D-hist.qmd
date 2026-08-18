@@ -129,17 +129,24 @@ for i, abundances in enumerate(all_cell_abundances):
         edgecolor="black",
     )
 
+if receptor == "CD122":
+    rec_label = "IL-2Rβ"
+elif receptor == "CD25":
+    rec_label = "IL-2Rα"
+else:
+    rec_label = receptor
+
 if normalize:
     plt.xlabel("Normalized receptor count")
 else:
-    plt.xlabel(f"Number of {receptor} Antibodies")
+    plt.xlabel(f"{rec_label} ADT Count")
 
 if stat == "density":
     plt.ylabel("Density")
 elif stat == "count":
-    plt.ylabel("Number of Cells")
+    plt.ylabel("Cell Count")
 elif stat == "probability":
-    plt.ylabel("Proportion of cells")
+    plt.ylabel("Cell Fraction")
 
 if x_limit:
     x_max = np.percentile(targ_abundances, 99.5)
@@ -151,14 +158,4 @@ plt.show()
 
 print(f"KL Divergence: {kl_val:.4f}")
 print(f"EMD: {emd_val:.4f}")
-```
-
-## Parameter Summary
-```{python}
-#| output: asis
-text = f"""
-Analyzed the distribution of the receptor **{receptor}** between target cell type **{targ_cell}** and all other cell types. The analysis was performed on **{sample_size}** cells sampled from the CITE-seq dataset. The histogram statistic used was '**{stat}**' and the epitope counts were {"**normalized**" if normalize else "**not normalized**"} for comparison
-"""
-
-print(text)
 ```

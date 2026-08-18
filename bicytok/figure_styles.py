@@ -1,12 +1,11 @@
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
-FONT_FAMILY = "sans-serif"
-FONT_NAME = "Myriad Pro"  # temporary override for comparison; manuscript mainfont in
-# _quarto.yml is still Times New Roman, so figures are out of sync with body text for now
-
+## Shared rcParams, set in-figure via apply_style() call
+FONT_FAMILY = "serif"
+FONT_NAME = "Times New Roman"  # should match the font used in Quarto's PDF output (see _quarto.yml)
 FONT_SIZE_TITLE = 22
-FONT_SIZE_LABEL = 22
+FONT_SIZE_LABEL = 22  # axis labels
 FONT_SIZE_TICK = 20
 FONT_SIZE_LEGEND = 18
 FONT_SIZE_ANNOT = 16  # in-plot data annotations (heatmap cell labels, point/bar labels)
@@ -17,11 +16,13 @@ LINE_WIDTH = 1.5
 LINE_WIDTH_AGGREGATE = (
     2.5  # emphasizes summary/aggregate overlays (e.g. "All off-target")
 )
+GRID_ALPHA = 0.4
+GRID_LINESTYLE = "--"
+
 POINT_SIZE_XS = 7  # extra small scatter points (scatters containing entire scan)
 POINT_SIZE_BACKGROUND = 15  # bulk / non-emphasized scatter points
 POINT_SIZE_FOREGROUND = 30  # highlighted points (outliers, top hits, star markers)
-GRID_ALPHA = 0.4
-GRID_LINESTYLE = "--"
+
 LEGEND_FRAMEALPHA = 0.8
 LEGEND_BORDERPAD = 0.3  # padding between legend border and its content (default 0.4)
 LEGEND_LABELSPACING = 0.3  # vertical space between entries (default 0.5)
@@ -29,26 +30,29 @@ LEGEND_HANDLELENGTH = 1.5  # length of the marker/line handle sample (default 2.
 LEGEND_HANDLETEXTPAD = 0.5  # space between handle and label text (default 0.8)
 LEGEND_BORDERAXESPAD = 0.3  # space between legend and axes edge (default 0.5)
 
+
+## Shared figure styles, imported and applied in-figure
+_MAIN_BLUE = "#1d75bc"
+_MAIN_RED = "#f0554f"
+_MAIN_ORANGE = "#f7941d"
 COLORS = {
-    "target": "#CF4D6F",  # as currently used in raw_1D-hist.qmd
-    "off_target": "#2774AE",  # anchor color
-    "aggregate": "darkred",  # summary overlay across a group (e.g. "All off-target")
-    "improved": "#2774AE",  # 2D metric >= 1D metric (pairing helps); anchor color
-    "declined": "#C0392B",  # 2D metric < 1D metric (pairing hurts)
-    "Treg": "#1e75bc",
-    "CD8 T": "#f7941d",
-    "NK": "#f0554f",
+    "target": _MAIN_RED,  # target cell type color (raw_1D-hist.qmd, etc.)
+    "off_target": _MAIN_BLUE,  # anchor color
+    "aggregate": "darkred",  # summary overlay across a group (e.g. "All off-target") in off_targ_breakdown.qmd
+    "improved": _MAIN_BLUE,  # 2D metric >= 1D metric (pairing helps) in scan_top_hits_1Dvs2D.qmd
+    "declined": _MAIN_RED,  # 2D metric < 1D metric (pairing hurts) in scan_top_hits_1Dvs2D.qmd
+    "Treg": _MAIN_BLUE,  # consistent specific cell type colors across figures
+    "CD8 T": _MAIN_ORANGE,
+    "NK": _MAIN_RED,
     "outlier_neither": "lightgray",  # scan_outliers.qmd: neither metric is high
-    "outlier_metric1": "#3A86FF",  # scan_outliers.qmd: metric 1 outlier
-    "outlier_metric2": "#FF9F1C",  # scan_outliers.qmd: metric 2 outlier
-    "outlier_both": "#E63946",  # scan_outliers.qmd: high on both metrics
+    "outlier_metric1": _MAIN_BLUE,  # scan_outliers.qmd: metric 1 outlier
+    "outlier_metric2": _MAIN_ORANGE,  # scan_outliers.qmd: metric 2 outlier
+    "outlier_both": _MAIN_RED,  # scan_outliers.qmd: high on both metrics
     "outlier_user": "#9B5DE5",  # scan_outliers.qmd: user-specified pairs
 }
 
-# Shared palette for "two binary conditions crossed" categorical breakdowns (4 categories:
-# neither, condition A only, condition B only, both) — used by scan_outliers.qmd's outlier
-# categories (COLORS["outlier_*"] above) and by the co-pinning / selectivity-gain flow
-# diagrams in scan_kxstar_bounds.qmd, which share the same category shape.
+# Shared palette for "two binary conditions crossed" categorical breakdowns, used by
+# scan_outliers.qmd and scan_kxstar_bounds.qmd
 CROSSED_CONDITION_COLORS = [
     COLORS["outlier_neither"],
     COLORS["outlier_metric1"],
@@ -56,25 +60,36 @@ CROSSED_CONDITION_COLORS = [
     COLORS["outlier_both"],
 ]
 
-LINESTYLES = {
-    "aggregate": "--",  # dashed, distinguishes summary overlays from individual series
-}
-
 CMAPS = {
     "sequential": "Reds",  # magnitude-only heatmap data (e.g. optimal metric value)
     "categorical": "tab10",  # qualitative palette for <=10 subgroups
     "categorical_large": "tab20",  # qualitative palette for >10 subgroups
 }
 
-# CITE-seq CellType2 annotation values (see bicytok.imports.importCITE), fixed here so a
-# given cell type always gets the same color everywhere it's plotted, regardless of which
-# subset of cell types happens to be present in a particular scan or comparison. Without
-# this, per-plot palettes built from `categorical_colors(len(cell_types_present), ...)`
-# assign colors by *position in the current subset*, so the same cell type can land on a
-# different color in every plot — or, worse, on the exact same color as an unrelated cell
-# type whenever both subsets happen to have length 1 (confirmed happening in practice:
-# Treg / CD8 TCM / pDC's single-cell-type panels in scan_comparison_scatter.qmd all drew
-# the same color, since `categorical_colors(1, ...)` always returns the first sample).
+FIGSIZE = {
+    "single_panel": (5, 4),  # rectangular panel (histograms, barplots, etc.)
+    "square_scatter": (4, 4),  # small square panel (scatterplots, etc.)
+    "joint_grid": (
+        5,
+        4,
+    ),  # 2D joint distribution + marginal histograms (raw_2D-hist.qmd)
+    "square_heatmap": (6, 6),  # large square panel (heatmaps, etc.)
+    "alluvial_flow": (3, 7),  # category-transition alluvial (scan_kxstar_bounds.qmd)
+    "alluvial_flow_vertical": (7, 3),  # same, rotated for a wide/short poster slot
+}
+
+# Adjusts size of ax with colorbar to remain square. Call in-figure with
+# fig.colorbar(fraction=COLORBAR_FRACTION, pad=COLORBAR_PAD) and
+# FIGSIZE["square_scatter_with_colorbar"]
+COLORBAR_FRACTION = 0.25
+COLORBAR_PAD = 0.05
+FIGSIZE["square_scatter_with_colorbar"] = (
+    FIGSIZE["square_scatter"][0] / (1 - COLORBAR_FRACTION - COLORBAR_PAD),
+    FIGSIZE["square_scatter"][1],
+)
+
+# CITE-seq CellType2 annotation values, fixed here so a given cell type always gets
+# the same color everywhere it's plotted
 CELL_TYPES = [
     "ASDC",
     "B intermediate",
@@ -109,28 +124,17 @@ CELL_TYPES = [
     "pDC",
 ]
 
-FIGSIZE = {
-    "single_panel": (5, 3),  # single 1D histogram/line panel
-    "square_scatter": (4, 4),  # single square scatter panel
-    "joint_grid": (5, 4),  # 2D joint distribution + marginal histograms
-    "square_heatmap": (6, 6),  # single square heatmap panel with colorbar
-    "alluvial_flow": (3, 7),  # category-transition alluvial (scan_kxstar_bounds.qmd)
-    "alluvial_flow_vertical": (7, 3),  # same, rotated for a wide/short poster slot
-}
-
-# fig.colorbar(mappable, ax=ax) shrinks the given ax to make room for the colorbar rather than
-# growing the canvas, so a panel drawn at FIGSIZE["square_scatter"] with a colorbar attached ends
-# up narrower than intended. Pass these explicitly to fig.colorbar() (fraction=COLORBAR_FRACTION,
-# pad=COLORBAR_PAD) together with FIGSIZE["square_scatter_with_colorbar"], which is derived from
-# square_scatter so the two stay in sync if that base size ever changes.
-COLORBAR_FRACTION = 0.25
-COLORBAR_PAD = 0.05
-FIGSIZE["square_scatter_with_colorbar"] = (
-    FIGSIZE["square_scatter"][0] / (1 - COLORBAR_FRACTION - COLORBAR_PAD),
-    FIGSIZE["square_scatter"][1],
+# Canonical cell-type -> color mapping, built once from the fixed CELL_TYPES list above.
+CELL_TYPE_COLORS = dict(
+    zip(
+        CELL_TYPES,
+        discrete_categorical_colors(len(CELL_TYPES), ["tab10", "tab20", "tab20b"]),
+        strict=True,
+    )
 )
 
 
+## Helper functions
 def gridspec_marginal_spacing(
     fig_width: float,
     fig_height: float,
@@ -217,16 +221,6 @@ def discrete_categorical_colors(n: int, cmap_names: list[str]) -> list:
         f"Only {len(colors)} discrete colors available across {cmap_names}, need {n}"
     )
     return colors[:n]
-
-
-# Canonical cell-type -> color mapping, built once from the fixed CELL_TYPES list above.
-CELL_TYPE_COLORS = dict(
-    zip(
-        CELL_TYPES,
-        discrete_categorical_colors(len(CELL_TYPES), ["tab10", "tab20", "tab20b"]),
-        strict=True,
-    )
-)
 
 
 def standalone_legend_figure(

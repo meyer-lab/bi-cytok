@@ -107,65 +107,6 @@ SCANS = [
         "color": "#FF7F00",
         "gain_ref": "Mixed Valency Kx* upper bound 1e-5",
     },
-    # # Specified signal receptor scan
-    # {
-    #     "path": "/home/sama/receptor_sweep_data/20260604_selec_scan_full_sigCD122.csv",
-    #     "label": "Signal CD122 Kx* upper bound 1e-5",
-    #     "kx_upper": -5.0,
-    #     "color": "#A020F0",
-    #     "gain_ref": "Signal CD122 Kx* upper bound 1e-5",
-    # },
-    # # Count normalization scans
-    # {
-    #     "path": "/home/sama/receptor_sweep_data/old_scan_results/old_tight_kx_bound/20260714_selec_scan_full_norm.csv",
-    #     "label": "Normalized Kx* upper bound 1e-9",
-    #     "kx_upper": -9.0,
-    #     "color": "#4B0082",
-    #     "gain_ref": "Normalized Kx* upper bound 1e-9",
-    # },
-    # {
-    #     "path": "/home/sama/receptor_sweep_data/20260723_selec_scan_full_norm_filt_kxup.csv",
-    #     "label": "Normalized 1000 Kx* upper bound 1e-5",
-    #     "kx_upper": -5.0,
-    #     "color": "#FF7F00",
-    #     "gain_ref": "Normalized 1000 Kx* upper bound 1e-5",
-    # },
-    # {
-    #     "path": "/home/sama/receptor_sweep_data/20260804_selec_scan_full_norm_filt_100.csv",
-    #     "label": "Normalized 100 Kx* upper bound 1e-5",
-    #     "kx_upper": -5.0,
-    #     "color": "#4E9A06",
-    #     "gain_ref": "Normalized 100 Kx* upper bound 1e-5",
-    # },
-    # # Variable filter-strength scans
-    # {
-    #     "path": "/home/sama/receptor_sweep_data/20260520_selec_scan_full_filt3.csv",
-    #     "label": "Filtered 3.0 Kx* upper bound 1e-5",
-    #     "kx_upper": -5.0,
-    #     "color": "#4B0082",
-    #     "gain_ref": "Filtered 3.0 Kx* upper bound 1e-5",
-    # },
-    # {
-    #     "path": "/home/sama/receptor_sweep_data/20260520_selec_scan_full_filt2.csv",
-    #     "label": "Filtered 2.0 Kx* upper bound 1e-5",
-    #     "kx_upper": -5.0,
-    #     "color": "#FF7F00",
-    #     "gain_ref": "Filtered 2.0 Kx* upper bound 1e-5",
-    # },
-    # {
-    #     "path": "/home/sama/receptor_sweep_data/20260520_selec_scan_full_filt1-5.csv",
-    #     "label": "Filtered 1.5 Kx* upper bound 1e-5",
-    #     "kx_upper": -5.0,
-    #     "color": "#4E9A06",
-    #     "gain_ref": "Filtered 1.5 Kx* upper bound 1e-5",
-    # },
-    # {
-    #     "path": "/home/sama/receptor_sweep_data/old_scan_results/20260520_selec_scan_full_filt.csv",
-    #     "label": "Filtered Kx* upper bound 1e-5",
-    #     "kx_upper": -5.0,
-    #     "color": "#CF4D6F",
-    #     "gain_ref": "Filtered Kx* upper bound 1e-5",
-    # },
 ]
 
 # Scans analyzed by fig-kxstar-dist, fig-affinity-dist, fig-selectivity-dist, fig-gain-dist,

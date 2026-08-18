@@ -149,12 +149,12 @@ else:
 if normalize:
     ax.set_xlabel("Normalized receptor count")
 else:
-    ax.set_xlabel(f"{rec_label} Count")
+    ax.set_xlabel(f"{rec_label} ADT Count")
 
 if stat == "density":
     ax.set_ylabel("Density")
 elif stat == "count":
-    ax.set_ylabel("Number of Cells")
+    ax.set_ylabel("Cell Count")
 elif stat == "probability":
     ax.set_ylabel("Cell Fraction")
 
@@ -391,17 +391,4 @@ ax_right.set_xlabel("Cells")
 plt.setp(ax_right.get_yticklabels(), visible=False)
 
 plt.show()
-```
-
-## Parameter Summary
-```{python}
-#| output: asis
-text = f"""
-**1D analysis**: receptor **{receptor}**, target **{targ_cell}**, off-target populations: {", ".join(f"**{c}**" for c in off_targ_cell_types)}.
-
-**2D analysis**: receptors **{receptor1}** × **{receptor2}**, target **{targ_cell}**, off-target populations: {", ".join(f"**{c}**" for c in off_targ_cell_types)}.
-
-Sample size: **{sample_size}** cells per analysis. Receptor counts were {"**normalized**" if normalize else "**not normalized**"}.
-"""
-print(text)
 ```

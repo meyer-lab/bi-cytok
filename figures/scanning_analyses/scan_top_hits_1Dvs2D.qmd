@@ -30,10 +30,8 @@ scans are instantiated:
 - `SCATTER_LABEL_DECLINE_THRESHOLD`: label red points only if 2D/1D ratio is below this
 
 # Outputs
-- **`fig-top-hits-1d-2d-lowval` / `-highval`**: scatter, max 1D vs max 2D per cell type
-- **`fig-top-hits-legend`**: the "Pairing helps" / "Pairing hurts" legend, detached from
-  the two scatter panels above so it can be positioned independently (e.g. in
-  Illustrator) rather than repeated identically in each panel
+- **`fig-top-hits-1d-2d-lowval` / `-highval`**: scatter, max 1D vs max 2D per cell type,
+  with an inline "Pairing helps" / "Pairing hurts" legend in the lower right
 - **`suppfig-top-hits-gain-lowval` / `-highval`**: log₂(2D/1D) gain bars per cell type
 - Slope charts (diagnostic, not embedded): connected strip plot per cell type
 
@@ -70,11 +68,6 @@ HIGHVAL_SCAN = "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.
 
 # Label red points only if the 2D/1D ratio drops below this threshold.
 SCATTER_LABEL_DECLINE_THRESHOLD = 0.99
-
-# Show a legend on each scatter panel. Off by default since both scan panels share the
-# same "Pairing helps" / "Pairing hurts" coloring; see fig-top-hits-legend for the
-# detached, shared legend instead (kept separate for easier Illustrator layout).
-DISP_LEGEND = False
 
 
 def top_hits_df(scan_path, kl_emd_metric="EMD"):
@@ -221,6 +214,13 @@ def plot_scatter(df, labels, decline_threshold=SCATTER_LABEL_DECLINE_THRESHOLD):
 
     lim_low = min(s1d.min(), s2d.min()) * 0.995
     lim_high = max(s1d.max(), s2d.max()) * 1.005
+    # Fix the axes bounds before adjust_text runs: it reads the axes' current pixel
+    # extent to keep labels inside (ensure_inside_axes=True), so setting the final
+    # bounds only afterward (via set_xlim/set_ylim) let labels stray past them, which
+    # matplotlib then counts toward the saved figure's size.
+    ax.set_xlim(lim_low, lim_high)
+    ax.set_ylim(lim_low, lim_high)
+    ax.set_aspect("equal")
     ax.plot(
         [lim_low, lim_high],
         [lim_low, lim_high],
@@ -264,29 +264,25 @@ def plot_scatter(df, labels, decline_threshold=SCATTER_LABEL_DECLINE_THRESHOLD):
 
     ax.set_xlabel(labels["metric_label_1d"])
     ax.set_ylabel(labels["metric_label_2d"])
-    if DISP_LEGEND:
-        improved_handle = mlines.Line2D(
-            [],
-            [],
-            color=COLORS["improved"],
-            marker="o",
-            linestyle="None",
-            markersize=7,
-            label="Pairing helps",
-        )
-        declined_handle = mlines.Line2D(
-            [],
-            [],
-            color=COLORS["declined"],
-            marker="o",
-            linestyle="None",
-            markersize=7,
-            label="Pairing hurts",
-        )
-        ax.legend(handles=[improved_handle, declined_handle], loc="upper left")
-    ax.set_xlim(lim_low, lim_high)
-    ax.set_ylim(lim_low, lim_high)
-    ax.set_aspect("equal")
+    improved_handle = mlines.Line2D(
+        [],
+        [],
+        color=COLORS["improved"],
+        marker="o",
+        linestyle="None",
+        markersize=7,
+        label="Pairing helps",
+    )
+    declined_handle = mlines.Line2D(
+        [],
+        [],
+        color=COLORS["declined"],
+        marker="o",
+        linestyle="None",
+        markersize=7,
+        label="Pairing hurts",
+    )
+    ax.legend(handles=[improved_handle, declined_handle], loc="lower right")
     plt.tight_layout()
     plt.show()
 
@@ -401,6 +397,8 @@ df_low, labels_low = top_hits_df(LOWVAL_SCAN)
 df_high, labels_high = top_hits_df(HIGHVAL_SCAN)
 ```
 
+## Top hits scatters
+
 ```{python}
 #| label: fig-top-hits-1d-2d-lowval
 plot_scatter(df_low, labels_low)
@@ -411,41 +409,15 @@ plot_scatter(df_low, labels_low)
 plot_scatter(df_high, labels_high)
 ```
 
-```{python}
-#| label: fig-top-hits-legend
-#| fig-cap: "Shared legend for the 1D-vs-2D scatter plots above"
-# Detached legend, mirroring fig-scan-comp-celltype-legend (scan_comparison_scatter.qmd)
-# and fig-celltype-legend (scan_kxstar_bounds.qmd): both scatter panels above share the
-# same "Pairing helps" / "Pairing hurts" coloring and omit their own legend, so this one
-# legend covers both and can be positioned independently (e.g. in Illustrator).
-_top_hits_improved_handle = mlines.Line2D(
-    [],
-    [],
-    color=COLORS["improved"],
-    marker="o",
-    linestyle="None",
-    markersize=7,
-)
-_top_hits_declined_handle = mlines.Line2D(
-    [],
-    [],
-    color=COLORS["declined"],
-    marker="o",
-    linestyle="None",
-    markersize=7,
-)
-standalone_legend_figure(
-    [_top_hits_improved_handle, _top_hits_declined_handle],
-    ["Pairing helps", "Pairing hurts"],
-)
-plt.show()
-```
+## Top hits slope chart
 
 ```{python}
 # Slope charts (diagnostic; not embedded).
 plot_slope(df_low, labels_low)
 plot_slope(df_high, labels_high)
 ```
+
+## Top hits gain bar plot
 
 ```{python}
 #| label: top-hits-gain-lowval
