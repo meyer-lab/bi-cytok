@@ -32,6 +32,10 @@ implementation drives several manuscript figures with different parameters.
   - `rasterize`: rasterize the scatter points (keeps the star highlights vector); useful
     for the large "all cell types" comparisons where SVG output would otherwise embed
     tens of thousands of points
+  - `stack_order`: list of cell types to draw last (i.e. on top), in the given order.
+    All points share one `zorder`, so draw order alone decides which cell type's color
+    wins in dense overlaps; cell types not listed keep their existing relative order
+    and are drawn first (on the bottom).
 - `FILTER_SELEC_BASIN` / `SELEC_BASIN_CUTOFF`: whether to exclude low-selectivity basin
   points from Spearman correlation (raw `Selectivity` value, applied before any axis
   normalization).
@@ -137,10 +141,17 @@ COMPARISONS = {
     "emd_selec_cd8tcm": dict(metrics=("Selectivity", "EMD"), cell_types=["CD8 TCM"]),
     "emd_selec_pdc": dict(metrics=("Selectivity", "EMD"), cell_types=["pDC"]),
     "selec_selec-highval": dict(
-        metrics=("Selectivity monoval", "Selectivity bival"), cell_types="all", rasterize=True, hide_stars=True
+        metrics=("Selectivity monoval", "Selectivity bival"),
+        cell_types="all",
+        rasterize=True,
+        hide_stars=True,
+        stack_order=["ASDC", "B naive", "dnT", "HSPC"],
     ),
     "selec_selec-mixval": dict(
-        metrics=("Selectivity monoval", "Selectivity mix-val"), cell_types="all", rasterize=True, hide_stars=True
+        metrics=("Selectivity monoval", "Selectivity mix-val"),
+        cell_types="all",
+        rasterize=True,
+        hide_stars=True,
     ),
 }
 
@@ -199,6 +210,21 @@ def resolve_cell_types(path_a, path_b, cell_types):
     return list(cell_types)
 
 
+def order_by_stack_priority(cell_types, stack_order):
+    """Reorders cell_types so entries in stack_order are drawn last.
+
+    Every cell type's points share one zorder, so draw order alone decides which
+    cell type's color wins in dense overlaps — last drawn sits visually on top.
+    Cell types not in stack_order keep their existing relative order, drawn first
+    (on the bottom).
+    """
+    if not stack_order:
+        return cell_types
+    priority = [ct for ct in stack_order if ct in cell_types]
+    rest = [ct for ct in cell_types if ct not in priority]
+    return rest + priority
+
+
 def _selec_basin_threshold(raw_series, axis_norm):
     """Map SELEC_BASIN_CUTOFF (raw Selectivity units) into the axis-normalized space."""
     if axis_norm == "z-score":
@@ -208,15 +234,17 @@ def _selec_basin_threshold(raw_series, axis_norm):
     return SELEC_BASIN_CUTOFF
 
 
-def build_comparison(metric_a, metric_b, cell_types, axis_norm):
+def build_comparison(metric_a, metric_b, cell_types, axis_norm, stack_order=None):
     """Merge two metrics per cell type and apply global axis normalization.
 
-    Returns a dict with the merged long-form DataFrame, the resolved cell types, a
-    color per cell type, the axis labels, and (if `FILTER_SELEC_BASIN` applies) the
-    selectivity-basin threshold in the normalized axis' units.
+    Returns a dict with the merged long-form DataFrame, the resolved cell types
+    (ordered per `stack_order`; see COMPARISONS docs above), a color per cell type,
+    the axis labels, and (if `FILTER_SELEC_BASIN` applies) the selectivity-basin
+    threshold in the normalized axis' units.
     """
     info_a, info_b = METRICS[metric_a], METRICS[metric_b]
     cell_types = resolve_cell_types(info_a["path"], info_b["path"], cell_types)
+    cell_types = order_by_stack_priority(cell_types, stack_order)
 
     ct_dfs = {}
     for cell_type in cell_types:
@@ -282,7 +310,10 @@ def build_comparison(metric_a, metric_b, cell_types, axis_norm):
 # Precompute every comparison up front; labeled cells below are thin plot calls.
 comparison_data = {
     key: build_comparison(
-        *cfg["metrics"], cfg["cell_types"], cfg.get("axis_norm", AXIS_NORM)
+        *cfg["metrics"],
+        cfg["cell_types"],
+        cfg.get("axis_norm", AXIS_NORM),
+        cfg.get("stack_order"),
     )
     for key, cfg in COMPARISONS.items()
 }
