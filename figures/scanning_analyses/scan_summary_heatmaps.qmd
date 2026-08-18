@@ -157,3 +157,12 @@ cbar.ax.tick_params(width=2, length=6)
 cbar.set_label(f"{metric_label}")
 plt.show()
 ```
+
+```{python}
+# Top receptor pair per cell type, to help match overlapping heatmap labels back to
+# their cell type (uses optimal_pairs computed above, before the position collapse
+# that lets multiple cell types share one heatmap cell).
+print(f"Top receptor pair per cell type ({metric_label}):")
+for cell_type, (rec1, rec2, max_val) in optimal_pairs.items():
+    print(f"  {cell_type}: {rec1} + {rec2} ({max_val:.4f})")
+```
