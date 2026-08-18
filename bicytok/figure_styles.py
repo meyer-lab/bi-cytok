@@ -5,13 +5,13 @@ FONT_FAMILY = "sans-serif"
 FONT_NAME = "Myriad Pro"  # temporary override for comparison; manuscript mainfont in
 # _quarto.yml is still Times New Roman, so figures are out of sync with body text for now
 
-FONT_SIZE_TITLE = 14
+FONT_SIZE_TITLE = 22
 FONT_SIZE_LABEL = 22
 FONT_SIZE_TICK = 20
 FONT_SIZE_LEGEND = 18
 FONT_SIZE_ANNOT = 16  # in-plot data annotations (heatmap cell labels, point/bar labels)
 
-DEFAULT_N_TICKS = 6  # default tick count per axis; override per-plot via set_tick_count
+DEFAULT_N_TICKS = 4  # default tick count per axis; override per-plot via set_tick_count
 
 LINE_WIDTH = 1.5
 LINE_WIDTH_AGGREGATE = (
@@ -44,6 +44,17 @@ COLORS = {
     "outlier_both": "#E63946",  # scan_outliers.qmd: high on both metrics
     "outlier_user": "#9B5DE5",  # scan_outliers.qmd: user-specified pairs
 }
+
+# Shared palette for "two binary conditions crossed" categorical breakdowns (4 categories:
+# neither, condition A only, condition B only, both) — used by scan_outliers.qmd's outlier
+# categories (COLORS["outlier_*"] above) and by the co-pinning / selectivity-gain flow
+# diagrams in scan_kxstar_bounds.qmd, which share the same category shape.
+CROSSED_CONDITION_COLORS = [
+    COLORS["outlier_neither"],
+    COLORS["outlier_metric1"],
+    COLORS["outlier_metric2"],
+    COLORS["outlier_both"],
+]
 
 LINESTYLES = {
     "aggregate": "--",  # dashed, distinguishes summary overlays from individual series
@@ -102,7 +113,9 @@ FIGSIZE = {
     "single_panel": (5, 3),  # single 1D histogram/line panel
     "square_scatter": (4, 4),  # single square scatter panel
     "joint_grid": (5, 4),  # 2D joint distribution + marginal histograms
-    "square_heatmap": (5, 5),  # single square heatmap panel with colorbar
+    "square_heatmap": (6, 6),  # single square heatmap panel with colorbar
+    "alluvial_flow": (3, 7),  # category-transition alluvial (scan_kxstar_bounds.qmd)
+    "alluvial_flow_vertical": (7, 3),  # same, rotated for a wide/short poster slot
 }
 
 # fig.colorbar(mappable, ax=ax) shrinks the given ax to make room for the colorbar rather than
@@ -210,7 +223,7 @@ def discrete_categorical_colors(n: int, cmap_names: list[str]) -> list:
 CELL_TYPE_COLORS = dict(
     zip(
         CELL_TYPES,
-        discrete_categorical_colors(len(CELL_TYPES), ["tab20", "tab20b", "tab20c"]),
+        discrete_categorical_colors(len(CELL_TYPES), ["tab10", "tab20", "tab20b"]),
         strict=True,
     )
 )
