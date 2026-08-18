@@ -52,7 +52,7 @@ COLORS = {
 }
 
 # Shared palette for "two binary conditions crossed" categorical breakdowns, used by
-# scan_outliers.qmd and scan_kxstar_bounds.qmd
+# scan_outliers.qmd and scan_alluvial_flows.qmd
 CROSSED_CONDITION_COLORS = [
     COLORS["outlier_neither"],
     COLORS["outlier_metric1"],
@@ -74,8 +74,10 @@ FIGSIZE = {
         4,
     ),  # 2D joint distribution + marginal histograms (raw_2D-hist.qmd)
     "square_heatmap": (6, 6),  # large square panel (heatmaps, etc.)
-    "alluvial_flow": (3, 7),  # category-transition alluvial (scan_kxstar_bounds.qmd)
-    "alluvial_flow_vertical": (7, 3),  # same, rotated for a wide/short poster slot
+    "alluvial_flow": (
+        7,
+        3,
+    ),  # category-transition alluvial, source-top/destination-bottom (scan_alluvial_flows.qmd)
 }
 
 # Adjusts size of ax with colorbar to remain square. Call in-figure with
@@ -123,15 +125,6 @@ CELL_TYPES = [
     "gdT",
     "pDC",
 ]
-
-# Canonical cell-type -> color mapping, built once from the fixed CELL_TYPES list above.
-CELL_TYPE_COLORS = dict(
-    zip(
-        CELL_TYPES,
-        discrete_categorical_colors(len(CELL_TYPES), ["tab10", "tab20", "tab20b"]),
-        strict=True,
-    )
-)
 
 
 ## Helper functions
@@ -221,6 +214,15 @@ def discrete_categorical_colors(n: int, cmap_names: list[str]) -> list:
         f"Only {len(colors)} discrete colors available across {cmap_names}, need {n}"
     )
     return colors[:n]
+
+# Canonical cell-type -> color mapping, built once from the fixed CELL_TYPES list above.
+CELL_TYPE_COLORS = dict(
+    zip(
+        CELL_TYPES,
+        discrete_categorical_colors(len(CELL_TYPES), ["tab10", "tab20", "tab20b"]),
+        strict=True,
+    )
+)
 
 
 def standalone_legend_figure(

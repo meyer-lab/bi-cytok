@@ -1,0 +1,443 @@
+---
+title: "Cross-Scan Receptor-Pair Category Flow"
+---
+
+# Summary
+Visualizes how individual receptor pairs move between categorical groupings as scan conditions change, via alluvial (flow) diagrams. Each pair is labeled by a category under one scan, matched to the same pair (by cell type + receptor identity) under another scan, and a flow diagram shows how the categories redistribute — revealing which pool each destination category is pulled from. This complements `scan_kxstar_bounds.qmd`, which tracks the distribution of optimal binding-model *parameters* (Kx*, affinities, selectivity, gain) rather than which category a pair falls into.
+
+Two flows are drawn:
+
+1. **Co-pinning flow** (`fig-copinning`): Kx* and target affinity are compensatory avidity sources, so a pair that has maxed both has no headroom left — it is genuinely constrained by the Kx* bound. Each pair is labeled by whether it is pinned at its Kx* upper bound and whether either target arm sits at the affinity ceiling, giving four categories. Pairs are matched between the loose (1e-5) and tight (1e-9) Kx* bound scans, and the alluvial shows how the loose-bound categories redistribute under the tight bound.
+2. **Selectivity/gain flow** (`fig-selgain-flow`): each pair is labeled by selectivity (below/above `SELEC_HIGH_CUTOFF`) crossed with selectivity gain (non-synergistic/synergistic, i.e. `log2_gain <= 0` vs `> 0`), and pairs are matched between the monovalent and bivalent scans to show which quadrant increased valency pulls each pair into — in particular, whether low-selectivity, high-gain pairs move into the high-selectivity, high-gain quadrant.
+
+Both flows share the same rendering machinery (`draw_category_flow`, `plot_flow`): source-scan and destination-scan blocks sit at the top and bottom of the figure, sized by pair count, connected by ribbons flowing top-to-bottom and colored by source category, so each destination block's composition shows where its pairs came from.
+
+# Inputs
+All user-facing parameters are collected at the top of the code cell below, ahead of the data loading and plotting mechanics.
+
+- `SCANS`: the three selectivity scans these flows compare — loose (1e-5) and tight (1e-9) Kx* bound scans (for `fig-copinning`), and the loose-bound and bivalent scans (for `fig-selgain-flow`). Each has a CSV `path`, a display `label`, and the `kx_upper` optimization bound in log10(M). Each CSV must be a selectivity scan (Kx* and affinities are not produced by KL/EMD scans) with a matching `.yaml` in the same directory.
+- `AFFINITY_OPT_BOUNDS`: true (min, max) affinity optimization bounds in log10(M), used to detect whether a target arm sits at the affinity ceiling.
+- `SELEC_HIGH_CUTOFF` / `GAIN_HIGH_CUTOFF`: selectivity/gain thresholds defining the `fig-selgain-flow` quadrants; also exposed as `build_selgain_flow`/`plot_selgain_flow` arguments so they can be tuned to isolate a specific population (e.g. pairs only reaching meaningful gain at high valency) without editing the module-level defaults.
+
+# Outputs
+- **`fig-copinning`**: cross-scan alluvial flow of pairs between four constraint categories (Kx*-pinned x target-affinity-ceiling), showing where each tight-bound category is pulled from
+- **`fig-copinning-legend`**: standalone legend for `fig-copinning`'s constraint categories, detached so it can be positioned independently (e.g. in Illustrator) rather than crowding the flow figure.
+- **`fig-selgain-flow`**: cross-scan (monovalent -> bivalent) alluvial flow of pairs between four selectivity x gain quadrants, showing which quadrant increased valency pulls each pair into
+- **`fig-selgain-pos-flow`**: same as `fig-selgain-flow`, restricted to pairs gain+ in the monovalent or bivalent scan (`gain_positive_only=True`), so the (otherwise tiny) gain+ population's own selectivity movement isn't diluted by the much larger gain- bulk
+- **`fig-selgain-flow-legend`**: standalone legend for `fig-selgain-flow`'s selectivity/gain quadrants, detached per `fig-copinning-legend`. Shared by `fig-selgain-pos-flow`, which uses the same four quadrants.
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import os
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import yaml
+from matplotlib.patches import Patch, Rectangle
+
+from bicytok.figure_styles import (
+    CROSSED_CONDITION_COLORS,
+    FIGSIZE,
+    FONT_SIZE_ANNOT,
+    FONT_SIZE_LABEL,
+    apply_style,
+    standalone_legend_figure,
+)
+
+apply_style()
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Parameters — everything below this line and above "Data loading" is meant to be
+# edited to retarget this file at new scans or thresholds.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# fig-copinning matches SCAN_LOOSE <-> SCAN_TIGHT; fig-selgain-flow matches
+# SCAN_LOOSE <-> SCAN_BIVALENT. See scan_kxstar_bounds.qmd for the full scan pool
+# (including the mixed-valency scan, unused by either flow here).
+SCANS = [
+    {
+        "path": "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv",
+        "label": "Kx* upper bound 1e-5",
+        "kx_upper": -5.0,
+    },
+    {
+        "path": "/home/sama/receptor_sweep_data/20260720_selec_scan_rand42_prot1.csv",
+        "label": "Kx* upper bound 1e-9",
+        "kx_upper": -9.0,
+    },
+    {
+        "path": "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv",
+        "label": "Bivalent Kx* upper bound 1e-5",
+        "kx_upper": -5.0,
+    },
+]
+SCAN_LOOSE = next(s for s in SCANS if s["label"] == "Kx* upper bound 1e-5")
+SCAN_TIGHT = next(s for s in SCANS if s["label"] == "Kx* upper bound 1e-9")
+SCAN_BIVALENT = next(s for s in SCANS if s["label"] == "Bivalent Kx* upper bound 1e-5")
+
+# Affinity CSV columns needed to load each scan.
+AFF_COLS = {
+    "Affinity_Receptor_0": "Signal receptor",
+    "Affinity_Receptor_1": "Target receptor 1",
+    "Affinity_Receptor_2": "Target receptor 2",
+}
+
+# Signal (readout) receptor name, excluded from pair membership because a pair containing
+# the artificial signal receptor is not a genuine two-target combination.
+SIGNAL_REC_NAME = "Prototype_Signal_Receptor"
+
+# True affinity optimization bounds, log10(M): a target affinity within AFF_CEIL_EPS of the
+# upper bound counts as sitting "at the ceiling". A pair's Kx* is "pinned" within PIN_TOL of
+# its scan's upper bound.
+AFFINITY_OPT_BOUNDS = (6.0, 12.0)
+AFF_CEIL_EPS = 1e-2
+PIN_TOL = 1e-2
+
+# Category display names for fig-copinning. Order must match classify_copinning's coding
+# below: 0 both interior, 1 aff ceiling only, 2 Kx* pinned only, 3 doubly pinned.
+COPINNING_CAT_NAMES = [
+    "Both interior",
+    "Aff ceiling only",
+    "Kx* pinned only",
+    "Doubly pinned",
+]
+
+# Selectivity/gain quadrant thresholds and display names for fig-selgain-flow.
+# SELEC_HIGH_CUTOFF marks pairs selective enough to be manuscript-relevant. GAIN_HIGH_CUTOFF
+# is a log2 gain threshold; 0 (the default) is the synergy line (bispecific beats the better
+# monospecific constituent), but both cutoffs are also exposed as build_selgain_flow/
+# plot_selgain_flow arguments so they can be tuned to isolate a specific population (e.g.
+# pairs only reaching meaningful gain at high valency) without editing these defaults.
+# SEL_GAIN_CAT_NAMES order must match classify_selectivity_gain's coding below: 0 low
+# selectivity & gain <= cutoff, 1 low selectivity & gain > cutoff, 2 high selectivity &
+# gain <= cutoff, 3 high selectivity & gain > cutoff.
+SELEC_HIGH_CUTOFF = 0.91
+GAIN_HIGH_CUTOFF = 0.0
+SEL_GAIN_CAT_NAMES = [
+    "Low selectivity, gain-",
+    "Low selectivity, gain+",
+    "High selectivity, gain-",
+    "High selectivity, gain+",
+]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Data loading
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def load_scan_outputs(scan):
+    """Return a DataFrame of successfully optimized pairs for one selectivity scan.
+
+    Rows with NaN outputs (uncomputed upper triangle, failed optimizations) are
+    dropped; these are NaN across all output columns simultaneously.
+    """
+    yaml_path = os.path.splitext(scan["path"])[0] + ".yaml"
+    assert os.path.exists(yaml_path), f"YAML not found at {yaml_path}"
+    with open(yaml_path) as f:
+        assert yaml.safe_load(f)["scan_type"] == "selectivity", (
+            f"{scan['path']} is not a selectivity scan; Kx* and affinities are only "
+            "optimized there."
+        )
+
+    cols = [
+        "Cell_Type",
+        "Receptor_1",
+        "Receptor_2",
+        "Selectivity",
+        "Kx_star",
+        *AFF_COLS,
+    ]
+    return pd.read_csv(scan["path"], usecols=cols).dropna(subset=["Selectivity"])
+
+
+scan_dfs = {scan["label"]: load_scan_outputs(scan) for scan in SCANS}
+
+
+def compute_pair_gains(df):
+    """Return off-diagonal pairs with an added synergy gain column.
+
+    gain = bispecific selectivity / max(constituent monospecific selectivities), where the
+    monospecific values are the diagonal (rec == rec) entries. The artificial signal
+    receptor is excluded from pair membership. Rows retain all binding-model outputs so the
+    returned table also serves the per-pair metric comparisons downstream.
+    """
+    mono_map = df[df["Receptor_1"] == df["Receptor_2"]].set_index(
+        ["Cell_Type", "Receptor_1"]
+    )["Selectivity"]
+    assert mono_map.index.is_unique, (
+        "Duplicate monospecific (cell type, receptor) entries."
+    )
+
+    pairs = df[
+        (df["Receptor_1"] != df["Receptor_2"])
+        & (df["Receptor_1"] != SIGNAL_REC_NAME)
+        & (df["Receptor_2"] != SIGNAL_REC_NAME)
+    ].copy()
+    mono1 = mono_map.reindex(
+        list(zip(pairs["Cell_Type"], pairs["Receptor_1"], strict=True))
+    ).to_numpy()
+    mono2 = mono_map.reindex(
+        list(zip(pairs["Cell_Type"], pairs["Receptor_2"], strict=True))
+    ).to_numpy()
+    pairs["max_mono_selec"] = np.maximum(mono1, mono2)
+    pairs["gain"] = pairs["Selectivity"] / pairs["max_mono_selec"]
+    pairs["log2_gain"] = np.log2(pairs["gain"])
+    return pairs.dropna(subset=["gain"])
+
+
+pair_dfs = {lbl: compute_pair_gains(df) for lbl, df in scan_dfs.items()}
+
+
+def pair_key(df):
+    """Stable per-pair key (cell type + sorted receptor pair) for matching across scans."""
+    recs = np.sort(df[["Receptor_1", "Receptor_2"]].to_numpy(), axis=1)
+    return df["Cell_Type"].to_numpy() + "|" + recs[:, 0] + "|" + recs[:, 1]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Shared flow helpers
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Shared palette for both flow figures (CROSSED_CONDITION_COLORS: reused from
+# scan_outliers.qmd's outlier categories, which have the same neither/A-only/B-only/both
+# shape): index 0 is "neither condition", 3 is "both conditions", 1/2 are each condition
+# alone (see each category-name list above for the specific conditions).
+FLOW_CAT_COLORS = CROSSED_CONDITION_COLORS
+
+
+def classify_copinning(df, kx_upper):
+    """Label each pair by constraint category and build a cross-scan matching key.
+
+    Category codes: 0 both interior, 1 aff ceiling only, 2 Kx* pinned only, 3 doubly pinned.
+    The key (cell type + sorted receptor pair) identifies the same pair across scans.
+    """
+    kx_pinned = (np.abs(df["Kx_star"] - kx_upper) < PIN_TOL).to_numpy()
+    aff_ceiling = (
+        np.maximum(df["Affinity_Receptor_1"], df["Affinity_Receptor_2"])
+        > AFFINITY_OPT_BOUNDS[1] - AFF_CEIL_EPS
+    ).to_numpy()
+    return pd.DataFrame(
+        {
+            "key": pair_key(df),
+            "cat": 2 * kx_pinned.astype(int) + aff_ceiling.astype(int),
+        }
+    )
+
+
+def classify_selectivity_gain(df, selec_cutoff, gain_cutoff):
+    """Label each pair by selectivity/gain quadrant and build a cross-scan matching key.
+
+    Category codes: 0 low selectivity & gain <= gain_cutoff, 1 low selectivity &
+    gain > gain_cutoff, 2 high selectivity & gain <= gain_cutoff, 3 high selectivity &
+    gain > gain_cutoff.
+    """
+    high_sel = (df["Selectivity"] >= selec_cutoff).to_numpy()
+    high_gain = (df["log2_gain"] > gain_cutoff).to_numpy()
+    return pd.DataFrame(
+        {
+            "key": pair_key(df),
+            "cat": 2 * high_sel.astype(int) + high_gain.astype(int),
+        }
+    )
+
+
+def draw_category_flow(ax, trans, colors, gap=0.015, bar_w=0.03):
+    """Alluvial flow between two scans' category assignments.
+
+    Source-scan and destination-scan blocks sit at the top and bottom of the flow axis,
+    sized proportional to pair counts; ribbons connect them, colored by source category so
+    each destination block's composition shows where its pairs came from. Flows top-to-bottom
+    (source top, destination bottom, blocks laid out along x) for a wide/short footprint.
+    """
+    total = trans.sum()
+    n_cat = trans.shape[0]
+    size_a, size_b = trans.sum(axis=1), trans.sum(axis=0)
+    usable = 1 - gap * (n_cat - 1)
+
+    def block_edges(sizes):
+        edges, top = [], 1.0
+        for s in sizes:
+            height = s / total * usable
+            edges.append((top, top - height))
+            top -= height + gap
+        return edges
+
+    edges_a, edges_b = block_edges(size_a), block_edges(size_b)
+
+    for edges, y0 in [(edges_a, 1.0), (edges_b, -bar_w)]:
+        for cat, (top, bot) in enumerate(edges):
+            ax.add_patch(
+                Rectangle(
+                    (bot, y0),
+                    top - bot,
+                    bar_w,
+                    color=colors[cat],
+                    ec="white",
+                    lw=0.5,
+                    zorder=3,
+                )
+            )
+
+    cursor_a = [top for top, _ in edges_a]
+    cursor_b = [top for top, _ in edges_b]
+    xs = np.linspace(0, 1, 60)
+    ease = (1 - np.cos(np.pi * xs)) / 2
+    flow_axis = 1 - xs  # flows top (1) to bottom (0)
+    for a in range(n_cat):
+        for b in range(n_cat):
+            if trans[a, b] == 0:
+                continue
+            height = trans[a, b] / total * usable
+            l_top, l_bot = cursor_a[a], cursor_a[a] - height
+            r_top, r_bot = cursor_b[b], cursor_b[b] - height
+            cursor_a[a], cursor_b[b] = l_bot, r_bot
+            lower = l_bot + (r_bot - l_bot) * ease
+            upper = l_top + (r_top - l_top) * ease
+            ax.fill_betweenx(
+                flow_axis, lower, upper, color=colors[a], alpha=0.45, lw=0, zorder=1
+            )
+
+    label_spots = [
+        (edges_a, 1.0 + bar_w + 0.015, "bottom"),
+        (edges_b, -bar_w - 0.015, "top"),
+    ]
+    for edges, off, align in label_spots:
+        sizes = size_a if edges is edges_a else size_b
+        for cat, (top, bot) in enumerate(edges):
+            if sizes[cat] / total <= 0.01:
+                continue
+            center = (top + bot) / 2
+            ax.text(
+                center,
+                off,
+                f"{sizes[cat] / total * 100:.0f}%",
+                fontsize=FONT_SIZE_ANNOT,
+                ha="center",
+                va=align,
+            )
+
+    ax.set_xlim(-0.02, 1.09)
+    ax.set_ylim(-0.34, 1.34)
+    ax.axis("off")
+
+
+def transition_from_matched(matched, n_cat):
+    """Category transition matrix from an already cats_a/cats_b-merged pair table."""
+    cats = range(n_cat)
+    return (
+        pd.crosstab(matched["cat_a"], matched["cat_b"])
+        .reindex(index=cats, columns=cats, fill_value=0)
+        .to_numpy()
+    )
+
+
+def pairs_to_transition(cats_a, cats_b, n_cat):
+    """Cross-scan category transition matrix from two classified pair tables (key, cat)."""
+    matched = cats_a.merge(cats_b, on="key", suffixes=("_a", "_b"))
+    return transition_from_matched(matched, n_cat)
+
+
+def build_copinning_flow(scan_a, scan_b):
+    """Compute the co-pinning category transition matrix between two scans."""
+    cats_a = classify_copinning(pair_dfs[scan_a["label"]], scan_a["kx_upper"])
+    cats_b = classify_copinning(pair_dfs[scan_b["label"]], scan_b["kx_upper"])
+    return pairs_to_transition(cats_a, cats_b, len(COPINNING_CAT_NAMES))
+
+
+def build_selgain_flow(
+    scan_a, scan_b, selec_cutoff, gain_cutoff, gain_positive_only=False
+):
+    """Compute the selectivity/gain quadrant transition matrix between two scans.
+
+    gain_positive_only restricts to pairs classified gain+ (categories 1 or 3, i.e.
+    cat % 2 == 1) in scan_a or scan_b. The gain+ population is a small fraction of all
+    pairs, so without this the transition percentages are dominated by gain- pairs sitting
+    still; restricting to "ever gain+" pairs makes the gain+ population's own selectivity
+    movement legible instead of being diluted by the much larger gain- bulk.
+    """
+    cats_a = classify_selectivity_gain(
+        pair_dfs[scan_a["label"]], selec_cutoff, gain_cutoff
+    )
+    cats_b = classify_selectivity_gain(
+        pair_dfs[scan_b["label"]], selec_cutoff, gain_cutoff
+    )
+    matched = cats_a.merge(cats_b, on="key", suffixes=("_a", "_b"))
+    if gain_positive_only:
+        matched = matched[(matched["cat_a"] % 2 == 1) | (matched["cat_b"] % 2 == 1)]
+    return transition_from_matched(matched, len(SEL_GAIN_CAT_NAMES))
+
+
+def plot_flow(trans, label_a, label_b):
+    """Draw a category-transition alluvial from label_a (top) to label_b (bottom) as a
+    standalone figure.
+
+    Shared renderer for fig-copinning and fig-selgain-flow: trans carries the figure-specific
+    data, so this function only knows about the generic category flow, not what a category
+    represents. The legend is detached (see flow_legend_figure), so ribbon colors alone would
+    be ambiguous without it.
+    """
+    fig, ax = plt.subplots(figsize=FIGSIZE["alluvial_flow"])
+    draw_category_flow(ax, trans, FLOW_CAT_COLORS)
+    ax.text(0.5, 1.19, label_a, ha="center", va="bottom", fontsize=FONT_SIZE_LABEL)
+    ax.text(0.5, -0.19, label_b, ha="center", va="top", fontsize=FONT_SIZE_LABEL)
+    plt.tight_layout()
+    plt.show()
+
+
+def flow_legend_figure(cat_names):
+    """Standalone legend mapping FLOW_CAT_COLORS to cat_names, detached so it can be
+    positioned independently (e.g. in Illustrator) rather than crowding plot_flow.
+    """
+    handles = [Patch(facecolor=FLOW_CAT_COLORS[i]) for i in range(len(cat_names))]
+    return standalone_legend_figure(handles, cat_names, ncol=len(cat_names))
+
+
+def plot_copinning(scan_a, scan_b):
+    """Draw the co-pinning alluvial flow from scan_a to scan_b as a standalone figure."""
+    trans = build_copinning_flow(scan_a, scan_b)
+    plot_flow(trans, scan_a["label"], scan_b["label"])
+
+
+def plot_selgain_flow(
+    scan_a,
+    scan_b,
+    selec_cutoff=SELEC_HIGH_CUTOFF,
+    gain_cutoff=GAIN_HIGH_CUTOFF,
+    gain_positive_only=False,
+):
+    """Draw the selectivity/gain quadrant alluvial flow from scan_a to scan_b."""
+    trans = build_selgain_flow(
+        scan_a, scan_b, selec_cutoff, gain_cutoff, gain_positive_only
+    )
+    plot_flow(trans, scan_a["label"], scan_b["label"])
+```
+
+```{python}
+#| label: fig-copinning
+plot_copinning(SCAN_LOOSE, SCAN_TIGHT)
+```
+
+```{python}
+#| label: fig-copinning-legend
+#| fig-cap: "Shared legend for fig-copinning's constraint categories"
+flow_legend_figure(COPINNING_CAT_NAMES)
+plt.show()
+```
+
+```{python}
+#| label: fig-selgain-flow
+plot_selgain_flow(SCAN_LOOSE, SCAN_BIVALENT, gain_positive_only=False)
+```
+
+```{python}
+#| label: fig-selgain-pos-flow
+plot_selgain_flow(SCAN_LOOSE, SCAN_BIVALENT, gain_positive_only=True, gain_cutoff=0.01)
+```
+
+```{python}
+#| label: fig-selgain-flow-legend
+#| fig-cap: "Shared legend for fig-selgain-flow's selectivity/gain quadrants"
+flow_legend_figure(SEL_GAIN_CAT_NAMES)
+plt.show()
+```
