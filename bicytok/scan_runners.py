@@ -10,12 +10,12 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from bicytok.imports import (
+from .imports import (
     importCITE,
     match_receptor_abundances,
     sample_prototype_signal_receptor,
 )
-from bicytok.scanning_funcs import sample_cells, scan_KL_EMD, scan_selectivity
+from .scanning_funcs import sample_cells, scan_KL_EMD, scan_selectivity
 
 
 def run_selectivity_scan():

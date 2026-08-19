@@ -25,12 +25,15 @@ import numpy as np
 import seaborn as sns
 import yaml
 
-from figures.scanning_analyses.scan_runners import (
+from bicytok.figure_styles import CMAPS, FIGSIZE, FONT_SIZE_ANNOT, apply_style
+from bicytok.scan_runners import (
     load_KL_EMD_scan_results,
     load_selec_scan_results,
 )
 
-scan_data_path = "/home/sama/receptor_sweep_data/20260604_selec_scan_full_sigCD122.csv"
+apply_style()
+
+scan_data_path = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
 # For KL_EMD scans: "KL_Divergence" or "EMD". Does nothing for selectivity scans.
 KL_METRIC = "KL_Divergence"
 
@@ -51,7 +54,7 @@ with open(yaml_path) as f:
 if scan_type == "selectivity":
     opt_selec, _, _, receptors, cell_types = load_selec_scan_results(scan_data_path)
     metric_array = opt_selec
-    metric_label = "Selectivity"
+    metric_label = "Binding model selectivity"
 elif scan_type == "KL_EMD":
     KL_results, EMD_results, receptors, cell_types = load_KL_EMD_scan_results(
         scan_data_path
@@ -94,10 +97,11 @@ if not asym_scan:
 vmin_val = np.nanmin(summary_matrix)
 vmax_val = np.nanmax(summary_matrix)
 
-fig, ax = plt.subplots(figsize=(8, 8))
+fig, ax = plt.subplots(figsize=FIGSIZE["square_heatmap"])
+ax.grid(False)  # heatmap cells already have their own linewidths/linecolor borders
 sns.heatmap(
     summary_matrix,
-    cmap="Reds",
+    cmap=CMAPS["sequential"],
     xticklabels=filtered_receptors,
     yticklabels=filtered_receptors,
     square=True,
@@ -119,16 +123,22 @@ if not asym_scan:
 for (i, j), cts in position_to_cell_types.items():
     label = "\n".join(cts)
     ax.text(
-        j + 0.5, i + 0.5, label, ha="center", va="center", fontsize=10, color="black"
+        j + 0.5,
+        i + 0.5,
+        label,
+        ha="center",
+        va="center",
+        fontsize=FONT_SIZE_ANNOT,
+        color="black",
     )
 if asym_scan:
-    ax.set_xlabel(f"Receptor 2, Valency {scan_valencies[0][2]}", fontsize=18)
-    ax.set_ylabel(f"Receptor 1, Valency {scan_valencies[0][1]}", fontsize=18)
+    ax.set_xlabel(f"Target 2, Valency {scan_valencies[0][2]}")
+    ax.set_ylabel(f"Target 1, Valency {scan_valencies[0][1]}")
 else:
-    ax.set_xlabel("Receptor 2", fontsize=18)
-    ax.set_ylabel("Receptor 1", fontsize=18)
-ax.tick_params(axis="x", rotation=90, labelsize=20, width=2, length=6)
-ax.tick_params(axis="y", rotation=0, labelsize=20, width=2, length=6)
+    ax.set_xlabel("Target 2")
+    ax.set_ylabel("Target 1")
+ax.tick_params(axis="x", rotation=90, width=2, length=6)
+ax.tick_params(axis="y", rotation=0, width=2, length=6)
 plt.tight_layout()
 
 pos = ax.get_position()
@@ -136,13 +146,23 @@ cbar_ax = fig.add_axes(
     [pos.x1 + pos.width * 0.03, pos.y0, pos.width * 0.05, pos.height]
 )
 norm = plt.Normalize(vmin=vmin_val, vmax=vmax_val)
-sm = plt.cm.ScalarMappable(cmap="Reds", norm=norm)
+sm = plt.cm.ScalarMappable(cmap=CMAPS["sequential"], norm=norm)
 sm.set_array([])
 cbar = fig.colorbar(sm, cax=cbar_ax)
+cbar.ax.grid(False)
 tick_values = np.linspace(vmin_val, vmax_val, num=6)
 cbar.set_ticks(tick_values)
 cbar.set_ticklabels([f"{val:.2f}" for val in tick_values])
-cbar.ax.tick_params(labelsize=20, width=2, length=6)
-cbar.set_label(f"Optimal {metric_label}", fontsize=18)
+cbar.ax.tick_params(width=2, length=6)
+cbar.set_label(f"{metric_label}")
 plt.show()
+```
+
+```{python}
+# Top receptor pair per cell type, to help match overlapping heatmap labels back to
+# their cell type (uses optimal_pairs computed above, before the position collapse
+# that lets multiple cell types share one heatmap cell).
+print(f"Top receptor pair per cell type ({metric_label}):")
+for cell_type, (rec1, rec2, max_val) in optimal_pairs.items():
+    print(f"  {cell_type}: {rec1} + {rec2} ({max_val:.4f})")
 ```

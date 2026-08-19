@@ -3,29 +3,57 @@ title: "Receptor Scan Metric Comparison Scatter Plots"
 ---
 
 # Summary
-Compares the three selectivity predictors — binding-model selectivity, EMD, and KL
-divergence — against one another across target cell types. Following the pattern in
-`scan_marker_overlap.qmd`, one binding-model scan and one distance-metric scan are
-supplied up front; the relevant metric columns are pulled from each based on their
-`.yaml` scan type. Three panels are produced, one per pairwise comparison:
-KL vs EMD, KL vs selectivity, and EMD vs selectivity. In each panel every receptor
-pair appears once per cell type as a point colored by cell type, with the
-top-scoring pair per axis highlighted with a star.
+Compares scan metrics (binding-model selectivity, EMD, KL divergence, or any numeric
+column from a scan CSV) against one another, one pairwise scatter per user-specified
+comparison. Each named entry in `COMPARISONS` picks two metrics from `METRICS` and a set
+of target cell types (`"all"` for the intersection of cell types present in both metrics'
+scans). In each panel every receptor pair appears once per cell type as a point colored by
+cell type, with the top-scoring pair per axis highlighted with a star.
+
+When a comparison involves the `Selectivity` metric and `FILTER_SELEC_BASIN` is enabled,
+a dashed line marks `SELEC_BASIN_CUTOFF` on the selectivity axis: points below it (the
+degenerate low-selectivity "basin" the binding model collapses to) stay on the plot but
+are excluded from the Spearman correlation.
+
+The analysis logic lives in `build_comparison`, and plotting/reporting in
+`plot_comparison` / `print_spearman`. The labeled cells are thin calls, so the same
+implementation drives several manuscript figures with different parameters.
 
 # Inputs
-- `SELEC_SCAN_PATH`: CSV from `run_selectivity_scan` (binding-model selectivity)
-- `KL_EMD_SCAN_PATH`: CSV from `run_KL_EMD_scan` (KL divergence and EMD)
-  Both must have matching `.yaml` files describing the scan type.
-- `TARG_CELL_TYPES`: list of target cell types to extract and overlay; `None` to use
-  the intersection of cell types present in both scans
+- `METRICS`: dict mapping display label -> `{"path": ..., "column": ..., "label": ...}`.
+  Each path must have a matching `.yaml` describing the scan type, which is validated
+  against the column (`Selectivity` -> `selectivity` scan; `EMD`/`KL_Divergence` ->
+  `KL_EMD` scan).
+- `COMPARISONS`: dict mapping key -> `{"metrics": (label_a, label_b), "cell_types": ...}`,
+  where `cell_types` is a list of target cell types or `"all"` to use the intersection of
+  cell types present in both metrics' scans. Two further keys are optional per comparison,
+  falling back to `AXIS_NORM` / `RASTERIZE_SCATTER` when omitted:
+  - `axis_norm`: `"none"`, `"z-score"`, or `"rank"`
+  - `rasterize`: rasterize the scatter points (keeps the star highlights vector); useful
+    for the large "all cell types" comparisons where SVG output would otherwise embed
+    tens of thousands of points
+  - `stack_order`: list of cell types to draw last (i.e. on top), in the given order.
+    All points share one `zorder`, so draw order alone decides which cell type's color
+    wins in dense overlaps; cell types not listed keep their existing relative order
+    and are drawn first (on the bottom).
+- `FILTER_SELEC_BASIN` / `SELEC_BASIN_CUTOFF`: whether to exclude low-selectivity basin
+  points from Spearman correlation (raw `Selectivity` value, applied before any axis
+  normalization).
 
 # Outputs
-- **`fig-scan-comp-kl-emd`**: KL divergence vs EMD
-- **`fig-scan-comp-kl-selec`**: KL divergence vs binding-model selectivity
-- **`fig-scan-comp-emd-selec`**: EMD vs binding-model selectivity
+- **`fig-scan-comp-emd-kl`**: EMD vs KL divergence, all shared cell types
+- **`fig-scan-comp-emd-selec`**: EMD vs binding-model selectivity, all shared cell types
+- **`fig-scan-comp-kl-selec`**: KL divergence vs binding-model selectivity, all shared cell types
+- **`fig-scan-comp-kl-selec-treg`**: KL divergence vs binding-model selectivity, Treg only
+- **`fig-scan-comp-emd-selec-cd8tcm`**: EMD vs binding-model selectivity, CD8 TCM only
+- **`fig-scan-comp-emd-selec-pdc`**: EMD vs binding-model selectivity, pDC only
+- **`fig-scan-comp-celltype-legend`**: the cell-type-to-color legend, detached from the
+  "all cell types" panels above so it can be positioned independently (e.g. in
+  Illustrator) rather than repeated identically in each panel
 
-Each panel: x = metric 1, y = metric 2, one color per cell type; all receptor pairs
-plotted as equal-sized points with the top pair per axis starred.
+Each panel: x = metric 1, y = metric 2, one color per cell type (from the project-wide
+canonical `CELL_TYPE_COLORS`); all receptor pairs plotted as equal-sized points with the
+top pair per axis starred.
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -33,59 +61,136 @@ import os
 
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import yaml
 from scipy.stats import spearmanr
 
+from bicytok.figure_styles import (
+    CELL_TYPE_COLORS,
+    FIGSIZE,
+    POINT_SIZE_FOREGROUND,
+    POINT_SIZE_XS,
+    apply_style,
+)
+
+apply_style()
+
 # ── Parameters ────────────────────────────────────────────────────────────────
 
-FILTER_SELEC_BASIN = True
-AXIS_NORM = "rank"  # "none", "z-score", "rank"
+# Defaults for the per-comparison "axis_norm" / "rasterize" keys in COMPARISONS.
+AXIS_NORM = "none"  # "none", "z-score", "rank"
+RASTERIZE_SCATTER = False
+
+# Show a legend on each panel. Off by default since every "all cell types" comparison
+# shares the same canonical cell-type coloring; see fig-scan-comp-celltype-legend for
+# the detached, shared legend instead (kept separate for easier Illustrator layout).
 DISP_LEGEND = False
 
-
-SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
-KL_EMD_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
-
-# List of target cell types to overlay; each is plotted in a distinct color.
-# Set to None to use the intersection of cell types present in both scans.
-TARG_CELL_TYPES: list[str] | None = None
-
-POINT_SIZE = 12
 POINT_ALPHA = 0.35
 
+# Exclude the degenerate low-selectivity "basin" from Spearman correlation for any
+# comparison involving the Selectivity metric (still shown on the plot, with a dashed
+# line marking the cutoff).
+FILTER_SELEC_BASIN = False
+SELEC_BASIN_CUTOFF = 0.51
 
-# ── Confirm scan types from YAML ───────────────────────────────────────────────
+_DATA = "/home/sama/receptor_sweep_data"
+SELEC_SCAN_PATH = f"{_DATA}/20260520_selec_scan_full.csv"
+KL_EMD_SCAN_PATH = f"{_DATA}/20260520_dist_scan_full_filt.csv"
+SELEC_SCAN_PATH_BIVAL = f"{_DATA}/20260529_selec_scan_full_bival.csv"
+SELEC_SCAN_PATH_MIXVAL = f"{_DATA}/20260608_selec_scan_full_mix-val.csv"
+
+# Each metric: display label -> (scan path, CSV column, human-readable axis label).
+METRICS = {
+    "EMD": {"path": KL_EMD_SCAN_PATH, "column": "EMD", "label": "EMD"},
+    "KL": {
+        "path": KL_EMD_SCAN_PATH,
+        "column": "KL_Divergence",
+        "label": "KL divergence",
+    },
+    "Selectivity": {
+        "path": SELEC_SCAN_PATH,
+        "column": "Selectivity",
+        "label": "Binding model selectivity",
+    },
+    "Selectivity monoval": {
+        "path": SELEC_SCAN_PATH,
+        "column": "Selectivity",
+        "label": "Monovalent target selectivity",
+    },
+    "Selectivity bival": {
+        "path": SELEC_SCAN_PATH_BIVAL,
+        "column": "Selectivity",
+        "label": "Bivalent target selectivity",
+    },
+    "Selectivity mix-val": {
+        "path": SELEC_SCAN_PATH_MIXVAL,
+        "column": "Selectivity",
+        "label": "Mixed-valency target selectivity",
+    },
+}
+
+# Each comparison: two metric labels drawn from METRICS, and target cell types
+# ("all" = intersection of cell types present in both metrics' scans).
+COMPARISONS = {
+    "emd_kl": dict(metrics=("EMD", "KL"), cell_types="all", rasterize=True),
+    "emd_selec": dict(metrics=("Selectivity", "EMD"), cell_types="all", rasterize=True),
+    "kl_selec": dict(metrics=("Selectivity", "KL"), cell_types="all", rasterize=True),
+    "kl_selec_treg": dict(metrics=("Selectivity", "KL"), cell_types=["Treg"]),
+    "emd_selec_cd8tcm": dict(metrics=("Selectivity", "EMD"), cell_types=["CD8 TCM"]),
+    "emd_selec_pdc": dict(metrics=("Selectivity", "EMD"), cell_types=["pDC"]),
+    "selec_selec-highval": dict(
+        metrics=("Selectivity monoval", "Selectivity bival"),
+        cell_types="all",
+        rasterize=True,
+        hide_stars=True,
+        stack_order=["ASDC", "B naive", "dnT", "HSPC"],
+    ),
+    "selec_selec-mixval": dict(
+        metrics=("Selectivity monoval", "Selectivity mix-val"),
+        cell_types="all",
+        rasterize=True,
+        hide_stars=True,
+    ),
+}
+
+
+# ── CSV cache (a single file may back several metrics / comparisons) ───────────
+_CSV_CACHE = {}
+
+
+def _read_csv_cached(path):
+    if path not in _CSV_CACHE:
+        _CSV_CACHE[path] = pd.read_csv(path)
+    return _CSV_CACHE[path]
+
+
+# ── Confirm scan types from YAML ────────────────────────────────────────────────
 def _scan_type(scan_path):
     yaml_path = os.path.splitext(scan_path)[0] + ".yaml"
     with open(yaml_path) as f:
         return yaml.safe_load(f)["scan_type"]
 
 
-assert _scan_type(SELEC_SCAN_PATH) == "selectivity", (
-    f"{SELEC_SCAN_PATH} is not a selectivity scan"
-)
-assert _scan_type(KL_EMD_SCAN_PATH) == "KL_EMD", (
-    f"{KL_EMD_SCAN_PATH} is not a KL/EMD scan"
-)
-
-# Each metric: (scan path, CSV column, human-readable label)
-METRIC_SELEC = (SELEC_SCAN_PATH, "Selectivity", "Binding model selectivity")
-METRIC_KL = (KL_EMD_SCAN_PATH, "KL_Divergence", "KL divergence")
-METRIC_EMD = (KL_EMD_SCAN_PATH, "EMD", "EMD")
-
-# The three pairwise comparisons, keyed for embedding.
-COMPARISONS = {
-    "kl_emd": (METRIC_KL, METRIC_EMD),
-    "kl_selec": (METRIC_KL, METRIC_SELEC),
-    "emd_selec": (METRIC_EMD, METRIC_SELEC),
+_SCAN_TYPE_FOR_COLUMN = {
+    "Selectivity": "selectivity",
+    "EMD": "KL_EMD",
+    "KL_Divergence": "KL_EMD",
 }
 
+for _label, _info in METRICS.items():
+    _expected = _SCAN_TYPE_FOR_COLUMN[_info["column"]]
+    _actual = _scan_type(_info["path"])
+    assert _actual == _expected, (
+        f"{_info['path']} is a {_actual!r} scan, expected {_expected!r} "
+        f"for metric {_label!r} (column {_info['column']!r})"
+    )
 
-# ── Load scans ────────────────────────────────────────────────────────────────
+
 def load_scan_flat(path, metric_col, cell_type):
     """Return DataFrame with columns rec1, rec2, metric for the given cell type."""
-    raw = pd.read_csv(path)
+    raw = _read_csv_cached(path)
     assert cell_type in raw["Cell_Type"].values, f"{cell_type!r} not found in {path}"
     assert metric_col in raw.columns, f"{metric_col!r} not a column in {path}"
     sub = raw[raw["Cell_Type"] == cell_type][
@@ -96,28 +201,57 @@ def load_scan_flat(path, metric_col, cell_type):
     ).reset_index(drop=True)
 
 
-# ── Resolve cell types ────────────────────────────────────────────────────────
-if TARG_CELL_TYPES is None:
-    ct1 = set(pd.read_csv(SELEC_SCAN_PATH)["Cell_Type"].unique())
-    ct2 = set(pd.read_csv(KL_EMD_SCAN_PATH)["Cell_Type"].unique())
-    TARG_CELL_TYPES = sorted(ct1 & ct2)
+def resolve_cell_types(path_a, path_b, cell_types):
+    """Return the requested cell types, or the intersection of both scans' if "all"."""
+    if cell_types == "all":
+        ct_a = set(_read_csv_cached(path_a)["Cell_Type"].unique())
+        ct_b = set(_read_csv_cached(path_b)["Cell_Type"].unique())
+        return sorted(ct_a & ct_b)
+    return list(cell_types)
 
 
-def build_comparison(metric_1, metric_2, cell_types, axis_norm):
+def order_by_stack_priority(cell_types, stack_order):
+    """Reorders cell_types so entries in stack_order are drawn last.
+
+    Every cell type's points share one zorder, so draw order alone decides which
+    cell type's color wins in dense overlaps — last drawn sits visually on top.
+    Cell types not in stack_order keep their existing relative order, drawn first
+    (on the bottom).
+    """
+    if not stack_order:
+        return cell_types
+    priority = [ct for ct in stack_order if ct in cell_types]
+    rest = [ct for ct in cell_types if ct not in priority]
+    return rest + priority
+
+
+def _selec_basin_threshold(raw_series, axis_norm):
+    """Map SELEC_BASIN_CUTOFF (raw Selectivity units) into the axis-normalized space."""
+    if axis_norm == "z-score":
+        return (SELEC_BASIN_CUTOFF - raw_series.mean()) / (raw_series.std() + 1e-9)
+    if axis_norm == "rank":
+        return int(np.searchsorted(np.sort(raw_series.values), SELEC_BASIN_CUTOFF))
+    return SELEC_BASIN_CUTOFF
+
+
+def build_comparison(metric_a, metric_b, cell_types, axis_norm, stack_order=None):
     """Merge two metrics per cell type and apply global axis normalization.
 
-    Returns (df, axis_1_label, axis_2_label) where df has columns
-    rec1, rec2, s1, s2, cell_type.
+    Returns a dict with the merged long-form DataFrame, the resolved cell types
+    (ordered per `stack_order`; see COMPARISONS docs above), a color per cell type,
+    the axis labels, and (if `FILTER_SELEC_BASIN` applies) the selectivity-basin
+    threshold in the normalized axis' units.
     """
-    path1, col1, label1 = metric_1
-    path2, col2, label2 = metric_2
+    info_a, info_b = METRICS[metric_a], METRICS[metric_b]
+    cell_types = resolve_cell_types(info_a["path"], info_b["path"], cell_types)
+    cell_types = order_by_stack_priority(cell_types, stack_order)
 
     ct_dfs = {}
     for cell_type in cell_types:
-        scan1 = load_scan_flat(path1, col1, cell_type)
-        scan2 = load_scan_flat(path2, col2, cell_type)
+        scan_a = load_scan_flat(info_a["path"], info_a["column"], cell_type)
+        scan_b = load_scan_flat(info_b["path"], info_b["column"], cell_type)
         merged = (
-            pd.merge(scan1, scan2, on=["rec1", "rec2"], suffixes=("_1", "_2"))
+            pd.merge(scan_a, scan_b, on=["rec1", "rec2"], suffixes=("_1", "_2"))
             .rename(columns={"metric_1": "s1", "metric_2": "s2"})
             .dropna(subset=["s1", "s2"])
         )
@@ -127,6 +261,23 @@ def build_comparison(metric_1, metric_2, cell_types, axis_norm):
 
     # Normalize globally across all cell types so panels are comparable.
     all_df = pd.concat(ct_dfs.values(), ignore_index=True)
+
+    # Selectivity-basin mask, computed on raw values before normalization. At most one
+    # axis is ever the Selectivity metric, since a comparison is always between two
+    # distinct metrics.
+    selec_axis = None
+    if info_a["column"] == "Selectivity":
+        selec_axis = "s1"
+    elif info_b["column"] == "Selectivity":
+        selec_axis = "s2"
+
+    thresholds = {"s1": None, "s2": None}
+    if FILTER_SELEC_BASIN and selec_axis is not None:
+        all_df["above_basin"] = all_df[selec_axis] >= SELEC_BASIN_CUTOFF
+        thresholds[selec_axis] = _selec_basin_threshold(all_df[selec_axis], axis_norm)
+    else:
+        all_df["above_basin"] = True
+
     if axis_norm == "z-score":
         all_df["s1"] = (all_df["s1"] - all_df["s1"].mean()) / (
             all_df["s1"].std() + 1e-9
@@ -139,55 +290,69 @@ def build_comparison(metric_1, metric_2, cell_types, axis_norm):
         all_df["s2"] = all_df["s2"].rank(method="average")
 
     suffix = {"none": "", "z-score": " (z-score)", "rank": " (rank)"}[axis_norm]
-    return all_df, label1 + suffix, label2 + suffix
+
+    cell_type_colors = {ct: CELL_TYPE_COLORS[ct] for ct in cell_types}
+    return {
+        "df": all_df,
+        "cell_types": cell_types,
+        "cell_type_colors": cell_type_colors,
+        "axis_1_label": info_a["label"] + suffix,
+        "axis_2_label": info_b["label"] + suffix,
+        "threshold_1": thresholds["s1"],
+        "threshold_2": thresholds["s2"],
+    }
 
 
-# Precompute all three comparisons up front.
+# Precompute every comparison up front; labeled cells below are thin plot calls.
 comparison_data = {
-    key: build_comparison(m1, m2, TARG_CELL_TYPES, AXIS_NORM)
-    for key, (m1, m2) in COMPARISONS.items()
-}
-
-# ── Shared cell-type color map ─────────────────────────────────────────────────
-_cmap = plt.colormaps["tab20"]
-cell_type_colors = {
-    ct: _cmap(i / max(len(TARG_CELL_TYPES) - 1, 1))
-    for i, ct in enumerate(TARG_CELL_TYPES)
+    key: build_comparison(
+        *cfg["metrics"],
+        cfg["cell_types"],
+        cfg.get("axis_norm", AXIS_NORM),
+        cfg.get("stack_order"),
+    )
+    for key, cfg in COMPARISONS.items()
 }
 
 
 def plot_comparison(key):
     """Scatter one pairwise metric comparison, overlaying all cell types."""
-    all_df, axis_1_label, axis_2_label = comparison_data[key]
+    res = comparison_data[key]
+    all_df = res["df"]
+    cell_types = res["cell_types"]
+    cell_type_colors = res["cell_type_colors"]
+    rasterize = COMPARISONS[key].get("rasterize", RASTERIZE_SCATTER)
 
-    fig, ax = plt.subplots(figsize=(7, 7))
+    fig, ax = plt.subplots(figsize=FIGSIZE["square_scatter"])
 
-    for cell_type in TARG_CELL_TYPES:
+    for cell_type in cell_types:
         df = all_df[all_df["cell_type"] == cell_type]
         ax.scatter(
             df["s1"],
             df["s2"],
-            s=POINT_SIZE,
+            s=POINT_SIZE_XS,
             alpha=POINT_ALPHA,
             color=cell_type_colors[cell_type],
             linewidths=0,
             zorder=2,
+            rasterized=rasterize,
         )
 
     # Highlight the top pair per axis for each cell type.
-    for axis_col in ("s1", "s2"):
-        top_pairs = all_df.loc[all_df.groupby("cell_type")[axis_col].idxmax()]
-        for _, row in top_pairs.iterrows():
-            ax.scatter(
-                row["s1"],
-                row["s2"],
-                s=POINT_SIZE * 10,
-                marker="*",
-                color=cell_type_colors[row["cell_type"]],
-                edgecolors="black",
-                linewidths=0.5,
-                zorder=5,
-            )
+    if not COMPARISONS[key].get("hide_stars", False):
+        for axis_col in ("s1", "s2"):
+            top_pairs = all_df.loc[all_df.groupby("cell_type")[axis_col].idxmax()]
+            for _, row in top_pairs.iterrows():
+                ax.scatter(
+                    row["s1"],
+                    row["s2"],
+                    s=POINT_SIZE_FOREGROUND,
+                    marker="*",
+                    color=cell_type_colors[row["cell_type"]],
+                    edgecolors="black",
+                    linewidths=0.5,
+                    zorder=5,
+                )
 
     if DISP_LEGEND:
         handles = [
@@ -200,7 +365,7 @@ def plot_comparison(key):
                 markersize=8,
                 label=ct,
             )
-            for ct in TARG_CELL_TYPES
+            for ct in cell_types
         ]
         handles.append(
             mlines.Line2D(
@@ -215,26 +380,33 @@ def plot_comparison(key):
                 label="Top pair per axis",
             )
         )
-        ax.legend(
-            handles=handles,
-            title="Cell type",
-            fontsize=9,
-            title_fontsize=10,
-            framealpha=0.8,
+        ax.legend(handles=handles, title="Cell type")
+
+    if res["threshold_1"] is not None:
+        ax.axvline(
+            res["threshold_1"], color="gray", linestyle="--", linewidth=1, zorder=1
+        )
+    if res["threshold_2"] is not None:
+        ax.axhline(
+            res["threshold_2"], color="gray", linestyle="--", linewidth=1, zorder=1
         )
 
-    ax.set_xlabel(axis_1_label, fontsize=13)
-    ax.set_ylabel(axis_2_label, fontsize=13)
-    ax.tick_params(labelsize=11)
+    ax.set_xlabel(res["axis_1_label"])
+    ax.set_ylabel(res["axis_2_label"])
     plt.tight_layout()
     plt.show()
 
 
 def print_spearman(key):
-    """Print Spearman correlation per cell type and overall for one comparison."""
-    all_df, axis_1_label, axis_2_label = comparison_data[key]
+    """Print Spearman correlation per cell type and overall for one comparison.
+
+    Excludes selectivity-basin points (see `FILTER_SELEC_BASIN`) from the correlation;
+    this has no effect when the comparison doesn't involve the Selectivity metric.
+    """
+    res = comparison_data[key]
+    all_df = res["df"][res["df"]["above_basin"]]
     rows = []
-    for ct in TARG_CELL_TYPES:
+    for ct in res["cell_types"]:
         sub = all_df[all_df["cell_type"] == ct]
         r, p = spearmanr(sub["s1"], sub["s2"])
         rows.append({"Cell Type": ct, "Spearman r": round(r, 4), "p-value": f"{p:.2e}"})
@@ -246,26 +418,15 @@ def print_spearman(key):
             "p-value": f"{overall_p:.2e}",
         }
     )
-    print(f"Spearman correlation: {axis_1_label} vs. {axis_2_label}\n")
+    print(f"Spearman correlation: {res['axis_1_label']} vs. {res['axis_2_label']}\n")
     print(pd.DataFrame(rows).to_string(index=False))
 ```
 
-```{python}
-#| label: fig-scan-comp-kl-emd
-plot_comparison("kl_emd")
-```
+## Pairwise metric comparisons with Spearman correlation
 
 ```{python}
-print_spearman("kl_emd")
-```
-
-```{python}
-#| label: fig-scan-comp-kl-selec
-plot_comparison("kl_selec")
-```
-
-```{python}
-print_spearman("kl_selec")
+#| label: fig-scan-comp-emd-kl
+plot_comparison("emd_kl")
 ```
 
 ```{python}
@@ -274,5 +435,78 @@ plot_comparison("emd_selec")
 ```
 
 ```{python}
+#| label: fig-scan-comp-kl-selec
+plot_comparison("kl_selec")
+```
+
+```{python}
+print("\nEMD vs KL divergence Spearman correlation:")
+print_spearman("emd_kl")
+print("\nEMD vs selectivity Spearman correlation:")
 print_spearman("emd_selec")
+print("\nKL divergence vs selectivity Spearman correlation:")
+print_spearman("kl_selec")
+```
+
+## Cell-type--specific comparisons
+
+```{python}
+#| label: fig-scan-comp-kl-selec-treg
+plot_comparison("kl_selec_treg")
+```
+
+```{python}
+#| label: fig-scan-comp-emd-selec-cd8tcm
+plot_comparison("emd_selec_cd8tcm")
+```
+
+```{python}
+#| label: fig-scan-comp-emd-selec-pdc
+plot_comparison("emd_selec_pdc")
+```
+
+## Low--high valency selectivity comparisons and legend
+
+```{python}
+#| label: fig-scan-comp-selec-selec-highval
+plot_comparison("selec_selec-highval")
+```
+
+```{python}
+#| label: fig-scan-comp-selec-selec-mixval
+plot_comparison("selec_selec-mixval")
+```
+
+```{python}
+#| label: fig-scan-comp-celltype-legend
+#| fig-cap: "Shared legend for the cell-type-colored comparison scatter plots above"
+import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
+
+from bicytok.figure_styles import CELL_TYPE_COLORS, CELL_TYPES, standalone_legend_figure
+
+_legend_cell_types = sorted(
+    set().union(*(res["cell_types"] for res in comparison_data.values())),
+    key=CELL_TYPES.index,
+)
+_legend_handles = [
+    mlines.Line2D([], [], marker="o", linestyle="None", color=CELL_TYPE_COLORS[ct])
+    for ct in _legend_cell_types
+]
+_legend_handles.append(
+    mlines.Line2D(
+        [],
+        [],
+        marker="*",
+        linestyle="None",
+        markerfacecolor="gray",
+        markeredgecolor="black",
+        markeredgewidth=0.5,
+        color="gray",
+    )
+)
+_legend_labels = [*_legend_cell_types, "Top pair per axis"]
+
+standalone_legend_figure(_legend_handles, _legend_labels, ncol=2, title="Cell type")
+plt.show()
 ```

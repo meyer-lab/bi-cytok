@@ -5,78 +5,135 @@ title: "Receptor Scan Outlier Analysis"
 # Summary
 Compares two receptor scan metrics across all receptor pairs for a chosen target cell
 type, identifying and labeling the pairs that are outliers relative to the overall
-metric-vs-metric trend. A user-defined list of `CONDITIONS` (each a target cell type
-plus a pair of metrics to compare) is swept: one labeled outlier scatter is generated
-per condition and laid out as panels of a single supplemental figure. The subsequent
-receptor-feature and representative-distribution analyses drill into the **first**
-condition only.
+metric-vs-metric trend. A user-defined `COMPARISONS` dict (each a target cell type plus
+a pair of metrics to compare) is swept: one labeled outlier scatter is generated per
+comparison via a thin plotting cell. The subsequent receptor-feature and
+representative-distribution analyses drill into the **first** comparison only.
 
 # Inputs
 - `SELEC_SCAN_PATH`: CSV from `run_selectivity_scan` (binding-model selectivity)
 - `KL_EMD_SCAN_PATH`: CSV from `run_KL_EMD_scan` (KL divergence and EMD)
   Both must have matching `.yaml` files describing the scan type.
-- `CONDITIONS`: list of dicts, each with a `targ_cell_type` and two metric specs
-  (`metric_1`, `metric_2`), where a metric spec is `(scan_path, csv_column, label)`
+- `COMPARISONS`: dict mapping key -> a dict with a `targ_cell_type`, two metric specs
+  (`metric_1`, `metric_2`, each `(scan_path, csv_column, label)`), an `axis_norm` mode,
+  and a `thresholds` dict of per-axis percentile cutoffs (`high_pct_1`, `high_pct_2`,
+  `resid_pct_1`, `resid_pct_2`) used for outlier categorization. Any of the four may be
+  set to `None` to disable the category it drives.
 
 # Outputs
-- **`suppfig-scan-outliers`**: one labeled outlier scatter panel per condition
+- **`suppfig-scan-outliers-kl-selec-treg`**: Selectivity vs KL divergence, Treg
+- **`suppfig-scan-outliers-emd-selec-cd8tcm`**: Selectivity vs EMD, CD8 TCM
   - Gray: neither metric is high
   - Blue: residual below lower threshold (metric 1 higher than expected given metric 2)
   - Orange: residual above upper threshold (metric 2 higher than expected given metric 1)
-  - Red: high on both axes independently; point size scales with Euclidean distance
-    from the origin (z-score-normalized), with a reference arc at the labeling cutoff
-  - Gold stars (★): global top-N pairs by individual-axis metric
+  - Red: high on both axes independently
   - Purple diamonds (◆): user-specified pairs of interest, always labeled
+  - Point labels are placed with `adjustText` to minimize overlap
+  - `SHOW_TREND_LINES` toggles the OLS fit line, residual threshold lines, and the
+    "both"-category Euclidean cutoff arc, for a decluttered points-only view
+  - `SHOW_LEGEND_IN_PANEL` toggles the per-panel legend (off by default; see below)
+- **`suppfig-scan-outliers-legend`**: the categorization legend, detached from the
+  scatter panels above so it can be positioned independently (e.g. in Illustrator)
+  rather than repeated identically in each panel
 - Receptor-feature violin plots and representative pair distributions for the first
-  condition (diagnostics; not embedded)
+  comparison (diagnostics; not embedded)
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
 import os
 
 import matplotlib.patheffects as pe
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import yaml
+from adjustText import adjust_text
+
+from bicytok.figure_styles import (
+    COLORS,
+    FIGSIZE,
+    POINT_SIZE_BACKGROUND,
+    POINT_SIZE_FOREGROUND,
+    apply_style,
+    set_tick_count,
+)
+
+apply_style()
 
 # ── Scan paths ────────────────────────────────────────────────────────────────
 SELEC_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
 KL_EMD_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
 
 # Each metric spec: (scan path, CSV column, human-readable label)
-METRIC_SELEC = (SELEC_SCAN_PATH, "Selectivity", "Binding model selectivity")
+METRIC_SELEC = (SELEC_SCAN_PATH, "Selectivity", "Binding model")
 METRIC_KL = (KL_EMD_SCAN_PATH, "KL_Divergence", "KL divergence")
 METRIC_EMD = (KL_EMD_SCAN_PATH, "EMD", "EMD")
 
-# ── Conditions to sweep ───────────────────────────────────────────────────────
-# One outlier scatter is produced per condition. The first condition also drives
+# ── Per-axis outlier-detection thresholds ─────────────────────────────────────
+# Percentile thresholds (0–100), applied independently per axis so a comparison
+# with no real outliers along one axis doesn't get false ones forced onto it:
+#   high_pct_1 / high_pct_2  — axis 1 / axis 2 cutoff for the "both" category
+#   resid_pct_1 / resid_pct_2 — residual cutoff for the high_1 / high_2 categories
+# Comparisons default to these values; override any subset per comparison, e.g.
+# {**DEFAULT_THRESHOLDS, "resid_pct_2": 99}, to tighten an axis that over-flags.
+# Set any of the four to None to disable the category it drives outright, rather
+# than relying on a 0/100 percentile (which always matches the extreme point(s)).
+DEFAULT_THRESHOLDS = {
+    "high_pct_1": 90,
+    "high_pct_2": 90,
+    "resid_pct_1": 3,
+    "resid_pct_2": 97,
+}
+
+# ── Comparisons to sweep ──────────────────────────────────────────────────────
+# One outlier scatter is produced per comparison. The first comparison also drives
 # the downstream feature and distribution diagnostics.
-CONDITIONS = [
-    {
+COMPARISONS = {
+    "kl_selec_treg": {
         "targ_cell_type": "Treg",
         "metric_1": METRIC_SELEC,
         "metric_2": METRIC_KL,
         "axis_norm": "none",
+        "thresholds": {
+            **DEFAULT_THRESHOLDS,
+            "high_pct_1": 95,
+            "resid_pct_1": 0,
+            "resid_pct_2": 96,
+        },
     },
-    {
+    "emd_selec_cd8tcm": {
         "targ_cell_type": "CD8 TCM",
         "metric_1": METRIC_SELEC,
         "metric_2": METRIC_EMD,
         "axis_norm": "none",
+        "thresholds": {**DEFAULT_THRESHOLDS, "resid_pct_1": None, "resid_pct_2": 94},
     },
-]
+    "emd_selec_pdc": {
+        "targ_cell_type": "pDC",
+        "metric_1": METRIC_SELEC,
+        "metric_2": METRIC_EMD,
+        "axis_norm": "none",
+        "thresholds": {
+            **DEFAULT_THRESHOLDS,
+            "high_pct_2": 97,
+            "high_pct_1": 97,
+            "resid_pct_2": None,
+        },
+    },
+}
 
 # ── Shared outlier-detection settings ─────────────────────────────────────────
-# Percentile threshold (0–100) used for the "both" category (both axes independently high)
-HIGH_PERCENTILE = 90
-# Percentile threshold (0–100) for the residual-based high_1 / high_2 categories.
-RESID_PERCENTILE = 90
 # Number of auto-labeled points per category (high_1, high_2, both)
-N_LABEL = 5
-# Number of globally top-ranked pairs to highlight with a star per axis
-N_TOP_OVERALL = 1
+N_LABEL = 2
 # User-specified receptor pairs to always label (names must match scan data exactly).
 HIGHLIGHT_PAIRS: list[tuple[str, str]] = []
+# Show the OLS fit line, residual threshold lines, and "both"-category Euclidean
+# cutoff arc. Turn off to declutter the figure down to just the categorized points.
+SHOW_TREND_LINES = False
+# Show a legend on each panel. Off by default since all three comparisons share
+# the same categorization scheme; see suppfig-scan-outliers-legend for the
+# detached, shared legend instead (kept separate for easier Illustrator layout).
+SHOW_LEGEND_IN_PANEL = False
 
 
 # ── Load scans ────────────────────────────────────────────────────────────────
@@ -100,14 +157,19 @@ def load_scan_flat(path, metric_col, cell_type):
     ).reset_index(drop=True)
 
 
-def compute_outlier_df(condition):
-    """Merge two metrics for one condition, then fit the trend, compute residuals,
+def _pct_or_none(series, pct):
+    """Percentile of series, or None if pct is None (disables the category it drives)."""
+    return np.nanpercentile(series, pct) if pct is not None else None
+
+
+def compute_outlier_df(comparison):
+    """Merge two metrics for one comparison, then fit the trend, compute residuals,
     and categorize each receptor pair. Returns a result dict consumed by the plot
     and diagnostic cells."""
-    path1, col1, label1 = condition["metric_1"]
-    path2, col2, label2 = condition["metric_2"]
-    targ_cell_type = condition["targ_cell_type"]
-    axis_norm = condition["axis_norm"]
+    path1, col1, label1 = comparison["metric_1"]
+    path2, col2, label2 = comparison["metric_2"]
+    targ_cell_type = comparison["targ_cell_type"]
+    axis_norm = comparison["axis_norm"]
 
     scan1 = load_scan_flat(path1, col1, targ_cell_type)
     scan2 = load_scan_flat(path2, col2, targ_cell_type)
@@ -129,20 +191,25 @@ def compute_outlier_df(condition):
     axis_1_label = label1 + suffix
     axis_2_label = label2 + suffix
 
+    thresholds = comparison["thresholds"]
+
     # Fit trend line & compute residuals.
     slope, intercept = np.polyfit(df["s1"], df["s2"], 1)
     df["resid"] = df["s2"] - (slope * df["s1"] + intercept)
-    resid_hi = np.nanpercentile(df["resid"], RESID_PERCENTILE)
-    resid_lo = np.nanpercentile(df["resid"], 100 - RESID_PERCENTILE)
+    resid_lo = _pct_or_none(df["resid"], thresholds["resid_pct_1"])
+    resid_hi = _pct_or_none(df["resid"], thresholds["resid_pct_2"])
 
-    # Categorize points.
-    thresh1 = np.nanpercentile(df["s1"], HIGH_PERCENTILE)
-    thresh2 = np.nanpercentile(df["s2"], HIGH_PERCENTILE)
-    high1 = df["s1"] >= thresh1
-    high2 = df["s2"] >= thresh2
+    # Categorize points. A None threshold disables the category it drives.
+    thresh1 = _pct_or_none(df["s1"], thresholds["high_pct_1"])
+    thresh2 = _pct_or_none(df["s2"], thresholds["high_pct_2"])
+    no_match = pd.Series(False, index=df.index)
+    high1 = df["s1"] >= thresh1 if thresh1 is not None else no_match
+    high2 = df["s2"] >= thresh2 if thresh2 is not None else no_match
     df["category"] = "neither"
-    df.loc[df["resid"] <= resid_lo, "category"] = "high_1"
-    df.loc[df["resid"] >= resid_hi, "category"] = "high_2"
+    if resid_lo is not None:
+        df.loc[df["resid"] <= resid_lo, "category"] = "high_1"
+    if resid_hi is not None:
+        df.loc[df["resid"] >= resid_hi, "category"] = "high_2"
     df.loc[high1 & high2, "category"] = "both"
 
     # Euclidean distance on z-score-normalized axes so both metrics contribute equally.
@@ -157,11 +224,6 @@ def compute_outlier_df(condition):
             df[df["category"] == "high_2"].nlargest(N_LABEL, "resid"),
             df[df["category"] == "both"].nlargest(N_LABEL, "r"),
         ]
-    ).drop_duplicates(subset=["rec1", "rec2"])
-
-    # Global top-N pairs per axis (starred).
-    top_overall_rows = pd.concat(
-        [df.nlargest(N_TOP_OVERALL, "s1"), df.nlargest(N_TOP_OVERALL, "s2")]
     ).drop_duplicates(subset=["rec1", "rec2"])
 
     # User-specified pairs.
@@ -181,9 +243,9 @@ def compute_outlier_df(condition):
         else pd.DataFrame(columns=df.columns)
     )
 
-    all_label_rows = pd.concat(
-        [auto_label_rows, top_overall_rows, user_rows]
-    ).drop_duplicates(subset=["rec1", "rec2"])
+    all_label_rows = pd.concat([auto_label_rows, user_rows]).drop_duplicates(
+        subset=["rec1", "rec2"]
+    )
 
     return {
         "df": df,
@@ -195,58 +257,57 @@ def compute_outlier_df(condition):
         "intercept": intercept,
         "resid_hi": resid_hi,
         "resid_lo": resid_lo,
-        "top_overall_rows": top_overall_rows,
         "user_rows": user_rows,
         "all_label_rows": all_label_rows,
     }
 
 
 def plot_outlier_scatter(res, ax):
-    """Draw one condition's labeled outlier scatter onto the given axis."""
+    """Draw one comparison's labeled outlier scatter onto the given axis."""
     df = res["df"]
     axis_1_label, axis_2_label = res["axis_1_label"], res["axis_2_label"]
     slope, intercept = res["slope"], res["intercept"]
     resid_hi, resid_lo = res["resid_hi"], res["resid_lo"]
 
     for cat, style in {
-        "neither": dict(color="lightgray", zorder=1, alpha=0.6, s=18, label="Neither"),
+        "neither": dict(
+            color=COLORS["outlier_neither"],
+            zorder=1,
+            alpha=0.6,
+            s=POINT_SIZE_BACKGROUND,
+            label="Neither",
+        ),
         "high_1": dict(
-            color="#3A86FF",
+            color=COLORS["outlier_metric1"],
             zorder=3,
             alpha=0.85,
-            s=40,
-            label=f"High {axis_1_label} only",
+            s=POINT_SIZE_FOREGROUND,
+            label=f"{axis_1_label} outlier",
         ),
         "high_2": dict(
-            color="#FF9F1C",
+            color=COLORS["outlier_metric2"],
             zorder=3,
             alpha=0.85,
-            s=40,
-            label=f"High {axis_2_label} only",
+            s=POINT_SIZE_FOREGROUND,
+            label=f"{axis_2_label} outlier",
         ),
     }.items():
         sub = df[df["category"] == cat]
         ax.scatter(sub["s1"], sub["s2"], **style)
 
-    both_sub = df[df["category"] == "both"].copy()
+    both_sub = df[df["category"] == "both"]
     if not both_sub.empty:
-        r_min, r_max = both_sub["r"].min(), both_sub["r"].max()
-        sizes_both = (
-            40 + 200 * (both_sub["r"] - r_min) / (r_max - r_min)
-            if r_max > r_min
-            else np.full(len(both_sub), 80)
-        )
         ax.scatter(
             both_sub["s1"],
             both_sub["s2"],
-            s=sizes_both,
-            color="#E63946",
+            s=POINT_SIZE_FOREGROUND,
+            color=COLORS["outlier_both"],
             zorder=4,
-            alpha=0.95,
-            label="High on both (size ∝ Euclidean dist.)",
+            alpha=0.85,
+            label="Shared target",
         )
         labeled_both = both_sub.nlargest(N_LABEL, "r")
-        if len(labeled_both) == N_LABEL:
+        if SHOW_TREND_LINES and len(labeled_both) == N_LABEL:
             r_ref_z = labeled_both["r"].min()
             s1_std, s2_std = df["s1"].std() + 1e-9, df["s2"].std() + 1e-9
             theta_arc = np.linspace(0, np.pi / 2, 200)
@@ -256,7 +317,7 @@ def plot_outlier_scatter(res, ax):
             ax.plot(
                 arc_x[x_mask],
                 arc_y[x_mask],
-                color="#E63946",
+                color=COLORS["outlier_both"],
                 linewidth=1.2,
                 linestyle=":",
                 alpha=0.55,
@@ -269,68 +330,80 @@ def plot_outlier_scatter(res, ax):
             res["user_rows"]["s1"],
             res["user_rows"]["s2"],
             marker="D",
-            s=80,
-            color="#9B5DE5",
+            s=POINT_SIZE_FOREGROUND,
+            color=COLORS["outlier_user"],
             zorder=6,
             alpha=1.0,
             label="User-specified pairs",
         )
 
-    ax.scatter(
-        res["top_overall_rows"]["s1"],
-        res["top_overall_rows"]["s2"],
-        marker="*",
-        s=220,
-        color="#FFD700",
-        edgecolors="#888",
-        linewidths=0.5,
-        zorder=7,
-        alpha=1.0,
-        label=f"Top-{N_TOP_OVERALL} per axis",
-    )
+    if SHOW_TREND_LINES:
+        x_line = np.array([df["s1"].min(), df["s1"].max()])
+        ax.plot(
+            x_line,
+            slope * x_line + intercept,
+            color="dimgray",
+            linewidth=1.0,
+            linestyle="-",
+            alpha=0.45,
+            zorder=2,
+            label="OLS fit",
+        )
+        if resid_hi is not None:
+            ax.plot(
+                x_line,
+                slope * x_line + intercept + resid_hi,
+                color="darkorange",
+                linewidth=1.0,
+                linestyle="--",
+                alpha=0.5,
+            )
+        if resid_lo is not None:
+            ax.plot(
+                x_line,
+                slope * x_line + intercept + resid_lo,
+                color="steelblue",
+                linewidth=1.0,
+                linestyle="--",
+                alpha=0.5,
+            )
 
-    x_line = np.array([df["s1"].min(), df["s1"].max()])
-    ax.plot(
-        x_line,
-        slope * x_line + intercept,
-        color="dimgray",
-        linewidth=1.0,
-        linestyle="-",
-        alpha=0.45,
-        zorder=2,
-        label="OLS fit",
-    )
-    ax.plot(
-        x_line,
-        slope * x_line + intercept + resid_hi,
-        color="darkorange",
-        linewidth=1.0,
-        linestyle="--",
-        alpha=0.5,
-    )
-    ax.plot(
-        x_line,
-        slope * x_line + intercept + resid_lo,
-        color="steelblue",
-        linewidth=1.0,
-        linestyle="--",
-        alpha=0.5,
-    )
-
+    texts = []
     for _, row in res["all_label_rows"].iterrows():
         label = f"({row['rec1']}, {row['rec2']})"
-        txt = ax.text(row["s1"], row["s2"], label, fontsize=7, ha="left", va="bottom")
+        txt = ax.text(row["s1"], row["s2"], label)
         txt.set_path_effects([pe.withStroke(linewidth=2, foreground="white")])
+        texts.append(txt)
+    adjust_text(
+        texts,
+        x=df["s1"].to_numpy(),
+        y=df["s2"].to_numpy(),
+        arrowprops=dict(arrowstyle="-", lw=1.0, color="#555555", alpha=0.8),
+        ax=ax,
+    )
 
-    ax.set_xlabel(axis_1_label, fontsize=13)
-    ax.set_ylabel(axis_2_label, fontsize=13)
-    ax.tick_params(labelsize=11)
-    ax.legend(fontsize=6, loc="best", framealpha=0.8)
+    if axis_1_label == "Binding model":
+        ax.set_xlabel(f"{axis_1_label} selectivity")
+    else:
+        ax.set_xlabel(axis_1_label)
+    ax.set_ylabel(axis_2_label)
+    if SHOW_LEGEND_IN_PANEL:
+        ax.legend(loc="best")
+
+    set_tick_count(ax, 4, 4)
 
 
-# Compute all conditions up front; bind the first condition for the diagnostics.
-outlier_results = [compute_outlier_df(c) for c in CONDITIONS]
-_first = outlier_results[0]
+def plot_outlier_comparison(key):
+    """Draw one comparison's labeled outlier scatter as a standalone figure."""
+    fig, ax = plt.subplots(figsize=FIGSIZE["square_scatter"])
+    plot_outlier_scatter(outlier_data[key], ax)
+    plt.tight_layout()
+    plt.show()
+
+
+# Compute every comparison up front; bind the first for the downstream diagnostics.
+outlier_data = {key: compute_outlier_df(cfg) for key, cfg in COMPARISONS.items()}
+_first = next(iter(outlier_data.values()))
 df = _first["df"]
 TARG_CELL_TYPE = _first["targ_cell_type"]
 AXIS_1_LABEL = _first["axis_1_label"]
@@ -339,21 +412,63 @@ CELL_CATEGORIZATION = _first["cell_categorization"]
 ```
 
 ```{python}
-#| label: scan-outliers-plot
+#| label: suppfig-scan-outliers-kl-selec-treg
+plot_outlier_comparison("kl_selec_treg")
+```
+
+```{python}
+#| label: suppfig-scan-outliers-emd-selec-cd8tcm
+plot_outlier_comparison("emd_selec_cd8tcm")
+```
+
+```{python}
+#| label: suppfig-scan-outliers-emd-selec-pdc
+plot_outlier_comparison("emd_selec_pdc")
+```
+
+```{python}
+#| label: suppfig-scan-outliers-legend
+#| fig-cap: "Shared legend for the outlier-comparison scatter plots above"
+# Detached legend: covers all three comparisons above, since they share the same
+# categorization scheme. "Metric 1"/"Metric 2" are generic rather than naming the
+# specific metric (e.g. "KL divergence"), since that varies by comparison — see
+# each panel's own axis labels for the concrete metric names.
+import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 
-n_cond = len(outlier_results)
-fig, axes = plt.subplots(1, n_cond, figsize=(7.5 * n_cond, 7))
-axes = np.atleast_1d(axes)
-for res, ax in zip(outlier_results, axes, strict=True):
-    plot_outlier_scatter(res, ax)
-plt.tight_layout()
+from bicytok.figure_styles import COLORS, standalone_legend_figure
+
+_legend_color_types = [
+    "outlier_neither",
+    "outlier_metric1",
+    "outlier_metric2",
+    "outlier_both",
+]
+if HIGHLIGHT_PAIRS:
+    _legend_color_types.append("outlier_user")
+
+_legend_handles = []
+for color_type in _legend_color_types:
+    marker = "D" if color_type == "outlier_user" else "o"
+    _legend_handles.append(
+        mlines.Line2D([], [], marker=marker, linestyle="None", color=COLORS[color_type])
+    )
+
+_legend_labels = [
+    "Neither",
+    "Metric 1 outlier",
+    "Metric 2 outlier",
+    "Shared target",
+    "User-specified pairs",
+]
+
+standalone_legend_figure(_legend_handles, _legend_labels)
 plt.show()
 ```
 
 ```{python}
-# Tabular summary of all annotated receptor pairs, per condition.
-for res in outlier_results:
+# Tabular summary of all annotated receptor pairs, per comparison.
+for res in outlier_data.values():
     summary = res["all_label_rows"][
         ["rec1", "rec2", "s1", "s2", "r", "category"]
     ].copy()
@@ -376,7 +491,7 @@ for res in outlier_results:
 ```
 
 ```{python}
-# ── Distribution feature analysis by group (first condition only) ─────────────
+# ── Distribution feature analysis by group (first comparison only) ────────────
 # For each receptor appearing in the scan, computes simple 1D distribution
 # features comparing target vs. off-target abundance. Each receptor pair is then
 # summarized by aggregating the features of its two constituent receptors. Violin
@@ -597,7 +712,7 @@ plt.show()
 ```
 
 ```{python}
-# ── Representative pair raw distributions (first condition only) ──────────────
+# ── Representative pair raw distributions (first comparison only) ─────────────
 # For each scatter-plot category, selects N_REPR representative receptor pairs
 # and shows their joint 2D distribution with 1D marginal histograms. Selection
 # criterion per category:

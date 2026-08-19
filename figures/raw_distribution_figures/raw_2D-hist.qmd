@@ -34,26 +34,30 @@ Generates a combined figure showing the 2D receptor distribution in the center w
 %config InlineBackend.figure_formats = ['svg']
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 from bicytok.distance_metric_funcs import KL_EMD_1D, KL_EMD_2D
+from bicytok.figure_styles import COLORS, apply_style
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
 
-plt.rcParams["svg.fonttype"] = "none"
+apply_style()
 
 # Parameters
-receptor1 = "CD45RO"
-receptor2 = "Integrin-7"
-targ_cell = "CD4 Naive"
+receptor1 = "CD49a"
+receptor2 = "CD103"
+targ_cell = "CD8 TCM"
 off_targ_cell_types = None
 sample_size = 2500
 cell_categorization = "CellType2"
 plot_cell_types = [targ_cell, "other"]
 normalize = False
 calc_selec = False
+limit_axes = True  # Set False to let matplotlib auto-scale axes to the full data range
+log_scale = False  # Set True to symlog-scale the main + marginal panels (highlights outliers). If true omits KDE display and contour lines
+show_marginals = False  # Set False to show only the main 2D panel, without the top/right marginal histograms
+
 
 # Selectivity parameters
 dose = 1e-10  # ligand concentration in M
@@ -66,13 +70,12 @@ valencies_2d = np.array(
 )  # valencies for 2D case (signal + two target receptors)
 
 # Color scheme
-TARGET_COLOR = "#CF4D6F"
-OFF_TARGET_COLOR = "#2774AE"
+TARGET_COLOR = COLORS["target"]
+OFF_TARGET_COLOR = COLORS["off_target"]
 colors = [TARGET_COLOR, OFF_TARGET_COLOR]
-cell_type_labels = ["Target", "Off-target"]
+cell_type_labels = [targ_cell, "Off-target"]
 
 # Figure dimensions for marginal plot layout
-FIGURE_SIZE = (10, 8)
 DPI = 100
 
 # Data loading and processing
@@ -221,33 +224,69 @@ plot_df = pd.DataFrame(
 )
 
 # Calculate consistent axis limits for alignment
-x_max = np.percentile(plot_df[f"{receptor1}_norm"], 99) * 1.1
-y_max = np.percentile(plot_df[f"{receptor2}_norm"], 99) * 1.1
-x_min = y_min = 0
+if limit_axes:
+    x_max = np.percentile(plot_df[f"{receptor1}_norm"], 99) * 1.1
+    y_max = np.percentile(plot_df[f"{receptor2}_norm"], 99) * 1.1
+    x_min = y_min = 0
+else:  # pad upper axes to avoid cutting off edge points
+    x_max = max(plot_df[f"{receptor1}_norm"]) * 1.05
+    y_max = max(plot_df[f"{receptor2}_norm"]) * 1.05
 ```
 
 ```{python}
 #| label: fig-raw-2d-hist
 #| fig-cap: "2D distribution with marginal 1D projections showing axis projections"
 import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Create figure with custom gridspec for marginal plots
-fig = plt.figure(figsize=FIGURE_SIZE, dpi=DPI)
-gs = gridspec.GridSpec(
-    3,
-    3,
-    figure=fig,
-    width_ratios=[1, 4, 1],
-    height_ratios=[1, 4, 0.2],
-    hspace=0.15,
-    wspace=0.05,
-    top=0.88,
-    bottom=0.1,
+from bicytok.figure_styles import (
+    FIGSIZE,
+    FONT_SIZE_LEGEND,
+    LEGEND_BORDERAXESPAD,
+    LEGEND_BORDERPAD,
+    LEGEND_HANDLELENGTH,
+    LEGEND_HANDLETEXTPAD,
+    LEGEND_LABELSPACING,
+    POINT_SIZE_BACKGROUND,
+    gridspec_marginal_spacing,
+    set_tick_count,
 )
 
-# Main 2D plot (center)
-ax_main = fig.add_subplot(gs[1, 1])
+if show_marginals:
+    # Create figure with custom gridspec for marginal plots
+    GRID_BOUNDS = (0.125, 0.9, 0.88, 0.1)  # left, right, top, bottom (figure fraction)
+    MARGINAL_GAP_IN = (
+        0.25  # physical gap between main panel and each marginal histogram
+    )
+
+    fig = plt.figure(figsize=FIGSIZE["joint_grid"], dpi=DPI)
+    hspace, wspace = gridspec_marginal_spacing(
+        fig_width=FIGSIZE["joint_grid"][0],
+        fig_height=FIGSIZE["joint_grid"][1],
+        grid_bounds=GRID_BOUNDS,
+        n_rows=3,
+        n_cols=3,
+        gap_inches=MARGINAL_GAP_IN,
+    )
+    gs = gridspec.GridSpec(
+        3,
+        3,
+        figure=fig,
+        width_ratios=[1, 4, 1],
+        height_ratios=[1, 4, 0.2],
+        hspace=hspace,
+        wspace=wspace,
+        left=GRID_BOUNDS[0],
+        right=GRID_BOUNDS[1],
+        top=GRID_BOUNDS[2],
+        bottom=GRID_BOUNDS[3],
+    )
+    ax_main = fig.add_subplot(gs[1, 1])
+    ax_top = fig.add_subplot(gs[0, 1], sharex=ax_main)
+    ax_right = fig.add_subplot(gs[1, 2], sharey=ax_main)
+else:
+    fig, ax_main = plt.subplots(figsize=FIGSIZE["square_scatter"], dpi=DPI)
 
 # Plot 2D data
 for i, cell_type in enumerate(
@@ -260,130 +299,107 @@ for i, cell_type in enumerate(
         cell_df[f"{receptor2}_norm"],
         alpha=0.3,
         color=colors[i],
-        s=10,
+        s=POINT_SIZE_BACKGROUND,
         label=cell_type_labels[i],
     )
 
-    sns.kdeplot(
-        x=cell_df[f"{receptor1}_norm"],
-        y=cell_df[f"{receptor2}_norm"],
-        color=colors[i],
-        levels=5,
-        linewidths=1.5,
-        ax=ax_main,
-    )
+    if not log_scale:
+        sns.kdeplot(
+            x=cell_df[f"{receptor1}_norm"],
+            y=cell_df[f"{receptor2}_norm"],
+            color=colors[i],
+            levels=5,
+            linewidths=1.5,
+            ax=ax_main,
+        )
 
 ax_main.set_xlim(x_min, x_max)
 ax_main.set_ylim(y_min, y_max)
-ax_main.grid(alpha=0.3, linestyle="--")
+
+if receptor1 == "CD122":
+    rec_label1 = "IL-2Rβ"
+elif receptor1 == "CD25":
+    rec_label1 = "IL-2Rα"
+else:
+    rec_label1 = receptor1
+
+if receptor2 == "CD122":
+    rec_label2 = "IL-2Rβ"
+elif receptor2 == "CD25":
+    rec_label2 = "IL-2Rα"
+else:
+    rec_label2 = receptor2
 
 if normalize:
-    ax_main.set_xlabel(f"{receptor1} Normalized Count", fontsize=20)
-    ax_main.set_ylabel(f"{receptor2} Normalized Count", fontsize=20)
+    ax_main.set_xlabel(f"{rec_label1} Normalized Count")
+    ax_main.set_ylabel(f"{rec_label2} Normalized Count")
 else:
-    ax_main.set_xlabel(f"{receptor1} Count", fontsize=20)
-    ax_main.set_ylabel(f"{receptor2} Count", fontsize=20)
+    ax_main.set_xlabel(f"{rec_label1} ADT Count")
+    ax_main.set_ylabel(f"{rec_label2} ADT Count")
 
-ax_main.tick_params(axis="both", labelsize=18)
-ax_main.legend(fontsize=20)
-
-# Top marginal plot (x-axis projection)
-ax_top = fig.add_subplot(gs[0, 1], sharex=ax_main)
-
-for i, cell_type in enumerate(
-    [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
-):
-    cell_df = plot_df[plot_df["Cell Type"] == cell_type]
-    sns.histplot(
-        cell_df[f"{receptor1}_norm"].values,
-        color=colors[i],
-        alpha=0.5,
-        kde=True,
-        kde_kws={"bw_method": "scott"},
-        edgecolor="black",
-        ax=ax_top,
-        label=cell_type_labels[i],
-    )
-
-ax_top.set_xlim(x_min, x_max)
-ax_top.set_ylabel("Number of Cells", fontsize=16)
-ax_top.tick_params(axis="both", labelsize=18)
-ax_top.text(
-    0.02,
-    0.95,
-    f"X-axis: KL={kl_val_1:.2f}, EMD={emd_val_1:.2f}\nSelectivity ({signal[0]}+{receptor1}): {selectivity_1d_rec1:.2f}",
-    transform=ax_top.transAxes,
-    fontsize=15,
-    verticalalignment="top",
-    horizontalalignment="left",
-    bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
-)
-plt.setp(ax_top.get_xticklabels(), visible=False)
-
-# Right marginal plot (y-axis projection)
-ax_right = fig.add_subplot(gs[1, 2], sharey=ax_main)
-
-for i, cell_type in enumerate(
-    [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
-):
-    cell_df = plot_df[plot_df["Cell Type"] == cell_type]
-    sns.histplot(
-        y=cell_df[f"{receptor2}_norm"].values,
-        color=colors[i],
-        alpha=0.5,
-        kde=True,
-        kde_kws={"bw_method": "scott"},
-        edgecolor="black",
-        ax=ax_right,
-    )
-
-ax_right.set_ylim(y_min, y_max)
-ax_right.set_xlabel("Number of Cells", fontsize=16)
-ax_right.tick_params(axis="both", labelsize=18)
-plt.setp(ax_right.get_yticklabels(), visible=False)
-
-# Add text annotation for y-axis metrics
-ax_right.text(
-    0.95,
-    0.95,
-    f"Y-axis:\nKL={kl_val_2:.2f}\nEMD={emd_val_2:.2f}\nSelectivity ({signal[0]}+{receptor2}): {selectivity_1d_rec2:.2f}",
-    transform=ax_right.transAxes,
-    fontsize=15,
-    verticalalignment="top",
-    horizontalalignment="right",
-    bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+ax_main.legend(
+    fontsize=FONT_SIZE_LEGEND,
+    markerscale=1.5,
+    borderpad=LEGEND_BORDERPAD,
+    labelspacing=LEGEND_LABELSPACING,
+    handlelength=LEGEND_HANDLELENGTH,
+    handletextpad=LEGEND_HANDLETEXTPAD,
+    borderaxespad=LEGEND_BORDERAXESPAD,
 )
 
-# Add overall title and 2D metrics
-fig.suptitle(
-    f"{receptor1} vs {receptor2} with Marginal Projections\n"
-    f"2D Metrics - KL: {kl_val_2d:.2f}, EMD: {emd_val_2d:.2f}, Selectivity ({signal[0]}+{receptor1}+{receptor2}): {selectivity_2d:.2f}",
-    fontsize=16,
-    y=0.98,
-)
+if show_marginals:
+    # Top marginal plot (x-axis projection)
+    for i, cell_type in enumerate(
+        [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
+    ):
+        cell_df = plot_df[plot_df["Cell Type"] == cell_type]
+        sns.histplot(
+            cell_df[f"{receptor1}_norm"].values,
+            color=colors[i],
+            alpha=0.5,
+            kde=not log_scale,
+            kde_kws={"bw_method": "scott"},
+            edgecolor="black",
+            ax=ax_top,
+            label=cell_type_labels[i],
+        )
+
+    ax_top.set_xlim(x_min, x_max)
+    ax_top.set_ylabel("Number of Cells")
+    plt.setp(ax_top.get_xticklabels(), visible=False)
+
+    # Right marginal plot (y-axis projection)
+    for i, cell_type in enumerate(
+        [t for t in plot_cell_types if t in plot_df["Cell Type"].unique()]
+    ):
+        cell_df = plot_df[plot_df["Cell Type"] == cell_type]
+        sns.histplot(
+            y=cell_df[f"{receptor2}_norm"].values,
+            color=colors[i],
+            alpha=0.5,
+            kde=not log_scale,
+            kde_kws={"bw_method": "scott"},
+            edgecolor="black",
+            ax=ax_right,
+        )
+
+    ax_right.set_ylim(y_min, y_max)
+    ax_right.set_xlabel("Number of Cells")
+    plt.setp(ax_right.get_yticklabels(), visible=False)
+
+LOG_LINTHRESH = 1
+if log_scale:
+    ax_main.set_xscale("symlog", linthresh=LOG_LINTHRESH)
+    ax_main.set_yscale("symlog", linthresh=LOG_LINTHRESH)
+
+set_tick_count(ax_main, 3, 3)
 
 plt.show()
-```
 
-## Parameter Summary
-```{python}
-#| output: asis
-text = f"""
-Generated a combined marginal plot showing the 2D joint distribution of **{receptor1}** and **{receptor2}** with 1D projections along each axis. The visualization includes:
-
-- **Center panel**: 2D scatter plot with KDE contours showing the joint distribution
-- **Top panel**: 1D histogram showing projection of all points onto the {receptor1} axis
-- **Right panel**: 1D histogram showing projection of all points onto the {receptor2} axis
-
-Analysis compared target cell type **{targ_cell}** vs off-target cells using **{sample_size}** cells from the CITE-seq dataset. The marginal histograms show both individual cell type distributions and the overall projection (gray dashed line) to visualize what happens when all 2D points are collapsed onto each axis. Target cells are shown in {TARGET_COLOR} and off-target cells in {OFF_TARGET_COLOR}. Receptor counts were {"**normalized**" if normalize else "**not normalized**"}.
-
-**Selectivity Analysis**: Using **{signal[0]}** as the signaling receptor, selectivity was calculated for:
-- 1D case with {signal[0]}+{receptor1}: **{selectivity_1d_rec1:.2f}**
-- 1D case with {signal[0]}+{receptor2}: **{selectivity_1d_rec2:.2f}**
-- 2D case with {signal[0]}+{receptor1}+{receptor2}: **{selectivity_2d:.2f}**
-
-Selectivity values represent the ratio of target to off-target binding after optimization at dose **{dose:.0e} M** using valencies {valencies_1d.flatten()} (1D) and {valencies_2d.flatten()} (2D).
-"""
-
-print(text)
+print(f"X-axis ({receptor1}) KL Divergence: {kl_val_1:.4f}")
+print(f"X-axis ({receptor1}) EMD: {emd_val_1:.4f}")
+print(f"Y-axis ({receptor2}) KL Divergence: {kl_val_2:.4f}")
+print(f"Y-axis ({receptor2}) EMD: {emd_val_2:.4f}")
+print(f"2D ({receptor1}+{receptor2}) KL Divergence: {kl_val_2d:.4f}")
+print(f"2D ({receptor1}+{receptor2}) EMD: {emd_val_2d:.4f}")
 ```
