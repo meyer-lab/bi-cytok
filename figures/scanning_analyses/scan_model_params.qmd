@@ -1,0 +1,800 @@
+---
+title: "Optimal Binding-Model Parameter Distributions Across Selectivity Scans"
+---
+
+# Summary
+Examines how optimal binding-model parameters — Kx*, the three monomer affinities, selectivity, and a derived selectivity-gain (synergy) metric — are distributed across selectivity scans, and how those distributions shift with the Kx* upper bound imposed during affinity optimization. The file originated as an investigation into why a scan with a loose Kx* upper bound (1e-5) yields widespread synergy while an otherwise-identical scan with a tight bound (1e-9) yields limited, low-gain synergy (see `scan_synergy.qmd`); that loose-vs-tight comparison remains the throughline, but the analysis has broadened to cover per-pair parameter relationships and cross-scan parameter distributions more generally. Cross-scan pair-category flow (which category a pair moves between, rather than a parameter's own distribution) has moved to `scan_alluvial_flows.qmd`.
+
+Three complementary analyses appear below, in this order:
+
+1. **Specific single-panel figures** (`SPECIFIC_ANALYSES`): each entry picks one pre-built comparison shape (an x/y axis pairing with its reference lines and limits, (`COMPARISON_SHAPES`), one scan to draw from, and whether points are colored by log2 selectivity gain or by cell type. The most flexible of the three — any scan in `SCANS` can be plotted against any shape.
+2. **Parameter histograms**: four panels aggregating every binding-model output (and the derived gain) over all successfully optimized pairs, across `ACTIVE_SCANS`, showing how each distribution's overall shape responds to the Kx* bound:
+   1. **Kx\* distribution** — optimal log10(Kx*), with each scan's upper bound marked.
+   2. **Affinity distributions** — optimal monomer affinities, one subpanel per receptor. Diagonal (rec == rec) pairs are excluded: the second target receptor there is modeled with valency 0, leaving its affinity at its initialization value rather than an optimized one.
+   3. **Selectivity distribution** — optimal selectivity, targ / (targ + off-targ), on a log density axis to reveal the high-selectivity tail above the ~0.5 no-selectivity floor.
+   4. **Selectivity gain distribution** — per pair, bispecific selectivity divided by the larger of its two constituents' monospecific (diagonal) selectivities, as log2 gain on a log density axis. gain > 1 marks synergy. The signal receptor is excluded, since a pair containing the artificial readout receptor is not a genuine two-target combination. Diagonal monospecific entries model a single receptor carrying the combined target valency, so the comparison holds total target valency fixed: gain < 1 means concentrating valency on the better single receptor beats splitting it across two.
+3. **Scatter grid** (`fig-scatter-grid`, reference/diagnostic): a grid gathering every per-pair scatter in `GRID_COMPARISON_KEYS` — rows are comparisons, columns are scans (loose bound left, tight bound right). The first four rows plot each output (selectivity, the three affinities) against optimal log10(Kx*); the last four plot log2 selectivity gain against selectivity, then each receptor's affinity against selectivity. Every panel shares one coloring scheme — all pairs in gray, with pairs synergistic in that scan's chosen reference scan (set per scan via `gain_ref`) overlaid and colored by the reference scan's log2 gain. Pointing the tight scan at the loose scan maps the loose-bound gain onto the tight coordinates by pair key, so the tight-bound column shows exactly where the once-synergistic pairs are trapped when Kx* is capped. Points are rasterized (~276k per panel). This grid does not include the `SPECIFIC_ANALYSES` comparisons above.
+
+# Inputs
+- `SCANS`: list of selectivity scans, each with a CSV `path`, a display `label`, the `kx_upper` optimization bound in log10(M) (or `None` to omit its marker), a plot `color`, and a `gain_ref` naming the scan (by `label`) whose per-pair gain colors this scan's points — its own `label` to use its own gain, or another scan's to map that scan's gain onto these coordinates. Each CSV must be a selectivity scan with a matching `.yaml`.
+- `ACTIVE_SCAN_LABELS` / `ACTIVE_SCANS`: the subset of `SCANS` analyzed by the parameter histograms and `fig-scatter-grid`. `SPECIFIC_ANALYSES` is not restricted to this subset.
+- `SPECIFIC_ANALYSES`: dict of specific single-panel figures. Each entry has a `comparison` (a key into `COMPARISON_SHAPES`), a `scan_label` (any scan in `SCANS`), and a `color_by` of `"gain"` (log2 selectivity gain, colorbar) or `"cell_type"` (shared `CELL_TYPE_COLORS`, legend omitted per panel — see `fig-celltype-legend`).
+- `AFFINITY_BOUNDS` / `SELEC_BOUNDS`: shared (min, max) display ranges in log10(M) / fraction, drawn as reference lines or axis limits across the affinity and selectivity panels.
+
+# Outputs
+- **`fig-sel-vs-kx-loose`**: Selectivity vs. optimal log10(Kx*), 1e-5 bound scan, colored by cell type. Shares its y-axis range (`SELEC_BOUNDS`) with `fig-sel-vs-targ1aff-loose`.
+- **`fig-sel-vs-targ1aff-loose`**: Selectivity vs. Target 1 affinity, 1e-5 bound scan, colored by cell type.
+- **`fig-gain-vs-sel-loose`** / **`fig-gain-vs-sel-loose-log`**: log2 selectivity gain vs. selectivity, 1e-5 bound scan, linear and log y-axis.
+- **`fig-gain-vs-sel-bivalent`** / **`fig-gain-vs-sel-mixedval`**: log2 selectivity gain vs. selectivity, bivalent / mixed-valency scans (outside `ACTIVE_SCAN_LABELS`; each colored by its own gain via its self-referencing `gain_ref`).
+- **`fig-celltype-legend`**: shared legend for every `color_by="cell_type"` panel above, detached so it can be positioned independently (e.g. in Illustrator).
+- **`fig-kxstar-dist`**: overlaid density histograms of optimal log10(Kx*), with each scan's upper bound marked and the fraction of pairs pinned at that bound annotated.
+- **`fig-affinity-dist`**: overlaid density histograms of optimal affinity, one subpanel per receptor; diagonal pairs excluded.
+- **`fig-selectivity-dist`**: overlaid log-density histograms of optimal selectivity.
+- **`fig-gain-dist`**: overlaid log-density histogram of per-pair log2 selectivity gain.
+- **`fig-scatter-grid`** (reference/diagnostic): rasterized scatter grid consolidating every per-pair comparison in `GRID_COMPARISON_KEYS` across scans, colored by each scan's `gain_ref` gain.
+
+```{python}
+%config InlineBackend.figure_formats = ['svg']
+import os
+
+import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import yaml
+from matplotlib.colors import Normalize
+
+from bicytok.figure_styles import (
+    CELL_TYPE_COLORS,
+    CELL_TYPES,
+    COLORBAR_FRACTION,
+    COLORBAR_PAD,
+    FIGSIZE,
+    FONT_SIZE_ANNOT,
+    POINT_SIZE_BACKGROUND,
+    POINT_SIZE_XS,
+    apply_style,
+    set_tick_count,
+    standalone_legend_figure,
+)
+
+apply_style()
+
+## Parameters
+
+# Each scan's "gain_ref" names the scan (by label) whose per-pair gain colors this scan's points
+# in fig-scatter-grid: its own label uses its own gain; another scan's label maps that scan's gain
+# onto these coordinates
+SCANS = [
+    # Loose Kx* bound scan
+    {
+        "path": "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv",
+        "label": "Kx* upper bound 1e-5",
+        "kx_upper": -5.0,
+        "color": "#2774AE",
+        "gain_ref": "Kx* upper bound 1e-5",
+    },
+    # Tight Kx* bound scan
+    {
+        "path": "/home/sama/receptor_sweep_data/20260720_selec_scan_rand42_prot1.csv",
+        "label": "Kx* upper bound 1e-9",
+        "kx_upper": -9.0,
+        "color": "#CF4D6F",
+        "gain_ref": "Kx* upper bound 1e-5",
+    },
+    # High-valency scans. Not in ACTIVE_SCAN_LABELS below, so excluded from the
+    # distribution/grid figures; available to SPECIFIC_ANALYSES via scan_label.
+    {
+        "path": "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv",
+        "label": "Bivalent Kx* upper bound 1e-5",
+        "kx_upper": -5.0,
+        "color": "#4E9A06",
+        "gain_ref": "Bivalent Kx* upper bound 1e-5",
+    },
+    {
+        "path": "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv",
+        "label": "Mixed Valency Kx* upper bound 1e-5",
+        "kx_upper": -5.0,
+        "color": "#FF7F00",
+        "gain_ref": "Mixed Valency Kx* upper bound 1e-5",
+    },
+]
+
+# Scans analyzed by the parameter histograms and fig-scatter-grid. SCANS may hold other
+# scans loaded and available to SPECIFIC_ANALYSES by scan_label but excluded
+# from these figures.
+ACTIVE_SCAN_LABELS = [
+    "Kx* upper bound 1e-5",
+    "Kx* upper bound 1e-9",
+    "Bivalent Kx* upper bound 1e-5",
+]
+ACTIVE_SCANS = [s for s in SCANS if s["label"] in ACTIVE_SCAN_LABELS]
+
+# Display ranges: affinity in log10(M), padded from the true (6.0, 12.0) optimization bounds
+# so points and bars sitting exactly at a bound are not clipped at the spine; selectivity as a
+# fraction, away from the ~0.5 no-selectivity floor.
+AFFINITY_BOUNDS = (5.9, 12.1)
+SELEC_BOUNDS = (0.47, 1.02)
+
+# One entry per receptor role: the CSV affinity column, its key in scan_base_arrays(), the
+# COMPARISON_SHAPES key prefix, and its display title. Order = affinity-histogram subpanel
+# order and COMPARISON_SHAPES row order.
+RECEPTORS = [
+    dict(csv_col="Affinity_Receptor_0", sd_key="aff0", shape_prefix="sig_aff", title="Signal receptor"),
+    dict(csv_col="Affinity_Receptor_1", sd_key="aff1", shape_prefix="targ1_aff", title="Target receptor 1"),
+    dict(csv_col="Affinity_Receptor_2", sd_key="aff2", shape_prefix="targ2_aff", title="Target receptor 2"),
+]
+AFF_COLS = {r["csv_col"]: r["title"] for r in RECEPTORS}
+
+# Signal (readout) receptor name, excluded from the pair-level gain metric because a pair
+# containing the artificial signal receptor is not a genuine two-target combination.
+SIGNAL_REC_NAME = "Prototype_Signal_Receptor"
+
+# Fraction pinned (fig-kxstar-dist) is counted within this log10 tolerance of the bound.
+PIN_TOL = 1e-2
+
+RASTERIZE = True
+
+# Scatter-panel display tuning, shared by SPECIFIC_ANALYSES and the scatter grid
+SELEC_FLOOR = 0.505  # pair selectivity at/below this is effectively no selectivity
+GAIN_COLOR_MAX = 0.15  # log2 gain at which the synergy color saturates
+LOG_Y_GAIN_FLOOR = 1e-5  # y-axis lower limit for log_y panels, clipping trailing near-zero-gain points
+KX_XLABEL = r"Optimal log$_{10}$(K$_{x}$*)"
+GAIN_YLABEL = r"log$_{2}$ selectivity gain"
+SELECTIVITY_XLABEL = "Binding model selectivity"
+
+# Figure parameters for non-specific scatter panels
+GRID_POINT_SIZE_BG = 3
+GRID_POINT_SIZE_FG = 5
+PANEL_W, PANEL_H = 4.3, 3.0
+GRID_TITLE_FONTSIZE = 14
+GRID_LABEL_FONTSIZE = 13
+GRID_TICK_FONTSIZE = 10
+
+# Specific single-panel figures (manuscript/SVG extraction), rendered via
+# plot_specific_analysis(key): "comparison" names a shape in COMPARISON_SHAPES (x/y axes,
+# reference lines, limits), "scan_label" names any scan in SCANS (not just ACTIVE_SCANS), and
+# "color_by" is "gain" (log2 selectivity gain, colorbar) or "cell_type" (one color per
+# Cell_Type, legend).
+SPECIFIC_ANALYSES = {
+    "sel_vs_kx_loose": dict(
+        comparison="sel_vs_kx_loose",
+        scan_label="Kx* upper bound 1e-5",
+        color_by="cell_type",
+    ),
+    "sel_vs_targ1aff_loose": dict(
+        comparison="sel_vs_targ1_aff",
+        scan_label="Kx* upper bound 1e-5",
+        color_by="cell_type",
+    ),
+    "gain_vs_sel_loose": dict(
+        comparison="gain_vs_sel",
+        scan_label="Kx* upper bound 1e-5",
+        color_by="gain",
+        log_y=False,
+    ),
+    "gain_vs_sel_loose_log": dict(
+        comparison="gain_vs_sel",
+        scan_label="Kx* upper bound 1e-5",
+        color_by="gain",
+        log_y=True,
+    ),
+    "gain_vs_sel_bivalent": dict(
+        comparison="gain_vs_sel",
+        scan_label="Bivalent Kx* upper bound 1e-5",
+        color_by="gain",
+        log_y=True,
+    ),
+    "gain_vs_sel_mixedval": dict(
+        comparison="gain_vs_sel",
+        scan_label="Mixed Valency Kx* upper bound 1e-5",
+        color_by="gain",
+        log_y=True,
+    ),
+}
+
+# ── Data loading ────────────────────────────────────────────────────────────────────
+
+
+def load_scan_outputs(scan):
+    """Successfully optimized pairs for one selectivity scan (NaN-output rows dropped)."""
+    yaml_path = os.path.splitext(scan["path"])[0] + ".yaml"
+    assert os.path.exists(yaml_path), f"YAML not found at {yaml_path}"
+    with open(yaml_path) as f:
+        assert yaml.safe_load(f)["scan_type"] == "selectivity", (
+            f"{scan['path']} is not a selectivity scan; Kx* and affinities are only "
+            "optimized there."
+        )
+
+    cols = ["Cell_Type", "Receptor_1", "Receptor_2", "Selectivity", "Kx_star", *AFF_COLS]
+    return pd.read_csv(scan["path"], usecols=cols).dropna(subset=["Selectivity"])
+
+
+scan_dfs = {scan["label"]: load_scan_outputs(scan) for scan in SCANS}
+
+
+def compute_pair_gains(df):
+    """Off-diagonal pairs (signal receptor excluded) with an added synergy gain column.
+
+    gain = bispecific selectivity / max(constituent monospecific selectivities), where the
+    monospecific values are the diagonal (rec == rec) entries. Diagonal entries model a
+    single receptor carrying the combined target valency, so this holds total target
+    valency fixed: gain < 1 (the common case) means concentrating valency on the better
+    single receptor beats splitting it across two.
+    """
+    mono_map = df[df["Receptor_1"] == df["Receptor_2"]].set_index(
+        ["Cell_Type", "Receptor_1"]
+    )["Selectivity"]
+    assert mono_map.index.is_unique, (
+        "Duplicate monospecific (cell type, receptor) entries."
+    )
+
+    pairs = df[
+        (df["Receptor_1"] != df["Receptor_2"])
+        & (df["Receptor_1"] != SIGNAL_REC_NAME)
+        & (df["Receptor_2"] != SIGNAL_REC_NAME)
+    ].copy()
+    mono1 = mono_map.reindex(
+        list(zip(pairs["Cell_Type"], pairs["Receptor_1"], strict=True))
+    ).to_numpy()
+    mono2 = mono_map.reindex(
+        list(zip(pairs["Cell_Type"], pairs["Receptor_2"], strict=True))
+    ).to_numpy()
+    pairs["max_mono_selec"] = np.maximum(mono1, mono2)
+    pairs["gain"] = pairs["Selectivity"] / pairs["max_mono_selec"]
+    pairs["log2_gain"] = np.log2(pairs["gain"])
+    return pairs.dropna(subset=["gain"])
+
+
+pair_dfs = {lbl: compute_pair_gains(df) for lbl, df in scan_dfs.items()}
+
+
+def pair_key(df):
+    """Stable per-pair key (cell type + sorted receptor pair) for matching across scans."""
+    recs = np.sort(df[["Receptor_1", "Receptor_2"]].to_numpy(), axis=1)
+    return df["Cell_Type"].to_numpy() + "|" + recs[:, 0] + "|" + recs[:, 1]
+
+
+# ── Shared scatter-panel helpers — both SPECIFIC_ANALYSES single panels and the scatter grid
+# render one "comparison" (an x/y axis pairing with reference lines and limits) for one scan
+# through the same _draw_comparison_panel, so the two figure families stay in sync. ────────
+
+
+def _axes(xkey, ykey):
+    """Comparison getter: sd[xkey] on x, sd[ykey] on y (sd = scan_base_arrays(scan))."""
+
+    def get(sd, cvals):
+        return sd[xkey], sd[ykey], cvals
+
+    return get
+
+
+# One row per comparison. xrefs/yrefs are gray reference lines; kx_vline draws each scan's Kx*
+# upper bound; ylim fixes the display range (affinity panels use padded bounds). _row supplies the
+# shared defaults so each entry states only what differs.
+def _row(
+    get, xlabel, ylabel, *, xlim=None, ylim=None, xrefs=(), yrefs=(), kx_vline=False
+):
+    return dict(
+        get=get,
+        xlabel=xlabel,
+        ylabel=ylabel,
+        xlim=xlim,
+        ylim=ylim,
+        xrefs=xrefs,
+        yrefs=yrefs,
+        kx_vline=kx_vline,
+    )
+
+
+COMPARISON_SHAPES = {
+    "sel_vs_kx": _row(
+        _axes("kx", "sel"), KX_XLABEL, SELECTIVITY_XLABEL, yrefs=(0.5,), kx_vline=True
+    ),
+    "gain_vs_sel": _row(
+        _axes("sel", "log2_gain"),
+        SELECTIVITY_XLABEL,
+        GAIN_YLABEL,
+        xrefs=(SELEC_FLOOR,),
+        yrefs=(0.0,),
+    ),
+}
+
+# One "<prefix>_vs_kx" and one "<prefix>_vs_sel" comparison per receptor in RECEPTORS.
+for _r in RECEPTORS:
+    _ylabel = rf"{_r['title']} K$_{{a}}$ (log$_{{10}}$(M))"
+    COMPARISON_SHAPES[f"{_r['shape_prefix']}_vs_kx"] = _row(
+        _axes("kx", _r["sd_key"]), KX_XLABEL, _ylabel, ylim=AFFINITY_BOUNDS, kx_vline=True
+    )
+    COMPARISON_SHAPES[f"{_r['shape_prefix']}_vs_sel"] = _row(
+        _axes("sel", _r["sd_key"]),
+        SELECTIVITY_XLABEL,
+        _ylabel,
+        xrefs=(SELEC_FLOOR,),
+        xlim=SELEC_BOUNDS,
+        ylim=AFFINITY_BOUNDS,
+        kx_vline=True,
+    )
+
+# Used only by SPECIFIC_ANALYSES single-panel extracts, not the bulk reference grid (see
+# GRID_COMPARISON_KEYS): sel_vs_kx_loose fixes the y-axis to SELEC_BOUNDS (rather than
+# auto-scaling) so it matches sel_vs_targ1_aff's y-axis for side-by-side placement.
+COMPARISON_SHAPES["sel_vs_kx_loose"] = {**COMPARISON_SHAPES["sel_vs_kx"], "ylim": SELEC_BOUNDS}
+COMPARISON_SHAPES["sel_vs_targ1_aff"] = _row(
+    _axes("aff1", "sel"),
+    r"Target receptor K$_{a}$ (log$_{10}$(M))",
+    SELECTIVITY_XLABEL,
+    xlim=AFFINITY_BOUNDS,
+    ylim=SELEC_BOUNDS,
+    yrefs=(0.5,),
+)
+
+# The bulk reference grid (fig-scatter-grid) renders exactly these 8 comparisons;
+# SPECIFIC_ANALYSES entries reference COMPARISON_SHAPES directly and never touch this list.
+GRID_COMPARISON_KEYS = [
+    "sel_vs_kx",
+    "sig_aff_vs_kx",
+    "targ1_aff_vs_kx",
+    "targ2_aff_vs_kx",
+    "gain_vs_sel",
+    "sig_aff_vs_sel",
+    "targ1_aff_vs_sel",
+    "targ2_aff_vs_sel",
+]
+
+
+def scan_base_arrays(scan):
+    """Per-pair binding-model outputs for one scan, as plain arrays keyed by short name."""
+    df = pair_dfs[scan["label"]]
+    return {
+        "kx": df["Kx_star"].to_numpy(),
+        "sel": df["Selectivity"].to_numpy(),
+        **{r["sd_key"]: df[r["csv_col"]].to_numpy() for r in RECEPTORS},
+        "log2_gain": df["log2_gain"].to_numpy(),
+    }
+
+
+# Color every point by the gain of the scan named in that scan's "gain_ref": its own gain used
+# directly, or another scan's gain mapped onto these coordinates by pair key (unmatched pairs get
+# NaN -> gray).
+scan_colors_gain = {}
+for scan in SCANS:
+    label, ref = scan["label"], scan["gain_ref"]
+    if ref == label:
+        scan_colors_gain[label] = pair_dfs[label]["log2_gain"].to_numpy()
+        continue
+    ref_gain = pd.Series(
+        pair_dfs[ref]["log2_gain"].to_numpy(), index=pair_key(pair_dfs[ref])
+    )
+    assert ref_gain.index.is_unique, (
+        f"Duplicate pair keys in reference scan {ref!r}; cannot map its gain across scans."
+    )
+    scan_colors_gain[label] = ref_gain.reindex(pair_key(pair_dfs[label])).to_numpy()
+
+gain_norm = Normalize(vmin=0, vmax=GAIN_COLOR_MAX)
+
+ALL_CELL_TYPES = sorted(
+    set().union(*(df["Cell_Type"].unique() for df in pair_dfs.values())),
+    key=CELL_TYPES.index,
+)
+
+
+def draw_gain_points(
+    ax, x, y, cvals, point_size_bg=GRID_POINT_SIZE_BG, point_size_fg=GRID_POINT_SIZE_FG
+):
+    """Gray context cloud plus a Reds overlay of the pairs synergistic in the reference scan."""
+    ax.scatter(
+        x,
+        y,
+        s=point_size_bg,
+        alpha=0.4,
+        color="0.82",
+        linewidths=0,
+        rasterized=RASTERIZE,
+        zorder=1,
+    )
+    synergistic = cvals > 0  # NaN (unmatched) is False here, so those stay in the gray cloud
+    order = np.argsort(cvals[synergistic])  # strongest synergy drawn last
+    return ax.scatter(
+        x[synergistic][order],
+        y[synergistic][order],
+        c=cvals[synergistic][order],
+        cmap="Reds",
+        norm=gain_norm,
+        s=point_size_fg,
+        alpha=0.9,
+        linewidths=0,
+        rasterized=RASTERIZE,
+        zorder=2,
+    )
+
+
+def draw_celltype_points(ax, x, y, cell_types, point_size=GRID_POINT_SIZE_FG):
+    """Scatter colored by cell type via the shared CELL_TYPE_COLORS mapping, draw order
+    shuffled so no type visually dominates. See fig-celltype-legend for the legend.
+    """
+    rng = np.random.default_rng(0)
+    perm = rng.permutation(len(x))
+    point_colors = np.array([CELL_TYPE_COLORS[ct] for ct in cell_types])
+    ax.scatter(
+        x[perm],
+        y[perm],
+        c=point_colors[perm],
+        s=point_size,
+        alpha=0.6,
+        linewidths=0,
+        rasterized=RASTERIZE,
+    )
+
+
+def _draw_comparison_panel(
+    ax,
+    comp,
+    scan,
+    sd,
+    aux_vals,
+    color_by="gain",
+    point_size_bg=GRID_POINT_SIZE_BG,
+    point_size_fg=GRID_POINT_SIZE_FG,
+):
+    """Draw one comparison panel (one comparison x one scan) onto ax.
+
+    aux_vals: per-point color-driving values — log2 gain for color_by="gain" (continuous,
+    paired with a colorbar) or cell-type labels for color_by="cell_type" (categorical).
+    point_size_bg/point_size_fg default to the bulk grid's own (small, ~276k-point-tuned)
+    sizes; pass POINT_SIZE_XS/POINT_SIZE_BACKGROUND for a standalone panel sized like the
+    rest of the manuscript's scatter figures. Returns the colorbar mappable for
+    color_by="gain" (None for "cell_type").
+    """
+    x, y, aux = comp["get"](sd, aux_vals)
+    if color_by == "cell_type":
+        result = draw_celltype_points(ax, x, y, aux, point_size=point_size_fg)
+    else:
+        result = draw_gain_points(
+            ax, x, y, aux, point_size_bg=point_size_bg, point_size_fg=point_size_fg
+        )
+    for xv in comp["xrefs"]:
+        ax.axvline(xv, color="0.45", ls=":", lw=1.0, zorder=3)
+    for yv in comp["yrefs"]:
+        ax.axhline(yv, color="0.45", ls=":", lw=1.0, zorder=3)
+    if comp["kx_vline"] and scan["kx_upper"] is not None:
+        ax.axvline(scan["kx_upper"], color="0.3", ls="--", lw=1.0, zorder=3, alpha=0.5)
+    if comp["xlim"] is not None:
+        ax.set_xlim(*comp["xlim"])
+    if comp["ylim"] is not None:
+        ax.set_ylim(*comp["ylim"])
+    return result
+
+
+# ── Shared histogram helper ─────────────────────────────────────────────────────────
+
+
+def overlay_hist(
+    ax, data_by_scan, bins, scan_bounds=None, annotate_pinned=False, ref_lines=(), logy=False
+):
+    """Overlay per-scan density histograms of one output on ax.
+
+    scan_bounds: optional {scan label: bound value}, drawn as a dashed line in the
+        scan's color; with annotate_pinned, the fraction of pairs within PIN_TOL of
+        the bound is labeled.
+    ref_lines: x-values drawn as shared gray reference lines (e.g. affinity bounds).
+    """
+    for scan in ACTIVE_SCANS:
+        ax.hist(
+            data_by_scan[scan["label"]],
+            bins=bins,
+            alpha=0.55,
+            color=scan["color"],
+            label=scan["label"],
+        )
+    if logy:
+        ax.set_yscale("log")
+    for x in ref_lines:
+        ax.axvline(x, color="0.45", ls=":", lw=1.0, zorder=2)
+    if scan_bounds:
+        y_top = ax.get_ylim()[1]
+        x_lo, x_hi = bins[0], bins[-1]
+        for scan in ACTIVE_SCANS:
+            bound = scan_bounds.get(scan["label"])
+            if bound is None:
+                continue
+            ax.axvline(bound, color=scan["color"], ls="--", lw=1.5, zorder=3)
+            if annotate_pinned:
+                frac = np.mean(np.abs(data_by_scan[scan["label"]] - bound) < PIN_TOL)
+                near_right = bound > x_lo + 0.8 * (x_hi - x_lo)
+                ax.text(
+                    bound + (-0.1 if near_right else 0.1),
+                    y_top * 0.92,
+                    f"{frac:.0%} at bound",
+                    color=scan["color"],
+                    fontsize=FONT_SIZE_ANNOT,
+                    ha="right" if near_right else "left",
+                    va="top",
+                )
+
+
+def overlay_figure(data_by_scan, bins, xlabel, ylabel, legend_loc, xlim=None, **hist_kwargs):
+    """Single-axis overlaid-histogram figure. hist_kwargs pass through to overlay_hist."""
+    fig, ax = plt.subplots(figsize=FIGSIZE["single_panel"])
+    overlay_hist(ax, data_by_scan, bins, **hist_kwargs)
+    ax.set_xlim(*(xlim if xlim is not None else (bins[0], bins[-1])))
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.legend(loc=legend_loc)
+    plt.tight_layout()
+    plt.show()
+
+
+# ── Thin figure-generation functions — one per analysis type, in the order they're
+# rendered below: specific single-panel figures, parameter histograms, scatter grid. ──
+
+
+def plot_specific_analysis(key):
+    """Render one SPECIFIC_ANALYSES entry as a standalone figure.
+
+    color_by="cell_type" panels omit their legend (see fig-celltype-legend instead);
+    color_by="gain" panels get a colorbar, sized via FIGSIZE["square_scatter_with_colorbar"]
+    so the plot area still matches FIGSIZE["square_scatter"].
+    """
+    spec = SPECIFIC_ANALYSES[key]
+    comp = COMPARISON_SHAPES[spec["comparison"]]
+    color_by = spec.get("color_by", "gain")
+    scan = next(s for s in SCANS if s["label"] == spec["scan_label"])
+    sd = scan_base_arrays(scan)
+
+    if color_by == "cell_type":
+        aux_vals = pair_dfs[spec["scan_label"]]["Cell_Type"].to_numpy()
+    else:
+        aux_vals = scan_colors_gain[spec["scan_label"]]
+
+    figsize = (
+        FIGSIZE["square_scatter_with_colorbar"]
+        if color_by == "gain"
+        else FIGSIZE["square_scatter"]
+    )
+    fig, ax = plt.subplots(figsize=figsize)
+    result = _draw_comparison_panel(
+        ax,
+        comp,
+        scan,
+        sd,
+        aux_vals,
+        color_by,
+        point_size_bg=POINT_SIZE_XS,
+        point_size_fg=POINT_SIZE_BACKGROUND,
+    )
+    ax.set_xlabel(comp["xlabel"])
+    ax.set_ylabel(comp["ylabel"])
+
+    if spec.get("log_y"):
+        ax.set_yscale("log")
+        ax.set_ylim(bottom=LOG_Y_GAIN_FLOOR)
+
+    if color_by == "gain":
+        fig.colorbar(
+            result,
+            ax=ax,
+            label=r"log$_{2}$ selectivity gain",
+            fraction=COLORBAR_FRACTION,
+            pad=COLORBAR_PAD,
+        )
+
+    set_tick_count(ax, 3, None)
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_celltype_legend():
+    """Detached legend shared by every color_by="cell_type" SPECIFIC_ANALYSES panel."""
+    handles = [
+        mlines.Line2D([], [], marker="o", linestyle="None", color=CELL_TYPE_COLORS[ct])
+        for ct in ALL_CELL_TYPES
+    ]
+    standalone_legend_figure(handles, ALL_CELL_TYPES, ncol=2, title="Cell type")
+    plt.show()
+
+
+# Bin ranges are computed only from ACTIVE_SCANS' data, so they aren't stretched by data
+# (e.g. the high-valency scans) that these figures never actually plot.
+active_dfs = {lbl: df for lbl, df in scan_dfs.items() if lbl in ACTIVE_SCAN_LABELS}
+active_pair_dfs = {lbl: df for lbl, df in pair_dfs.items() if lbl in ACTIVE_SCAN_LABELS}
+
+kx_by_scan = {lbl: df["Kx_star"].to_numpy() for lbl, df in active_dfs.items()}
+_all_kx = np.concatenate(list(kx_by_scan.values()))
+KX_BINS = np.arange(np.floor(_all_kx.min()), np.ceil(_all_kx.max()) + 0.2, 0.2)
+
+# Diagonal (rec == rec) pairs are excluded: those are modeled as a single target with
+# combined valency, so the second target receptor has valency 0 and its affinity is never
+# optimized (it stays at its initialization value).
+off_diag_by_scan = {
+    lbl: df[df["Receptor_1"] != df["Receptor_2"]] for lbl, df in active_dfs.items()
+}
+AFF_BINS = np.arange(AFFINITY_BOUNDS[0], AFFINITY_BOUNDS[1] + 0.2, 0.2)
+
+sel_by_scan = {lbl: df["Selectivity"].to_numpy() for lbl, df in active_dfs.items()}
+_all_sel = np.concatenate(list(sel_by_scan.values()))
+SEL_BINS = np.linspace(_all_sel.min(), 1.0, 60)
+
+gain_by_scan = {lbl: df["log2_gain"].to_numpy() for lbl, df in active_pair_dfs.items()}
+_all_gain = np.concatenate(list(gain_by_scan.values()))
+GAIN_BINS = np.linspace(_all_gain.min(), _all_gain.max(), 70)
+
+
+def plot_kxstar_dist():
+    """Overlaid density histograms of optimal log10(Kx*) (not KDEs, so the pile-up of
+    pairs pinned at a scan's upper bound is preserved rather than smeared), with each
+    scan's upper bound marked.
+    """
+    overlay_figure(
+        kx_by_scan,
+        KX_BINS,
+        "Optimal log10(Kx*)",
+        "Number of pairs",
+        "upper left",
+        scan_bounds={scan["label"]: scan["kx_upper"] for scan in ACTIVE_SCANS},
+        annotate_pinned=True,
+    )
+
+
+def plot_affinity_dist():
+    """Overlaid affinity histograms, one subpanel per receptor in RECEPTORS."""
+    fig, axes = plt.subplots(1, len(RECEPTORS), figsize=(5 * len(RECEPTORS), 4.8), sharey=True)
+    for ax, r in zip(axes, RECEPTORS, strict=True):
+        data = {lbl: df[r["csv_col"]].to_numpy() for lbl, df in off_diag_by_scan.items()}
+        overlay_hist(ax, data, AFF_BINS, ref_lines=AFFINITY_BOUNDS)
+        ax.set_title(r["title"])
+        ax.set_xlim(*AFFINITY_BOUNDS)
+        ax.set_xlabel("Optimal affinity, log10(M)")
+    axes[0].set_ylabel("Number of pairs")
+    axes[0].legend(loc="upper right")
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_selectivity_dist():
+    """Overlaid log-density histograms of optimal selectivity."""
+    overlay_figure(
+        sel_by_scan,
+        SEL_BINS,
+        "Optimal selectivity, targ / (targ + off-targ)",
+        "Number of pairs (log scale)",
+        "upper right",
+        xlim=(SEL_BINS[0], 1.0),
+        ref_lines=(0.5,),
+        logy=True,
+    )
+
+
+def plot_gain_dist():
+    """Overlaid log-density histogram of per-pair log2 selectivity gain (synergy)."""
+    overlay_figure(
+        gain_by_scan,
+        GAIN_BINS,
+        "log2 selectivity gain (pair / max monospecific)",
+        "Number of pairs (log scale)",
+        "upper left",
+        ref_lines=(0.0,),
+        logy=True,
+    )
+
+
+def _sync_row(axes_row):
+    """Put every panel in a comparison row on a shared x/y scale (union of the columns)."""
+    xlims = [a.get_xlim() for a in axes_row]
+    ylims = [a.get_ylim() for a in axes_row]
+    x0, x1 = min(a for a, _ in xlims), max(b for _, b in xlims)
+    y0, y1 = min(a for a, _ in ylims), max(b for _, b in ylims)
+    for a in axes_row:
+        a.set_xlim(x0, x1)
+        a.set_ylim(y0, y1)
+
+
+def build_comparison_grid():
+    """Draw the full comparison grid (rows = GRID_COMPARISON_KEYS, cols = ACTIVE_SCANS).
+
+    Every panel uses the same coloring: all pairs in gray for context, with pairs
+    synergistic in that scan's reference scan ("gain_ref") overlaid and colored by the
+    reference scan's log2 gain (strongest drawn last) — pointing the tight scan at the
+    loose scan shows where once-synergistic pairs land once Kx* is capped. Axis scales
+    are shared within a row (across scans), not down a column.
+    """
+    grid_comps = [COMPARISON_SHAPES[k] for k in GRID_COMPARISON_KEYS]
+    fig, axes = plt.subplots(
+        len(grid_comps),
+        len(ACTIVE_SCANS),
+        figsize=(PANEL_W * len(ACTIVE_SCANS), PANEL_H * len(grid_comps)),
+        squeeze=False,
+        layout="constrained",
+    )
+    mappable = None
+    for c, scan in enumerate(ACTIVE_SCANS):
+        sd = scan_base_arrays(scan)
+        for r, comp in enumerate(grid_comps):
+            ax = axes[r, c]
+            drawn = _draw_comparison_panel(ax, comp, scan, sd, scan_colors_gain[scan["label"]])
+            if drawn is not None:
+                mappable = drawn
+            ax.tick_params(labelsize=GRID_TICK_FONTSIZE)
+            if r == 0:
+                ax.set_title(scan["label"], fontsize=GRID_TITLE_FONTSIZE)
+            if c == 0:
+                ax.set_ylabel(comp["ylabel"], fontsize=GRID_LABEL_FONTSIZE)
+            ax.set_xlabel(comp["xlabel"], fontsize=GRID_LABEL_FONTSIZE)
+    for row in axes:
+        _sync_row(row)
+    return fig, axes, mappable
+
+
+def plot_comparison_grid():
+    """Draw and display the full comparison grid with its shared colorbar."""
+    fig, axes, mappable = build_comparison_grid()
+    fig.colorbar(
+        mappable,
+        ax=axes.ravel().tolist(),
+        label="log2 selectivity gain, reference scan  (gray = none)",
+        fraction=0.03,
+        pad=0.02,
+    )
+    plt.show()
+```
+
+```{python}
+#| label: fig-sel-vs-kx-loose
+plot_specific_analysis("sel_vs_kx_loose")
+```
+
+```{python}
+#| label: fig-sel-vs-targ1aff-loose
+plot_specific_analysis("sel_vs_targ1aff_loose")
+```
+
+```{python}
+#| label: fig-gain-vs-sel-loose
+plot_specific_analysis("gain_vs_sel_loose")
+```
+
+```{python}
+#| label: fig-gain-vs-sel-loose-log
+plot_specific_analysis("gain_vs_sel_loose_log")
+```
+
+```{python}
+#| label: fig-gain-vs-sel-bivalent
+plot_specific_analysis("gain_vs_sel_bivalent")
+```
+
+```{python}
+#| label: fig-gain-vs-sel-mixedval
+plot_specific_analysis("gain_vs_sel_mixedval")
+```
+
+```{python}
+#| label: fig-celltype-legend
+#| fig-cap: "Shared legend for the cell-type-colored SPECIFIC_ANALYSES panels above"
+plot_celltype_legend()
+```
+
+```{python}
+#| label: fig-kxstar-dist
+plot_kxstar_dist()
+```
+
+```{python}
+#| label: fig-affinity-dist
+plot_affinity_dist()
+```
+
+```{python}
+#| label: fig-selectivity-dist
+plot_selectivity_dist()
+```
+
+```{python}
+#| label: fig-gain-dist
+plot_gain_dist()
+```
+
+```{python}
+#| label: fig-scatter-grid
+plot_comparison_grid()
+```

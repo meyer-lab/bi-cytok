@@ -30,7 +30,8 @@ scans are instantiated:
 - `SCATTER_LABEL_DECLINE_THRESHOLD`: label red points only if 2D/1D ratio is below this
 
 # Outputs
-- **`fig-top-hits-1d-2d-lowval` / `-highval`**: scatter, max 1D vs max 2D per cell type
+- **`fig-top-hits-1d-2d-lowval` / `-highval`**: scatter, max 1D vs max 2D per cell type,
+  with an inline "Pairing helps" / "Pairing hurts" legend in the lower right
 - **`suppfig-top-hits-gain-lowval` / `-highval`**: log₂(2D/1D) gain bars per cell type
 - Slope charts (diagnostic, not embedded): connected strip plot per cell type
 
@@ -45,10 +46,19 @@ import pandas as pd
 import yaml
 from adjustText import adjust_text
 
-from figures.scanning_analyses.scan_runners import (
+from bicytok.figure_styles import (
+    COLORS,
+    FIGSIZE,
+    FONT_SIZE_ANNOT,
+    GRID_ALPHA,
+    apply_style,
+)
+from bicytok.scan_runners import (
     load_KL_EMD_scan_results,
     load_selec_scan_results,
 )
+
+apply_style()
 
 # ── Scan results used across the manuscript ───────────────────────────────────
 # Figure 3 (low valency, symmetric): pairing rarely beats the best single receptor.
@@ -94,8 +104,8 @@ def top_hits_df(scan_path, kl_emd_metric="EMD"):
         metric_name = "Selectivity"
         labels = {
             "metric_name": metric_name,
-            "metric_label_1d": "Max 1D Selectivity (single receptor)",
-            "metric_label_2d": "Max 2D Selectivity (receptor pair)",
+            "metric_label_1d": "Max single-target selectivity",
+            "metric_label_2d": "Max target-pair selectivity",
             "log2_gain_label": "log₂(2D / 1D Selectivity)",
         }
     else:  # KL_EMD
@@ -197,13 +207,20 @@ def _spread_labels(values, min_gap=0.015):
 def plot_scatter(df, labels, decline_threshold=SCATTER_LABEL_DECLINE_THRESHOLD):
     """Scatter of max 1D vs max 2D per cell type. Blue = 2D ≥ 1D (pairing helps),
     red = 2D < 1D. Blue points are always labeled; red only below decline_threshold."""
-    fig, ax = plt.subplots(figsize=(6, 6))
+    fig, ax = plt.subplots(figsize=FIGSIZE["square_scatter"])
 
     s1d = df["Max 1D"].values
     s2d = df["Max 2D"].values
 
     lim_low = min(s1d.min(), s2d.min()) * 0.995
     lim_high = max(s1d.max(), s2d.max()) * 1.005
+    # Fix the axes bounds before adjust_text runs: it reads the axes' current pixel
+    # extent to keep labels inside (ensure_inside_axes=True), so setting the final
+    # bounds only afterward (via set_xlim/set_ylim) let labels stray past them, which
+    # matplotlib then counts toward the saved figure's size.
+    ax.set_xlim(lim_low, lim_high)
+    ax.set_ylim(lim_low, lim_high)
+    ax.set_aspect("equal")
     ax.plot(
         [lim_low, lim_high],
         [lim_low, lim_high],
@@ -213,7 +230,9 @@ def plot_scatter(df, labels, decline_threshold=SCATTER_LABEL_DECLINE_THRESHOLD):
         zorder=0,
     )
 
-    colors = ["#2274A5" if r >= 1.0 else "#C0392B" for r in df["2D/1D"]]
+    colors = [
+        COLORS["improved"] if r >= 1.0 else COLORS["declined"] for r in df["2D/1D"]
+    ]
     ax.scatter(s1d, s2d, c=colors, s=70, zorder=3, edgecolors="white", linewidths=0.5)
 
     texts = []
@@ -221,13 +240,15 @@ def plot_scatter(df, labels, decline_threshold=SCATTER_LABEL_DECLINE_THRESHOLD):
         improved = row["2D/1D"] >= 1.0
         declined = row["2D/1D"] < decline_threshold
         if improved or declined:
-            label_color = "#2274A5" if row["2D/1D"] >= 1.0 else "#C0392B"
+            label_color = (
+                COLORS["improved"] if row["2D/1D"] >= 1.0 else COLORS["declined"]
+            )
             texts.append(
                 ax.text(
                     row["Max 1D"],
                     row["Max 2D"],
                     row["Cell Type"],
-                    fontsize=10,
+                    fontsize=FONT_SIZE_ANNOT,
                     color=label_color,
                     alpha=0.9,
                 )
@@ -241,31 +262,27 @@ def plot_scatter(df, labels, decline_threshold=SCATTER_LABEL_DECLINE_THRESHOLD):
         ax=ax,
     )
 
-    ax.set_xlabel(labels["metric_label_1d"], fontsize=14)
-    ax.set_ylabel(labels["metric_label_2d"], fontsize=14)
+    ax.set_xlabel(labels["metric_label_1d"])
+    ax.set_ylabel(labels["metric_label_2d"])
     improved_handle = mlines.Line2D(
         [],
         [],
-        color="#2274A5",
+        color=COLORS["improved"],
         marker="o",
         linestyle="None",
         markersize=7,
-        label="2D ≥ 1D (pairing helps)",
+        label="Pairing helps",
     )
     declined_handle = mlines.Line2D(
         [],
         [],
-        color="#C0392B",
+        color=COLORS["declined"],
         marker="o",
         linestyle="None",
         markersize=7,
-        label="2D < 1D",
+        label="Pairing hurts",
     )
-    ax.legend(handles=[improved_handle, declined_handle], fontsize=12, loc="upper left")
-    ax.set_xlim(lim_low, lim_high)
-    ax.set_ylim(lim_low, lim_high)
-    ax.set_aspect("equal")
-    ax.grid(True, alpha=0.25)
+    ax.legend(handles=[improved_handle, declined_handle], loc="lower right")
     plt.tight_layout()
     plt.show()
 
@@ -278,12 +295,13 @@ def plot_slope(df, labels):
 
     fig, ax = plt.subplots(figsize=(5.5, max(5, len(df_slope) * 0.45)))
     for idx, (_, row) in enumerate(df_slope.iterrows()):
-        color = "#2274A5" if row["Max 2D"] >= row["Max 1D"] else "#C0392B"
+        color = (
+            COLORS["improved"] if row["Max 2D"] >= row["Max 1D"] else COLORS["declined"]
+        )
         ax.plot(
             [0, 1],
             [row["Max 1D"], row["Max 2D"]],
             color=color,
-            linewidth=1.5,
             alpha=0.75,
             zorder=2,
         )
@@ -294,7 +312,7 @@ def plot_slope(df, labels):
             row["Cell Type"],
             ha="right",
             va="center",
-            fontsize=10,
+            fontsize=FONT_SIZE_ANNOT,
             color=color,
         )
         ax.text(
@@ -303,18 +321,18 @@ def plot_slope(df, labels):
             row["Cell Type"],
             ha="left",
             va="center",
-            fontsize=10,
+            fontsize=FONT_SIZE_ANNOT,
             color=color,
         )
 
     ax.set_xticks([0, 1])
-    ax.set_xticklabels(["1D\n(single receptor)", "2D\n(receptor pair)"], fontsize=14)
+    ax.set_xticklabels(["1D\n(single receptor)", "2D\n(receptor pair)"])
     ax.set_xlim(-0.45, 1.45)
-    ax.set_ylabel(f"Max {labels['metric_name']}", fontsize=16)
+    ax.set_ylabel(f"Max {labels['metric_name']}")
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["bottom"].set_visible(False)
-    ax.grid(axis="y", alpha=0.25)
+    ax.grid(axis="y", alpha=GRID_ALPHA)
     plt.tight_layout()
     plt.show()
 
@@ -325,7 +343,10 @@ def plot_gain_bars(df, labels):
     df_log = df.sort_values("log2(2D/1D)", ascending=True).reset_index(drop=True)
 
     fig, ax = plt.subplots(figsize=(max(5, len(df_log) * 0.65), 4.5))
-    bar_colors = ["#2274A5" if v >= 0 else "#C0392B" for v in df_log["log2(2D/1D)"]]
+    bar_colors = [
+        COLORS["improved"] if v >= 0 else COLORS["declined"]
+        for v in df_log["log2(2D/1D)"]
+    ]
     bars = ax.bar(
         df_log["Cell Type"],
         df_log["log2(2D/1D)"],
@@ -351,7 +372,7 @@ def plot_gain_bars(df, labels):
             f"{raw_val:.3f}×",
             ha="center",
             va=va,
-            fontsize=10,
+            fontsize=FONT_SIZE_ANNOT,
         )
 
     y_min_data = df_log["log2(2D/1D)"].min()
@@ -362,11 +383,11 @@ def plot_gain_bars(df, labels):
         max(y_max_data + y_pad, 0.02),
     )
 
-    ax.set_ylabel(labels["log2_gain_label"], fontsize=16)
-    ax.set_xticklabels(df_log["Cell Type"], rotation=35, ha="right", fontsize=12)
+    ax.set_ylabel(labels["log2_gain_label"])
+    ax.set_xticklabels(df_log["Cell Type"], rotation=35, ha="right")
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    ax.grid(axis="y", alpha=0.25)
+    ax.grid(axis="y", alpha=GRID_ALPHA)
     plt.tight_layout()
     plt.show()
 
@@ -375,6 +396,8 @@ def plot_gain_bars(df, labels):
 df_low, labels_low = top_hits_df(LOWVAL_SCAN)
 df_high, labels_high = top_hits_df(HIGHVAL_SCAN)
 ```
+
+## Top hits scatters
 
 ```{python}
 #| label: fig-top-hits-1d-2d-lowval
@@ -386,11 +409,15 @@ plot_scatter(df_low, labels_low)
 plot_scatter(df_high, labels_high)
 ```
 
+## Top hits slope chart
+
 ```{python}
 # Slope charts (diagnostic; not embedded).
 plot_slope(df_low, labels_low)
 plot_slope(df_high, labels_high)
 ```
+
+## Top hits gain bar plot
 
 ```{python}
 #| label: top-hits-gain-lowval

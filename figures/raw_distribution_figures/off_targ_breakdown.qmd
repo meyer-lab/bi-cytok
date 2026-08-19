@@ -27,31 +27,41 @@ Visualizes receptor expression distributions with each off-target cell populatio
 ```{python}
 #| fig-cap: "1D receptor distribution colored by off-target population"
 %config InlineBackend.figure_formats = ['svg']
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
+from bicytok.figure_styles import (
+    COLORS,
+    FIGSIZE,
+    apply_style,
+    categorical_colors,
+    set_tick_count,
+)
 from bicytok.imports import importCITE, sample_receptor_abundances
 
-plt.rcParams["svg.fonttype"] = "none"
+apply_style()
 
 # Parameters
 receptor = "CD25"
 targ_cell = "Treg"
-off_targ_cell_types = ["CD4 TEM", "CD4 TCM", "CD8 Proliferating", "dnT", "ILC"]
+off_targ_cell_types = ["NK", "CD8 TCM"]
 sample_size = 5000
 cell_categorization = "CellType2"
 stat = "probability"
 normalize = False
 x_lim = True
+hide_aggregate_KDE = True
+Treg_eg = True  # Use this if showing expression in Tregs, CD8 TCM, and NK cells
 
-# Color scheme: target is fixed, off-target populations get distinct colors
-TARGET_COLOR = "#CF4D6F"
-off_targ_palette = matplotlib.colormaps.get_cmap("tab10").resampled(
-    len(off_targ_cell_types)
-)
-off_targ_colors = [off_targ_palette(i) for i in range(len(off_targ_cell_types))]
+if Treg_eg:
+    # Specified color scheme to match illustrative figure colors
+    TARGET_COLOR = COLORS["Treg"]
+    off_targ_colors = list([COLORS["CD8 T"], COLORS["NK"]])
+else:
+    # General color scheme: target is fixed, off-target populations get distinct colors
+    TARGET_COLOR = COLORS["target"]
+    off_targ_colors = categorical_colors(len(off_targ_cell_types))
 
 # Load and prepare data
 CITE_DF, cell_types = importCITE(cell_categorization)
@@ -93,7 +103,7 @@ for cell_type in populations:
         vals = vals / mean_abundance
     all_cell_abundances.append(vals)
 
-fig, ax = plt.subplots(figsize=(6, 4))
+fig, ax = plt.subplots(figsize=FIGSIZE["single_panel"])
 
 for _, (abundances, color, label) in enumerate(
     zip(all_cell_abundances, colors, labels, strict=False)
@@ -113,42 +123,48 @@ for _, (abundances, color, label) in enumerate(
     )
 
 # Overall off-target KDE overlay (dashed, summarizes all off-target populations combined)
-all_off_targ = np.concatenate([ab for ab in all_cell_abundances[1:] if len(ab) > 0])
-if len(all_off_targ) > 0:
-    sns.histplot(
-        all_off_targ,
-        color="darkred",
-        alpha=0,
-        edgecolor="none",
-        stat=stat,
-        bins=30,
-        kde=True,
-        kde_kws={"bw_method": "scott"},
-        ax=ax,
-        label="All off-target",
-    )
+if not hide_aggregate_KDE:
+    all_off_targ = np.concatenate([ab for ab in all_cell_abundances[1:] if len(ab) > 0])
+    if len(all_off_targ) > 0:
+        sns.histplot(
+            all_off_targ,
+            color=COLORS["aggregate"],
+            alpha=0,
+            edgecolor="none",
+            stat=stat,
+            bins=30,
+            kde=True,
+            kde_kws={"bw_method": "scott"},
+            ax=ax,
+            label="All off-target",
+        )
 
-ax.set_title(f"{receptor} Distribution by Cell Type", fontsize=12)
+if receptor == "CD122":
+    rec_label = "IL-2Rβ"
+elif receptor == "CD25":
+    rec_label = "IL-2Rα"
+else:
+    rec_label = receptor
 
 if normalize:
-    ax.set_xlabel("Normalized receptor count", fontsize=14)
+    ax.set_xlabel("Normalized receptor count")
 else:
-    ax.set_xlabel(f"Number of {receptor} Antibodies", fontsize=14)
+    ax.set_xlabel(f"{rec_label} ADT Count")
 
 if stat == "density":
-    ax.set_ylabel("Density", fontsize=14)
+    ax.set_ylabel("Density")
 elif stat == "count":
-    ax.set_ylabel("Number of Cells", fontsize=14)
+    ax.set_ylabel("Cell Count")
 elif stat == "probability":
-    ax.set_ylabel("Proportion of cells", fontsize=14)
+    ax.set_ylabel("Cell Fraction")
 
 if x_lim:
     x_max = np.percentile(rec_abundance, 99) * 1.1
     ax.set_xlim(0, x_max)
 
-ax.tick_params(axis="both", labelsize=12)
-ax.legend(loc="upper right", fontsize=10, framealpha=0.8)
-ax.grid(alpha=0.3, linestyle="--")
+set_tick_count(ax, n_x=4, n_y=3)
+
+ax.legend(loc="upper right")
 plt.tight_layout()
 plt.show()
 ```
@@ -159,16 +175,25 @@ plt.show()
 #| label: fig-raw-celltype-hist
 #| fig-cap: "2D distribution with marginal projections colored by off-target population"
 %config InlineBackend.figure_formats = ['svg']
-import matplotlib
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from bicytok.figure_styles import (
+    COLORS,
+    FIGSIZE,
+    LINE_WIDTH_AGGREGATE,
+    LINESTYLES,
+    POINT_SIZE_BACKGROUND,
+    apply_style,
+    categorical_colors,
+    gridspec_marginal_spacing,
+)
 from bicytok.imports import importCITE, sample_receptor_abundances
 
-plt.rcParams["svg.fonttype"] = "none"
+apply_style()
 
 # Parameters
 receptor1 = "CD45RO"
@@ -179,16 +204,11 @@ sample_size = 2500
 cell_categorization = "CellType2"
 normalize = False
 
-# Figure layout
-FIGURE_SIZE = (10, 8)
 DPI = 100
 
 # Color scheme
-TARGET_COLOR = "#CF4D6F"
-off_targ_palette = matplotlib.colormaps.get_cmap("tab10").resampled(
-    len(off_targ_cell_types)
-)
-off_targ_colors = [off_targ_palette(i) for i in range(len(off_targ_cell_types))]
+TARGET_COLOR = COLORS["target"]
+off_targ_colors = categorical_colors(len(off_targ_cell_types))
 
 populations = [targ_cell] + off_targ_cell_types
 colors = [TARGET_COLOR] + off_targ_colors
@@ -237,17 +257,30 @@ x_max = np.percentile(plot_df[x_col], 99) * 1.1
 y_max = np.percentile(plot_df[y_col], 99) * 1.1
 x_min = y_min = 0
 
-fig = plt.figure(figsize=FIGURE_SIZE, dpi=DPI)
+GRID_BOUNDS = (0.125, 0.9, 0.88, 0.1)  # left, right, top, bottom (figure fraction)
+MARGINAL_GAP_IN = 0.25  # physical gap between main panel and each marginal histogram
+
+fig = plt.figure(figsize=FIGSIZE["joint_grid"], dpi=DPI)
+hspace, wspace = gridspec_marginal_spacing(
+    fig_width=FIGSIZE["joint_grid"][0],
+    fig_height=FIGSIZE["joint_grid"][1],
+    grid_bounds=GRID_BOUNDS,
+    n_rows=3,
+    n_cols=3,
+    gap_inches=MARGINAL_GAP_IN,
+)
 gs = gridspec.GridSpec(
     3,
     3,
     figure=fig,
     width_ratios=[1, 4, 1],
     height_ratios=[1, 4, 0.2],
-    hspace=0.15,
-    wspace=0.05,
-    top=0.88,
-    bottom=0.1,
+    hspace=hspace,
+    wspace=wspace,
+    left=GRID_BOUNDS[0],
+    right=GRID_BOUNDS[1],
+    top=GRID_BOUNDS[2],
+    bottom=GRID_BOUNDS[3],
 )
 
 ax_main = fig.add_subplot(gs[1, 1])
@@ -265,7 +298,7 @@ for cell_type, color, label in zip(populations, colors, labels, strict=False):
         cell_df[y_col],
         alpha=0.3,
         color=color,
-        s=8,
+        s=POINT_SIZE_BACKGROUND,
         label=label,
     )
     if len(cell_df) > 10:
@@ -302,77 +335,60 @@ if len(off_targ_df) > 10:
     sns.kdeplot(
         x=off_targ_df[x_col],
         y=off_targ_df[y_col],
-        color="darkred",
+        color=COLORS["aggregate"],
         levels=4,
-        linewidths=2,
-        linestyles="--",
+        linewidths=LINE_WIDTH_AGGREGATE,
+        linestyles=LINESTYLES["aggregate"],
         ax=ax_main,
         label="All off-target",
     )
     sns.histplot(
         off_targ_df[x_col].values,
-        color="darkred",
+        color=COLORS["aggregate"],
         alpha=0,
         edgecolor="none",
         bins=30,
         kde=True,
         kde_kws={"bw_method": "scott"},
-        line_kws={"linestyle": "--", "linewidth": 2.5},
+        line_kws={
+            "linestyle": LINESTYLES["aggregate"],
+            "linewidth": LINE_WIDTH_AGGREGATE,
+        },
         ax=ax_top,
     )
     sns.histplot(
         y=off_targ_df[y_col].values,
-        color="darkred",
+        color=COLORS["aggregate"],
         alpha=0,
         edgecolor="none",
         bins=30,
         kde=True,
         kde_kws={"bw_method": "scott"},
-        line_kws={"linestyle": "--", "linewidth": 2.5},
+        line_kws={
+            "linestyle": LINESTYLES["aggregate"],
+            "linewidth": LINE_WIDTH_AGGREGATE,
+        },
         ax=ax_right,
     )
 
 # Main panel formatting
 ax_main.set_xlim(x_min, x_max)
 ax_main.set_ylim(y_min, y_max)
-ax_main.grid(alpha=0.3, linestyle="--")
 xlabel = f"{receptor1} Normalized Count" if normalize else f"{receptor1} Count"
 ylabel = f"{receptor2} Normalized Count" if normalize else f"{receptor2} Count"
-ax_main.set_xlabel(xlabel, fontsize=14)
-ax_main.set_ylabel(ylabel, fontsize=14)
-ax_main.tick_params(axis="both", labelsize=12)
-ax_main.legend(fontsize=10, framealpha=0.8, markerscale=2)
+ax_main.set_xlabel(xlabel)
+ax_main.set_ylabel(ylabel)
+ax_main.legend(markerscale=2)
 
 # Top marginal formatting
 ax_top.set_xlim(x_min, x_max)
-ax_top.set_ylabel("Cells", fontsize=12)
-ax_top.tick_params(axis="both", labelsize=10)
+ax_top.set_ylabel("Cells")
 plt.setp(ax_top.get_xticklabels(), visible=False)
 
 # Right marginal formatting
 ax_right.set_ylim(y_min, y_max)
-ax_right.set_xlabel("Cells", fontsize=12)
-ax_right.tick_params(axis="both", labelsize=10)
+ax_right.set_xlabel("Cells")
 plt.setp(ax_right.get_yticklabels(), visible=False)
 
-fig.suptitle(
-    f"{receptor1} vs {receptor2} — Off-target Population Breakdown",
-    fontsize=14,
-    y=0.98,
-)
-
 plt.show()
-```
-
-## Parameter Summary
-```{python}
-#| output: asis
-text = f"""
-**1D analysis**: receptor **{receptor}**, target **{targ_cell}**, off-target populations: {", ".join(f"**{c}**" for c in off_targ_cell_types)}.
-
-**2D analysis**: receptors **{receptor1}** × **{receptor2}**, target **{targ_cell}**, off-target populations: {", ".join(f"**{c}**" for c in off_targ_cell_types)}.
-
-Sample size: **{sample_size}** cells per analysis. Receptor counts were {"**normalized**" if normalize else "**not normalized**"}.
-"""
-print(text)
 ```

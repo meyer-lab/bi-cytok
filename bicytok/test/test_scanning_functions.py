@@ -8,14 +8,13 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from figures.scanning_analyses.scan_runners import (
+from ..imports import sample_test_data as sample_data
+from ..scan_runners import (
     load_KL_EMD_scan_results,
     load_selec_scan_results,
     run_KL_EMD_scan,
     run_selectivity_scan,
 )
-
-from ..imports import sample_test_data as sample_data
 from ..scanning_funcs import scan_KL_EMD, scan_selectivity
 
 
@@ -244,7 +243,7 @@ def test_runner_loader_roundtrip(tmp_path):
     #   outputs. This bypasses the expensive scanning optimizations.
     with (
         patch(
-            "figures.scanning_analyses.scan_runners.scan_selectivity",
+            "bicytok.scan_runners.scan_selectivity",
             side_effect=mock_scan_selectivity,
         ),
         patch("sys.argv", ["selectivity_scan", "--output-path", selec_path]),
@@ -276,7 +275,7 @@ def test_runner_loader_roundtrip(tmp_path):
     kl_emd_path = str(tmp_path / "kl_emd_scan.csv")
     with (
         patch(
-            "figures.scanning_analyses.scan_runners.scan_KL_EMD",
+            "bicytok.scan_runners.scan_KL_EMD",
             side_effect=mock_scan_KL_EMD,
         ),
         patch("sys.argv", ["KL_EMD_scan", "--output-path", kl_emd_path]),
