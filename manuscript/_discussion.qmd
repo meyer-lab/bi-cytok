@@ -1,3 +1,5 @@
 # Discussion
 
-Placeholder discussion text.
+## Outline
+
+ * In the age of AI-guided protein engineering, flexible binder designs have become increasingly feasible. Beyond developing tools that migh guide drug target selection, this work encourages the field to emphasize valency in the design of multispecific therapeutics.
