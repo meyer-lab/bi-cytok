@@ -54,6 +54,7 @@ from bicytok.figure_styles import (
     FONT_SIZE_ANNOT,
     GRID_ALPHA,
     apply_style,
+    categorical_colors,
 )
 from bicytok.scan_runners import (
     load_KL_EMD_scan_results,
@@ -66,7 +67,8 @@ apply_style()
 # Figure 3 (low valency, symmetric): pairing rarely beats the best single receptor.
 LOWVAL_SCAN = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
 # Figure 4 (high, asymmetric valency): pairing meaningfully boosts selectivity.
-HIGHVAL_SCAN = "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv"
+HIGHVAL_SCAN = "/home/sama/receptor_sweep_data/20260529_selec_scan_full_bival.csv"
+MIXVAL_SCAN = "/home/sama/receptor_sweep_data/20260608_selec_scan_full_mix-val.csv"
 
 # Label red points only if the 2D/1D ratio drops below this threshold.
 SCATTER_LABEL_DECLINE_THRESHOLD = 0.99
@@ -397,6 +399,7 @@ def plot_gain_bars(df, labels):
 # Load each scan once; the labeled cells below are thin plotting calls.
 df_low, labels_low = top_hits_df(LOWVAL_SCAN)
 df_high, labels_high = top_hits_df(HIGHVAL_SCAN)
+df_mix, labels_mix = top_hits_df(MIXVAL_SCAN)
 ```
 
 ## Top hits scatters
@@ -409,6 +412,11 @@ plot_scatter(df_low, labels_low)
 ```{python}
 #| label: fig-top-hits-1d-2d-highval
 plot_scatter(df_high, labels_high)
+```
+
+```{python}
+#| label: fig-top-hits-1d-2d-mixval
+plot_scatter(df_mix, labels_mix)
 ```
 
 ## Top hits slope chart
@@ -544,10 +552,9 @@ def plot_weak_singlet_prevalence(df):
     percentile, pooled across all cell types. Dashed line marks
     WEAK_PERCENTILE_THRESHOLD (below-median singlet)."""
     comp_labels = list(df["comparison"].unique())
-    base_colors = ["#3A86FF", "#FF9F1C", "#E63946"]
-    extra_colors = [plt.cm.tab10(i) for i in range(len(base_colors), 10)]
-    palette = base_colors + extra_colors
-    comp_colors = dict(zip(comp_labels, palette[: len(comp_labels)], strict=False))
+    comp_colors = dict(
+        zip(comp_labels, categorical_colors(len(comp_labels)), strict=False)
+    )
 
     rng_jitter = np.random.default_rng(0)
     fig, ax = plt.subplots(figsize=(max(5, 2.2 * len(comp_labels)), 5))
