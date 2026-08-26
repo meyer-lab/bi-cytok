@@ -34,6 +34,8 @@ scans are instantiated:
   with an inline "Pairing helps" / "Pairing hurts" legend in the lower right
 - **`suppfig-top-hits-gain-lowval` / `-highval`**: log₂(2D/1D) gain bars per cell type
 - Slope charts (diagnostic, not embedded): connected strip plot per cell type
+- **`fig-weak-singlet-prevalence`**: prevalence of weak singlets in top pairs (per
+  cell type's top-K pairs, pooled), compared across selectivity, KL divergence, and EMD
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -427,4 +429,207 @@ plot_gain_bars(df_low, labels_low)
 ```{python}
 #| label: top-hits-gain-highval
 plot_gain_bars(df_high, labels_high)
+```
+
+## Weak-singlet prevalence in top pairs
+
+For each metric (binding-model selectivity, KL divergence, EMD) and cell type, ranks
+all valid receptor candidates by their 1D value into a percentile (low = worst
+candidate, 1.0 = best). Takes the top `TOP_K_PAIRS` pairs by 2D value and records each
+pair's *weaker* member's singlet percentile — a receptor that only performs well in
+combination shows up here as a pair member with a low percentile. Pooling these across
+all cell types shows how often, and how weak, the recruited singlet is for each
+metric: percentiles clustered near 1 mean top pairs are essentially the top singlets
+recombined, while a spread toward 0 means pairing regularly recruits receptors that
+are mediocre alone.
+
+This replaces an earlier Jaccard-based version of this question, which compared the
+*sets* of receptors used by the top-N pairs vs. top-N singlets. That approach
+conflated the question with how N was chosen — pairs necessarily accumulate more
+distinct receptors than singlets as N grows, even under a purely additive
+(non-synergistic) metric — and needed a permutation-based null correction just to
+control for candidate-pool size varying by cell type. Scoring each pair by its own
+weaker member's percentile sidesteps both problems: it's a per-pair, continuous
+measure that's already normalized to each cell type's candidate pool, with no N to
+choose and no null model required.
+
+```{python}
+#| label: weak-singlet-prevalence
+SELEC_SCAN = "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv"
+KL_EMD_SCAN = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
+
+TOP_K_PAIRS = 5  # top pairs (by 2D value) examined per cell type
+MIN_CANDIDATES = 15  # cell types need at least this many valid receptor candidates
+WEAK_PERCENTILE_THRESHOLD = 0.5  # "weak" singlet: below-median percentile
+
+
+def _top_n_indices(values, top_n):
+    """Indices of the top N non-NaN values in `values`, descending."""
+    valid_idx = np.where(~np.isnan(values))[0]
+    order = np.argsort(values[valid_idx])[::-1][:top_n]
+    return valid_idx[order]
+
+
+def _percentile_ranks(diag, candidate_idx):
+    """Percentile of each candidate among candidate_idx by 1D value (low = worst
+    singlet, 1.0 = best singlet)."""
+    order = np.argsort(diag[candidate_idx])  # ascending: first = worst
+    n = len(candidate_idx)
+    percentile = {}
+    for rank, pos in enumerate(order):
+        percentile[candidate_idx[pos]] = (rank + 1) / n
+    return percentile
+
+
+def weak_singlet_prevalence(
+    metric_matrix, receptors, cell_types, metric_name, signal_idx=None
+):
+    """For each cell type with enough candidates, rank valid receptors into 1D
+    percentiles, take the top TOP_K_PAIRS pairs by 2D value, and record each pair's
+    weaker member's percentile.
+
+    Cell types with fewer than MIN_CANDIDATES valid receptor candidates are skipped
+    (too few for stable percentiles or for TOP_K_PAIRS distinct pairs to be
+    meaningful). A pair touching a receptor with no valid singlet score (rare -- a
+    single-receptor optimization can fail even when its pairwise scores succeed) is
+    skipped, since its weaker member's percentile is undefined.
+
+    Returns a long-form DataFrame: cell_type, comparison, weak_percentile, rec1, rec2.
+    """
+    n_recs = len(receptors)
+    rows_off, cols_off = np.tril_indices(n_recs, k=-1)
+    if signal_idx is not None:
+        keep = (rows_off != signal_idx) & (cols_off != signal_idx)
+        rows_off, cols_off = rows_off[keep], cols_off[keep]
+
+    records = []
+    n_excluded = 0
+    for i, ct in enumerate(cell_types):
+        mat = metric_matrix[:, :, i]
+
+        diag = np.diag(mat).copy()
+        if signal_idx is not None:
+            diag[signal_idx] = np.nan
+        candidate_idx = np.where(~np.isnan(diag))[0]
+        if len(candidate_idx) < MIN_CANDIDATES:
+            n_excluded += 1
+            continue
+        percentile = _percentile_ranks(diag, candidate_idx)
+
+        pair_vals = mat[rows_off, cols_off]
+        pair_idx = _top_n_indices(pair_vals, TOP_K_PAIRS)
+        for k in pair_idx:
+            r1, r2 = rows_off[k], cols_off[k]
+            if r1 not in percentile or r2 not in percentile:
+                continue
+            records.append(
+                {
+                    "cell_type": ct,
+                    "comparison": metric_name,
+                    "weak_percentile": min(percentile[r1], percentile[r2]),
+                    "rec1": receptors[r1],
+                    "rec2": receptors[r2],
+                }
+            )
+
+    print(
+        f"{metric_name}: retained {len(cell_types) - n_excluded}/{len(cell_types)} "
+        f"cell types (>= {MIN_CANDIDATES} candidates); {len(records)} top pairs pooled."
+    )
+    return pd.DataFrame(records)
+
+
+def plot_weak_singlet_prevalence(df):
+    """Box plot: one box per metric; each point is one top-K pair's weaker singlet
+    percentile, pooled across all cell types. Dashed line marks
+    WEAK_PERCENTILE_THRESHOLD (below-median singlet)."""
+    comp_labels = list(df["comparison"].unique())
+    base_colors = ["#3A86FF", "#FF9F1C", "#E63946"]
+    extra_colors = [plt.cm.tab10(i) for i in range(len(base_colors), 10)]
+    palette = base_colors + extra_colors
+    comp_colors = dict(zip(comp_labels, palette[: len(comp_labels)], strict=False))
+
+    rng_jitter = np.random.default_rng(0)
+    fig, ax = plt.subplots(figsize=(max(5, 2.2 * len(comp_labels)), 5))
+
+    for x_pos, comp_label in enumerate(comp_labels):
+        data = df.loc[df["comparison"] == comp_label, "weak_percentile"].values
+        color = comp_colors[comp_label]
+        ax.boxplot(
+            data,
+            positions=[x_pos],
+            widths=0.5,
+            patch_artist=True,
+            medianprops=dict(color="black", linewidth=1.8),
+            whiskerprops=dict(color=color, linewidth=1.0),
+            capprops=dict(color=color, linewidth=1.0),
+            flierprops=dict(marker=""),
+            boxprops=dict(facecolor=color, alpha=0.4, edgecolor=color, linewidth=1.0),
+        )
+        jitter = rng_jitter.uniform(-0.18, 0.18, size=len(data))
+        ax.scatter(
+            np.full(len(data), x_pos) + jitter,
+            data,
+            s=14,
+            color=color,
+            alpha=0.4,
+            zorder=3,
+            linewidths=0,
+        )
+
+    ax.axhline(
+        WEAK_PERCENTILE_THRESHOLD, color="black", linewidth=1, linestyle="--", alpha=0.5
+    )
+    ax.set_xticks(range(len(comp_labels)))
+    ax.set_xticklabels(comp_labels)
+    ax.set_ylabel("Weaker pair member's 1D percentile", fontsize=13)
+    ax.set_ylim(0, 1.02)
+    ax.set_title(f"Top {TOP_K_PAIRS} pairs per cell type, pooled")
+    ax.grid(True, axis="y", linestyle="--", alpha=0.35)
+    plt.tight_layout()
+    plt.show()
+
+
+# Binding model (selectivity): exclude the signal receptor from both rankings.
+opt_selec, _, _, selec_receptors, selec_cell_types = load_selec_scan_results(SELEC_SCAN)
+with open(os.path.splitext(SELEC_SCAN)[0] + ".yaml") as f:
+    selec_signal = yaml.safe_load(f)["binding_model"]["signal_receptor"]
+selec_signal = "Prototype_Signal_Receptor" if selec_signal == "prototype" else selec_signal
+selec_signal_idx = selec_receptors.index(selec_signal)
+
+# KL divergence and EMD: no signal receptor to exclude.
+KL_results, EMD_results, dist_receptors, dist_cell_types = load_KL_EMD_scan_results(
+    KL_EMD_SCAN
+)
+
+df_weak = pd.concat(
+    [
+        weak_singlet_prevalence(
+            opt_selec, selec_receptors, selec_cell_types, "Selectivity", selec_signal_idx
+        ),
+        weak_singlet_prevalence(
+            KL_results, dist_receptors, dist_cell_types, "KL_Divergence"
+        ),
+        weak_singlet_prevalence(EMD_results, dist_receptors, dist_cell_types, "EMD"),
+    ],
+    ignore_index=True,
+)
+
+print(
+    f"\nPrevalence of weak singlets in top-{TOP_K_PAIRS} pairs "
+    f"(weaker member below the {WEAK_PERCENTILE_THRESHOLD:.0%} percentile):"
+)
+for name in df_weak["comparison"].unique():
+    sub = df_weak.loc[df_weak["comparison"] == name, "weak_percentile"]
+    rate = (sub < WEAK_PERCENTILE_THRESHOLD).mean() * 100
+    print(
+        f"  {name:15s}  {rate:5.1f}%  (median percentile: {sub.median():.2f}, "
+        f"n={len(sub)})"
+    )
+```
+
+```{python}
+#| label: fig-weak-singlet-prevalence
+#| fig-cap: "Prevalence of weak singlets in top pairs: each point is the weaker member's 1D percentile for one of a cell type's top-20 pairs, pooled across cell types and compared across selectivity, KL divergence, and EMD."
+plot_weak_singlet_prevalence(df_weak)
 ```
