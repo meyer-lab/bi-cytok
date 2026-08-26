@@ -33,7 +33,6 @@ A mechanistic model is necessary to evaluate the binding selectivity space. **(a
 * Challenges:
   + Selectivity needs to be scale invariant
   + Need to avoid circularity in the definition of cell populations
-  + Need a sufficiently flexible model to consider many possible ligand designs
   + Need to account for differences in sample sizes across cell types
   + Need Invariance with respect to cell sampling
 * Distribution shape metrics are effective for screening low dimensional targets (strong correlation with EMD, binding model) but are not applicable to target pairs/triads (@suppfig-distribution-features)

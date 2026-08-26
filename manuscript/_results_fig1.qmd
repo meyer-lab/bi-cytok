@@ -40,6 +40,7 @@ Overview of the multispecific cell-type-selectivity problem and the experimental
   + Finally, one noted advance of CITE-seq was the ability to better define cell states based on the combined expression of mRNA and surface proteins through a classification tool called Weighted Nearest Neighbor (WNN) analysis [@Hao2018].
   + To maintain the comprehensive granularity of the WNN-defined cell types, a fourth criterion for a useful method was that it must not be circular in its target identification---highly selective targets must not be purely driven by the surface proteins used in cell type classification.
   -->
+
 * Armed with a comprehensive description of immune receptor expression and a set of methodological requirements, we devised a series of computational approaches capable of efficiently quantifying the selectivity of a given set of targets from their protein expression.
   + The simplest approach to predict a single protein's selectivity is to directly compare its expression in target and off-target cells through differences or ratios of statistical features, such as their moments, geometric means, outlier weights, or shapes (@fig-raw-hists). 
   + However, these simple statistical features do not extend to arbitrary dimensions, so we turned to metrics that quantify the differences between joint probability distributions between any number of proteins.
