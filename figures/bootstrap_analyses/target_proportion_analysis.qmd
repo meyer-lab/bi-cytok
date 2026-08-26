@@ -36,8 +36,11 @@ import numpy as np
 import pandas as pd
 
 from bicytok.distance_metric_funcs import KL_EMD_2D
+from bicytok.figure_styles import apply_style
 from bicytok.imports import importCITE
 from bicytok.selectivity_funcs import optimize_affs
+
+apply_style()
 
 TOTAL_SAMPLE_SIZE = 2500
 TARGET_PROPORTIONS = [0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99]
@@ -124,34 +127,56 @@ affinities_melted = affinities_df.melt(
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-sns.boxplot(x="target_proportion", y="KL_div", data=metrics_df)
-plt.xlabel("Target Cell Proportion")
-plt.ylabel("KL Divergence")
+from bicytok.figure_styles import COLORS, FIGSIZE, categorical_colors, set_tick_count
+
+fig, ax = plt.subplots(figsize=FIGSIZE["single_panel"])
+sns.boxplot(x="target_proportion", y="KL_div", data=metrics_df, color=COLORS[TARG_CELL], ax=ax)
+ax.set_xlabel("Target Cell Proportion")
+ax.set_ylabel("KL Divergence")
+set_tick_count(ax)
+plt.tight_layout()
 plt.show()
 ```
 
 ```{python}
 #| label: fig-targ-prop-emd
-sns.boxplot(x="target_proportion", y="EMD", data=metrics_df)
-plt.xlabel("Target Cell Proportion")
-plt.ylabel("EMD")
+
+fig, ax = plt.subplots(figsize=FIGSIZE["single_panel"])
+sns.boxplot(x="target_proportion", y="EMD", data=metrics_df, color=COLORS[TARG_CELL], ax=ax)
+ax.set_xlabel("Target Cell Proportion")
+ax.set_ylabel("EMD")
+set_tick_count(ax) 
+plt.tight_layout()
 plt.show()
+
 ```
 
 ```{python}
 #| label: fig-targ-prop-selec
-sns.boxplot(x="target_proportion", y="selectivity", data=metrics_df)
+
+fig, ax = plt.subplots(figsize=FIGSIZE["single_panel"])
+sns.boxplot(x="target_proportion", y="selectivity", data=metrics_df, color=COLORS[TARG_CELL], ax=ax)
+set_tick_count(ax)
 plt.xlabel("Target Cell Proportion")
 plt.ylabel("Selectivity")
+plt.tight_layout()
 plt.show()
 ```
 
 ```{python}
 #| fig-cap: "Bootstrap variation in optimal affinities across target cell proportions"
-sns.boxplot(x="target_proportion", y="Value", hue="Affinity", data=affinities_melted)
+plt.figure(figsize=FIGSIZE["single_panel"])
+sns.boxplot(
+    x="target_proportion",
+    y="Value",
+    hue="Affinity",
+    data=affinities_melted,
+    palette=categorical_colors(affinities_melted["Affinity"].nunique()),
+)
 plt.xlabel("Target Cell Proportion")
 plt.ylabel("Affinity Value")
 plt.legend(title="Affinity")
+plt.tight_layout()
 plt.show()
 ```
 

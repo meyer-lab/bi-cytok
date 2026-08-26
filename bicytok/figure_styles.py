@@ -23,6 +23,11 @@ POINT_SIZE_XS = 7  # extra small scatter points (scatters containing entire scan
 POINT_SIZE_BACKGROUND = 15  # bulk / non-emphasized scatter points
 POINT_SIZE_FOREGROUND = 30  # highlighted points (outliers, top hits, star markers)
 
+MARKER_SIZE_LINE = 8  # marker diameter (points) for markers on line plots; distinct
+# from POINT_SIZE_* above, which are scatter marker *area* (the `s=` kwarg)
+MARKER_SIZE_LINE_BACKGROUND = 4  # bulk / non-emphasized traces on a multi-line plot
+MARKER_SIZE_LINE_FOREGROUND = 7  # emphasized aggregate trace (e.g. a "Mean" overlay)
+
 LEGEND_FRAMEALPHA = 0.8
 LEGEND_BORDERPAD = 0.3  # padding between legend border and its content (default 0.4)
 LEGEND_LABELSPACING = 0.3  # vertical space between entries (default 0.5)
@@ -49,6 +54,8 @@ COLORS = {
     "outlier_metric2": _MAIN_ORANGE,  # scan_outliers.qmd: metric 2 outlier
     "outlier_both": _MAIN_RED,  # scan_outliers.qmd: high on both metrics
     "outlier_user": "#9B5DE5",  # scan_outliers.qmd: user-specified pairs
+    "neutral": "lightgray",  # uninteresting / background context points
+    "reference_line": "dimgray",  # neutral annotation lines (e.g. a y = x diagonal)
 }
 
 # Shared palette for "two binary conditions crossed" categorical breakdowns, used by
