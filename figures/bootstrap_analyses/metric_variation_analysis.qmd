@@ -35,8 +35,11 @@ import numpy as np
 import pandas as pd
 
 from bicytok.distance_metric_funcs import KL_EMD_2D
+from bicytok.figure_styles import apply_style
 from bicytok.imports import importCITE, sample_receptor_abundances
 from bicytok.selectivity_funcs import optimize_affs
+
+apply_style()
 
 sample_sizes = [50, 100, 500, 1000, 5000]
 randomizations = 50
@@ -130,6 +133,12 @@ affinities_melted = affinities_df.melt(
     var_name="Affinity",
     value_name="Value",
 )
+
+avg_times = (
+    metrics_df.groupby("sample_size")[["model_time", "distance_metric_time"]]
+    .mean()
+    .reset_index()
+)
 ```
 
 ```{python}
@@ -137,52 +146,88 @@ affinities_melted = affinities_df.melt(
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-sns.boxplot(x="sample_size", y="KL_div", data=metrics_df)
-plt.xlabel("Sample Size", fontsize=15)
-plt.ylabel("KL Divergence", fontsize=15)
+from bicytok.figure_styles import COLORS, FIGSIZE, categorical_colors
+
+plt.figure(figsize=FIGSIZE["single_panel"])
+sns.boxplot(x="sample_size", y="KL_div", data=metrics_df, color=COLORS[targ_cell])
+plt.xlabel("Sample Size")
+plt.ylabel("KL Divergence")
+plt.tight_layout()
 plt.show()
 ```
 
 ```{python}
 #| label: fig-bootstrap-emd
-sns.boxplot(x="sample_size", y="EMD", data=metrics_df)
-plt.xlabel("Sample Size", fontsize=15)
-plt.ylabel("EMD", fontsize=15)
+plt.figure(figsize=FIGSIZE["single_panel"])
+sns.boxplot(x="sample_size", y="EMD", data=metrics_df, color=COLORS[targ_cell])
+plt.xlabel("Sample Size")
+plt.ylabel("EMD")
+plt.tight_layout()
 plt.show()
 ```
 
 ```{python}
 #| label: fig-bootstrap-selec
-sns.boxplot(x="sample_size", y="selectivity", data=metrics_df)
-plt.xlabel("Sample Size", fontsize=15)
-plt.ylabel("Selectivity", fontsize=15)
+plt.figure(figsize=FIGSIZE["single_panel"])
+sns.boxplot(x="sample_size", y="selectivity", data=metrics_df, color=COLORS[targ_cell])
+plt.xlabel("Sample Size")
+plt.ylabel("Selectivity")
+plt.tight_layout()
 plt.show()
 ```
 
 ```{python}
 #| fig-cap: "Bootstrap variation in optimal affinities across sample sizes"
-sns.boxplot(x="sample_size", y="Value", hue="Affinity", data=affinities_melted)
-plt.xlabel("Sample Size", fontsize=15)
-plt.ylabel("Affinity Value", fontsize=15)
-plt.legend(title="Affinity", fontsize=15)
+plt.figure(figsize=FIGSIZE["single_panel"])
+sns.boxplot(
+    x="sample_size",
+    y="Value",
+    hue="Affinity",
+    data=affinities_melted,
+    palette=categorical_colors(affinities_melted["Affinity"].nunique()),
+)
+plt.xlabel("Sample Size")
+plt.ylabel("Affinity Value")
+plt.legend(title="Affinity")
+plt.tight_layout()
 plt.show()
 ```
 
 ```{python}
-avg_times = (
-    metrics_df.groupby("sample_size")[["model_time", "distance_metric_time"]]
-    .mean()
-    .reset_index()
+#| label: fig-bootstrap-disttime
+from bicytok.figure_styles import MARKER_SIZE_LINE
+
+plt.figure(figsize=FIGSIZE["single_panel"])
+sns.lineplot(
+    x="sample_size",
+    y="distance_metric_time",
+    data=avg_times,
+    marker="o",
+    color=COLORS[targ_cell],
+    markersize=MARKER_SIZE_LINE,
 )
-print(avg_times.to_string(index=False))
+plt.xlabel("Sample Size")
+plt.ylabel("Metric Time\nPer Target Pair (s)")
+plt.xscale("log")
+plt.yscale("log")
+plt.tight_layout()
+plt.show()
 ```
 
-## Parameter Summary
 ```{python}
-#| output: asis
-text = f"""
-Analyzed various metrics and their variability with sample size. The metrics were calculated for the target cell type **{targ_cell}** using the signal receptor **{signal_receptor}** and target receptors **{targets}** at a dose of **{dose}**. The analyses were performed on **{randomizations}** bootstrapped samplings for each sample size, with a total of **{sample_sizes}** sample sizes.
-"""
-
-print(text)
+#| label: fig-bootstrap-selectime
+plt.figure(figsize=FIGSIZE["single_panel"])
+sns.lineplot(
+    x="sample_size",
+    y="model_time",
+    data=avg_times,
+    marker="o",
+    color=COLORS[targ_cell],
+    markersize=MARKER_SIZE_LINE,
+)
+plt.xlabel("Sample Size")
+plt.ylabel("Selectivity Time\nPer Target Pair (s)")
+plt.xscale("log")
+plt.tight_layout()
+plt.show()
 ```
