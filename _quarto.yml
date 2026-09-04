@@ -1,4 +1,4 @@
-title: "Bivalent Cytokine Analysis Project"
+title: "A mechanistic guide for multispecific selectivity"
 
 project:
   output-dir: _output
@@ -10,8 +10,10 @@ format:
     mainfont: "Times New Roman"
     monofont: "Times New Roman"
     citeproc: true
+    columns: 2
     include-in-header:
-      - manuscript/_subfig-caption-override.typ
+      - manuscript/styles/_subfig-caption-override.typ
+      - manuscript/styles/_math-style-override.typ
 jupyter: python3
 
 crossref:

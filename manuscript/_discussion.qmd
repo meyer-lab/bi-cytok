@@ -1,3 +1,9 @@
 # Discussion
 
-Placeholder discussion text.
+## Outline
+
+* In the age of AI-guided protein engineering, flexible binder designs have become increasingly feasible. Beyond developing tools that might guide drug target selection, this work encourages the field to emphasize valency in the design of multispecific therapeutics.
+* This work emphasizes a critical limitation of CITE-seq and other single-cell protein quantification technologies: the inability to accurately quantify absolute protein expression.
+  + It is clear that the differences in scale between targets is a key feature that drives synergistic targeting
+  + The inability to accurately quantify the scale of any given protein's expression relative to other proteins therefore precludes our ability to accurately predict synergistic pairs of targets.
+  + This work intentionally avoids making claims about specific targets indicated by the different predictive methods, and instead focuses on broad trends that arise due to general patterns in the expression of many surface proteins.
