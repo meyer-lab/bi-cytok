@@ -101,10 +101,14 @@ _output/
 *.quarto_ipynb
 **/*.quarto_ipynb
 
-.vscode
+.zed
 output
 
 .DS_Store
 
 # Claude stuff
+.claude
 CLAUDE.local.md
+
+# Spell checker
+codebook.toml

@@ -42,7 +42,7 @@ dev = [
     "pytest>=9.0.3",
     "pytest-cov>=6.0",
     "pyright>=1.1.384",
-    "ipykernel>=6.29.5",
+    "ipykernel>=7.0.1",
     "pyyaml>=6.0.2",
     "nbformat>=5.10.4",
     "nbclient>=0.10.2",
@@ -55,6 +55,9 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["bicytok"]
+
+[tool.pytest.ini_options]
+testpaths = ["bicytok"]
 
 [tool.ruff.lint]
 select = [
