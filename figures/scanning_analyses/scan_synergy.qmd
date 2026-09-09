@@ -469,9 +469,11 @@ for _, row in all_synergy_df.iterrows():
 top_global = (
     all_synergy_df.assign(
         pair_key=all_synergy_df.apply(
-            lambda r: (r["rec1"], r["rec2"])
-            if asym_scan
-            else tuple(sorted([r["rec1"], r["rec2"]])),
+            lambda r: (
+                (r["rec1"], r["rec2"])
+                if asym_scan
+                else tuple(sorted([r["rec1"], r["rec2"]]))
+            ),
             axis=1,
         )
     )
@@ -765,9 +767,11 @@ if not all_synergy_df.empty:
     top_s = (
         all_synergy_df.assign(
             pk=all_synergy_df.apply(
-                lambda r: (r["rec1"], r["rec2"])
-                if asym_scan
-                else tuple(sorted([r["rec1"], r["rec2"]])),
+                lambda r: (
+                    (r["rec1"], r["rec2"])
+                    if asym_scan
+                    else tuple(sorted([r["rec1"], r["rec2"]]))
+                ),
                 axis=1,
             )
         )

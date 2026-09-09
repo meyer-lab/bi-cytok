@@ -120,9 +120,24 @@ SELEC_BOUNDS = (0.47, 1.02)
 # COMPARISON_SHAPES key prefix, and its display title. Order = affinity-histogram subpanel
 # order and COMPARISON_SHAPES row order.
 RECEPTORS = [
-    dict(csv_col="Affinity_Receptor_0", sd_key="aff0", shape_prefix="sig_aff", title="Signal receptor"),
-    dict(csv_col="Affinity_Receptor_1", sd_key="aff1", shape_prefix="targ1_aff", title="Target receptor 1"),
-    dict(csv_col="Affinity_Receptor_2", sd_key="aff2", shape_prefix="targ2_aff", title="Target receptor 2"),
+    dict(
+        csv_col="Affinity_Receptor_0",
+        sd_key="aff0",
+        shape_prefix="sig_aff",
+        title="Signal receptor",
+    ),
+    dict(
+        csv_col="Affinity_Receptor_1",
+        sd_key="aff1",
+        shape_prefix="targ1_aff",
+        title="Target receptor 1",
+    ),
+    dict(
+        csv_col="Affinity_Receptor_2",
+        sd_key="aff2",
+        shape_prefix="targ2_aff",
+        title="Target receptor 2",
+    ),
 ]
 AFF_COLS = {r["csv_col"]: r["title"] for r in RECEPTORS}
 
@@ -138,7 +153,9 @@ RASTERIZE = True
 # Scatter-panel display tuning, shared by SPECIFIC_ANALYSES and the scatter grid
 SELEC_FLOOR = 0.505  # pair selectivity at/below this is effectively no selectivity
 GAIN_COLOR_MAX = 0.15  # log2 gain at which the synergy color saturates
-LOG_Y_GAIN_FLOOR = 1e-5  # y-axis lower limit for log_y panels, clipping trailing near-zero-gain points
+LOG_Y_GAIN_FLOOR = (
+    1e-5  # y-axis lower limit for log_y panels, clipping trailing near-zero-gain points
+)
 KX_XLABEL = r"Optimal log$_{10}$(K$_{x}$*)"
 GAIN_YLABEL = r"log$_{2}$ selectivity gain"
 SELECTIVITY_XLABEL = "Binding model selectivity"
@@ -206,7 +223,14 @@ def load_scan_outputs(scan):
             "optimized there."
         )
 
-    cols = ["Cell_Type", "Receptor_1", "Receptor_2", "Selectivity", "Kx_star", *AFF_COLS]
+    cols = [
+        "Cell_Type",
+        "Receptor_1",
+        "Receptor_2",
+        "Selectivity",
+        "Kx_star",
+        *AFF_COLS,
+    ]
     return pd.read_csv(scan["path"], usecols=cols).dropna(subset=["Selectivity"])
 
 
@@ -304,7 +328,11 @@ COMPARISON_SHAPES = {
 for _r in RECEPTORS:
     _ylabel = rf"{_r['title']} K$_{{a}}$ (log$_{{10}}$(M))"
     COMPARISON_SHAPES[f"{_r['shape_prefix']}_vs_kx"] = _row(
-        _axes("kx", _r["sd_key"]), KX_XLABEL, _ylabel, ylim=AFFINITY_BOUNDS, kx_vline=True
+        _axes("kx", _r["sd_key"]),
+        KX_XLABEL,
+        _ylabel,
+        ylim=AFFINITY_BOUNDS,
+        kx_vline=True,
     )
     COMPARISON_SHAPES[f"{_r['shape_prefix']}_vs_sel"] = _row(
         _axes("sel", _r["sd_key"]),
@@ -319,7 +347,10 @@ for _r in RECEPTORS:
 # Used only by SPECIFIC_ANALYSES single-panel extracts, not the bulk reference grid (see
 # GRID_COMPARISON_KEYS): sel_vs_kx_loose fixes the y-axis to SELEC_BOUNDS (rather than
 # auto-scaling) so it matches sel_vs_targ1_aff's y-axis for side-by-side placement.
-COMPARISON_SHAPES["sel_vs_kx_loose"] = {**COMPARISON_SHAPES["sel_vs_kx"], "ylim": SELEC_BOUNDS}
+COMPARISON_SHAPES["sel_vs_kx_loose"] = {
+    **COMPARISON_SHAPES["sel_vs_kx"],
+    "ylim": SELEC_BOUNDS,
+}
 COMPARISON_SHAPES["sel_vs_targ1_aff"] = _row(
     _axes("aff1", "sel"),
     r"Target receptor K$_{a}$ (log$_{10}$(M))",
@@ -393,7 +424,9 @@ def draw_gain_points(
         rasterized=RASTERIZE,
         zorder=1,
     )
-    synergistic = cvals > 0  # NaN (unmatched) is False here, so those stay in the gray cloud
+    synergistic = (
+        cvals > 0
+    )  # NaN (unmatched) is False here, so those stay in the gray cloud
     order = np.argsort(cvals[synergistic])  # strongest synergy drawn last
     return ax.scatter(
         x[synergistic][order],
@@ -470,7 +503,13 @@ def _draw_comparison_panel(
 
 
 def overlay_hist(
-    ax, data_by_scan, bins, scan_bounds=None, annotate_pinned=False, ref_lines=(), logy=False
+    ax,
+    data_by_scan,
+    bins,
+    scan_bounds=None,
+    annotate_pinned=False,
+    ref_lines=(),
+    logy=False,
 ):
     """Overlay per-scan density histograms of one output on ax.
 
@@ -513,7 +552,9 @@ def overlay_hist(
                 )
 
 
-def overlay_figure(data_by_scan, bins, xlabel, ylabel, legend_loc, xlim=None, **hist_kwargs):
+def overlay_figure(
+    data_by_scan, bins, xlabel, ylabel, legend_loc, xlim=None, **hist_kwargs
+):
     """Single-axis overlaid-histogram figure. hist_kwargs pass through to overlay_hist."""
     fig, ax = plt.subplots(figsize=FIGSIZE["single_panel"])
     overlay_hist(ax, data_by_scan, bins, **hist_kwargs)
@@ -638,9 +679,13 @@ def plot_kxstar_dist():
 
 def plot_affinity_dist():
     """Overlaid affinity histograms, one subpanel per receptor in RECEPTORS."""
-    fig, axes = plt.subplots(1, len(RECEPTORS), figsize=(5 * len(RECEPTORS), 4.8), sharey=True)
+    fig, axes = plt.subplots(
+        1, len(RECEPTORS), figsize=(5 * len(RECEPTORS), 4.8), sharey=True
+    )
     for ax, r in zip(axes, RECEPTORS, strict=True):
-        data = {lbl: df[r["csv_col"]].to_numpy() for lbl, df in off_diag_by_scan.items()}
+        data = {
+            lbl: df[r["csv_col"]].to_numpy() for lbl, df in off_diag_by_scan.items()
+        }
         overlay_hist(ax, data, AFF_BINS, ref_lines=AFFINITY_BOUNDS)
         ax.set_title(r["title"])
         ax.set_xlim(*AFFINITY_BOUNDS)
@@ -711,7 +756,9 @@ def build_comparison_grid():
         sd = scan_base_arrays(scan)
         for r, comp in enumerate(grid_comps):
             ax = axes[r, c]
-            drawn = _draw_comparison_panel(ax, comp, scan, sd, scan_colors_gain[scan["label"]])
+            drawn = _draw_comparison_panel(
+                ax, comp, scan, sd, scan_colors_gain[scan["label"]]
+            )
             if drawn is not None:
                 mappable = drawn
             ax.tick_params(labelsize=GRID_TICK_FONTSIZE)
