@@ -215,6 +215,7 @@ def discrete_categorical_colors(n: int, cmap_names: list[str]) -> list:
     )
     return colors[:n]
 
+
 # Canonical cell-type -> color mapping, built once from the fixed CELL_TYPES list above.
 CELL_TYPE_COLORS = dict(
     zip(
