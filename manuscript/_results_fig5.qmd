@@ -8,7 +8,9 @@ Placeholder Figure 5 caption.
 ## Outline
 
 * Count normalization abolishes synergistic avidity?
+    + Principle: Multispecific targeting is only useful when targets are expressed at different levels relative to each other, but the same level on target and off-target cells.
 * Mutually exclusive binders further enhance selectivity?
-    + CD127 binding precludes CD25 binding and vice versa, improving Treg selectivity
+    + Principle: Selectivity can be improved by engineering ligands that cannot bind a target receptor in the presence of receptors expressed on off-target cells.
+    + E.g., CD127 binding precludes CD25 binding and vice versa, improving Treg selectivity
 * Hit list for each cell population?
     + Unreliability of CITE-seq absolute counts complicates this

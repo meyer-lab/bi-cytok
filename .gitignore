@@ -108,3 +108,6 @@ output
 
 # Claude stuff
 CLAUDE.local.md
+
+# Manuscript renderings
+/manuscript/*.pdf
