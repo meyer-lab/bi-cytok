@@ -22,10 +22,18 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import seaborn as sns
 import yaml
 
-from bicytok.figure_styles import CMAPS, FIGSIZE, FONT_SIZE_ANNOT, apply_style
+from bicytok.figure_styles import (
+    CMAPS,
+    COLORS,
+    FIGSIZE,
+    FONT_SIZE_ANNOT,
+    GRID_ALPHA,
+    apply_style,
+)
 from bicytok.scan_runners import (
     load_KL_EMD_scan_results,
     load_selec_scan_results,
@@ -165,4 +173,116 @@ plt.show()
 print(f"Top receptor pair per cell type ({metric_label}):")
 for cell_type, (rec1, rec2, max_val) in optimal_pairs.items():
     print(f"  {cell_type}: {rec1} + {rec2} ({max_val:.4f})")
+```
+
+## Selectivity singlets vs. differential expression (EMD)
+
+At low valency, most optimal selectivity targets above turn out to be singlets
+(`rec1 == rec2`, i.e. one receptor modeled with doubled valency) rather than true
+pairs. This checks whether those singlets are simply the most differentially
+expressed receptor for their cell type, using 1D EMD (`EMD_vals` on the diagonal of
+`KL_EMD_2D`, i.e. target vs. off-target distribution distance for one receptor at a
+time — see `distance_metric_funcs.py`) as the differential-expression metric.
+
+EMD values are pulled from an existing KL/EMD scan
+(`20260520_dist_scan_full_filt.csv`) run over the same 134 receptors, 31 cell types,
+and sample size as the selectivity scan above. That scan was post-hoc filtered by an
+off-target:target expression ratio threshold (see `filter_scan_by_target_expr` in
+`scan_runners.py`), which the selectivity scan never applied — so a sizeable fraction
+of receptors have a filtered-out (NaN) EMD per cell type. Only assert `scan_type ==
+"selectivity"` here since the comparison is specifically against selectivity singlets.
+
+```{python}
+assert scan_type == "selectivity", (
+    "Singlet-vs-EMD comparison requires the loaded scan to be a selectivity scan."
+)
+
+DIST_SCAN_PATH = "/home/sama/receptor_sweep_data/20260520_dist_scan_full_filt.csv"
+
+_, EMD_results, dist_receptors, dist_cell_types = load_KL_EMD_scan_results(
+    DIST_SCAN_PATH
+)
+dist_receptor_to_idx = {rec: i for i, rec in enumerate(dist_receptors)}
+
+emd_comparison_rows = []
+for cell_type, (rec1, rec2, max_selec) in optimal_pairs.items():
+    is_singlet = rec1 == rec2
+    emd_diag = np.diag(EMD_results[:, :, dist_cell_types.index(cell_type)])
+
+    top_emd_idx = np.nanargmax(emd_diag)
+    top_emd_receptor = dist_receptors[top_emd_idx]
+    top_emd_val = emd_diag[top_emd_idx]
+
+    singlet_receptor = rec1 if is_singlet else None
+    singlet_emd = np.nan
+    singlet_emd_rank = np.nan
+    if singlet_receptor in dist_receptor_to_idx:
+        singlet_emd = emd_diag[dist_receptor_to_idx[singlet_receptor]]
+        if not np.isnan(singlet_emd):
+            singlet_emd_rank = int(np.sum(emd_diag > singlet_emd)) + 1
+
+    emd_comparison_rows.append(
+        {
+            "Cell Type": cell_type,
+            "Selectivity Optimum": "Singlet" if is_singlet else "Pair",
+            "Singlet Receptor": singlet_receptor,
+            "Singlet EMD": singlet_emd,
+            "Singlet EMD Rank": singlet_emd_rank,
+            "Top EMD Receptor": top_emd_receptor,
+            "Top EMD Value": top_emd_val,
+            "Singlet Is Top EMD": singlet_receptor == top_emd_receptor
+            if singlet_receptor is not None
+            else False,
+        }
+    )
+
+emd_comparison_df = pd.DataFrame(emd_comparison_rows)
+
+n_singlets = (emd_comparison_df["Selectivity Optimum"] == "Singlet").sum()
+n_scored_singlets = emd_comparison_df["Singlet EMD Rank"].notna().sum()
+n_matches = emd_comparison_df["Singlet Is Top EMD"].sum()
+print(
+    f"{n_singlets} / {len(emd_comparison_df)} cell types have a singlet selectivity "
+    f"optimum. {n_scored_singlets} of those singlets have a non-filtered EMD value."
+)
+print(
+    f"{n_matches} / {n_scored_singlets} EMD-scored singlets are also the top-EMD "
+    f"receptor for their cell type."
+)
+if n_scored_singlets > 0:
+    print(
+        "Singlet EMD rank distribution (1 = top-EMD receptor):\n"
+        + emd_comparison_df["Singlet EMD Rank"].dropna().astype(int).describe().to_string()
+    )
+
+emd_comparison_df
+```
+
+For each singlet cell type, we now have its EMD rank among all receptors (1 = the
+singlet *is* the top-EMD receptor). To see this "hit rate" across every threshold at
+once — not just top-1 — we plot the fraction of singlets whose EMD rank falls within
+the top *K*, as *K* varies. This is a cumulative distribution (ECDF) of the rank
+values: each step is one cell type, and the curve's height at any *K* is exactly "% of
+singlets that are among the top-*K* most differentially expressed receptors."
+
+```{python}
+#| label: fig-singlet-emd-hitrate
+#| fig-cap: "Cumulative fraction of selectivity singlets whose EMD rank falls within the top-K most differentially expressed receptors, for K from 1 to the rank at which every singlet is covered."
+ranks = np.sort(emd_comparison_df["Singlet EMD Rank"].dropna().to_numpy())
+n_ranks = len(ranks)
+max_rank = int(ranks.max())
+# Prepend (0, 0) so the curve visibly rises from 0 at the left edge, rather than
+# starting already partway up.
+plot_ranks = np.concatenate(([0], ranks))
+plot_cum_frac = np.concatenate(([0], np.arange(1, n_ranks + 1) / n_ranks))
+
+fig, ax = plt.subplots(figsize=FIGSIZE["single_panel"])
+ax.step(plot_ranks, plot_cum_frac, where="post", color=COLORS["improved"], zorder=2)
+ax.set_xlim(0, max_rank+0.1)
+ax.set_ylim(0, 1.02)
+ax.set_xlabel("EMD rank K")
+ax.set_ylabel("Fraction of singlets")
+ax.grid(axis="y", alpha=GRID_ALPHA)
+plt.tight_layout()
+plt.show()
 ```

@@ -191,6 +191,21 @@ SPECIFIC_ANALYSES = {
         color_by="gain",
         log_y=True,
     ),
+    "set_vs_kx_loose": dict(
+        comparison="sel_vs_kx",
+        scan_label="Kx* upper bound 1e-5",
+        color_by="gain",
+    ),
+    "sel_vs_kx_bivalent": dict(
+        comparison="sel_vs_kx",
+        scan_label="Bivalent Kx* upper bound 1e-5",
+        color_by="gain",
+    ),
+    "sel_vs_kx_mixedval": dict(
+        comparison="sel_vs_kx",
+        scan_label="Mixed Valency Kx* upper bound 1e-5",
+        color_by="gain",
+    ),
 }
 
 # ── Data loading ────────────────────────────────────────────────────────────────────
@@ -772,6 +787,15 @@ plot_specific_analysis("gain_vs_sel_mixedval")
 #| label: fig-celltype-legend
 #| fig-cap: "Shared legend for the cell-type-colored SPECIFIC_ANALYSES panels above"
 plot_celltype_legend()
+```
+
+```{python}
+#| label: fig-set-vs-kx-cross-val
+plot_specific_analysis("set_vs_kx_loose")
+
+plot_specific_analysis("sel_vs_kx_bivalent")
+
+plot_specific_analysis("sel_vs_kx_mixedval")
 ```
 
 ```{python}

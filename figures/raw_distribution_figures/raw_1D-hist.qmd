@@ -37,14 +37,14 @@ from bicytok.imports import importCITE, sample_receptor_abundances
 
 apply_style()
 
-receptor = "CD27"
-sample_size = 5000
+receptor = "CD25"
+sample_size = 2500
 targ_cell = "Treg"
 off_targ_cell_types = None
 cell_categorization = "CellType2"
 plot_cell_types = [targ_cell, "other"]
-stat = "count"
-x_limit = False
+stat = "probability"
+x_limit = True
 normalize = False
 cell_type_labels = [targ_cell, "Off-target"]
 
@@ -150,7 +150,7 @@ elif stat == "probability":
 
 if x_limit:
     x_max = np.percentile(targ_abundances, 99.5)
-    plt.xlim(0, x_max * 0.6)
+    plt.xlim(0, x_max * 0.99)
 
 plt.legend(loc="upper right")
 plt.tight_layout()

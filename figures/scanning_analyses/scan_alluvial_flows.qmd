@@ -5,19 +5,20 @@ title: "Cross-Scan Receptor-Pair Category Flow"
 # Summary
 Visualizes how individual receptor pairs move between categorical groupings as scan conditions change, via alluvial (flow) diagrams. Each pair is labeled by a category under one scan, matched to the same pair (by cell type + receptor identity) under another scan, and a flow diagram shows how the categories redistribute — revealing which pool each destination category is pulled from.
 
-Two flows are drawn:
+Three flows are drawn:
 
 1. **Co-pinning flow** (`fig-copinning`): Each pair is labeled by whether it is pinned at its Kx* upper bound and whether either target arm sits at the affinity ceiling, giving four categories. Pairs are matched between the loose (1e-5) and tight (1e-9) Kx* bound scans, and the alluvial shows how the loose-bound categories redistribute under the tight bound.
 2. **Selectivity/gain flow** (`fig-selgain-flow`): each pair is labeled by selectivity (below/above `SELEC_HIGH_CUTOFF`) crossed with selectivity gain (non-synergistic/synergistic, i.e. `log2_gain <= 0` vs `> 0`), and pairs are matched between the monovalent and bivalent scans to show which quadrant increased valency pulls each pair into — in particular, whether low-selectivity, high-gain pairs move into the high-selectivity, high-gain quadrant.
+3. **Pinning/gain flow** (`fig-pin-gain-flow`): each pair is labeled by whether it is pinned at its Kx* upper bound crossed with selectivity gain (non-synergistic/synergistic), and pairs are matched between the monovalent and bivalent scans to show whether Kx*-pinned, non-synergistic pairs at low valency move into the non-pinned, synergistic quadrant at high valency.
 
-Both flows share the same rendering machinery (`draw_category_flow`, `plot_flow`): source-scan and destination-scan blocks sit at the top and bottom of the figure, sized by pair count, connected by ribbons flowing top-to-bottom and colored by source category, so each destination block's composition shows where its pairs came from.
+All three flows share the same rendering machinery (`draw_category_flow`, `plot_flow`): source-scan and destination-scan blocks sit at the top and bottom of the figure, sized by pair count, connected by ribbons flowing top-to-bottom and colored by source category, so each destination block's composition shows where its pairs came from.
 
 # Inputs
 All user-facing parameters are collected at the top of the code cell below, ahead of the data loading and plotting mechanics.
 
-- `SCANS`: the three selectivity scans these flows compare — loose (1e-5) and tight (1e-9) Kx* bound scans (for `fig-copinning`), and the loose-bound and bivalent scans (for `fig-selgain-flow`). Each has a CSV `path`, a display `label`, and the `kx_upper` optimization bound in log10(M). Each CSV must be a selectivity scan (Kx* and affinities are not produced by KL/EMD scans) with a matching `.yaml` in the same directory.
+- `SCANS`: the three selectivity scans these flows compare — loose (1e-5) and tight (1e-9) Kx* bound scans (for `fig-copinning`), and the loose-bound and bivalent scans (for `fig-selgain-flow` and `fig-pin-gain-flow`). Each has a CSV `path`, a display `label`, and the `kx_upper` optimization bound in log10(M). Each CSV must be a selectivity scan (Kx* and affinities are not produced by KL/EMD scans) with a matching `.yaml` in the same directory.
 - `AFFINITY_OPT_BOUNDS`: true (min, max) affinity optimization bounds in log10(M), used to detect whether a target arm sits at the affinity ceiling.
-- `SELEC_HIGH_CUTOFF` / `GAIN_HIGH_CUTOFF`: selectivity/gain thresholds defining the `fig-selgain-flow` quadrants; also exposed as `build_selgain_flow`/`plot_selgain_flow` arguments so they can be tuned to isolate a specific population (e.g. pairs only reaching meaningful gain at high valency) without editing the module-level defaults.
+- `SELEC_HIGH_CUTOFF` / `GAIN_HIGH_CUTOFF`: selectivity/gain thresholds defining the `fig-selgain-flow` quadrants (`GAIN_HIGH_CUTOFF` also defines `fig-pin-gain-flow`'s gain axis); also exposed as `build_selgain_flow`/`plot_selgain_flow`/`build_pin_gain_flow`/`plot_pin_gain_flow` arguments so they can be tuned to isolate a specific population (e.g. pairs only reaching meaningful gain at high valency) without editing the module-level defaults.
 
 # Outputs
 - **`fig-copinning`**: cross-scan alluvial flow of pairs between four constraint categories (Kx*-pinned x target-affinity-ceiling), showing where each tight-bound category is pulled from
@@ -25,6 +26,9 @@ All user-facing parameters are collected at the top of the code cell below, ahea
 - **`fig-selgain-flow`**: cross-scan (monovalent -> bivalent) alluvial flow of pairs between four selectivity x gain quadrants, showing which quadrant increased valency pulls each pair into
 - **`fig-selgain-pos-flow`**: same as `fig-selgain-flow`, restricted to pairs gain+ in the monovalent or bivalent scan (`gain_positive_only=True`), so the (otherwise tiny) gain+ population's own selectivity movement isn't diluted by the much larger gain- bulk
 - **`fig-selgain-flow-legend`**: standalone legend for `fig-selgain-flow`'s selectivity/gain quadrants, detached per `fig-copinning-legend`. Shared by `fig-selgain-pos-flow`, which uses the same four quadrants.
+- **`fig-pin-gain-flow`**: cross-scan (monovalent -> bivalent) alluvial flow of pairs between four Kx*-pinning x gain quadrants, showing whether Kx*-pinned, non-synergistic pairs move into the non-pinned, synergistic quadrant at higher valency
+- **`fig-pin-gain-pos-flow`**: same as `fig-pin-gain-flow`, restricted to pairs gain+ in the monovalent or bivalent scan (`gain_positive_only=True`), so the (otherwise tiny) gain+ population's own pinning movement isn't diluted by the much larger gain- bulk
+- **`fig-pin-gain-flow-legend`**: standalone legend for `fig-pin-gain-flow`'s pinning/gain quadrants, detached per `fig-copinning-legend`. Shared by `fig-pin-gain-pos-flow`, which uses the same four quadrants.
 
 ```{python}
 %config InlineBackend.figure_formats = ['svg']
@@ -52,9 +56,9 @@ apply_style()
 # edited to retarget this file at new scans or thresholds.
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# fig-copinning matches SCAN_LOOSE <-> SCAN_TIGHT; fig-selgain-flow matches
-# SCAN_LOOSE <-> SCAN_BIVALENT. See scan_kxstar_bounds.qmd for the full scan pool
-# (including the mixed-valency scan, unused by either flow here).
+# fig-copinning matches SCAN_LOOSE <-> SCAN_TIGHT; fig-selgain-flow and fig-pin-gain-flow
+# both match SCAN_LOOSE <-> SCAN_BIVALENT. See scan_kxstar_bounds.qmd for the full scan pool
+# (including the mixed-valency scan, unused by any flow here).
 SCANS = [
     {
         "path": "/home/sama/receptor_sweep_data/20260520_selec_scan_full.csv",
@@ -119,6 +123,16 @@ SEL_GAIN_CAT_NAMES = [
     "Low selectivity, gain+",
     "High selectivity, gain-",
     "High selectivity, gain+",
+]
+
+# Category display names for fig-pin-gain-flow. Order must match classify_pinning_gain's
+# coding below: 0 non-pinned & gain <= cutoff, 1 non-pinned & gain > cutoff, 2 pinned &
+# gain <= cutoff, 3 pinned & gain > cutoff.
+PIN_GAIN_CAT_NAMES = [
+    "Non-pinned, gain-",
+    "Non-pinned, gain+",
+    "Pinned, gain-",
+    "Pinned, gain+",
 ]
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -238,6 +252,22 @@ def classify_selectivity_gain(df, selec_cutoff, gain_cutoff):
         {
             "key": pair_key(df),
             "cat": 2 * high_sel.astype(int) + high_gain.astype(int),
+        }
+    )
+
+
+def classify_pinning_gain(df, kx_upper, gain_cutoff):
+    """Label each pair by Kx*-pinning/gain quadrant and build a cross-scan matching key.
+
+    Category codes: 0 non-pinned & gain <= gain_cutoff, 1 non-pinned & gain > gain_cutoff,
+    2 pinned & gain <= gain_cutoff, 3 pinned & gain > gain_cutoff.
+    """
+    kx_pinned = (np.abs(df["Kx_star"] - kx_upper) < PIN_TOL).to_numpy()
+    high_gain = (df["log2_gain"] > gain_cutoff).to_numpy()
+    return pd.DataFrame(
+        {
+            "key": pair_key(df),
+            "cat": 2 * kx_pinned.astype(int) + high_gain.astype(int),
         }
     )
 
@@ -368,6 +398,25 @@ def build_selgain_flow(
     return transition_from_matched(matched, len(SEL_GAIN_CAT_NAMES))
 
 
+def build_pin_gain_flow(scan_a, scan_b, gain_cutoff=GAIN_HIGH_CUTOFF, pinned_only=False):
+    """Compute the Kx*-pinning/gain quadrant transition matrix between two scans.
+
+    pinned_only restricts to pairs classified Kx*-pinned (categories 2 or 3, i.e.
+    cat >= 2) in scan_a or scan_b, per build_selgain_flow's gain_positive_only — here
+    applied to the pinning bit instead, since pinned pairs are the smaller population.
+    """
+    cats_a = classify_pinning_gain(
+        pair_dfs[scan_a["label"]], scan_a["kx_upper"], gain_cutoff
+    )
+    cats_b = classify_pinning_gain(
+        pair_dfs[scan_b["label"]], scan_b["kx_upper"], gain_cutoff
+    )
+    matched = cats_a.merge(cats_b, on="key", suffixes=("_a", "_b"))
+    if pinned_only:
+        matched = matched[(matched["cat_a"] >= 2) | (matched["cat_b"] >= 2)]
+    return transition_from_matched(matched, len(PIN_GAIN_CAT_NAMES))
+
+
 def plot_flow(trans, label_a, label_b):
     """Draw a category-transition alluvial from label_a (top) to label_b (bottom) as a
     standalone figure.
@@ -411,6 +460,12 @@ def plot_selgain_flow(
         scan_a, scan_b, selec_cutoff, gain_cutoff, gain_positive_only
     )
     plot_flow(trans, scan_a["label"], scan_b["label"])
+
+
+def plot_pin_gain_flow(scan_a, scan_b, gain_cutoff=GAIN_HIGH_CUTOFF, pinned_only=False):
+    """Draw the Kx*-pinning/gain quadrant alluvial flow from scan_a to scan_b."""
+    trans = build_pin_gain_flow(scan_a, scan_b, gain_cutoff, pinned_only)
+    plot_flow(trans, scan_a["label"], scan_b["label"])
 ```
 
 ```{python}
@@ -439,5 +494,22 @@ plot_selgain_flow(SCAN_LOOSE, SCAN_BIVALENT, gain_positive_only=True, gain_cutof
 #| label: fig-selgain-flow-legend
 #| fig-cap: "Shared legend for fig-selgain-flow's selectivity/gain quadrants"
 flow_legend_figure(SEL_GAIN_CAT_NAMES)
+plt.show()
+```
+
+```{python}
+#| label: fig-pin-gain-flow
+plot_pin_gain_flow(SCAN_LOOSE, SCAN_BIVALENT)
+```
+
+```{python}
+#| label: fig-pin-gain-pinned-flow
+plot_pin_gain_flow(SCAN_LOOSE, SCAN_BIVALENT, pinned_only=True)
+```
+
+```{python}
+#| label: fig-pin-gain-flow-legend
+#| fig-cap: "Shared legend for fig-pin-gain-flow's pinning/gain quadrants"
+flow_legend_figure(PIN_GAIN_CAT_NAMES)
 plt.show()
 ```
